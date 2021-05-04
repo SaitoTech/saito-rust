@@ -13,6 +13,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5024ee8015f02155eee35c711107ddd9a9bf3cb689cf2a9089c97e79b6e1ae83"
 
 [[package]]
+name = "bigint"
+version = "4.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0e8c8a600052b52482eff2cf4d810e462fdff1f656ac1ecb6232132a1ed7def"
+dependencies = [
+ "byteorder",
+ "crunchy",
+]
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -90,6 +100,12 @@ dependencies = [
  "time",
  "winapi",
 ]
+
+[[package]]
+name = "crunchy"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2f4a431c5c9f662e1200b7c7f02c34e91361150e382089a8f2dec3ba680cbda"
 
 [[package]]
 name = "data-encoding"
@@ -374,6 +390,7 @@ name = "saito-rust"
 version = "0.1.0"
 dependencies = [
  "base58",
+ "bigint",
  "bincode",
  "chrono",
  "data-encoding",
