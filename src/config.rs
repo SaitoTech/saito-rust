@@ -1,0 +1,2 @@
+pub const TREASURY: u64 = 286_810_000_000_000_00;
+pub const GENESIS_PERIOD: u64 = 21500;
