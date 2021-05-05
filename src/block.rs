@@ -48,7 +48,7 @@ impl BlockBody {
     	    creator:     block_creator,
     	    txs:         vec![],
 	        bf:          BurnFee::new(0.0, 0),
-    	    difficulty:  1.0,
+    	    difficulty:  2.1,
     	    paysplit:    0.5,
     	    vote:        0,
     	    treasury:    286_810_000_000_000_000,

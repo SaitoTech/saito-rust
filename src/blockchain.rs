@@ -112,6 +112,17 @@ impl Blockchain {
         let pos: usize = self.index.blocks.len();
         self.bsh_bid_hmap.insert(blk.get_bsh(), blk.body.id);
         self.index.blocks.insert(pos, blk.header());
+
+        // vars for determining the longest chain
+        let i_am_the_longest_chain: u8  = 1;
+
+        if i_am_the_longest_chain == 1 {
+            self.last_bsh  = self.index.blocks[pos].bsh;
+            self.last_ts   = self.index.blocks[pos].ts;
+            self.last_bid  = self.index.blocks[pos].bid;
+            self.lc_pos = pos;
+            self.lc_pos_set = true;
+        }
     }
     // fn get_latest() -> Block {
     //     Block {}

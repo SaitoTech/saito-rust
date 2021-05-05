@@ -1,41 +1,55 @@
 use std::{thread::sleep, time::Duration};
 use std::sync::{Arc, RwLock};
 
-use tokio;
+use tokio::{self, sync::mpsc::{Sender, Receiver}};
 use tokio::sync::{mpsc, broadcast};
 
-use saito_rust::golden_ticket::GoldenTicket;
 use saito_rust::types::SaitoMessage;
 use saito_rust::mempool::Mempool;
+use saito_rust::block::Block;
 use saito_rust::blockchain::Blockchain;
 use saito_rust::wallet::Wallet;
-
-use saito_rust::crypto::generate_keys;
+use saito_rust::lottery::{Lottery, Miner};
 
 #[tokio::main]
 async fn main() {
     println!("RUNNING SAITO!");
     let (tx, mut rx) = mpsc::channel(32);
+    let (target_tx, mut target_rx): (Sender<Block>, Receiver<Block>) = mpsc::channel(32);;
 
-    // let (net_tx, mut net_rx) = broadcast::channel(32);
-
-    // generate keys for our wallet
-    let (_privatekey, _publickey) = generate_keys();
-
-    // sleep for 5 secs to simulate lottery game, then send a golden ticket
-    tokio::spawn(async move {
-        loop {
-            sleep(Duration::from_millis(5000));
-            let message = SaitoMessage::GoldenTicket {
-                payload: GoldenTicket::new(1, [0; 32], [0; 32], _publickey)
-            };
-            tx.send(message).await;
-        }
-    });
+    let heart_beat_tx =  tx.clone();
 
     let wallet = Arc::new(RwLock::new(Wallet::new()));
     let mut mempool = Mempool::new();
     let mut blockchain = Blockchain::new();
+    let mut lottery = Lottery::new(Miner::new(), wallet.clone());
+
+    tokio::spawn(async move {
+        loop {
+            heart_beat_tx.send(SaitoMessage::TryBundle { payload: true }).await;
+            sleep(Duration::from_millis(1000));
+        }
+    });
+
+    // sleep for 5 secs to simulate lottery game, then send a golden ticket
+    tokio::spawn(async move {
+        loop {
+            while let Some(block) = target_rx.recv().await {
+                println!("BLOCK RECEIVED! START MINING");
+                let mut is_active = true;
+                while is_active {
+                    match lottery.play(block.clone()) {
+                        Some(new_tx) => {
+                            is_active = false;
+                            println!("GOLDEN TICKET FOUND");
+                            tx.send(SaitoMessage::Transaction { payload: new_tx }).await;
+                        }
+                        None => ()
+                    }
+                }
+            }
+        }
+    });
 
     loop {
         while let Some(message) = rx.recv().await {
@@ -47,6 +61,8 @@ async fn main() {
                 let block = mempool.bundle_block(&wallet, latest_block_header);
                 println!("{:?}", block.clone());
                 blockchain.add_block(block.clone(), &wallet);
+
+                target_tx.send(block.clone()).await;
             }
         }
     }
