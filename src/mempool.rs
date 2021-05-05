@@ -30,11 +30,15 @@ impl Mempool {
         };
     }
 
-    pub fn process(&self, message: SaitoMessage) {
+    pub fn process(&mut self, message: SaitoMessage) {
         match message {
             SaitoMessage::GoldenTicket { payload } => (),
-            SaitoMessage::Transaction { payload } => (),
-            SaitoMessage::Block { payload } => ()
+            SaitoMessage::Transaction { payload } => {
+                println!("ADDING TX TO MEMPOOL");
+                self.transactions.push(payload);
+            },
+            SaitoMessage::Block { payload } => (),
+            SaitoMessage::TryBundle { payload } => ()
         }
     }
 
@@ -100,9 +104,8 @@ impl Mempool {
                 block.set_coinbase(coinbase);
                 block.set_treasury(treasury - coinbase);
                 block.set_prevhash(previous_block_header.bsh);
-
-                //block.set_difficulty(previous_block_header.difficulty);
-                //block.set_paysplit(previous_block_header.paysplit);
+                block.set_difficulty(previous_block_header.difficulty);
+                block.set_paysplit(previous_block_header.paysplit);
 
                 new_burnfee = BurnFee::adjust_work_needed(
                     previous_block_header,

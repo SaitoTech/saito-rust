@@ -14,5 +14,8 @@ pub enum SaitoMessage {
     },
     GoldenTicket {
         payload: GoldenTicket
+    },
+    TryBundle {
+        payload: bool
     }
 }
