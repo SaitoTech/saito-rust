@@ -7,6 +7,7 @@ use tokio::sync::{mpsc, broadcast};
 use saito_rust::types::SaitoMessage;
 use saito_rust::mempool::Mempool;
 use saito_rust::block::Block;
+use saito_rust::utxoset::UTXOSet;
 use saito_rust::blockchain::Blockchain;
 use saito_rust::wallet::Wallet;
 use saito_rust::lottery::{Lottery, Miner};
@@ -20,6 +21,7 @@ async fn main() {
     let heart_beat_tx =  tx.clone();
 
     let wallet = Arc::new(RwLock::new(Wallet::new()));
+    let mut utxoset= UTXOSet::new();
     let mut mempool = Mempool::new();
     let mut blockchain = Blockchain::new();
     let mut lottery = Lottery::new(Miner::new(), wallet.clone());

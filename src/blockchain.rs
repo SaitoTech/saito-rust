@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::block::{Block, BlockHeader};
 use crate::wallet::Wallet;
-use crate::burnfee::BurnFee;
+use crate::storage::Storage;
 
 
 /// BlockchainIndex syncs so that
@@ -123,6 +123,9 @@ impl Blockchain {
             self.lc_pos = pos;
             self.lc_pos_set = true;
         }
+
+        Storage::write_block_to_disk(blk);
+        println!("Adding block: {:?}", self.last_bsh);
     }
     // fn get_latest() -> Block {
     //     Block {}
