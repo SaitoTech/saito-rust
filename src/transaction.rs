@@ -4,6 +4,11 @@ use crate::slip::{Slip};
 use crate::helper::{create_timestamp};
 use crate::crypto::{Signature, PublicKey};
 
+/// `TransactionBroadcastType` are a set of enumerated
+/// transaction types that consensus handles slightly differently
+///
+/// TODO -- stronger explanation needed for each broadcast type
+///
 #[derive(Serialize, Deserialize, PartialEq, Debug, Copy, Clone)]
 pub enum TransactionBroadcastType {
   Normal,
@@ -14,6 +19,7 @@ pub enum TransactionBroadcastType {
   GoldenChunk,
 }
 
+/// The bulk of `Transaction` data that is serialzied across the network
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct TransactionBody {
     id:   u32,
@@ -28,15 +34,21 @@ pub struct TransactionBody {
     ps:   u8,
 }
 
+/// `Transaction` is the data structure that transmits
+/// Saito tokens from one address to another. Saito allows
+/// data to freely be added to the transaction via the `msg` field
+/// in `TranasctionBody`
+///
+/// TODO -- append more information to the structures used for validation
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Transaction {
     pub body: TransactionBody,
     is_valid: u8,
+    fees_cumulative: u64,
 //    msg_hash: [u8; 32],
 //    size: u64,
 //    fees_total: u64,
 //    fees_usable_for_block_producer: u64,
-    fees_cumulative: u64,
 //    decrypted_msg: Vec<u8>,
 
 }

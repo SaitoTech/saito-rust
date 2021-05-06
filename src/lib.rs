@@ -28,9 +28,11 @@ pub mod hop;
 pub mod mempool;
 pub mod lottery;
 pub mod slip;
+pub mod storage;
 pub mod transaction;
 pub mod types;
 pub mod wallet;
+pub mod utxoset;
 
 /// Error returned by most functions.
 ///
