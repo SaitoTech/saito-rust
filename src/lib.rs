@@ -17,6 +17,10 @@
 // pub mod fork_policy;
 // pub mod concrete_fork_policy;
 
+use tokio::sync::{mpsc};
+
+use types::SaitoMessage;
+
 pub mod block;
 pub mod blockchain;
 pub mod burnfee;
@@ -29,6 +33,7 @@ pub mod mempool;
 pub mod lottery;
 pub mod slip;
 pub mod storage;
+pub mod server;
 pub mod transaction;
 pub mod types;
 pub mod wallet;
@@ -51,3 +56,12 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 ///
 /// This is defined as a convenience.
 pub type Result<T> = std::result::Result<T, Error>;
+
+// #[derive(Clone)]
+// pub type SaitoMessageReceiver = mpsc::Receiver<SaitoMessage>;
+
+// impl Clone for mpsc::Receiver<SaitoMessage> {
+//     fn clone(&mut self) -> Self {
+//         self;
+//     }
+// }

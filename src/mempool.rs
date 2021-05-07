@@ -1,44 +1,79 @@
 use crate::block::{Block, BlockHeader};
 use crate::burnfee::BurnFee;
-use crate::config::{GENESIS_PERIOD};
+use crate::config::GENESIS_PERIOD;
+use crate::blockchain::Blockchain;
 use crate::golden_ticket::GoldenTicket;
 use crate::transaction::{Transaction, TransactionBroadcastType};
 use crate::types::SaitoMessage;
 use crate::wallet::Wallet;
-
 use crate::helper::{create_timestamp, format_timestamp};
 
-use std::sync::{Arc, RwLock};
-
-#[derive(Debug, Clone)]
+use tokio::sync::{broadcast};
+use std::sync::{Arc, RwLock, Mutex};
+#[derive(Debug)]
 pub struct Mempool {
+    wallet: Wallet,
     blocks: Vec<Block>,
     pub transactions: Vec<Transaction>,
     burnfee: BurnFee,
     work_available: u64,
-    // rx: Receiver<SaitoMessage>,
+    saito_message_rx: broadcast::Receiver<SaitoMessage>,
+    saito_message_tx: broadcast::Sender<SaitoMessage>,
 }
 
 impl Mempool {
-    pub fn new() -> Self {
+    pub fn new(
+        wallet: Wallet,
+        rx: broadcast::Receiver<SaitoMessage>,
+        tx: broadcast::Sender<SaitoMessage>,
+    ) -> Self {
         return Mempool {
+            wallet,
             blocks: vec![],
             transactions: vec![],
             burnfee: BurnFee::new(0.0, 0),
             work_available: 0,
-            // rx,
+            saito_message_rx: rx,
+            saito_message_tx: tx,
         };
     }
 
-    pub fn process(&mut self, message: SaitoMessage) {
+    pub async fn run(
+        &mut self,
+        blockchain: &Arc<Mutex<Blockchain>>,
+    ) -> crate::Result<()> {
+        loop {
+            while let Ok(message) = self.saito_message_rx.recv().await {
+                println!("{:?}", message.clone());
+                self.process(message, blockchain);
+            }
+        }
+    }
+
+    pub fn process(&mut self, message: SaitoMessage, blockchain: &Arc<Mutex<Blockchain>>) {
         match message {
-            SaitoMessage::GoldenTicket { payload } => (),
             SaitoMessage::Transaction { payload } => {
                 println!("ADDING TX TO MEMPOOL");
                 self.transactions.push(payload);
+                self.try_bundle(blockchain);
             },
-            SaitoMessage::Block { payload } => (),
-            SaitoMessage::TryBundle { payload } => ()
+            SaitoMessage::TryBundle { payload } => {
+                self.try_bundle(blockchain);
+            },
+            _ => {},
+        }
+    }
+
+    pub fn try_bundle(
+        &mut self,
+        blockchain: &Arc<Mutex<Blockchain>>,
+    ) {
+        let latest_block_header = blockchain.lock().unwrap().get_latest_block_header();
+        if self.can_bundle_block(latest_block_header.clone()) {
+            let block = self.bundle_block( latest_block_header);
+            println!("CREATING BLOCK!");
+            self.saito_message_tx.send(SaitoMessage::CandidateBlock { payload : block})
+                .expect("Err: Could not send block to lottery game");
         }
     }
 
@@ -82,12 +117,10 @@ impl Mempool {
 
     pub fn bundle_block (
         &mut self,
-        wallet: &RwLock<Wallet>,
         previous_block_header: Option<BlockHeader>
     ) -> Block {
         let mut block: Block;
-        let publickey = wallet.read().unwrap().return_publickey();
-
+        let publickey = self.wallet.get_publickey();
         let new_burnfee: BurnFee;
 
         // set the majority of values if we have a previous block header

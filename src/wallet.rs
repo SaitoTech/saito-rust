@@ -1,12 +1,16 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use crate::slip::{Slip, SlipSpentStatus};
 use crate::transaction::{Transaction, TransactionBroadcastType};
 use crate::crypto::{SecretKey, PublicKey, Signature, generate_keys, hash, sign};
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Wallet {
+    shared: Arc<RwLock<State>>
+}
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct State {
     body:        WalletBody,
     slips_hmap:  HashMap<[u8; 32], u8>,
     slips_limit: u32,
@@ -24,26 +28,56 @@ pub struct WalletBody {
 }
 
 impl Wallet {
-    pub fn new() -> Wallet {
-        return Wallet {
-            body:                        WalletBody::new(),
-            slips_hmap:                  HashMap::new(),
-            slips_limit:                 10000,
+    pub fn new() -> Self {
+        return Self {
+            shared: Arc::new(RwLock::new(
+                State {
+                    body:        WalletBody::new(),
+                    slips_hmap:  HashMap::new(),
+                    slips_limit: 10000,
+                }
+            ))
         };
     }
 
-    pub fn return_publickey(&self) -> PublicKey {
-        return self.body.publickey;
+    pub fn get_publickey(&self) -> PublicKey {
+        return self.shared.read().unwrap().body.publickey;
     }
 
-    fn return_privatekey(&self) -> SecretKey {
-        return self.body.privatekey;
+    fn get_privatekey(&self) -> SecretKey {
+        return self.shared.read().unwrap().body.privatekey;
+    }
+
+    pub fn get_balance(&self) -> u64 {
+        return self.shared.read().unwrap().body.slips
+            .iter()
+            .filter(|slip| slip.spent_status == SlipSpentStatus::Unspent)
+            .map(|slip| slip.return_amt())
+            .sum();
+    }
+
+    pub fn get_available_inputs(&mut self, amt: u64) -> Option<Vec<Slip>>{
+        let mut slip_vec: Vec<Slip> = Vec::new();
+        let mut slip_sum_amount: u64 = 0;
+
+        for slip in self.shared.write().unwrap().body.slips.iter_mut() {
+            if slip.spent_status == SlipSpentStatus::Unspent {
+                slip_sum_amount += slip.return_amt();
+                slip_vec.push(slip.clone());
+                slip.set_spent_status(SlipSpentStatus::Spent);
+
+                if slip_sum_amount > amt {
+                    return Some(slip_vec);
+                }
+            }
+        }
+        return None;
     }
 
     pub fn create_signature(&self, data: &[u8]) -> Signature {
         let mut hashed_data: [u8; 32] = [0; 32];
         hash(data.to_vec(), &mut hashed_data);
-        return sign(&hashed_data, &self.return_privatekey());
+        return sign(&hashed_data, &self.get_privatekey());
     }
 
     pub fn create_transaction(
@@ -86,20 +120,27 @@ impl Wallet {
         let mut hash_slip: [u8; 32] = [0; 32];
         hash(slip.return_signature_source(), &mut hash_slip);
 
-        if !self.slips_hmap.contains_key(&hash_slip) {
-            self.body.slips.push(slip);
-            self.slips_hmap.insert(hash_slip, 1);
+        if !self.shared.read().unwrap().slips_hmap.contains_key(&hash_slip) {
+            if let Ok(mut wallet_guard) = self.shared.write() {
+                wallet_guard.body.slips.push(slip);
+                wallet_guard.slips_hmap.insert(hash_slip, 1);
+            }
         }
     }
 
     pub fn remove_slip(&mut self, slip: Slip) {
         let mut hash_slip: [u8; 32] = [0; 32];
         hash(slip.return_signature_source(), &mut hash_slip);
-
-        self.slips_hmap.remove(&hash_slip);
+        if let Ok(mut wallet_guard) = self.shared.write() {
+            wallet_guard.slips_hmap.remove(&hash_slip);
+        }
         let mut pos: Option<usize> = None;
 
-        for (i, remove_slip) in self.body.slips.iter_mut().enumerate() {
+        for (i, remove_slip) in self.shared
+          .write()
+          .unwrap()
+          .body.slips
+          .iter_mut().enumerate() {
             if slip.return_signature_source() == remove_slip.return_signature_source() {
                pos = Some(i);
                break;
@@ -107,34 +148,10 @@ impl Wallet {
         }
 
         if let Some(pos) = pos {
-            self.body.slips.remove(pos);
-        }
-    }
-
-    pub fn get_balance(&self) -> u64 {
-        return self.body.slips
-            .iter()
-            .filter(|slip| slip.spent_status == SlipSpentStatus::Unspent)
-            .map(|slip| slip.return_amt())
-            .sum();
-    }
-
-    pub fn get_available_inputs(&mut self, amt: u64) -> Option<Vec<Slip>>{
-        let mut slip_vec: Vec<Slip> = Vec::new();
-        let mut slip_sum_amount: u64 = 0;
-
-        for slip in self.body.slips.iter_mut() {
-            if slip.spent_status == SlipSpentStatus::Unspent {
-                slip_sum_amount += slip.return_amt();
-                slip_vec.push(slip.clone());
-                slip.set_spent_status(SlipSpentStatus::Spent);
-
-                if slip_sum_amount > amt {
-                    return Some(slip_vec);
-                }
+            if let Ok(mut wallet_guard) = self.shared.write() {
+                wallet_guard.body.slips.remove(pos);
             }
         }
-        return None;
     }
 }
 

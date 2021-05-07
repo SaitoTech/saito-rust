@@ -16,13 +16,13 @@ use crate::storage::Storage;
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BlockchainIndex {
     /// Vector of Block headers
-    blocks:      Vec<BlockHeader>
+    blocks:      Vec<BlockHeader>,
 }
 
 impl BlockchainIndex {
     pub fn new() -> BlockchainIndex {
         return BlockchainIndex {
-            blocks:      vec![],                 // blocks
+            blocks:      vec![]
         };
     }
 }
@@ -33,7 +33,7 @@ impl BlockchainIndex {
 /// longest-chain as well as the material that is sitting off
 /// the longest-chain but capable of being switched over.
 ///
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Blockchain {
 
     index:          BlockchainIndex,
@@ -56,10 +56,11 @@ pub struct Blockchain {
     lowest_acceptable_bsh:	[u8; 32],
     lowest_acceptable_bid:	u32,
 
+    wallet: Wallet
 }
 
 impl Blockchain {
-    pub fn new() -> Blockchain {
+    pub fn new(wallet: Wallet) -> Blockchain {
         return Blockchain {
             index:         	       BlockchainIndex::new(),
             bsh_lc_hmap:   	       HashMap::new(),
@@ -79,6 +80,8 @@ impl Blockchain {
             lowest_acceptable_ts:  0,
             lowest_acceptable_bsh: [0; 32],
             lowest_acceptable_bid: 0,
+
+            wallet,
         };
     }
     pub fn get_latest_block_header(&mut self) -> Option<BlockHeader> {
@@ -90,7 +93,6 @@ impl Blockchain {
     pub fn add_block(
         &mut self,
         blk: Block,
-        wallet: &RwLock<Wallet>,
         utxoset: &mut UTXOSet,
     ) {
         // check block is superficially valid
@@ -129,42 +131,36 @@ impl Blockchain {
                 utxoset.insert_new_transaction(tx);
             }
 
-            self.add_block_success(blk, wallet, 0, i_am_the_longest_chain, 0);
+            self.add_block_success(blk, 0, i_am_the_longest_chain, 0);
         }
     }
 
     fn add_block_success(
         &mut self,
         blk: Block,
-        wallet: &RwLock<Wallet>,
         _pos: usize,
         i_am_the_longest_chain: u8,
         _force: u8
     ) {
-        let publickey = wallet.read().unwrap().return_publickey();
-        blk.body.txs
-            .iter() 
-            .for_each(|tx| {
-                tx.get_from_slips()
-                    .iter()
-                    .filter(|slip| slip.return_add() == publickey)
-                    .for_each(move |slip| {
-                        if let Ok(mut wallet_guard) = wallet.write() {
-                            wallet_guard.remove_slip(slip.clone());
-                        }
-                    });
-                tx.get_to_slips()
-                    .iter()
-                    .filter(|slip| slip.return_add() == publickey)
-                    .for_each(move |slip| {
-                        if let Ok(mut wallet_guard) = wallet.write() {
-                            wallet_guard.add_slip(slip.clone());
-                        }
-                    });
-            });
+        // let publickey = self.wallet.get_publickey();
+        // blk.body.txs
+        //     .iter() 
+        //     .for_each(|tx| {
+        //         tx.get_from_slips()
+        //             .iter()
+        //             .filter(|slip| slip.return_add() == publickey)
+        //             .for_each(move |slip| {
+        //                 self.wallet.remove_slip(slip.clone())
+        //             });
+        //         tx.get_to_slips()
+        //             .iter()
+        //             .filter(|slip| slip.return_add() == publickey)
+        //             .for_each(move |slip| {
+        //                 self.wallet.add_slip(slip.clone())
+        //             });
+        //     });
 
         Storage::write_block_to_disk(blk);
-        println!("Adding block: {:?}", self.last_bsh);
     }
     // fn get_latest() -> Block {
     //     Block {}

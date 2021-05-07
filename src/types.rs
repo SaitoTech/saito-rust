@@ -1,19 +1,18 @@
 use crate::{
     block::Block,
-    transaction::Transaction,
-    golden_ticket::GoldenTicket,
+    transaction::Transaction
 };
 
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {
-    Block {
+    CandidateBlock {
+        payload: Block
+    },
+    NewTargetBlock {
         payload: Block
     },
     Transaction {
         payload: Transaction
-    },
-    GoldenTicket {
-        payload: GoldenTicket
     },
     TryBundle {
         payload: bool

@@ -11,17 +11,15 @@ use crate::{
 // use std::pin::Pin;
 // use std::future::Future;
 
-use std::sync::{Arc, RwLock};
 use bigint::uint::U256;
-use tokio::sync::mpsc::Sender;
 
 pub trait LotteryGame {
-    fn play(&mut self, prevblk: &Block, wallet: &RwLock<Wallet>) -> Option<Transaction>;
+    fn play(&mut self, prevblk: &Block, wallet: &mut Wallet) -> Option<Transaction>;
     fn generate_golden_ticket_transaction(
         &mut self,
         solution: [u8; 32],
         prevblk: &Block,
-        wallet: &RwLock<Wallet>) -> Transaction;
+        wallet: &mut Wallet) -> Transaction;
     fn generate_random_solution(&self) -> [u8; 32];
     fn is_valid_solution(&self, random_solution: [u8; 32], prevblk: &Block) -> bool;
     fn find_winner(&self, solution: &[u8; 32], prevblk: &Block) -> PublicKey;
@@ -36,7 +34,7 @@ pub struct Miner {
 }
 
 impl LotteryGame for Miner {
-    fn play(&mut self, prevblk: &Block, wallet: &RwLock<Wallet>) -> Option<Transaction> {
+    fn play(&mut self, prevblk: &Block, wallet: &mut Wallet) -> Option<Transaction> {
         let solution = self.generate_random_solution();
         match self.is_valid_solution(solution, prevblk) {
             true => Some(self.generate_golden_ticket_transaction(solution, prevblk, wallet)),
@@ -48,9 +46,9 @@ impl LotteryGame for Miner {
         &mut self,
         solution: [u8; 32],
         prevblk: &Block,
-        wallet: &RwLock<Wallet>
+        wallet: &mut Wallet
     ) -> Transaction {
-        let publickey = wallet.read().unwrap().return_publickey();
+        let publickey = wallet.get_publickey();
         let gt_solution = self.create_gt_solution(
             solution,
             prevblk.get_bsh(),
@@ -84,7 +82,7 @@ impl LotteryGame for Miner {
         let node_share  = total_fees_for_miners_and_nodes - miner_share;
 
         // create our golden ticket tx (au_tx)
-        let mut golden_tx: Transaction = match wallet.write().unwrap().create_transaction(
+        let mut golden_tx: Transaction = match wallet.create_transaction(
             publickey,
             TransactionBroadcastType::GoldenTicket,
             100_000,
@@ -106,7 +104,7 @@ impl LotteryGame for Miner {
 
         // sign TX
         golden_tx.set_sig(
-            wallet.read().unwrap().create_signature(golden_tx.get_signature_source().as_slice())
+            wallet.create_signature(golden_tx.get_signature_source().as_slice())
         );
 
         return golden_tx;
@@ -212,15 +210,23 @@ impl Miner {
 pub struct Lottery<G: LotteryGame> {
     pub game: G,
     pub target: Option<Block>,
-    pub wallet: Arc<RwLock<Wallet>>,
+    pub wallet: Wallet,
 }
 
 impl<G> Lottery<G> where G: LotteryGame {
-    pub fn new(game: G, wallet: Arc<RwLock<Wallet>>) -> Lottery<G> {
+    pub fn new(game: G, wallet: Wallet) -> Lottery<G> {
         return Lottery { game, target: None, wallet }
     }
 
     pub fn play(&mut self, block: Block) -> Option<Transaction> {
-        self.game.play(&block, &self.wallet)
+        self.game.play(&block, &mut self.wallet)
+    }
+
+    pub fn create_solution(&mut self, block: Block) -> Transaction {
+        self.game.generate_golden_ticket_transaction(
+            self.game.generate_random_solution(),
+            &block,
+            &mut self.wallet
+        )
     }
 }
