@@ -62,7 +62,7 @@ async fn main() {
             if mempool.can_bundle_block(latest_block_header.clone()) {
                 let block = mempool.bundle_block(&wallet, latest_block_header);
                 println!("{:?}", block.clone());
-                blockchain.add_block(block.clone(), &wallet);
+                blockchain.add_block(block.clone(), &wallet, &mut utxoset);
 
                 target_tx.send(block.clone()).await;
             }

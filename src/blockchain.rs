@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::block::{Block, BlockHeader};
 use crate::wallet::Wallet;
+use crate::utxoset::UTXOSet;
 use crate::storage::Storage;
 
 
@@ -90,7 +91,7 @@ impl Blockchain {
         &mut self,
         blk: Block,
         wallet: &RwLock<Wallet>,
-        // shashmap: &mut Shashmap
+        utxoset: &mut UTXOSet,
     ) {
         // check block is superficially valid
         if blk.is_valid == 0 {
@@ -122,7 +123,45 @@ impl Blockchain {
             self.last_bid  = self.index.blocks[pos].bid;
             self.lc_pos = pos;
             self.lc_pos_set = true;
+
+            for tx in blk.body.txs.iter() {
+                utxoset.spend_transaction(tx, blk.body.id);
+                utxoset.insert_new_transaction(tx);
+            }
+
+            self.add_block_success(blk, wallet, 0, i_am_the_longest_chain, 0);
         }
+    }
+
+    fn add_block_success(
+        &mut self,
+        blk: Block,
+        wallet: &RwLock<Wallet>,
+        _pos: usize,
+        i_am_the_longest_chain: u8,
+        _force: u8
+    ) {
+        let publickey = wallet.read().unwrap().return_publickey();
+        blk.body.txs
+            .iter() 
+            .for_each(|tx| {
+                tx.get_from_slips()
+                    .iter()
+                    .filter(|slip| slip.return_add() == publickey)
+                    .for_each(move |slip| {
+                        if let Ok(mut wallet_guard) = wallet.write() {
+                            wallet_guard.remove_slip(slip.clone());
+                        }
+                    });
+                tx.get_to_slips()
+                    .iter()
+                    .filter(|slip| slip.return_add() == publickey)
+                    .for_each(move |slip| {
+                        if let Ok(mut wallet_guard) = wallet.write() {
+                            wallet_guard.add_slip(slip.clone());
+                        }
+                    });
+            });
 
         Storage::write_block_to_disk(blk);
         println!("Adding block: {:?}", self.last_bsh);
