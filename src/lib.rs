@@ -16,3 +16,5 @@
 // pub mod concrete_consensus_policy;
 // pub mod fork_policy;
 // pub mod concrete_fork_policy;
+pub mod keypair;
+pub mod slip;
