@@ -2,8 +2,9 @@ use rand::rngs::OsRng;
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey, Signature, All};
 use sha2::{Sha256, Digest};
 use std::fmt;
-use base58::{ToBase58};
+use base58::{ToBase58, FromBase58};
 
+use std::fmt::Write;
 // We don't want to create a new secp256k1 object for every call to a method in keypair, instead
 // we create a single static using lazy_static that all keypairs can reference when needed.
 // TODO: Can this be replaced with this? https://docs.rs/secp256k1-plus/0.5.7/secp256k1/struct.SECP256K1.html
@@ -53,12 +54,6 @@ impl Keypair {
         let mut bytes = [0u8; 32];
         hex::decode_to_slice(private_key_hex, &mut bytes as &mut [u8]);
         return Keypair::new_from_private_key(&bytes);
-        
-        // let secret_key = SecretKey::from_slice(private_key).expect("32 bytes, within curve order");
-        // 
-        // return Keypair {
-        //     private_key: secret_key,
-        // };
     }
     /// Get the public key of the keypair in base58(i.e. address) format
     pub fn get_address(&self) -> String {
@@ -72,18 +67,41 @@ impl Keypair {
     pub fn get_private_key(&self) -> String {
         return self.private_key.to_string();
     }
-    /// Sign a byte message, must be length 32
-    pub fn sign_message(&self, message_bytes: &[u8]) -> Signature {
-        let msg = Message::from_slice(message_bytes).unwrap();
-        return SECP.sign(&msg, &self.private_key);
-        // -> Result<Signature, Error>
-    }
-    /// Hash and sign a string
-    pub fn sign_string_message(&self, message_string: &str) -> Signature {
+    /// Hash the message string with sha256 for signing by secp256k1 and return as byte array
+    /// TODO: Make sure this handles utf correctly. We probably want to ensure that the message 
+    /// is actually just ascii encoded...
+    fn make_message_from_string(message_string: &str) -> [u8;32] {
         let mut hasher = Sha256::new();
         hasher.update(message_string.as_bytes());
-        let message_bytes = hasher.finalize();
-        return self.sign_message(&message_bytes);
+        let hashvalue = hasher.finalize();
+        return [
+            hashvalue[0], hashvalue[1], hashvalue[2], hashvalue[3], hashvalue[4], hashvalue[5], hashvalue[6], hashvalue[7],
+            hashvalue[8], hashvalue[9], hashvalue[10], hashvalue[11], hashvalue[12], hashvalue[13], hashvalue[14], hashvalue[15],
+            hashvalue[16], hashvalue[17], hashvalue[18], hashvalue[19], hashvalue[20], hashvalue[21], hashvalue[22], hashvalue[23],
+            hashvalue[24], hashvalue[25], hashvalue[26], hashvalue[27], hashvalue[28], hashvalue[29], hashvalue[30], hashvalue[31],
+        ];
+    }
+    /// Hash and sign a string
+    pub fn sign_string_message(&self, message_string: &str) -> String {
+        let message_bytes = Keypair::make_message_from_string(message_string);
+        let bytes = self.sign_message(&message_bytes);
+        let mut string_out = String::new();
+        write!(&mut string_out, "{:?}", bytes);
+        return string_out;
+    }
+    fn sign_message(&self, message_bytes: &[u8]) -> Signature {
+        let msg = Message::from_slice(message_bytes).unwrap();
+        return SECP.sign(&msg, &self.private_key);
+    }
+    /// Verify a message signed by secp256k1. Message is a plain string. Sig and pubkey should be base58 encoded.
+    pub fn verify_string_message(message: &str, sig: &str, public_key: &str) -> bool {
+        let message = Message::from_slice(&Keypair::make_message_from_string(message)).unwrap();
+        let sig = Signature::from_der(&String::from(sig).from_base58().unwrap()).unwrap();
+        let public_key = PublicKey::from_slice(&String::from(public_key).from_base58().unwrap()).unwrap();
+        return Keypair::verify_message(message, sig, public_key);
+    }
+    fn verify_message(msg: Message, sig: Signature, public_key: PublicKey) -> bool {
+        return SECP.verify(&msg, &sig, &public_key).is_ok();
     }
 }
 
@@ -98,19 +116,17 @@ impl fmt::Display for Keypair {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::fmt::Write;
     use hex;
     #[test]
     fn test_signing() {
         let mock_private_key = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
         let keypair = Keypair::new_from_private_key_hex(mock_private_key);
-        let mock_message: [u8;32] = [0;32];
-        let mut sig_string = String::new();
-        write!(&mut sig_string, "{:?}", keypair.sign_message(&[0;32]));
-        assert_eq!(sig_string, "3045022100ec45d9852bab78d1b5492158a2ff30801e1c2133a9e2610f6e95df7ea7a87f5d02200cbf2d5c97e6118ffe5baac96ae8f5a5d23bd5fb072e3122846d4172b31dbd1b");
-        let mut sig_string2 = String::new();
-        write!(&mut sig_string2, "{:?}", keypair.sign_string_message(&String::from("hello world")));
+        let sig_string2 = keypair.sign_string_message(&String::from("hello world"));
         assert_eq!(sig_string2, "3045022100e45ad15a85e320d8f3c6721b50475ec9572bca4e4831c9cfd73ce8af39fd507c02202b9f0c729cb4a0030c852e836fdfce2301eccfe9a93de3c8579fd77acadc92fd");
+        let mut sig_bytes = [0u8; 71];
+        hex::decode_to_slice(sig_string2, &mut sig_bytes as &mut [u8]);
+        let result = Keypair::verify_string_message("hello world", &sig_bytes.to_base58(), "e1hpHsuiRPbzXdCf7smXvAFCnqpvZXcjtxZLMxcATat1");
+        assert!(result);
     }
     #[test]
     fn test_new_from_private_key() {
