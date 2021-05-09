@@ -5,7 +5,7 @@ Saito is a **Tier 1 Blockchain Protocol** that incentivizes the provision of **h
 
 Saito-Rust is an implementation of Saito Consensus written in Rust for use by high-throughput routing nodes. It aims to offer the simplest and most scalable implementation of Saito Consensus.
 
-If you need to get in touch with us, please reach out anytime. 
+If you need to get in touch with us, please reach out anytime.
 
 # Usage
 
