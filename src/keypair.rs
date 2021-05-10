@@ -51,12 +51,9 @@ impl Keypair {
     /// Create and return a keypair with  the given hex u8 array as the private key
     pub fn new_from_private_key_hex(private_key_hex: &str) -> Result<Keypair, FromHexError> {
         let mut bytes = [0u8; 32];
-        match hex::decode_to_slice(private_key_hex, &mut bytes as &mut [u8]) {
-            Err(e) => {
-                return Err(e);
-            }
-            _ => {}
-        };
+        if let Err(e) = hex::decode_to_slice(private_key_hex, &mut bytes as &mut [u8]) {
+            return Err(e);
+        }
         Ok(Keypair::new_from_private_key(&bytes))
     }
     /// Get the public key of the keypair in base58(i.e. address) format
@@ -88,9 +85,9 @@ impl Keypair {
         let message_bytes = Keypair::make_message_from_string(message_string);
         let bytes = self.sign_message(&message_bytes);
         let mut string_out = String::new();
-        match write!(&mut string_out, "{:?}", bytes) {
-            Err(e) => return Err(e),
-            _ => {}
+
+        if let Err(e) = write!(&mut string_out, "{:?}", bytes) {
+            return Err(e);
         }
 
         Ok(string_out)
