@@ -24,3 +24,4 @@ dev@saito.tech
 #[macro_use]
 extern crate lazy_static;
 pub mod keypair;
+pub mod slip;
