@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["saito_rust"] = [{"text":"impl Freeze for <a class=\"struct\" href=\"saito_rust/keypair/struct.Keypair.html\" title=\"struct saito_rust::keypair::Keypair\">Keypair</a>","synthetic":true,"types":["saito_rust::keypair::Keypair"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
