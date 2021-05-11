@@ -23,6 +23,7 @@ dev@saito.tech
 */
 #[macro_use]
 extern crate lazy_static;
+pub mod burnfee;
 pub mod keypair;
 pub mod slip;
 pub mod time;
