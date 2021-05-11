@@ -1,7 +1,7 @@
 use secp256k1::{PublicKey};
 
 /// A UTXO slip containing record of owernship of funds on the network
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Slip {
     /// Contains concrete data which is not relative to state of the chain
     body: SlipBody,
@@ -12,7 +12,7 @@ pub struct Slip {
 }
 
 /// An object that holds concrete data not subjective to state of chain
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct SlipBody {
     /// An `Sectp256K::PublicKey` determining who owns the `Slip`
     add: PublicKey,
@@ -31,7 +31,7 @@ pub struct SlipBody {
 }
 
 /// An enumerated set of `Slip` types
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum SlipBroadcastType {
     Normal,
     GoldenTicket,
@@ -42,7 +42,7 @@ pub enum SlipBroadcastType {
 }
 
 /// Current status of the `Slip` state with regards to it's usage in the network
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum SlipSpentStatus {
     Unspent,
     Spent,
