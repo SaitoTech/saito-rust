@@ -33,6 +33,19 @@ cargo test
 cargo fmt
 ```
 
+### Github Actions
+
+GH Actions are located here: [.github/workflows](.github/workflows)
+
+- docs  
+  Is creating and and deploying the docs to GH pages
+
+- [rustfmt](https://github.com/rust-lang/rustfmt#checking-style-on-a-ci-server) (**required**)  
+  Is checking if the code is formatted according to rust style guidelines
+
+- build & test  
+  Tries to build the code and run all tests
+
 ### VSCode
 
 Extensions:
