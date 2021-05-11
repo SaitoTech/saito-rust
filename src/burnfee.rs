@@ -39,6 +39,9 @@ impl BurnFee {
 	    return work_needed.round() as u64;
     }
 
+    /// Returns an adjusted burnfee based on the start value provided
+    /// and the difference between the current block timestamp and the
+    /// previous block timestamp
     pub fn burn_fee_adjustment(
         burnfee_start: f64,
         current_block_timestamp: u64,
