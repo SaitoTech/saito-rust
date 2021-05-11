@@ -2,6 +2,10 @@
 
 A work-in-progress draft implementation of the saito core in rust
 
+## Documentation
+
+https://saitotech.github.io/saito-rust/saito_rust/index.html
+
 ## Dev workflow
 
 ### Deps
