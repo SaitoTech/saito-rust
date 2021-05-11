@@ -33,17 +33,19 @@ cargo test
 cargo fmt
 ```
 
+Format code according to the [Rust style Guide](https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/guide.md)
+
 ### Github Actions
 
 GH Actions are located here: [.github/workflows](.github/workflows)
 
-- docs  
-  Is creating and and deploying the docs to GH pages
+- cargo docs  
+  Is creating and deploying the docs to GH pages
 
 - [rustfmt](https://github.com/rust-lang/rustfmt#checking-style-on-a-ci-server) (**required**)  
   Is checking if the code is formatted according to rust style guidelines
 
-- build & test  
+- cargo build & test  
   Tries to build the code and run all tests
 
 ### VSCode
