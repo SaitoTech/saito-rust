@@ -1,200 +1,145 @@
-use secp256k1::{PublicKey};
+use secp256k1::PublicKey;
 
-/// A UTXO slip containing record of owernship of funds on the network
+/// A record of owernship of funds on the network
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Slip {
     /// Contains concrete data which is not relative to state of the chain
     body: SlipBody,
-    /// Flag determining if the `Slip` is part of the longest chain
-    lc: bool,
-    /// `SlipSpentStatus` indicating the state of the slip in the network
-    pub spent_status: SlipSpentStatus,
+    /// `Block` id
+    block_id: u64,
+    /// `Transaction` id
+    tx_id: u64,
+    /// `Slip` id
+    slip_id: u64,
+    /// The `Block` hash the slip originated from
+    block_hash: [u8; 32],
 }
 
 /// An object that holds concrete data not subjective to state of chain
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct SlipBody {
     /// An `Sectp256K::PublicKey` determining who owns the `Slip`
-    add: PublicKey,
+    address: PublicKey,
     /// A enum brodcast type determining how to be processed by consensus
-    typ: SlipBroadcastType,
+    broadcast_type: SlipBroadcastType,
     /// Amount of Saito
-    amt: u64,
-    /// `Block` id
-    bid: u64,
-    /// `Transaction` id
-    tid: u64,
-    /// `Slip` id
-    sid: u64,
-    /// The `Block` hash the slip originated from
-    bsh: [u8; 32],
+    amount: u64,
 }
 
 /// An enumerated set of `Slip` types
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum SlipBroadcastType {
     Normal,
-    GoldenTicket,
-    Fee,
-    Rebroadcast,
-    VIP,
-    GoldenChunk,
-}
-
-/// Current status of the `Slip` state with regards to it's usage in the network
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum SlipSpentStatus {
-    Unspent,
-    Spent,
-    Pending,
 }
 
 impl Slip {
     /// Create new `Slip` with default type `SlipBroadcastType::Normal`
     ///
-    /// * `add` - `Publickey` address to assign ownership
-    /// * `typ` - `SlipBroadcastType` of `Slip`
-    /// * `amt` - `u64` amount of Saito coantined in the `Slip`
-    pub fn new(add: PublicKey, typ: SlipBroadcastType, amt: u64) -> Slip {
+    /// * `address` - `Publickey` addressress to assign ownership
+    /// * `broadcast_type` - `SlipBroadcastType` of `Slip`
+    /// * `amount` - `u64` amount of Saito coantined in the `Slip`
+    pub fn new(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64) -> Slip {
         return Slip {
             body: SlipBody {
-                add,
-                typ,
-                amt,
-                bid: 0,
-                tid: 0,
-                sid: 0,
-                bsh: [0; 32],
+                address,
+                broadcast_type,
+                amount,
             },
-            lc: false,
-            spent_status: SlipSpentStatus::Unspent,
-        }
+            block_id: 0,
+            tx_id: 0,
+            slip_id: 0,
+            block_hash: [0; 32],
+        };
     }
 
-    /// Returns address in `Slip`
-    pub fn get_address(&self) -> PublicKey {
-        return self.body.add;
+    /// Returns addressress in `Slip`
+    pub fn get_addressress(&self) -> PublicKey {
+        return self.body.address;
     }
 
     /// Returns`Slip` type from the enumerated set of `SlipBroadcastType`
     pub fn get_type(&self) -> SlipBroadcastType {
-        return self.body.typ.clone();
+        return self.body.broadcast_type;
     }
 
     /// Returns amount of Saito in `Slip`
-    pub fn get_amt(&self) -> u64 {
-        return self.body.amt;
+    pub fn get_amount(&self) -> u64 {
+        return self.body.amount;
     }
 
     /// Returns the `Block` id the slip originated from
-    pub fn get_bid(&self) -> u64 {
-        return self.body.bid;
+    pub fn get_block_id(&self) -> u64 {
+        return self.block_id;
     }
 
     /// Returns the `Transaction` id the slip originated from
-    pub fn get_tid(&self) -> u64 {
-        return self.body.tid;
+    pub fn get_tx_id(&self) -> u64 {
+        return self.tx_id;
     }
 
     /// Returns the `Slip`
-    pub fn get_sid(&self) -> u64 {
-        return self.body.sid;
+    pub fn get_slip_id(&self) -> u64 {
+        return self.slip_id;
     }
 
     /// Returns the `Block` hash the slip originated from
     pub fn get_block_hash(&self) -> [u8; 32] {
-        return self.body.bsh;
-    }
-
-    /// Returns if the Slip is part of the longest chain
-    pub fn is_longest_chain(&self) -> bool {
-        return self.lc
-    }
-
-    /// Returns if the Slip is spent
-    pub fn is_spent(&self) -> bool {
-        self.spent_status == SlipSpentStatus::Spent
-    }
-
-    /// Returns if the Slip is unspent
-    pub fn is_unspent(&self) -> bool {
-        self.spent_status == SlipSpentStatus::Unspent
-    }
-
-    /// Returns if the Slip is pending in a block
-    pub fn is_pending(&self) -> bool {
-        self.spent_status == SlipSpentStatus::Pending
+        return self.block_hash;
     }
 
     // Set the `Block` id
-    pub fn set_bid(&mut self, bid: u64) {
-        self.body.bid = bid;
+    pub fn set_block_id(&mut self, block_id: u64) {
+        self.block_id = block_id;
     }
 
     // Set the `Transaction` id
-    pub fn set_tid(&mut self, tid: u64) {
-        self.body.tid = tid;
+    pub fn set_tx_id(&mut self, tx_id: u64) {
+        self.tx_id = tx_id;
     }
 
     // Set the `Slip` id
-    pub fn set_sid(&mut self, sid: u64) {
-        self.body.sid = sid;
+    pub fn set_slip_id(&mut self, slip_id: u64) {
+        self.slip_id = slip_id;
     }
 
     // Set the `Block` hash
-    pub fn set_block_hash(&mut self, bsh: [u8; 32]) {
-        self.body.bsh = bsh;
-    }
-
-    // Set if `Slip` belongs to longest chain
-    pub fn set_longest_chain(&mut self, lc: bool) {
-        return self.lc = lc
-    }
-
-    // Set the `SlipSpentStatus`
-    pub fn set_status(&mut self, status: SlipSpentStatus) {
-        return self.spent_status = status;
+    pub fn set_block_hash(&mut self, block_hash: [u8; 32]) {
+        self.block_hash = block_hash;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::keypair::{Keypair};
+    use crate::keypair::Keypair;
     use rand;
 
     #[test]
     fn slip_test() {
         let keypair = Keypair::new().unwrap();
-        let bsh: [u8; 32] = rand::random();
+        let block_hash: [u8; 32] = rand::random();
         let mut slip = Slip::new(
             keypair.get_public_key(),
             SlipBroadcastType::Normal,
-            10_000_000
+            10_000_000,
         );
 
-        assert_eq!(slip.get_address(), keypair.get_public_key());
+        assert_eq!(slip.get_addressress(), keypair.get_public_key());
         assert_eq!(slip.get_type(), SlipBroadcastType::Normal);
-        assert_eq!(slip.get_amt(), 10_000_000);
-        assert_eq!(slip.get_bid(), 0);
-        assert_eq!(slip.get_tid(), 0);
-        assert_eq!(slip.get_sid(), 0);
+        assert_eq!(slip.get_amount(), 10_000_000);
+        assert_eq!(slip.get_block_id(), 0);
+        assert_eq!(slip.get_tx_id(), 0);
+        assert_eq!(slip.get_slip_id(), 0);
         assert_eq!(slip.get_block_hash(), [0; 32]);
-        assert!(!slip.is_longest_chain());
-        assert!(slip.is_unspent());
 
-        slip.set_bid(10);
-        slip.set_tid(10);
-        slip.set_sid(10);
-        slip.set_block_hash(bsh);
-        slip.set_longest_chain(true);
-        slip.set_status(SlipSpentStatus::Spent);
+        slip.set_block_id(10);
+        slip.set_tx_id(10);
+        slip.set_slip_id(10);
+        slip.set_block_hash(block_hash);
 
-        assert_eq!(slip.get_bid(), 10);
-        assert_eq!(slip.get_tid(), 10);
-        assert_eq!(slip.get_sid(), 10);
-        assert_eq!(slip.get_block_hash(), bsh);
-        assert!(slip.is_longest_chain());
-        assert!(slip.is_spent());
+        assert_eq!(slip.get_block_id(), 10);
+        assert_eq!(slip.get_tx_id(), 10);
+        assert_eq!(slip.get_slip_id(), 10);
+        assert_eq!(slip.get_block_hash(), block_hash);
     }
 }
