@@ -24,18 +24,22 @@ impl BurnFee {
     pub fn return_work_needed(
         &self,
         current_block_timestamp: u64,
-        previous_block_timestamp: u64
+        previous_block_timestamp: u64,
     ) -> u64 {
-	    let mut elapsed_time = current_block_timestamp - previous_block_timestamp;
-        if elapsed_time == 0 { elapsed_time = 1; }
-        if elapsed_time >= (2 * HEARTBEAT) { return 0; }
+        let mut elapsed_time = current_block_timestamp - previous_block_timestamp;
+        if elapsed_time == 0 {
+            elapsed_time = 1;
+        }
+        if elapsed_time >= (2 * HEARTBEAT) {
+            return 0;
+        }
 
-        let elapsed_time_float     = elapsed_time as f64;
-        let start_float            = self.start as f64;
+        let elapsed_time_float = elapsed_time as f64;
+        let start_float = self.start as f64;
         let work_needed_float: f64 = start_float / elapsed_time_float;
-	    let work_needed		       = work_needed_float * 100_000_000.0;
+        let work_needed = work_needed_float * 100_000_000.0;
 
-	    return work_needed.round() as u64;
+        return work_needed.round() as u64;
     }
 
     /// Returns an adjusted burnfee based on the start value provided
@@ -44,7 +48,7 @@ impl BurnFee {
     pub fn burn_fee_adjustment(
         &self,
         current_block_timestamp: u64,
-        previous_block_timestamp: u64
+        previous_block_timestamp: u64,
     ) -> f64 {
         let timestamp_difference = match current_block_timestamp - previous_block_timestamp {
             0 => 1,
@@ -59,42 +63,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn burnfee_test () {
+    fn burnfee_test() {
         let bf = BurnFee::new(10.0);
         assert_eq!(bf.start, 10.0);
     }
 
     #[test]
-    fn burnfee_return_work_needed_test () {
+    fn burnfee_return_work_needed_test() {
         let bf = BurnFee::new(10.0);
 
         // if our elapsed time is twice our heartbeat, return 0
-        assert_eq!(
-            bf.return_work_needed(2 * HEARTBEAT, 0),
-            0
-        );
+        assert_eq!(bf.return_work_needed(2 * HEARTBEAT, 0), 0);
 
         // if their is no difference, the value should be the start value * 10^8
-        assert_eq!(
-            bf.return_work_needed(0, 0),
-            10_0000_0000
-        );
+        assert_eq!(bf.return_work_needed(0, 0), 10_0000_0000);
 
         // should return 1 * 10^8 * timestamp_diff
-        assert_eq!(
-            bf.return_work_needed(HEARTBEAT / 3000, 0),
-            10000_0000
-        );
+        assert_eq!(bf.return_work_needed(HEARTBEAT / 3000, 0), 10000_0000);
     }
 
     #[test]
-    fn burnfee_burn_fee_adjustment_test () {
+    fn burnfee_burn_fee_adjustment_test() {
         // if the difference in timestamps is equal to HEARTBEAT, our start value should not change
         let bf = BurnFee::new(10.0);
-        assert_eq!(
-            bf.burn_fee_adjustment(HEARTBEAT, 0),
-            10.0
-        );
+        assert_eq!(bf.burn_fee_adjustment(HEARTBEAT, 0), 10.0);
 
         // the difference should be the square root of HEARBEAT over the difference in timestamps
         assert_eq!(

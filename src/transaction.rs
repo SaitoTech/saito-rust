@@ -152,25 +152,14 @@ mod tests {
 
         assert_eq!(tx.to_slips(), vec![]);
         assert_eq!(tx.from_slips(), vec![]);
-        assert_eq!(
-            tx.signature(),
-            Signature::from_compact(&[0; 64]).unwrap()
-        );
+        assert_eq!(tx.signature(), Signature::from_compact(&[0; 64]).unwrap());
         assert_eq!(tx.broadcast_type(), TransactionBroadcastType::Normal);
         assert_eq!(tx.path(), vec![]);
         assert_eq!(tx.message(), vec![]);
 
         let keypair = Keypair::new();
-        let to_slip = Slip::new(
-            keypair.public_key().clone(),
-            SlipBroadcastType::Normal,
-            0,
-        );
-        let from_slip = Slip::new(
-            keypair.public_key().clone(),
-            SlipBroadcastType::Normal,
-            0,
-        );
+        let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
 
         let hop_message_bytes = Keypair::make_message_from_string("message_string");
         let signature = keypair.sign_message(&hop_message_bytes);
