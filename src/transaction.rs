@@ -18,6 +18,7 @@ impl Hop {
         return Hop { to, sig };
     }
 }
+
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network
 #[derive(Debug, PartialEq)]
@@ -37,6 +38,7 @@ pub struct TransactionBody {
     path: Vec<Hop>,
     pub msg: Vec<u8>,
 }
+
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
 pub enum TransactionBroadcastType {
@@ -172,13 +174,21 @@ mod tests {
         assert_eq!(tx.get_path(), vec![]);
         assert_eq!(tx.get_message(), vec![]);
 
-        let keypair = Keypair::new().unwrap();
-        let to_slip = Slip::new(keypair.get_public_key(), SlipBroadcastType::Normal, 0);
-        let from_slip = Slip::new(keypair.get_public_key(), SlipBroadcastType::Normal, 0);
+        let keypair = Keypair::new();
+        let to_slip = Slip::new(
+            keypair.get_public_key().clone(),
+            SlipBroadcastType::Normal,
+            0,
+        );
+        let from_slip = Slip::new(
+            keypair.get_public_key().clone(),
+            SlipBroadcastType::Normal,
+            0,
+        );
 
         let hop_message_bytes = Keypair::make_message_from_string("message_string");
         let signature = keypair.sign_message(&hop_message_bytes);
-        let hop = Hop::new(keypair.get_public_key(), signature);
+        let hop = Hop::new(keypair.get_public_key().clone(), signature);
 
         tx.add_to_slip(to_slip);
         tx.add_from_slip(from_slip);
