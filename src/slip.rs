@@ -143,22 +143,5 @@ mod tests {
         assert_eq!(slip.get_slip_id(), 10);
         assert_eq!(slip.get_block_hash(), block_hash);
     }
-
-    // #[bench]
-    // fn slip_serialization(b: &mut Bencher) {
-    //     let keypair = Keypair::new().unwrap();
-    //     let block_hash: [u8; 32] = rand::random();
-    //     let mut slip = Slip::new(
-    //         keypair.get_public_key(),
-    //         SlipBroadcastType::Normal,
-    //         10_000_000,
-    //     );
-
-    //     b.iter(|| {
-    // let xs: Vec<u8> = bincode::serialize(&slip).unwrap();
-    // println!("Slip {:?} serializes into byte array {:?}", slip, xs);
-    // let xd: i32 = bincode::deserialize(&xs).unwrap();
-    //     });
-    // }
 }
 
