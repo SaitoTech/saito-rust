@@ -175,8 +175,16 @@ mod tests {
         assert_eq!(tx.get_message(), vec![]);
 
         let keypair = Keypair::new();
-        let to_slip = Slip::new(keypair.get_public_key().clone(), SlipBroadcastType::Normal, 0);
-        let from_slip = Slip::new(keypair.get_public_key().clone(), SlipBroadcastType::Normal, 0);
+        let to_slip = Slip::new(
+            keypair.get_public_key().clone(),
+            SlipBroadcastType::Normal,
+            0,
+        );
+        let from_slip = Slip::new(
+            keypair.get_public_key().clone(),
+            SlipBroadcastType::Normal,
+            0,
+        );
 
         let hop_message_bytes = Keypair::make_message_from_string("message_string");
         let signature = keypair.sign_message(&hop_message_bytes);
