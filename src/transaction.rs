@@ -28,7 +28,6 @@ pub struct Transaction {
 /// Core data to be serialized/deserialized of `Transaction`
 #[derive(Debug, PartialEq)]
 pub struct TransactionBody {
-    id: u64,
     ts: u64,
     pub to: Vec<Slip>,
     pub from: Vec<Slip>,
@@ -51,7 +50,6 @@ impl Transaction {
     pub fn new(broadcast_type: TransactionBroadcastType) -> Transaction {
         return Transaction {
             body: TransactionBody {
-                id: 0,
                 ts: create_timestamp(),
                 to: vec![],
                 from: vec![],
@@ -61,11 +59,6 @@ impl Transaction {
                 msg: vec![],
             },
         };
-    }
-
-    /// Returns `Transaction` id
-    pub fn id(&self) -> u64 {
-        self.body.id
     }
 
     /// Returns a timestamp when `Transaction` was created
@@ -101,11 +94,6 @@ impl Transaction {
     /// Returns the message of the `Transaction`
     pub fn message(&self) -> Vec<u8> {
         self.body.msg.clone()
-    }
-
-    /// Set the `Transaction` id
-    pub fn set_id(&mut self, id: u64) {
-        self.body.id = id;
     }
 
     /// Set the list of `Slip` outputs
@@ -162,7 +150,6 @@ mod tests {
     fn transaction_test() {
         let mut tx = Transaction::new(TransactionBroadcastType::Normal);
 
-        assert_eq!(tx.id(), 0);
         assert_eq!(tx.to_slips(), vec![]);
         assert_eq!(tx.from_slips(), vec![]);
         assert_eq!(
