@@ -221,6 +221,7 @@ version = "0.1.0"
 dependencies = [
  "base58",
  "hex",
+ "rand",
  "secp256k1",
  "sha2",
 ]
