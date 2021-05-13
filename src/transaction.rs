@@ -1,13 +1,9 @@
+use crate::{slip::Slip, time::create_timestamp};
 use secp256k1::{PublicKey, Signature};
-use crate::{
-    slip::{Slip},
-    time::{create_timestamp}
-};
 
 /// A single record used in the history of transactions being routed around the network
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Hop {
-    pub from: PublicKey,
     pub to: PublicKey,
     sig: Signature,
 }
@@ -18,62 +14,57 @@ impl Hop {
     /// `to` - `secp256k1::PublicKey` address of where the transaction is headed
     /// * `from` - `secp256k1::PublicKey` address of where the transaction came from
     /// * `sign` - `secp256k1::Signature` verifying work done by routers
-    pub fn new(to: PublicKey, from: PublicKey, sig: Signature) -> Hop {
-        return Hop { to, from, sig }
+    pub fn new(to: PublicKey, sig: Signature) -> Hop {
+        return Hop { to, sig };
     }
 }
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network
 #[derive(Debug, PartialEq)]
 pub struct Transaction {
-    body: TransactionBody
+    body: TransactionBody,
 }
 
 /// Core data to be serialized/deserialized of `Transaction`
 #[derive(Debug, PartialEq)]
 pub struct TransactionBody {
-    id:       u64,
-    ts:       u64,
-    pub to:   Vec<Slip>,
+    id: u64,
+    ts: u64,
+    pub to: Vec<Slip>,
     pub from: Vec<Slip>,
-    sig:      Signature,
-    pub typ:  TransactionBroadcastType,
-    path:     Vec<Hop>,
-    pub msg:  Vec<u8>,
+    sig: Signature,
+    pub broadcast_type: TransactionBroadcastType,
+    path: Vec<Hop>,
+    pub msg: Vec<u8>,
 }
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
 pub enum TransactionBroadcastType {
     Normal,
-    GoldenTicket,
-    Fee,
-    Rebroadcast,
-    VIP,
-    GoldenChunk,
 }
 
 impl Transaction {
     /// Creates new `Transaction`
     ///
-    /// * `typ` - `TransactionBroadcastType` of the new `Transaction`
-    pub fn new(typ: TransactionBroadcastType) -> Transaction {
+    /// * `broadcast_type` - `TransactionBroadcastType` of the new `Transaction`
+    pub fn new(broadcast_type: TransactionBroadcastType) -> Transaction {
         return Transaction {
             body: TransactionBody {
-                id:   0,
-                ts:   create_timestamp(),
-                to:   vec![],
+                id: 0,
+                ts: create_timestamp(),
+                to: vec![],
                 from: vec![],
-                sig:  Signature::from_compact(&[0; 64]).unwrap(),
-                typ,
+                sig: Signature::from_compact(&[0; 64]).unwrap(),
+                broadcast_type,
                 path: vec![],
-                msg:  vec![],
+                msg: vec![],
             },
         };
     }
 
     /// Returns `Transaction` id
     pub fn get_id(&self) -> u64 {
-        return self.body.id
+        return self.body.id;
     }
 
     /// Returns a timestamp when `Transaction` was created
@@ -98,7 +89,7 @@ impl Transaction {
 
     /// Returns `TransactionBroadcastType` of the `Transaction`
     pub fn get_type(&self) -> TransactionBroadcastType {
-        return self.body.typ.clone();
+        return self.body.broadcast_type.clone();
     }
 
     /// Returns the list of `Hop`s serving as a routing history of the `Transaction`
@@ -160,11 +151,11 @@ impl Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::Rng;
     use crate::{
+        keypair::Keypair,
         slip::{Slip, SlipBroadcastType},
-        keypair::{Keypair}
     };
+    use rand::Rng;
 
     #[test]
     fn transaction_test() {
@@ -173,30 +164,21 @@ mod tests {
         assert_eq!(tx.get_id(), 0);
         assert_eq!(tx.get_to_slips(), vec![]);
         assert_eq!(tx.get_from_slips(), vec![]);
-        assert_eq!(tx.get_signature(), Signature::from_compact(&[0; 64]).unwrap());
+        assert_eq!(
+            tx.get_signature(),
+            Signature::from_compact(&[0; 64]).unwrap()
+        );
         assert_eq!(tx.get_type(), TransactionBroadcastType::Normal);
         assert_eq!(tx.get_path(), vec![]);
         assert_eq!(tx.get_message(), vec![]);
 
         let keypair = Keypair::new().unwrap();
-        let to_slip = Slip::new(
-            keypair.get_public_key(),
-            SlipBroadcastType::Normal,
-            0
-        );
-        let from_slip = Slip::new(
-            keypair.get_public_key(),
-            SlipBroadcastType::Normal,
-            0
-        );
+        let to_slip = Slip::new(keypair.get_public_key(), SlipBroadcastType::Normal, 0);
+        let from_slip = Slip::new(keypair.get_public_key(), SlipBroadcastType::Normal, 0);
 
         let hop_message_bytes = Keypair::make_message_from_string("message_string");
         let signature = keypair.sign_message(&hop_message_bytes);
-        let hop = Hop::new(
-            keypair.get_public_key(),
-            keypair.get_public_key(),
-            signature,
-        );
+        let hop = Hop::new(keypair.get_public_key(), signature);
 
         tx.add_to_slip(to_slip);
         tx.add_from_slip(from_slip);
@@ -210,10 +192,7 @@ mod tests {
         assert_eq!(tx.get_signature(), signature.clone());
 
         let mut rng = rand::thread_rng();
-        let message_bytes: Vec<u8> = [0..32]
-          .iter_mut()
-          .map(|_| rng.gen())
-          .collect();
+        let message_bytes: Vec<u8> = [0..32].iter_mut().map(|_| rng.gen()).collect();
         tx.set_message(message_bytes.clone());
         assert_eq!(tx.get_message(), message_bytes.clone());
     }
