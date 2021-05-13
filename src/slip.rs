@@ -35,9 +35,9 @@ pub enum SlipBroadcastType {
 impl Slip {
     /// Create new `Slip` with default type `SlipBroadcastType::Normal`
     ///
-    /// * `address` - `Publickey` addressress to assign ownership
+    /// * `address` - `Publickey` address to assign ownership
     /// * `broadcast_type` - `SlipBroadcastType` of `Slip`
-    /// * `amount` - `u64` amount of Saito coantined in the `Slip`
+    /// * `amount` - `u64` amount of Saito contained in the `Slip`
     pub fn new(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64) -> Slip {
         return Slip {
             body: SlipBody {
@@ -52,8 +52,8 @@ impl Slip {
         };
     }
 
-    /// Returns addressress in `Slip`
-    pub fn get_addressress(&self) -> PublicKey {
+    /// Returns address in `Slip`
+    pub fn get_address(&self) -> PublicKey {
         return self.body.address;
     }
 
@@ -124,7 +124,7 @@ mod tests {
             10_000_000,
         );
 
-        assert_eq!(slip.get_addressress(), keypair.get_public_key());
+        assert_eq!(slip.get_address(), keypair.get_public_key());
         assert_eq!(slip.get_type(), SlipBroadcastType::Normal);
         assert_eq!(slip.get_amount(), 10_000_000);
         assert_eq!(slip.get_block_id(), 0);
