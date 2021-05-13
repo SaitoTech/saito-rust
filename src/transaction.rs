@@ -11,8 +11,7 @@ pub struct Hop {
 impl Hop {
     /// Creates a new `Hop`
     ///
-    /// `to` - `secp256k1::PublicKey` address of where the transaction is headed
-    /// * `from` - `secp256k1::PublicKey` address of where the transaction came from
+    /// * `to` - `secp256k1::PublicKey` address of where the transaction is headed
     /// * `sign` - `secp256k1::Signature` verifying work done by routers
     pub fn new(to: PublicKey, sig: Signature) -> Hop {
         return Hop { to, sig };
@@ -65,43 +64,43 @@ impl Transaction {
     }
 
     /// Returns `Transaction` id
-    pub fn get_id(&self) -> u64 {
-        return self.body.id;
+    pub fn id(&self) -> u64 {
+        self.body.id
     }
 
     /// Returns a timestamp when `Transaction` was created
-    pub fn get_timestamp(&self) -> u64 {
-        return self.body.ts;
+    pub fn timestamp(&self) -> u64 {
+        self.body.ts
     }
 
     /// Returns list of `Slip` outputs
-    pub fn get_to_slips(&self) -> Vec<Slip> {
-        return self.body.to.clone();
+    pub fn to_slips(&self) -> Vec<Slip> {
+        self.body.to.clone()
     }
 
     /// Returns list of `Slip` inputs
-    pub fn get_from_slips(&self) -> Vec<Slip> {
-        return self.body.from.clone();
+    pub fn from_slips(&self) -> Vec<Slip> {
+        self.body.from.clone()
     }
 
     /// Returns `secp256k1::Signature` verifying the validity of data on a transaction
-    pub fn get_signature(&self) -> Signature {
-        return self.body.sig;
+    pub fn signature(&self) -> Signature {
+        self.body.sig
     }
 
     /// Returns `TransactionBroadcastType` of the `Transaction`
-    pub fn get_type(&self) -> TransactionBroadcastType {
-        return self.body.broadcast_type.clone();
+    pub fn broadcast_type(&self) -> TransactionBroadcastType {
+        self.body.broadcast_type.clone()
     }
 
     /// Returns the list of `Hop`s serving as a routing history of the `Transaction`
-    pub fn get_path(&self) -> Vec<Hop> {
-        return self.body.path.clone();
+    pub fn path(&self) -> Vec<Hop> {
+        self.body.path.clone()
     }
 
     /// Returns the message of the `Transaction`
-    pub fn get_message(&self) -> Vec<u8> {
-        return self.body.msg.clone();
+    pub fn message(&self) -> Vec<u8> {
+        self.body.msg.clone()
     }
 
     /// Set the `Transaction` id
@@ -163,47 +162,47 @@ mod tests {
     fn transaction_test() {
         let mut tx = Transaction::new(TransactionBroadcastType::Normal);
 
-        assert_eq!(tx.get_id(), 0);
-        assert_eq!(tx.get_to_slips(), vec![]);
-        assert_eq!(tx.get_from_slips(), vec![]);
+        assert_eq!(tx.id(), 0);
+        assert_eq!(tx.to_slips(), vec![]);
+        assert_eq!(tx.from_slips(), vec![]);
         assert_eq!(
-            tx.get_signature(),
+            tx.signature(),
             Signature::from_compact(&[0; 64]).unwrap()
         );
-        assert_eq!(tx.get_type(), TransactionBroadcastType::Normal);
-        assert_eq!(tx.get_path(), vec![]);
-        assert_eq!(tx.get_message(), vec![]);
+        assert_eq!(tx.broadcast_type(), TransactionBroadcastType::Normal);
+        assert_eq!(tx.path(), vec![]);
+        assert_eq!(tx.message(), vec![]);
 
         let keypair = Keypair::new();
         let to_slip = Slip::new(
-            keypair.get_public_key().clone(),
+            keypair.public_key().clone(),
             SlipBroadcastType::Normal,
             0,
         );
         let from_slip = Slip::new(
-            keypair.get_public_key().clone(),
+            keypair.public_key().clone(),
             SlipBroadcastType::Normal,
             0,
         );
 
         let hop_message_bytes = Keypair::make_message_from_string("message_string");
         let signature = keypair.sign_message(&hop_message_bytes);
-        let hop = Hop::new(keypair.get_public_key().clone(), signature);
+        let hop = Hop::new(keypair.public_key().clone(), signature);
 
         tx.add_to_slip(to_slip);
         tx.add_from_slip(from_slip);
         tx.add_hop_to_path(hop);
 
-        assert_eq!(tx.get_to_slips(), vec![to_slip.clone()]);
-        assert_eq!(tx.get_from_slips(), vec![from_slip.clone()]);
-        assert_eq!(tx.get_path(), vec![hop.clone()]);
+        assert_eq!(tx.to_slips(), vec![to_slip.clone()]);
+        assert_eq!(tx.from_slips(), vec![from_slip.clone()]);
+        assert_eq!(tx.path(), vec![hop.clone()]);
 
         tx.set_signature(signature.clone());
-        assert_eq!(tx.get_signature(), signature.clone());
+        assert_eq!(tx.signature(), signature.clone());
 
         let mut rng = rand::thread_rng();
         let message_bytes: Vec<u8> = [0..32].iter_mut().map(|_| rng.gen()).collect();
         tx.set_message(message_bytes.clone());
-        assert_eq!(tx.get_message(), message_bytes.clone());
+        assert_eq!(tx.message(), message_bytes.clone());
     }
 }
