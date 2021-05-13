@@ -5,9 +5,9 @@ use saito_rust::{
 };
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let keypair = Keypair::new().unwrap();
+    let keypair = Keypair::new();
     let slip = Slip::new(
-        keypair.get_public_key(),
+        keypair.public_key().clone(),
         SlipBroadcastType::Normal,
         10_000_000,
     );
