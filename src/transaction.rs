@@ -37,6 +37,7 @@ pub struct TransactionBody {
     path: Vec<Hop>,
     pub msg: Vec<u8>,
 }
+
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
 pub enum TransactionBroadcastType {
