@@ -21,4 +21,8 @@ The Saito Team
 dev@saito.tech
 
 */
+pub mod burnfee;
 pub mod keypair;
+pub mod slip;
+pub mod time;
+pub mod transaction;
