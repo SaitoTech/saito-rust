@@ -22,6 +22,8 @@ dev@saito.tech
 
 */
 pub mod burnfee;
+pub mod block;
+pub mod crypto;
 pub mod keypair;
 pub mod slip;
 pub mod time;

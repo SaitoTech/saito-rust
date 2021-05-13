@@ -20,13 +20,13 @@ impl Hop {
 
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
     body: TransactionBody,
 }
 
 /// Core data to be serialized/deserialized of `Transaction`
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TransactionBody {
     ts: u64,
     pub to: Vec<Slip>,
@@ -176,8 +176,7 @@ mod tests {
         tx.set_signature(signature.clone());
         assert_eq!(tx.signature(), signature.clone());
 
-        let mut rng = rand::thread_rng();
-        let message_bytes: Vec<u8> = [0..32].iter_mut().map(|_| rng.gen()).collect();
+        let message_bytes: Vec<u8> = (0..32).map(|_| { rand::random::<u8>() }).collect();
         tx.set_message(message_bytes.clone());
         assert_eq!(tx.message(), message_bytes.clone());
     }
