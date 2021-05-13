@@ -1,5 +1,5 @@
 use base58::{FromBase58, ToBase58};
-use secp256k1::{Message, PublicKey, SECP256K1, SecretKey, Signature};
+use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
 use sha2::{Digest, Sha256};
 use std::convert::TryInto;
 use std::fmt;
@@ -15,7 +15,8 @@ pub struct Keypair {
 impl Keypair {
     /// Create and return a keypair with a randomly generated private key.
     pub fn new() -> Keypair {
-        let (mut secret_key, mut public_key) = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
+        let (mut secret_key, mut public_key) =
+            SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
         while public_key.serialize().to_base58().len() != 44 {
             // sometimes secp256k1 address is too big to store in 44 base-58 digits
             let keypair_tuple = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
@@ -41,9 +42,7 @@ impl Keypair {
     }
 
     /// Create and return a keypair with  the given hex u8 array as the private key
-    pub fn from_secret_hex(
-        secret_hex: &str,
-    ) -> Result<Keypair, Box<dyn std::error::Error>> {
+    pub fn from_secret_hex(secret_hex: &str) -> Result<Keypair, Box<dyn std::error::Error>> {
         let mut bytes = [0u8; 32];
         hex::decode_to_slice(secret_hex, &mut bytes as &mut [u8])?;
         Ok(Keypair::from_secret_slice(&bytes)?)

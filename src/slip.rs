@@ -53,8 +53,8 @@ impl Slip {
     }
 
     /// Returns address in `Slip`
-    pub fn get_address(&self) -> PublicKey {
-        return self.body.address;
+    pub fn get_address(&self) -> &PublicKey {
+        return &self.body.address;
     }
 
     /// Returns`Slip` type from the enumerated set of `SlipBroadcastType`
@@ -116,10 +116,10 @@ mod tests {
 
     #[test]
     fn slip_test() {
-        let keypair = Keypair::new().unwrap();
+        let keypair = Keypair::new();
         let block_hash: [u8; 32] = rand::random();
         let mut slip = Slip::new(
-            keypair.get_public_key(),
+            keypair.get_public_key().clone(),
             SlipBroadcastType::Normal,
             10_000_000,
         );
