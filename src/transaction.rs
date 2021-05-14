@@ -67,33 +67,43 @@ impl Transaction {
     }
 
     /// Returns list of `Slip` outputs
-    pub fn to_slips(&self) -> Vec<Slip> {
-        self.body.to.clone()
+    pub fn to_slips(&self) -> &Vec<Slip> {
+        &self.body.to
+    }
+
+    /// Returns list of `Slip` outputs
+    pub fn to_slips_mut(&mut self) -> &mut Vec<Slip> {
+        &mut self.body.to
     }
 
     /// Returns list of `Slip` inputs
-    pub fn from_slips(&self) -> Vec<Slip> {
-        self.body.from.clone()
+    pub fn from_slips(&self) -> &Vec<Slip> {
+        &self.body.from
+    }
+
+    /// Returns list of `Slip` inputs
+    pub fn from_slips_mut(&mut self) -> &mut Vec<Slip> {
+        &mut self.body.from
     }
 
     /// Returns `secp256k1::Signature` verifying the validity of data on a transaction
-    pub fn signature(&self) -> Signature {
-        self.body.sig
+    pub fn signature(&self) -> &Signature {
+        &self.body.sig
     }
 
     /// Returns `TransactionBroadcastType` of the `Transaction`
-    pub fn broadcast_type(&self) -> TransactionBroadcastType {
-        self.body.broadcast_type.clone()
+    pub fn broadcast_type(&self) -> &TransactionBroadcastType {
+        &self.body.broadcast_type
     }
 
     /// Returns the list of `Hop`s serving as a routing history of the `Transaction`
-    pub fn path(&self) -> Vec<Hop> {
-        self.body.path.clone()
+    pub fn path(&self) -> &Vec<Hop> {
+        &self.body.path
     }
 
     /// Returns the message of the `Transaction`
-    pub fn message(&self) -> Vec<u8> {
-        self.body.msg.clone()
+    pub fn message(&self) -> &Vec<u8> {
+        &self.body.msg
     }
 
     /// Set the list of `Slip` outputs
@@ -149,12 +159,12 @@ mod tests {
     fn transaction_test() {
         let mut tx = Transaction::new(TransactionBroadcastType::Normal);
 
-        assert_eq!(tx.to_slips(), vec![]);
-        assert_eq!(tx.from_slips(), vec![]);
-        assert_eq!(tx.signature(), Signature::from_compact(&[0; 64]).unwrap());
-        assert_eq!(tx.broadcast_type(), TransactionBroadcastType::Normal);
-        assert_eq!(tx.path(), vec![]);
-        assert_eq!(tx.message(), vec![]);
+        assert_eq!(tx.to_slips(), &vec![]);
+        assert_eq!(tx.from_slips(), &vec![]);
+        assert_eq!(tx.signature(), &Signature::from_compact(&[0; 64]).unwrap());
+        assert_eq!(tx.broadcast_type(), &TransactionBroadcastType::Normal);
+        assert_eq!(tx.path(), &vec![]);
+        assert_eq!(tx.message(), &vec![]);
 
         let keypair = Keypair::new();
         let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
@@ -168,15 +178,15 @@ mod tests {
         tx.add_from_slip(from_slip);
         tx.add_hop_to_path(hop);
 
-        assert_eq!(tx.to_slips(), vec![to_slip.clone()]);
-        assert_eq!(tx.from_slips(), vec![from_slip.clone()]);
-        assert_eq!(tx.path(), vec![hop.clone()]);
+        assert_eq!(tx.to_slips(), &vec![to_slip]);
+        assert_eq!(tx.from_slips(), &vec![from_slip]);
+        assert_eq!(tx.path(), &vec![hop]);
 
         tx.set_signature(signature.clone());
-        assert_eq!(tx.signature(), signature.clone());
+        assert_eq!(tx.signature(), &signature);
 
         let message_bytes: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
         tx.set_message(message_bytes.clone());
-        assert_eq!(tx.message(), message_bytes.clone());
+        assert_eq!(tx.message(), &message_bytes);
     }
 }

@@ -97,13 +97,13 @@ impl Block {
     }
 
     /// Returns the previous `Block` hash
-    pub fn previous_block_hash(&self) -> [u8; 32] {
-        self.body.previous_block_hash
+    pub fn previous_block_hash(&self) -> &[u8; 32] {
+        &self.body.previous_block_hash
     }
 
     /// Returns the `Block` creator's `secp256k1::PublicKey`
-    pub fn creator(&self) -> PublicKey {
-        self.body.creator
+    pub fn creator(&self) -> &PublicKey {
+        &self.body.creator
     }
 
     /// Returns the `Block`'s `Transaction`s
@@ -155,7 +155,7 @@ impl Block {
         data.extend(&ts_bytes);
         data.extend(&cr_bytes);
 
-        return hash(data);
+        return hash(&data);
     }
 
     /// Converts our blockhash from a byte array into a hex string
@@ -170,42 +170,28 @@ impl Block {
     /// each transaction
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
         // Memory swap of transactions so we don't have to copy large amounts of data twice
-        std::mem::swap(&mut self.body.txs, transactions);
-
-        // let maxtid = self.maxtid;
         let bid = self.body.id;
         let bsh = self.block_hash();
 
-        for (i, tx) in self.body.txs.iter_mut().enumerate() {
+        for (i, tx) in transactions.iter_mut().enumerate() {
             let mut current_sid = 0;
 
-            let to_slips = tx
-                .to_slips()
-                .iter_mut()
-                .map(move |slip| {
-                    slip.set_block_id(0);
-                    slip.set_tx_id(0);
-                    slip.set_slip_id(current_sid);
-                    current_sid += 1;
-                    return slip.clone();
-                })
-                .collect();
-            tx.set_to_slips(to_slips);
+            for slip in tx.to_slips_mut().iter_mut() {
+                slip.set_block_id(0);
+                slip.set_tx_id(0);
+                slip.set_slip_id(current_sid);
+                current_sid += 1;
+            }
 
-            let from_slips = tx
-                .from_slips()
-                .iter_mut()
-                .map(move |slip| {
-                    slip.set_block_id(bid);
-                    slip.set_tx_id(i as u64);
-                    slip.set_slip_id(current_sid);
-                    slip.set_block_hash(bsh);
-                    current_sid += 1;
-                    return slip.clone();
-                })
-                .collect();
-            tx.set_from_slips(from_slips);
+            for slip in tx.from_slips_mut().iter_mut() {
+                slip.set_block_id(bid);
+                slip.set_tx_id(i as u64);
+                slip.set_slip_id(current_sid);
+                slip.set_block_hash(bsh);
+                current_sid += 1;
+            }
         }
+        self.body.txs = transactions.to_vec();
     }
 
     /// Appends a transaction to the block
@@ -269,8 +255,8 @@ mod test {
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
 
         assert_eq!(block.id(), 0);
-        assert_eq!(block.previous_block_hash(), [0; 32]);
-        assert_eq!(block.creator(), *keypair.public_key());
+        assert_eq!(block.previous_block_hash(), &[0; 32]);
+        assert_eq!(block.creator(), keypair.public_key());
         assert_eq!(*block.txs(), vec![]);
         assert_eq!(block.burnfee(), 0);
         assert_eq!(block.difficulty(), 0.0);
