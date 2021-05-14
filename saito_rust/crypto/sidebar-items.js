@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["hash",""]],"struct":[["PublicKey","A Secp256k1 public key, used for verification of signatures"],["Signature","An ECDSA signature"]]});
