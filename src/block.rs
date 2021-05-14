@@ -4,9 +4,8 @@ use crate::crypto::{PublicKey, hash};
 use crate::transaction::Transaction;
 use crate::time::create_timestamp;
 
-/// The block holds all data inside the block body,
-/// providing high level checks that the blockchain class
-/// be concerned about
+/// The `Block` holds all data inside the block body,
+/// and additional metadata not to be serialized
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
     /// The body and content of the block object
@@ -14,8 +13,8 @@ pub struct Block {
     /// Byte array hash of the block
     bsh:      [u8; 32],
 }
-/// This BlockBody holds all of the necssary consensus data
-/// and transactions
+/// This `BlockBody` holds data to be serialized along with
+/// `Transaction`s
 #[derive(PartialEq, Debug, Clone)]
 pub struct BlockBody {
     /// Block id
@@ -43,7 +42,10 @@ pub struct BlockBody {
 }
 
 impl BlockBody {
-    /// Receives the a publickey and the previous block hash
+    /// Creates a new `BlockBody`
+    ///
+    /// * `block_creator` - `secp256k1::PublicKey` of the block creator
+    /// * `prevbsh` - Previous block hash in bytes
     pub fn new(block_creator: PublicKey, prevbsh: [u8; 32]) -> BlockBody {
         return BlockBody {
     	    id:          0,
@@ -63,6 +65,9 @@ impl BlockBody {
 
 impl Block {
     /// Receives the a publickey and the previous block hash
+    ///
+    /// * `block_creator` - `secp256k1::PublicKey` of the block creator
+    /// * `prevbsh` - Previous block hash in bytes
     pub fn new(creator: PublicKey, prevbsh: [u8;32]) -> Block {
         return Block {
             body:      BlockBody::new(creator, prevbsh),
@@ -72,6 +77,8 @@ impl Block {
 
     /// Creates a block solely from the block body. Used when
     /// deserializing a block either from disk or from the network
+    ///
+    /// * `body` - `BlockBody` of new `Block`
     pub fn from_block_body(body: BlockBody) -> Block {
         return Block {
             body:      body,
@@ -300,14 +307,11 @@ mod test {
         assert_eq!(block.coinbase(), 100_000);
 
         let tx = Transaction::new(TransactionBroadcastType::Normal);
-        let mut txs = vec![tx.clone()];
-        block.set_transactions(&mut txs);
-
-        assert_eq!(*block.txs(), txs);
+        block.set_transactions(&mut vec![tx.clone()]);
+        assert_eq!(*block.txs(), vec![tx.clone()]);
 
         let tx2 = Transaction::new(TransactionBroadcastType::Normal);
-        let txs2 = vec![tx.clone(), tx2.clone()];
-        block.add_transaction(tx2);
-        assert_eq!(*block.txs(), txs2)
+        block.add_transaction(tx2.clone());
+        assert_eq!(*block.txs(), vec![tx.clone(), tx2.clone()])
     }
 }

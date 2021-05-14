@@ -144,7 +144,6 @@ mod tests {
         keypair::Keypair,
         slip::{Slip, SlipBroadcastType},
     };
-    use rand::Rng;
 
     #[test]
     fn transaction_test() {
