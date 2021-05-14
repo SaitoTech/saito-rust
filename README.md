@@ -4,12 +4,8 @@ A work-in-progress draft implementation of the saito core in rust
 
 ## Documentation
 
-<<<<<<< HEAD
 - https://saitotech.github.io/saito-rust/saito_rust/index.html
 - [Architecture doc](ARCHITECTURE.md)
-=======
-https://saitotech.github.io/saito-rust/saito_rust/index.html
->>>>>>> release
 
 ## Dev workflow
 
