@@ -20,7 +20,7 @@ pub struct BlockBody {
     /// Block id
     pub id: u64,
     /// Block timestamp
-    pub ts: u64,
+    pub timestamp: u64,
     /// Byte array hash of the previous block in the chain
     pub previous_block_hash: [u8; 32],
     /// `Publickey` of the block creator
@@ -31,10 +31,6 @@ pub struct BlockBody {
     pub burnfee: u64,
     /// Block difficulty required to win the `LotteryGame` in golden ticket generation
     difficulty: f32,
-    /// Ratio determing the block reward split between nodes and miners
-    paysplit: f32,
-    /// Vote determining change of difficulty and paysplit
-    vote: i8,
     /// Treasury of existing Saito in the network
     treasury: u64,
     /// Total block reward being released in the block
@@ -49,14 +45,12 @@ impl BlockBody {
     pub fn new(block_creator: PublicKey, prevbsh: [u8; 32]) -> BlockBody {
         return BlockBody {
             id: 0,
-            ts: create_timestamp(),
+            timestamp: create_timestamp(),
             previous_block_hash: prevbsh,
             creator: block_creator,
             txs: vec![],
             burnfee: 0,
             difficulty: 0.0,
-            paysplit: 0.5,
-            vote: 0,
             treasury: 286_810_000_000_000_000,
             coinbase: 0,
         };
@@ -93,7 +87,7 @@ impl Block {
 
     /// Returns the `Block` timestamp
     pub fn timestamp(&self) -> u64 {
-        self.body.ts
+        self.body.timestamp
     }
 
     /// Returns the previous `Block` hash
@@ -121,16 +115,6 @@ impl Block {
         self.body.difficulty
     }
 
-    /// Returns the `Block` vote
-    pub fn vote(&self) -> i8 {
-        self.body.vote
-    }
-
-    /// Returns the `Block` paysplit
-    pub fn paysplit(&self) -> f32 {
-        self.body.paysplit
-    }
-
     /// Returns the `Block` treasury
     pub fn treasury(&self) -> u64 {
         self.body.treasury
@@ -148,7 +132,7 @@ impl Block {
         let mut data: Vec<u8> = vec![];
 
         let id_bytes: [u8; 8] = unsafe { transmute(self.body.id.to_be()) };
-        let ts_bytes: [u8; 8] = unsafe { transmute(self.body.ts.to_be()) };
+        let ts_bytes: [u8; 8] = unsafe { transmute(self.body.timestamp.to_be()) };
         let cr_bytes: Vec<u8> = self.body.creator.serialize().iter().cloned().collect();
 
         data.extend(&id_bytes);
@@ -163,17 +147,15 @@ impl Block {
         hex::encode(&self.block_hash())
     }
 
-    /// Swaps a list of transactions already in memory into blocks transactions
-    ///
-    /// The transactions are given the proper ids in reference to other transactions
-    /// already on chain, as well as setting the proper metadata for each slip in
-    /// each transaction
+    /// Sets the `Block`s list of `Transaction`s
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
-        // Memory swap of transactions so we don't have to copy large amounts of data twice
         let bid = self.body.id;
         let bsh = self.block_hash();
 
         for (i, tx) in transactions.iter_mut().enumerate() {
+            // The slips are assigned the ids based on their slip index
+            // in reference to all slips in the block, the transaction index,
+            // and the block id
             let mut current_sid = 0;
 
             for slip in tx.to_slips_mut().iter_mut() {
@@ -214,19 +196,9 @@ impl Block {
         self.body.previous_block_hash = prevbsh;
     }
 
-    /// Sets the `Block` vote
-    pub fn set_vote(&mut self, vote: i8) {
-        self.body.vote = vote;
-    }
-
     /// Sets the `Block` difficulty
     pub fn set_difficulty(&mut self, difficulty: f32) {
         self.body.difficulty = difficulty;
-    }
-
-    /// Sets the `Block` paysplit
-    pub fn set_paysplit(&mut self, paysplit: f32) {
-        self.body.paysplit = paysplit;
     }
 
     /// Sets the `Block` treasury
@@ -240,12 +212,12 @@ impl Block {
     }
 }
 
-// Module std::stream
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::{
         keypair::Keypair,
+        slip::{Slip, SlipBroadcastType},
         transaction::{Transaction, TransactionBroadcastType},
     };
 
@@ -260,8 +232,6 @@ mod test {
         assert_eq!(*block.txs(), vec![]);
         assert_eq!(block.burnfee(), 0);
         assert_eq!(block.difficulty(), 0.0);
-        assert_eq!(block.paysplit(), 0.5);
-        assert_eq!(block.vote(), 0);
         assert_eq!(block.treasury(), 286_810_000_000_000_000);
         assert_eq!(block.coinbase(), 0);
 
@@ -274,27 +244,43 @@ mod test {
         block.set_difficulty(5.0);
         assert_eq!(block.difficulty(), 5.0);
 
-        block.set_paysplit(0.75);
-        assert_eq!(block.paysplit(), 0.75);
-
-        block.set_vote(1);
-        assert_eq!(block.vote(), 1);
-
-        block.set_vote(-1);
-        assert_eq!(block.vote(), -1);
-
         block.set_treasury(1_000_000_000);
         assert_eq!(block.treasury(), 1_000_000_000);
 
         block.set_coinbase(100_000);
         assert_eq!(block.coinbase(), 100_000);
+    }
 
-        let tx = Transaction::new(TransactionBroadcastType::Normal);
+    #[test]
+    fn block_set_transactions_test() {
+        let keypair = Keypair::new();
+        let mut block = Block::new(*keypair.public_key(), [0; 32]);
+
+        let mut tx = Transaction::new(TransactionBroadcastType::Normal);
+        let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        tx.add_from_slip(from_slip);
+        tx.add_to_slip(to_slip);
         block.set_transactions(&mut vec![tx.clone()]);
-        assert_eq!(*block.txs(), vec![tx.clone()]);
 
-        let tx2 = Transaction::new(TransactionBroadcastType::Normal);
-        block.add_transaction(tx2.clone());
-        assert_eq!(*block.txs(), vec![tx.clone(), tx2.clone()])
+        assert_eq!(block.txs().len(), 1);
+
+        assert_eq!(block.txs()[0].to_slips()[0].slip_id(), 0);
+        assert_eq!(block.txs()[0].to_slips()[0].tx_id(), 0);
+        assert_eq!(block.txs()[0].to_slips()[0].block_id(), 0);
+
+        assert_eq!(block.txs()[0].from_slips()[0].slip_id(), 1);
+        assert_eq!(block.txs()[0].from_slips()[0].tx_id(), 0);
+        assert_eq!(block.txs()[0].from_slips()[0].block_id(), 0);
+    }
+
+    #[test]
+    fn block_add_transaction_test() {
+        let keypair = Keypair::new();
+        let mut block = Block::new(*keypair.public_key(), [0; 32]);
+        let tx = Transaction::new(TransactionBroadcastType::Normal);
+        assert_eq!(*block.txs(), vec![]);
+        block.add_transaction(tx.clone());
+        assert_eq!(*block.txs(), vec![tx.clone()]);
     }
 }
