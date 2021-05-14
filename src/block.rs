@@ -1,44 +1,44 @@
 use std::mem::transmute;
 
-use crate::crypto::{PublicKey, hash};
-use crate::transaction::Transaction;
+use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
+use crate::transaction::Transaction;
 
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
     /// The body and content of the block object
-    pub body:     BlockBody,
+    pub body: BlockBody,
     /// Byte array hash of the block
-    bsh:      [u8; 32],
+    bsh: [u8; 32],
 }
 /// This `BlockBody` holds data to be serialized along with
 /// `Transaction`s
 #[derive(PartialEq, Debug, Clone)]
 pub struct BlockBody {
     /// Block id
-    pub id:                     u64,
+    pub id: u64,
     /// Block timestamp
-    pub ts:                     u64,
+    pub ts: u64,
     /// Byte array hash of the previous block in the chain
-    pub previous_block_hash:    [u8; 32],
+    pub previous_block_hash: [u8; 32],
     /// `Publickey` of the block creator
-    pub creator:                PublicKey,
+    pub creator: PublicKey,
     /// List of transactions in the block
-    pub txs:                    Vec<Transaction>,
+    pub txs: Vec<Transaction>,
     /// `BurnFee` containing the fees paid to produce the block
-    pub burnfee:	            u64,
+    pub burnfee: u64,
     /// Block difficulty required to win the `LotteryGame` in golden ticket generation
-    difficulty:                 f32,
+    difficulty: f32,
     /// Ratio determing the block reward split between nodes and miners
-    paysplit:                   f32,
+    paysplit: f32,
     /// Vote determining change of difficulty and paysplit
-    vote:                       i8,
+    vote: i8,
     /// Treasury of existing Saito in the network
-    treasury:                   u64,
+    treasury: u64,
     /// Total block reward being released in the block
-    coinbase:                   u64,
+    coinbase: u64,
 }
 
 impl BlockBody {
@@ -48,17 +48,17 @@ impl BlockBody {
     /// * `prevbsh` - Previous block hash in bytes
     pub fn new(block_creator: PublicKey, prevbsh: [u8; 32]) -> BlockBody {
         return BlockBody {
-    	    id:          0,
-    	    ts:          create_timestamp(),
-    	    previous_block_hash:     prevbsh,
-    	    creator:     block_creator,
-    	    txs:         vec![],
-	        burnfee:     0,
-    	    difficulty:  0.0,
-    	    paysplit:    0.5,
-    	    vote:        0,
-    	    treasury:    286_810_000_000_000_000,
-    	    coinbase:    0,
+            id: 0,
+            ts: create_timestamp(),
+            previous_block_hash: prevbsh,
+            creator: block_creator,
+            txs: vec![],
+            burnfee: 0,
+            difficulty: 0.0,
+            paysplit: 0.5,
+            vote: 0,
+            treasury: 286_810_000_000_000_000,
+            coinbase: 0,
         };
     }
 }
@@ -68,10 +68,10 @@ impl Block {
     ///
     /// * `block_creator` - `secp256k1::PublicKey` of the block creator
     /// * `prevbsh` - Previous block hash in bytes
-    pub fn new(creator: PublicKey, prevbsh: [u8;32]) -> Block {
+    pub fn new(creator: PublicKey, prevbsh: [u8; 32]) -> Block {
         return Block {
-            body:      BlockBody::new(creator, prevbsh),
-            bsh:       [0; 32],
+            body: BlockBody::new(creator, prevbsh),
+            bsh: [0; 32],
         };
     }
 
@@ -81,8 +81,8 @@ impl Block {
     /// * `body` - `BlockBody` of new `Block`
     pub fn from_block_body(body: BlockBody) -> Block {
         return Block {
-            body:      body,
-            bsh:       [0; 32],
+            body: body,
+            bsh: [0; 32],
         };
     }
 
@@ -169,7 +169,6 @@ impl Block {
     /// already on chain, as well as setting the proper metadata for each slip in
     /// each transaction
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
-
         // Memory swap of transactions so we don't have to copy large amounts of data twice
         std::mem::swap(&mut self.body.txs, transactions);
 
@@ -177,12 +176,11 @@ impl Block {
         let bid = self.body.id;
         let bsh = self.block_hash();
 
-        for (i, tx) in self.body.txs
-            .iter_mut()
-            .enumerate() {
+        for (i, tx) in self.body.txs.iter_mut().enumerate() {
             let mut current_sid = 0;
 
-            let to_slips = tx.to_slips()
+            let to_slips = tx
+                .to_slips()
                 .iter_mut()
                 .map(move |slip| {
                     slip.set_block_id(0);
@@ -194,7 +192,8 @@ impl Block {
                 .collect();
             tx.set_to_slips(to_slips);
 
-            let from_slips = tx.from_slips()
+            let from_slips = tx
+                .from_slips()
                 .iter_mut()
                 .map(move |slip| {
                     slip.set_block_id(bid);
@@ -208,7 +207,6 @@ impl Block {
             tx.set_from_slips(from_slips);
         }
     }
-
 
     /// Appends a transaction to the block
     pub fn add_transaction(&mut self, tx: Transaction) {
@@ -256,14 +254,13 @@ impl Block {
     }
 }
 
-
 // Module std::stream
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::{
         keypair::Keypair,
-        transaction::{Transaction, TransactionBroadcastType}
+        transaction::{Transaction, TransactionBroadcastType},
     };
 
     #[test]

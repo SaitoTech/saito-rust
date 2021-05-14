@@ -175,7 +175,7 @@ mod tests {
         tx.set_signature(signature.clone());
         assert_eq!(tx.signature(), signature.clone());
 
-        let message_bytes: Vec<u8> = (0..32).map(|_| { rand::random::<u8>() }).collect();
+        let message_bytes: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
         tx.set_message(message_bytes.clone());
         assert_eq!(tx.message(), message_bytes.clone());
     }
