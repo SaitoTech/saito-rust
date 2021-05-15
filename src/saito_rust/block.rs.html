@@ -299,7 +299,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Block</span> {
     <span class="doccomment">/// The body and content of the block object</span>
-    <span class="kw">pub</span> <span class="ident">body</span>: <span class="ident">BlockBody</span>,
+    <span class="ident">body</span>: <span class="ident">BlockBody</span>,
     <span class="doccomment">/// Byte array hash of the block</span>
     <span class="ident">bsh</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
 }
@@ -308,17 +308,17 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockBody</span> {
     <span class="doccomment">/// Block id</span>
-    <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">u64</span>,
+    <span class="ident">id</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// Block timestamp</span>
-    <span class="kw">pub</span> <span class="ident">timestamp</span>: <span class="ident">u64</span>,
+    <span class="ident">timestamp</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// Byte array hash of the previous block in the chain</span>
-    <span class="kw">pub</span> <span class="ident">previous_block_hash</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
+    <span class="ident">previous_block_hash</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
     <span class="doccomment">/// `Publickey` of the block creator</span>
-    <span class="kw">pub</span> <span class="ident">creator</span>: <span class="ident">PublicKey</span>,
+    <span class="ident">creator</span>: <span class="ident">PublicKey</span>,
     <span class="doccomment">/// List of transactions in the block</span>
-    <span class="kw">pub</span> <span class="ident">txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
+    <span class="ident">txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
     <span class="doccomment">/// `BurnFee` containing the fees paid to produce the block</span>
-    <span class="kw">pub</span> <span class="ident">burnfee</span>: <span class="ident">u64</span>,
+    <span class="ident">burnfee</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// Block difficulty required to win the `LotteryGame` in golden ticket generation</span>
     <span class="ident">difficulty</span>: <span class="ident">f32</span>,
     <span class="doccomment">/// Treasury of existing Saito in the network</span>
@@ -330,14 +330,14 @@
 <span class="kw">impl</span> <span class="ident">BlockBody</span> {
     <span class="doccomment">/// Creates a new `BlockBody`</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// * `block_creator` - `secp256k1::PublicKey` of the block creator</span>
-    <span class="doccomment">/// * `prevbsh` - Previous block hash in bytes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">block_creator</span>: <span class="ident">PublicKey</span>, <span class="ident">prevbsh</span>: [<span class="ident">u8</span>; <span class="number">32</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BlockBody</span> {
+    <span class="doccomment">/// * `creator` - `secp256k1::PublicKey` of the block creator</span>
+    <span class="doccomment">/// * `previous_block_hash` - Previous block hash in bytes</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">creator</span>: <span class="ident">PublicKey</span>, <span class="ident">previous_block_hash</span>: [<span class="ident">u8</span>; <span class="number">32</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BlockBody</span> {
         <span class="kw">return</span> <span class="ident">BlockBody</span> {
             <span class="ident">id</span>: <span class="number">0</span>,
             <span class="ident">timestamp</span>: <span class="ident">create_timestamp</span>(),
-            <span class="ident">previous_block_hash</span>: <span class="ident">prevbsh</span>,
-            <span class="ident">creator</span>: <span class="ident">block_creator</span>,
+            <span class="ident">previous_block_hash</span>,
+            <span class="ident">creator</span>,
             <span class="ident">txs</span>: <span class="macro">vec</span><span class="macro">!</span>[],
             <span class="ident">burnfee</span>: <span class="number">0</span>,
             <span class="ident">difficulty</span>: <span class="number">0.0</span>,
@@ -351,10 +351,10 @@
     <span class="doccomment">/// Receives the a publickey and the previous block hash</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// * `block_creator` - `secp256k1::PublicKey` of the block creator</span>
-    <span class="doccomment">/// * `prevbsh` - Previous block hash in bytes</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">creator</span>: <span class="ident">PublicKey</span>, <span class="ident">prevbsh</span>: [<span class="ident">u8</span>; <span class="number">32</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+    <span class="doccomment">/// * `previous_block_hash` - Previous block hash in bytes</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">creator</span>: <span class="ident">PublicKey</span>, <span class="ident">previous_block_hash</span>: [<span class="ident">u8</span>; <span class="number">32</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
         <span class="kw">return</span> <span class="ident">Block</span> {
-            <span class="ident">body</span>: <span class="ident">BlockBody</span>::<span class="ident">new</span>(<span class="ident">creator</span>, <span class="ident">prevbsh</span>),
+            <span class="ident">body</span>: <span class="ident">BlockBody</span>::<span class="ident">new</span>(<span class="ident">creator</span>, <span class="ident">previous_block_hash</span>),
             <span class="ident">bsh</span>: [<span class="number">0</span>; <span class="number">32</span>],
         };
     }
@@ -448,14 +448,14 @@
             <span class="comment">// and the block id</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_sid</span> <span class="op">=</span> <span class="number">0</span>;
 
-            <span class="kw">for</span> <span class="ident">slip</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">to_slips_mut</span>().<span class="ident">iter_mut</span>() {
+            <span class="kw">for</span> <span class="ident">slip</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">outputs_mut</span>().<span class="ident">iter_mut</span>() {
                 <span class="ident">slip</span>.<span class="ident">set_block_id</span>(<span class="number">0</span>);
                 <span class="ident">slip</span>.<span class="ident">set_tx_id</span>(<span class="number">0</span>);
                 <span class="ident">slip</span>.<span class="ident">set_slip_id</span>(<span class="ident">current_sid</span>);
                 <span class="ident">current_sid</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
             }
 
-            <span class="kw">for</span> <span class="ident">slip</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">from_slips_mut</span>().<span class="ident">iter_mut</span>() {
+            <span class="kw">for</span> <span class="ident">slip</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">inputs_mut</span>().<span class="ident">iter_mut</span>() {
                 <span class="ident">slip</span>.<span class="ident">set_block_id</span>(<span class="ident">bid</span>);
                 <span class="ident">slip</span>.<span class="ident">set_tx_id</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>);
                 <span class="ident">slip</span>.<span class="ident">set_slip_id</span>(<span class="ident">current_sid</span>);
@@ -549,19 +549,19 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">new</span>(<span class="ident">TransactionBroadcastType</span>::<span class="ident">Normal</span>);
         <span class="kw">let</span> <span class="ident">from_slip</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">new</span>(<span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(), <span class="ident">SlipBroadcastType</span>::<span class="ident">Normal</span>, <span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">to_slip</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">new</span>(<span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(), <span class="ident">SlipBroadcastType</span>::<span class="ident">Normal</span>, <span class="number">0</span>);
-        <span class="ident">tx</span>.<span class="ident">add_from_slip</span>(<span class="ident">from_slip</span>);
-        <span class="ident">tx</span>.<span class="ident">add_to_slip</span>(<span class="ident">to_slip</span>);
+        <span class="ident">tx</span>.<span class="ident">add_input</span>(<span class="ident">from_slip</span>);
+        <span class="ident">tx</span>.<span class="ident">add_output</span>(<span class="ident">to_slip</span>);
         <span class="ident">block</span>.<span class="ident">set_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">tx</span>.<span class="ident">clone</span>()]);
 
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>().<span class="ident">len</span>(), <span class="number">1</span>);
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">to_slips</span>()[<span class="number">0</span>].<span class="ident">slip_id</span>(), <span class="number">0</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">to_slips</span>()[<span class="number">0</span>].<span class="ident">tx_id</span>(), <span class="number">0</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">to_slips</span>()[<span class="number">0</span>].<span class="ident">block_id</span>(), <span class="number">0</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">outputs</span>()[<span class="number">0</span>].<span class="ident">slip_id</span>(), <span class="number">0</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">outputs</span>()[<span class="number">0</span>].<span class="ident">tx_id</span>(), <span class="number">0</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">outputs</span>()[<span class="number">0</span>].<span class="ident">block_id</span>(), <span class="number">0</span>);
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">from_slips</span>()[<span class="number">0</span>].<span class="ident">slip_id</span>(), <span class="number">1</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">from_slips</span>()[<span class="number">0</span>].<span class="ident">tx_id</span>(), <span class="number">0</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">from_slips</span>()[<span class="number">0</span>].<span class="ident">block_id</span>(), <span class="number">0</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">inputs</span>()[<span class="number">0</span>].<span class="ident">slip_id</span>(), <span class="number">1</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">inputs</span>()[<span class="number">0</span>].<span class="ident">tx_id</span>(), <span class="number">0</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">txs</span>()[<span class="number">0</span>].<span class="ident">inputs</span>()[<span class="number">0</span>].<span class="ident">block_id</span>(), <span class="number">0</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>

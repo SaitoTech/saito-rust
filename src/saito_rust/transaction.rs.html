@@ -193,6 +193,15 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">slip</span>::<span class="ident">Slip</span>, <span class="ident">time</span>::<span class="ident">create_timestamp</span>};
 <span class="kw">use</span> <span class="ident">secp256k1</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
@@ -200,17 +209,19 @@
 <span class="doccomment">/// A single record used in the history of transactions being routed around the network</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Hop</span> {
-    <span class="kw">pub</span> <span class="ident">to</span>: <span class="ident">PublicKey</span>,
-    <span class="ident">sig</span>: <span class="ident">Signature</span>,
+    <span class="doccomment">/// An `secp256k1::PublicKey` of the router</span>
+    <span class="kw">pub</span> <span class="ident">address</span>: <span class="ident">PublicKey</span>,
+    <span class="doccomment">/// An `secp256k1::Signature` proving routing work</span>
+    <span class="kw">pub</span> <span class="ident">signature</span>: <span class="ident">Signature</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Hop</span> {
     <span class="doccomment">/// Creates a new `Hop`</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// * `to` - `secp256k1::PublicKey` address of where the transaction is headed</span>
-    <span class="doccomment">/// * `sign` - `secp256k1::Signature` verifying work done by routers</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">to</span>: <span class="ident">PublicKey</span>, <span class="ident">sig</span>: <span class="ident">Signature</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Hop</span> {
-        <span class="kw">return</span> <span class="ident">Hop</span> { <span class="ident">to</span>, <span class="ident">sig</span> };
+    <span class="doccomment">/// * `address` - `secp256k1::PublicKey` address of router</span>
+    <span class="doccomment">/// * `signature` - `secp256k1::Signature` verifying work done by routers</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">address</span>: <span class="ident">PublicKey</span>, <span class="ident">signature</span>: <span class="ident">Signature</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Hop</span> {
+        <span class="kw">return</span> <span class="ident">Hop</span> { <span class="ident">address</span>, <span class="ident">signature</span> };
     }
 }
 
@@ -224,13 +235,20 @@
 <span class="doccomment">/// Core data to be serialized/deserialized of `Transaction`</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TransactionBody</span> {
-    <span class="ident">ts</span>: <span class="ident">u64</span>,
-    <span class="kw">pub</span> <span class="ident">to</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">from</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>,
-    <span class="ident">sig</span>: <span class="ident">Signature</span>,
-    <span class="kw">pub</span> <span class="ident">broadcast_type</span>: <span class="ident">TransactionBroadcastType</span>,
+    <span class="doccomment">/// UNIX timestamp when the `Transaction` was created</span>
+    <span class="ident">timestamp</span>: <span class="ident">u64</span>,
+    <span class="doccomment">/// A list of `Slip` inputs</span>
+    <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A list of `Slip` outputs</span>
+    <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// `secp256k1::Signature` verifying authenticity of `Transaction` data</span>
+    <span class="ident">signature</span>: <span class="ident">Signature</span>,
+    <span class="doccomment">/// A enum brodcast type determining how to process `Transaction` in consensus</span>
+    <span class="ident">broadcast_type</span>: <span class="ident">TransactionBroadcastType</span>,
+    <span class="doccomment">/// A list of `Hop` stipulating the history of `Transaction` routing</span>
     <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Hop</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">msg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A byte array of miscellaneous information</span>
+    <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// Enumerated types of `Transaction`s to be handlded by consensus</span>
@@ -246,45 +264,45 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">broadcast_type</span>: <span class="ident">TransactionBroadcastType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
         <span class="kw">return</span> <span class="ident">Transaction</span> {
             <span class="ident">body</span>: <span class="ident">TransactionBody</span> {
-                <span class="ident">ts</span>: <span class="ident">create_timestamp</span>(),
-                <span class="ident">to</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-                <span class="ident">from</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-                <span class="ident">sig</span>: <span class="ident">Signature</span>::<span class="ident">from_compact</span>(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">64</span>]).<span class="ident">unwrap</span>(),
+                <span class="ident">timestamp</span>: <span class="ident">create_timestamp</span>(),
+                <span class="ident">inputs</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+                <span class="ident">outputs</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+                <span class="ident">signature</span>: <span class="ident">Signature</span>::<span class="ident">from_compact</span>(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">64</span>]).<span class="ident">unwrap</span>(),
                 <span class="ident">broadcast_type</span>,
                 <span class="ident">path</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-                <span class="ident">msg</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+                <span class="ident">message</span>: <span class="macro">vec</span><span class="macro">!</span>[],
             },
         };
     }
 
     <span class="doccomment">/// Returns a timestamp when `Transaction` was created</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">timestamp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">ts</span>
+        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">timestamp</span>
     }
 
     <span class="doccomment">/// Returns list of `Slip` outputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_slips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">body</span>.<span class="ident">to</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">outputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">body</span>.<span class="ident">outputs</span>
     }
 
-    <span class="doccomment">/// Returns list of `Slip` outputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_slips_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">to</span>
-    }
-
-    <span class="doccomment">/// Returns list of `Slip` inputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_slips</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">body</span>.<span class="ident">from</span>
+    <span class="doccomment">/// Returns list of mutable `Slip` outputs</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">outputs_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">outputs</span>
     }
 
     <span class="doccomment">/// Returns list of `Slip` inputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_slips_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">from</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">body</span>.<span class="ident">inputs</span>
+    }
+
+    <span class="doccomment">/// Returns list of `Slip` inputs</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inputs_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">inputs</span>
     }
 
     <span class="doccomment">/// Returns `secp256k1::Signature` verifying the validity of data on a transaction</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Signature</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">body</span>.<span class="ident">sig</span>
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">body</span>.<span class="ident">signature</span>
     }
 
     <span class="doccomment">/// Returns `TransactionBroadcastType` of the `Transaction`</span>
@@ -299,32 +317,32 @@
 
     <span class="doccomment">/// Returns the message of the `Transaction`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">body</span>.<span class="ident">msg</span>
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">body</span>.<span class="ident">message</span>
     }
 
     <span class="doccomment">/// Set the list of `Slip` outputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_to_slips</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">to</span> <span class="op">=</span> <span class="ident">slips</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_outputs</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">outputs</span> <span class="op">=</span> <span class="ident">slips</span>;
     }
 
     <span class="doccomment">/// Add a new `Slip` to the list of `Slip` outputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_to_slip</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) {
-        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">to</span>.<span class="ident">push</span>(<span class="ident">slip</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_output</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) {
+        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">outputs</span>.<span class="ident">push</span>(<span class="ident">slip</span>);
     }
 
     <span class="doccomment">/// Set the list of `Slip` inputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_from_slips</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">from</span> <span class="op">=</span> <span class="ident">slips</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_inputs</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">inputs</span> <span class="op">=</span> <span class="ident">slips</span>;
     }
 
     <span class="doccomment">/// Add a new `Slip` to the list of `Slip` inputs</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_from_slip</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) {
-        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">from</span>.<span class="ident">push</span>(<span class="ident">slip</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_input</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) {
+        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">inputs</span>.<span class="ident">push</span>(<span class="ident">slip</span>);
     }
 
     <span class="doccomment">/// Set the `secp256k1::Signature`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_signature</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">sig</span>: <span class="ident">Signature</span>) {
-        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">sig</span> <span class="op">=</span> <span class="ident">sig</span>;
+        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">signature</span> <span class="op">=</span> <span class="ident">sig</span>;
     }
 
     <span class="doccomment">/// Set the list of `Hop`s</span>
@@ -339,7 +357,7 @@
 
     <span class="doccomment">/// Set the message</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_message</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">msg</span> <span class="op">=</span> <span class="ident">msg</span>;
+        <span class="self">self</span>.<span class="ident">body</span>.<span class="ident">message</span> <span class="op">=</span> <span class="ident">msg</span>;
     }
 }
 
@@ -355,8 +373,8 @@
     <span class="kw">fn</span> <span class="ident">transaction_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">new</span>(<span class="ident">TransactionBroadcastType</span>::<span class="ident">Normal</span>);
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">to_slips</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[]);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">from_slips</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[]);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">outputs</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[]);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">inputs</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[]);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">signature</span>(), <span class="kw-2">&amp;</span><span class="ident">Signature</span>::<span class="ident">from_compact</span>(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">64</span>]).<span class="ident">unwrap</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">broadcast_type</span>(), <span class="kw-2">&amp;</span><span class="ident">TransactionBroadcastType</span>::<span class="ident">Normal</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">path</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[]);
@@ -370,12 +388,12 @@
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">sign_message</span>(<span class="kw-2">&amp;</span><span class="ident">hop_message_bytes</span>);
         <span class="kw">let</span> <span class="ident">hop</span> <span class="op">=</span> <span class="ident">Hop</span>::<span class="ident">new</span>(<span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(), <span class="ident">signature</span>);
 
-        <span class="ident">tx</span>.<span class="ident">add_to_slip</span>(<span class="ident">to_slip</span>);
-        <span class="ident">tx</span>.<span class="ident">add_from_slip</span>(<span class="ident">from_slip</span>);
+        <span class="ident">tx</span>.<span class="ident">add_output</span>(<span class="ident">to_slip</span>);
+        <span class="ident">tx</span>.<span class="ident">add_input</span>(<span class="ident">from_slip</span>);
         <span class="ident">tx</span>.<span class="ident">add_hop_to_path</span>(<span class="ident">hop</span>);
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">to_slips</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="ident">to_slip</span>]);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">from_slips</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="ident">from_slip</span>]);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">outputs</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="ident">to_slip</span>]);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">inputs</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="ident">from_slip</span>]);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">path</span>(), <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="ident">hop</span>]);
 
         <span class="ident">tx</span>.<span class="ident">set_signature</span>(<span class="ident">signature</span>.<span class="ident">clone</span>());
