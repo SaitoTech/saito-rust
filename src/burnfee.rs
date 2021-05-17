@@ -56,6 +56,19 @@ impl BurnFee {
         };
         return self.start * ((HEARTBEAT) as f64 / (timestamp_difference) as f64).sqrt();
     }
+
+    /// Adjusts the start value inside the `BurnFee` object based on
+    /// the provided timestamps
+    ///
+    /// * `current_block_timestamp` - Current `Block` timestamp
+    /// * `previous_block_timestamp` - Previous `Block` timestamp
+    pub fn adjust_work_needed(
+        &mut self,
+        current_block_timestamp: u64,
+        previous_block_timestamp: u64,
+    ) {
+        self.start = self.burn_fee_adjustment(current_block_timestamp, previous_block_timestamp);
+    }
 }
 
 #[cfg(test)]
