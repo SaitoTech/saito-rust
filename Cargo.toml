@@ -7,10 +7,6 @@ authors = [
 ]
 edition = "2018"
 
-[[bin]]
-name = "saito-server"
-path = "src/bin/server.rs"
-
 [dependencies]
 secp256k1 = { version = "0.20.2", features = ["global-context"] }
 sha2 = "0.9.5"

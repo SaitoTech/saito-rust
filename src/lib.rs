@@ -23,9 +23,9 @@ dev@saito.tech
 */
 pub mod block;
 pub mod burnfee;
+pub mod consensus;
 pub mod crypto;
 pub mod keypair;
-pub mod server;
 pub mod slip;
 pub mod time;
 pub mod transaction;
@@ -34,7 +34,7 @@ pub mod transaction;
 ///
 /// When writing a real application, one might want to consider a specialized
 /// error handling crate or defining an error type as an `enum` of causes.
-/// However, for our example, using a boxed `std::error::Error` is sufficient.
+/// However, most time using a boxed `std::error::Error` is sufficient.
 ///
 /// For performance reasons, boxing is avoided in any hot path. For example, in
 /// `parse`, a custom error `enum` is defined. This is because the error is hit
@@ -43,7 +43,7 @@ pub mod transaction;
 /// it to be converted to `Box<dyn std::error::Error>`.
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
-/// A specialized `Result` type for mini-redis operations.
+/// A specialized `Result` type for operations.
 ///
 /// This is defined as a convenience.
 pub type Result<T> = std::result::Result<T, Error>;

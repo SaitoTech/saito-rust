@@ -4,10 +4,10 @@ use tokio::sync::{
     broadcast::{Receiver, Sender},
     mpsc,
 };
-/// The server state which exposes a run method
-/// initializes pre-connection state
-struct Server {
-    /// Broadcasts a shutdown signal to all active connections.
+/// The consensus state which exposes a run method
+/// initializes Saito state
+struct Consensus {
+    /// Broadcasts a shutdown signal to all active components.
     _notify_shutdown: broadcast::Sender<()>,
     /// Used as part of the graceful shutdown process to wait for client
     /// connections to complete processing.
@@ -25,16 +25,17 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
     let (notify_shutdown, _) = broadcast::channel(1);
     let (shutdown_complete_tx, shutdown_complete_rx) = mpsc::channel(1);
 
-    let mut server = Server {
+    let mut consensus = Consensus {
         _notify_shutdown: notify_shutdown,
         _shutdown_complete_tx: shutdown_complete_tx,
         _shutdown_complete_rx: shutdown_complete_rx,
     };
 
     tokio::select! {
-        res = server._run() => {
+        res = consensus._run() => {
             if let Err(err) = res {
                 // TODO -- implement logging/tracing
+                // https://github.com/orgs/SaitoTech/projects/5#card-61344938
                 println!("{:?}", err);
             }
         },
@@ -46,8 +47,8 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
     Ok(())
 }
 
-impl Server {
-    /// Run the server
+impl Consensus {
+    /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         let (_tx, mut rx): (Sender<bool>, Receiver<bool>) = broadcast::channel(1);
 
