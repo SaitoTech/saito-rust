@@ -87,22 +87,27 @@ impl Slip {
         self.block_hash
     }
 
-    // Set the `Block` id
+    /// Return a byte array of `Slip` data
+    pub fn signature_source(&self) -> Vec<u8> {
+        vec![]
+    }
+
+    /// Set the `Block` id
     pub fn set_block_id(&mut self, block_id: u64) {
         self.block_id = block_id;
     }
 
-    // Set the `Transaction` id
+    /// Set the `Transaction` id
     pub fn set_tx_id(&mut self, tx_id: u64) {
         self.tx_id = tx_id;
     }
 
-    // Set the `Slip` id
+    /// Set the `Slip` id
     pub fn set_slip_id(&mut self, slip_id: u64) {
         self.slip_id = slip_id;
     }
 
-    // Set the `Block` hash
+    /// Set the `Block` hash
     pub fn set_block_hash(&mut self, block_hash: [u8; 32]) {
         self.block_hash = block_hash;
     }
