@@ -19,7 +19,7 @@ pub struct Slip {
 /// An object that holds concrete data not subjective to state of chain
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub struct SlipBody {
-    /// An `Sectp256K::PublicKey` determining who owns the `Slip`
+    /// An `secp256k1::PublicKey` determining who owns the `Slip`
     address: PublicKey,
     /// A enum brodcast type determining how to be processed by consensus
     broadcast_type: SlipBroadcastType,

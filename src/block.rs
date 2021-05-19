@@ -9,7 +9,7 @@ use crate::transaction::Transaction;
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
     /// The body and content of the block object
-    pub body: BlockBody,
+    body: BlockBody,
     /// Byte array hash of the block
     bsh: [u8; 32],
 }
@@ -18,17 +18,17 @@ pub struct Block {
 #[derive(PartialEq, Debug, Clone)]
 pub struct BlockBody {
     /// Block id
-    pub id: u64,
+    id: u64,
     /// Block timestamp
-    pub timestamp: u64,
+    timestamp: u64,
     /// Byte array hash of the previous block in the chain
-    pub previous_block_hash: [u8; 32],
+    previous_block_hash: [u8; 32],
     /// `Publickey` of the block creator
-    pub creator: PublicKey,
+    creator: PublicKey,
     /// List of transactions in the block
-    pub txs: Vec<Transaction>,
+    txs: Vec<Transaction>,
     /// `BurnFee` containing the fees paid to produce the block
-    pub burnfee: u64,
+    burnfee: u64,
     /// Block difficulty required to win the `LotteryGame` in golden ticket generation
     difficulty: f32,
     /// Treasury of existing Saito in the network
@@ -40,14 +40,14 @@ pub struct BlockBody {
 impl BlockBody {
     /// Creates a new `BlockBody`
     ///
-    /// * `block_creator` - `secp256k1::PublicKey` of the block creator
-    /// * `prevbsh` - Previous block hash in bytes
-    pub fn new(block_creator: PublicKey, prevbsh: [u8; 32]) -> BlockBody {
+    /// * `creator` - `secp256k1::PublicKey` of the block creator
+    /// * `previous_block_hash` - Previous block hash in bytes
+    pub fn new(creator: PublicKey, previous_block_hash: [u8; 32]) -> BlockBody {
         return BlockBody {
             id: 0,
             timestamp: create_timestamp(),
-            previous_block_hash: prevbsh,
-            creator: block_creator,
+            previous_block_hash,
+            creator,
             txs: vec![],
             burnfee: 0,
             difficulty: 0.0,
@@ -61,10 +61,10 @@ impl Block {
     /// Receives the a publickey and the previous block hash
     ///
     /// * `block_creator` - `secp256k1::PublicKey` of the block creator
-    /// * `prevbsh` - Previous block hash in bytes
-    pub fn new(creator: PublicKey, prevbsh: [u8; 32]) -> Block {
+    /// * `previous_block_hash` - Previous block hash in bytes
+    pub fn new(creator: PublicKey, previous_block_hash: [u8; 32]) -> Block {
         return Block {
-            body: BlockBody::new(creator, prevbsh),
+            body: BlockBody::new(creator, previous_block_hash),
             bsh: [0; 32],
         };
     }
@@ -158,14 +158,14 @@ impl Block {
             // and the block id
             let mut current_sid = 0;
 
-            for slip in tx.to_slips_mut().iter_mut() {
+            for slip in tx.outputs_mut().iter_mut() {
                 slip.set_block_id(0);
                 slip.set_tx_id(0);
                 slip.set_slip_id(current_sid);
                 current_sid += 1;
             }
 
-            for slip in tx.from_slips_mut().iter_mut() {
+            for slip in tx.inputs_mut().iter_mut() {
                 slip.set_block_id(bid);
                 slip.set_tx_id(i as u64);
                 slip.set_slip_id(current_sid);
@@ -259,19 +259,19 @@ mod test {
         let mut tx = Transaction::new(TransactionBroadcastType::Normal);
         let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
         let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        tx.add_from_slip(from_slip);
-        tx.add_to_slip(to_slip);
+        tx.add_input(from_slip);
+        tx.add_output(to_slip);
         block.set_transactions(&mut vec![tx.clone()]);
 
         assert_eq!(block.txs().len(), 1);
 
-        assert_eq!(block.txs()[0].to_slips()[0].slip_id(), 0);
-        assert_eq!(block.txs()[0].to_slips()[0].tx_id(), 0);
-        assert_eq!(block.txs()[0].to_slips()[0].block_id(), 0);
+        assert_eq!(block.txs()[0].outputs()[0].slip_id(), 0);
+        assert_eq!(block.txs()[0].outputs()[0].tx_id(), 0);
+        assert_eq!(block.txs()[0].outputs()[0].block_id(), 0);
 
-        assert_eq!(block.txs()[0].from_slips()[0].slip_id(), 1);
-        assert_eq!(block.txs()[0].from_slips()[0].tx_id(), 0);
-        assert_eq!(block.txs()[0].from_slips()[0].block_id(), 0);
+        assert_eq!(block.txs()[0].inputs()[0].slip_id(), 1);
+        assert_eq!(block.txs()[0].inputs()[0].tx_id(), 0);
+        assert_eq!(block.txs()[0].inputs()[0].block_id(), 0);
     }
 
     #[test]
