@@ -10,7 +10,7 @@ pub struct Block {
     header: BlockHeader,
     /// The body and content of the block object
     body: BlockBody,
-    /// Mmemoized hash of the block
+    /// Memoized hash of the block
     hash: Option<[u8; 32]>,
 }
 
@@ -47,7 +47,7 @@ impl BlockHeader {
     /// Creates a new `BlockHeader`
     ///
     /// * `creator` - `secp256k1::PublicKey` of the block creator
-    /// * `previous_block_hash` - Parent block hash in bytes
+    /// * `previous_block_hash` - Previous block hash in bytes
     pub fn new(creator: PublicKey, previous_block_hash: [u8; 32]) -> Self {
         BlockHeader {
             id: 0,
@@ -160,8 +160,9 @@ impl Block {
     }
 
     /// Converts our blockhash from a byte array into a hex string
-    pub fn hash_as_hex(&mut self) -> String {
-        hex::encode(&self.hash())
+    pub fn hash_as_hex(&self) -> String {
+        let hash = self.hash.unwrap_or_else(|| self.hash());
+        hex::encode(hash)
     }
 
     /// Sets the `Block`s list of `Transaction`s
