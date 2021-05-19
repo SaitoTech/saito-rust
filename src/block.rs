@@ -159,7 +159,6 @@ impl Block {
     /// Sets the `Block`s list of `Transaction`s
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
         let bid = self.header.id;
-        let bsh = self.hash();
 
         for (i, tx) in transactions.iter_mut().enumerate() {
             // The slips are assigned the ids based on their slip index
@@ -178,7 +177,6 @@ impl Block {
                 slip.set_block_id(bid);
                 slip.set_tx_id(i as u64);
                 slip.set_slip_id(current_sid);
-                slip.set_block_hash(bsh);
                 current_sid += 1;
             }
         }
