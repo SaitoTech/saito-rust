@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["block",""],["burnfee",""],["crypto",""],["keypair",""],["mempool",""],["slip",""],["time",""],["transaction",""]]});
+initSidebarItems({"mod":[["block",""],["burnfee",""],["consensus",""],["crypto",""],["keypair",""],["mempool",""],["slip",""],["time",""],["transaction",""]],"type":[["Error","Error returned by most functions."],["Result","A specialized `Result` type for operations."]]});

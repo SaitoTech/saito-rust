@@ -32,6 +32,25 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">/*!
 # Welcome to Saito
@@ -58,12 +77,31 @@ dev@saito.tech
 */</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">block</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">burnfee</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">consensus</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">crypto</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">keypair</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">mempool</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">slip</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">time</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">transaction</span>;
+
+<span class="doccomment">/// Error returned by most functions.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// When writing a real application, one might want to consider a specialized</span>
+<span class="doccomment">/// error handling crate or defining an error type as an `enum` of causes.</span>
+<span class="doccomment">/// However, most time using a boxed `std::error::Error` is sufficient.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// For performance reasons, boxing is avoided in any hot path. For example, in</span>
+<span class="doccomment">/// `parse`, a custom error `enum` is defined. This is because the error is hit</span>
+<span class="doccomment">/// and handled during normal execution when a partial frame is received on a</span>
+<span class="doccomment">/// socket. `std::error::Error` is implemented for `parse::Error` which allows</span>
+<span class="doccomment">/// it to be converted to `Box&lt;dyn std::error::Error&gt;`.</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">std</span>::<span class="ident">error</span>::<span class="ident">Error</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span><span class="op">&gt;</span>;
+
+<span class="doccomment">/// A specialized `Result` type for operations.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// This is defined as a convenience.</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">result</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-js="../../search-index.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>
