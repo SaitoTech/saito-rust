@@ -1,5 +1,3 @@
-use std::mem::transmute;
-
 use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
@@ -134,25 +132,35 @@ impl Block {
         self.header.coinbase
     }
 
+    /// Compute and memoize the block hash
+    pub fn compute_hash(&mut self) -> [u8; 32] {
+        let hash = self.hash();
+        self.hash = Some(hash);
+        hash
+    }
+
     /// Generate the block hash
     ///
     /// TODO -- extend list of information we use to calculate the block hash
     pub fn hash(&self) -> [u8; 32] {
-        let mut data: Vec<u8> = vec![];
+        if self.hash.is_none() {
+            let mut data: Vec<u8> = vec![];
 
-        let id_bytes: [u8; 8] = unsafe { transmute(self.header.id.to_be()) };
-        let ts_bytes: [u8; 8] = unsafe { transmute(self.header.timestamp.to_be()) };
-        let cr_bytes: Vec<u8> = self.header.creator.serialize().iter().cloned().collect();
+            let id_bytes: [u8; 8] = self.header.id.to_be_bytes();
+            let ts_bytes: [u8; 8] = self.header.timestamp.to_be_bytes();
+            let cr_bytes: Vec<u8> = self.header.creator.serialize().iter().cloned().collect();
 
-        data.extend(&id_bytes);
-        data.extend(&ts_bytes);
-        data.extend(&cr_bytes);
-
-        return hash(&data);
+            data.extend(&id_bytes);
+            data.extend(&ts_bytes);
+            data.extend(&cr_bytes);
+            hash(&data)
+        } else {
+            self.hash.unwrap()
+        }
     }
 
     /// Converts our blockhash from a byte array into a hex string
-    pub fn hash_as_hex(&self) -> String {
+    pub fn hash_as_hex(&mut self) -> String {
         hex::encode(&self.hash())
     }
 
@@ -190,32 +198,32 @@ impl Block {
 
     /// Sets the id of the block
     pub fn set_id(&mut self, id: u64) {
-        self.header.id = id;
+        update_field(&mut self.hash, &mut self.header.id, id)
     }
 
     /// Sets the `Block` burnfee
     pub fn set_burnfee(&mut self, bf: u64) {
-        self.header.burnfee = bf;
+        update_field(&mut self.hash, &mut self.header.burnfee, bf)
     }
 
     /// Sets the `Block` previous hash
     pub fn set_parent_hash(&mut self, parent_hash: [u8; 32]) {
-        self.header.parent_hash = parent_hash;
+        update_field(&mut self.hash, &mut self.header.parent_hash, parent_hash)
     }
 
     /// Sets the `Block` difficulty
     pub fn set_difficulty(&mut self, difficulty: f32) {
-        self.header.difficulty = difficulty;
+        update_field(&mut self.hash, &mut self.header.difficulty, difficulty)
     }
 
     /// Sets the `Block` treasury
     pub fn set_treasury(&mut self, treasury: u64) {
-        self.header.treasury = treasury;
+        update_field(&mut self.hash, &mut self.header.treasury, treasury)
     }
 
     /// Sets the `Block` coinbase
     pub fn set_coinbase(&mut self, coinbase: u64) {
-        self.header.coinbase = coinbase;
+        update_field(&mut self.hash, &mut self.header.coinbase, coinbase)
     }
 }
 
