@@ -26,6 +26,7 @@ pub mod burnfee;
 pub mod consensus;
 pub mod crypto;
 pub mod keypair;
+pub mod mempool;
 pub mod slip;
 pub mod time;
 pub mod transaction;
