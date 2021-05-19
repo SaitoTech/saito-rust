@@ -22,7 +22,7 @@ pub struct BlockHeader {
     /// Block timestamp
     timestamp: u64,
     /// Byte array hash of the previous block in the chain
-    parent_hash: [u8; 32],
+    previous_block_hash: [u8; 32],
     /// `Publickey` of the block creator
     creator: PublicKey,
     /// `BurnFee` containing the fees paid to produce the block
@@ -47,12 +47,12 @@ impl BlockHeader {
     /// Creates a new `BlockHeader`
     ///
     /// * `creator` - `secp256k1::PublicKey` of the block creator
-    /// * `parent_hash` - Parent block hash in bytes
-    pub fn new(creator: PublicKey, parent_hash: [u8; 32]) -> Self {
+    /// * `previous_block_hash` - Parent block hash in bytes
+    pub fn new(creator: PublicKey, previous_block_hash: [u8; 32]) -> Self {
         BlockHeader {
             id: 0,
             timestamp: create_timestamp(),
-            parent_hash,
+            previous_block_hash,
             creator,
             burnfee: 0,
             difficulty: 0.0,
@@ -78,10 +78,10 @@ impl Block {
     /// Receives the a publickey and the previous block hash
     ///
     /// * `creator` - `secp256k1::PublicKey` of the block creator
-    /// * `parent_hash` - Previous block hash in bytes
-    pub fn new(creator: PublicKey, parent_hash: [u8; 32]) -> Block {
+    /// * `previous_block_hash` - Previous block hash in bytes
+    pub fn new(creator: PublicKey, previous_block_hash: [u8; 32]) -> Block {
         Block {
-            header: BlockHeader::new(creator, parent_hash),
+            header: BlockHeader::new(creator, previous_block_hash),
             body: BlockBody::new(),
             hash: None,
         }
@@ -97,9 +97,9 @@ impl Block {
         self.header.timestamp
     }
 
-    /// Returns the parent `Block` hash
-    pub fn parent_hash(&self) -> &[u8; 32] {
-        &self.header.parent_hash
+    /// Returns the previous `Block` hash
+    pub fn previous_block_hash(&self) -> &[u8; 32] {
+        &self.header.previous_block_hash
     }
 
     /// Returns the `Block` creator's `secp256k1::PublicKey`
@@ -207,8 +207,12 @@ impl Block {
     }
 
     /// Sets the `Block` previous hash
-    pub fn set_parent_hash(&mut self, parent_hash: [u8; 32]) {
-        update_field(&mut self.hash, &mut self.header.parent_hash, parent_hash)
+    pub fn set_previous_block_hash(&mut self, previous_block_hash: [u8; 32]) {
+        update_field(
+            &mut self.hash,
+            &mut self.header.previous_block_hash,
+            previous_block_hash,
+        )
     }
 
     /// Sets the `Block` difficulty
@@ -253,7 +257,7 @@ mod test {
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
 
         assert_eq!(block.id(), 0);
-        assert_eq!(block.parent_hash(), &[0; 32]);
+        assert_eq!(block.previous_block_hash(), &[0; 32]);
         assert_eq!(block.creator(), keypair.public_key());
         assert_eq!(*block.transactions(), vec![]);
         assert_eq!(block.burnfee(), 0);

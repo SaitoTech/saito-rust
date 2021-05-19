@@ -87,7 +87,7 @@ impl Mempool {
                 block.set_id(previous_block.id() + 1);
                 block.set_coinbase(coinbase);
                 block.set_treasury(treasury - coinbase);
-                block.set_parent_hash(previous_block.hash());
+                block.set_previous_block_hash(previous_block.hash());
                 block.set_difficulty(previous_block.difficulty());
 
                 self._burnfee
@@ -134,7 +134,7 @@ mod tests {
         match new_block {
             Some(block) => {
                 assert_eq!(block.id(), 0);
-                assert_eq!(*block.parent_hash(), [0; 32]);
+                assert_eq!(*block.previous_block_hash(), [0; 32]);
             }
             None => {}
         }
