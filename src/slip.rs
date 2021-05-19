@@ -1,3 +1,4 @@
+use crate::crypto::hash;
 use secp256k1::PublicKey;
 
 /// A record of owernship of funds on the network
@@ -88,8 +89,18 @@ impl Slip {
     }
 
     /// Return a byte array of `Slip` data
-    pub fn signature_source(&self) -> Vec<u8> {
-        vec![]
+    pub fn hash(&self) -> [u8; 32] {
+        let mut data: Vec<u8> = vec![];
+
+        let slip_id_bytes: [u8; 8] = self.slip_id.to_be_bytes();
+        let tx_id_bytes: [u8; 8] = self.tx_id.to_be_bytes();
+        let block_id_bytes: [u8; 8] = self.block_id.to_be_bytes();
+
+        data.extend(&slip_id_bytes);
+        data.extend(&tx_id_bytes);
+        data.extend(&block_id_bytes);
+
+        hash(&data)
     }
 
     /// Set the `Block` id
