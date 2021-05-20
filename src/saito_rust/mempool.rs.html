@@ -239,7 +239,7 @@
 
         <span class="kw">match</span> <span class="ident">previous_block</span> {
             <span class="prelude-val">Some</span>(<span class="ident">previous_block</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">new</span>(<span class="ident">publickey</span>.<span class="ident">clone</span>(), <span class="ident">previous_block</span>.<span class="ident">block_hash</span>());
+                <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">new</span>(<span class="ident">publickey</span>.<span class="ident">clone</span>(), <span class="ident">previous_block</span>.<span class="ident">hash</span>());
 
                 <span class="comment">// TODO -- include reclaimed fees here</span>
                 <span class="kw">let</span> <span class="ident">treasury</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">treasury</span>();
@@ -248,7 +248,7 @@
                 <span class="ident">block</span>.<span class="ident">set_id</span>(<span class="ident">previous_block</span>.<span class="ident">id</span>() <span class="op">+</span> <span class="number">1</span>);
                 <span class="ident">block</span>.<span class="ident">set_coinbase</span>(<span class="ident">coinbase</span>);
                 <span class="ident">block</span>.<span class="ident">set_treasury</span>(<span class="ident">treasury</span> <span class="op">-</span> <span class="ident">coinbase</span>);
-                <span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>(<span class="ident">previous_block</span>.<span class="ident">block_hash</span>());
+                <span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>(<span class="ident">previous_block</span>.<span class="ident">hash</span>());
                 <span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="ident">previous_block</span>.<span class="ident">difficulty</span>());
 
                 <span class="self">self</span>.<span class="ident">_burnfee</span>

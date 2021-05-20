@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Block","The `Block` holds all data inside the block body, and additional metadata not to be serialized"],["BlockBody","This `BlockBody` holds data to be serialized along with `Transaction`s"]]});
+initSidebarItems({"struct":[["Block","The `Block` holds all data inside the block body, and additional metadata not to be serialized"],["BlockBody","This `BlockBody` holds data to be serialized along with `Transaction`s"],["BlockHeader","This `Header` holds `Block`’s metadata"]]});
