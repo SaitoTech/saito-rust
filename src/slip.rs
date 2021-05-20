@@ -1,6 +1,8 @@
 use serde::{Serialize, Deserialize};
 use secp256k1::PublicKey;
 
+use crate::slip_proto as proto;
+
 /// A record of owernship of funds on the network
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub struct Slip {
@@ -113,6 +115,22 @@ impl Slip {
     // Set the `Block` hash
     pub fn set_block_hash(&mut self, block_hash: [u8; 32]) {
         self.block_hash = block_hash;
+    }
+}
+
+impl Into<proto::Slip> for Slip {
+    fn into(self) -> proto::Slip {
+        proto::Slip {
+            body: Some(proto::SlipBody {
+                address: self.body.address.serialize().to_vec(),
+                broadcast_type: self.broadcast_type() as i32,
+                amount: self.body.amount,
+            }),
+            block_id: self.block_id,
+            tx_id: self.tx_id,
+            slip_id: self.slip_id,
+            block_hash: self.block_hash.to_vec(),
+        }
     }
 }
 
