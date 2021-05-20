@@ -1,8 +1,8 @@
-use crate::crypto::hash;
 use secp256k1::PublicKey;
+use std::hash::Hash;
 
 /// A record of owernship of funds on the network
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct Slip {
     /// Contains concrete data which is not relative to state of the chain
     body: SlipBody,
@@ -17,7 +17,7 @@ pub struct Slip {
 }
 
 /// An object that holds concrete data not subjective to state of chain
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct SlipBody {
     /// An `Sectp256K::PublicKey` determining who owns the `Slip`
     address: PublicKey,
@@ -28,7 +28,7 @@ pub struct SlipBody {
 }
 
 /// An enumerated set of `Slip` types
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub enum SlipBroadcastType {
     Normal,
 }
@@ -86,21 +86,6 @@ impl Slip {
     /// Returns the `Block` hash the slip originated from
     pub fn block_hash(&self) -> [u8; 32] {
         self.block_hash
-    }
-
-    /// Return a byte array of `Slip` data
-    pub fn hash(&self) -> [u8; 32] {
-        let mut data: Vec<u8> = vec![];
-
-        let slip_id_bytes: [u8; 8] = self.slip_id.to_be_bytes();
-        let tx_id_bytes: [u8; 8] = self.tx_id.to_be_bytes();
-        let block_id_bytes: [u8; 8] = self.block_id.to_be_bytes();
-
-        data.extend(&slip_id_bytes);
-        data.extend(&tx_id_bytes);
-        data.extend(&block_id_bytes);
-
-        hash(&data)
     }
 
     /// Set the `Block` id
