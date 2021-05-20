@@ -80,11 +80,6 @@ impl Slip {
         self.slip_id
     }
 
-    /// Returns the `Block` hash the slip originated from
-    pub fn block_hash(&self) -> [u8; 32] {
-        self.block_hash
-    }
-
     /// Set the `Block` id
     pub fn set_block_id(&mut self, block_id: u64) {
         self.block_id = block_id;
