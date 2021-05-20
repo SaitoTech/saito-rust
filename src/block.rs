@@ -64,9 +64,6 @@ impl BlockHeader {
 
 impl BlockBody {
     /// Creates a new `BlockBody`
-    ///
-    /// * `creator` - `secp256k1::PublicKey` of the block creator
-    /// * `previous_block_hash` - Previous block hash in bytes
     pub fn new() -> Self {
         BlockBody {
             transactions: vec![],
