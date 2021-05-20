@@ -12,8 +12,6 @@ pub struct Slip {
     tx_id: u64,
     /// `Slip` id
     slip_id: u64,
-    /// The `Block` hash the slip originated from
-    block_hash: [u8; 32],
 }
 
 /// An object that holds concrete data not subjective to state of chain
@@ -39,8 +37,8 @@ impl Slip {
     /// * `address` - `Publickey` address to assign ownership
     /// * `broadcast_type` - `SlipBroadcastType` of `Slip`
     /// * `amount` - `u64` amount of Saito contained in the `Slip`
-    pub fn new(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64) -> Slip {
-        return Slip {
+    pub fn new(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64) -> Self {
+        Slip {
             body: SlipBody {
                 address,
                 broadcast_type,
@@ -49,8 +47,7 @@ impl Slip {
             block_id: 0,
             tx_id: 0,
             slip_id: 0,
-            block_hash: [0; 32],
-        };
+        }
     }
 
     /// Returns address in `Slip`
@@ -102,23 +99,16 @@ impl Slip {
     pub fn set_slip_id(&mut self, slip_id: u64) {
         self.slip_id = slip_id;
     }
-
-    /// Set the `Block` hash
-    pub fn set_block_hash(&mut self, block_hash: [u8; 32]) {
-        self.block_hash = block_hash;
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::keypair::Keypair;
-    use rand;
 
     #[test]
     fn slip_test() {
         let keypair = Keypair::new();
-        let block_hash: [u8; 32] = rand::random();
         let mut slip = Slip::new(
             keypair.public_key().clone(),
             SlipBroadcastType::Normal,
@@ -131,16 +121,13 @@ mod tests {
         assert_eq!(slip.block_id(), 0);
         assert_eq!(slip.tx_id(), 0);
         assert_eq!(slip.slip_id(), 0);
-        assert_eq!(slip.block_hash(), [0; 32]);
 
         slip.set_block_id(10);
         slip.set_tx_id(10);
         slip.set_slip_id(10);
-        slip.set_block_hash(block_hash);
 
         assert_eq!(slip.block_id(), 10);
         assert_eq!(slip.tx_id(), 10);
         assert_eq!(slip.slip_id(), 10);
-        assert_eq!(slip.block_hash(), block_hash);
     }
 }
