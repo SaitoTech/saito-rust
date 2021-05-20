@@ -78,7 +78,7 @@ impl Mempool {
 
         match previous_block {
             Some(previous_block) => {
-                block = Block::new(publickey.clone(), previous_block.block_hash());
+                block = Block::new(publickey.clone(), previous_block.hash());
 
                 // TODO -- include reclaimed fees here
                 let treasury = previous_block.treasury();
@@ -87,7 +87,7 @@ impl Mempool {
                 block.set_id(previous_block.id() + 1);
                 block.set_coinbase(coinbase);
                 block.set_treasury(treasury - coinbase);
-                block.set_previous_block_hash(previous_block.block_hash());
+                block.set_previous_block_hash(previous_block.hash());
                 block.set_difficulty(previous_block.difficulty());
 
                 self._burnfee
