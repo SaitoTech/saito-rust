@@ -30,6 +30,7 @@ pub mod mempool;
 pub mod slip;
 pub mod time;
 pub mod transaction;
+pub mod types;
 
 /// Error returned by most functions.
 ///

@@ -1,6 +1,6 @@
 use crate::{
     block::Block, burnfee::BurnFee, keypair::Keypair, time::create_timestamp,
-    transaction::Transaction,
+    transaction::Transaction, types::SaitoMessage,
 };
 
 pub const GENESIS_PERIOD: u64 = 21500;
@@ -16,7 +16,7 @@ pub struct Mempool {
     /// A list of blocks to be added to the longest chain
     _blocks: Vec<Block>,
     /// A list of `Transaction`s to be bundled into `Block`s
-    _transactions: Vec<Transaction>,
+    transactions: Vec<Transaction>,
     ///
     _burnfee: BurnFee,
     /// The current work available in fees found in the list of `Transaction`s
@@ -30,21 +30,30 @@ impl Mempool {
             _keypair: keypair,
             _burnfee: BurnFee::new(10.0),
             _blocks: vec![],
-            _transactions: vec![],
+            transactions: vec![],
             work_available: 0,
         }
     }
 
-    pub fn work_available(&self) -> u64 {
-        self.work_available
+    /// Processes `SaitoMessage` and attempts to return `Block`
+    ///
+    /// * `message` - `SaitoMessage` enum commanding `Mempool` operation
+    pub fn process(&mut self, message: SaitoMessage) -> Option<Block> {
+        match message {
+            SaitoMessage::Transaction { payload } => {
+                self.transactions.push(payload);
+                self.try_bundle(None)
+            }
+            SaitoMessage::TryBundle => self.try_bundle(None),
+        }
     }
 
     /// Attempt to create a new `Block`
     ///
     /// * `previous_block` - `Option` of previous `Block`
-    fn _try_bundle(&mut self, previous_block: Option<Block>) -> Option<Block> {
-        if self._can_bundle_block(&previous_block) {
-            Some(self._bundle_block(previous_block))
+    fn try_bundle(&mut self, previous_block: Option<Block>) -> Option<Block> {
+        if self.can_bundle_block(&previous_block) {
+            Some(self.bundle_block(previous_block))
         } else {
             None
         }
@@ -53,7 +62,7 @@ impl Mempool {
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
     /// * `previous_block` - `Option` of previous `Block`
-    fn _can_bundle_block(&self, previous_block: &Option<Block>) -> bool {
+    fn can_bundle_block(&self, previous_block: &Option<Block>) -> bool {
         match previous_block {
             Some(block) => {
                 let current_timestamp = create_timestamp();
@@ -72,7 +81,7 @@ impl Mempool {
     ///
     /// * `previous_block` - `Option` of the previous block on the longest chain
     ///
-    fn _bundle_block(&mut self, previous_block: Option<Block>) -> Block {
+    fn bundle_block(&mut self, previous_block: Option<Block>) -> Block {
         let publickey = self._keypair.public_key();
         let mut block: Block;
 
@@ -102,7 +111,7 @@ impl Mempool {
             }
         }
 
-        block.set_transactions(&mut self._transactions);
+        block.set_transactions(&mut self.transactions);
 
         return block;
         // TODO -- calculate difficulty and paysplit changes
@@ -122,14 +131,14 @@ mod tests {
         let keypair = Keypair::new();
         let mempool = Mempool::new(keypair);
 
-        assert_eq!(mempool.work_available(), 0);
+        assert_eq!(mempool.work_available, 0);
     }
     #[test]
     fn mempool_try_bundle_none_test() {
         let keypair = Keypair::new();
         let mut mempool = Mempool::new(keypair);
 
-        let new_block = mempool._try_bundle(None);
+        let new_block = mempool.try_bundle(None);
 
         match new_block {
             Some(block) => {
@@ -145,7 +154,7 @@ mod tests {
         let mut mempool = Mempool::new(keypair);
 
         let prev_block = Block::new(Keypair::new().public_key().clone(), [0; 32]);
-        let new_block = mempool._try_bundle(Some(prev_block));
+        let new_block = mempool.try_bundle(Some(prev_block));
 
         match new_block {
             Some(_) => {}

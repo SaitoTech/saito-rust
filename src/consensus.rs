@@ -1,9 +1,7 @@
-use std::future::Future;
-use tokio::sync::{
-    broadcast,
-    broadcast::{Receiver, Sender},
-    mpsc,
-};
+use crate::{keypair::Keypair, mempool::Mempool, types::SaitoMessage};
+use std::{future::Future, thread::sleep, time::Duration};
+use tokio::sync::{broadcast, mpsc};
+
 /// The consensus state which exposes a run method
 /// initializes Saito state
 struct Consensus {
@@ -50,11 +48,26 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
 impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
-        let (_tx, mut rx): (Sender<bool>, Receiver<bool>) = broadcast::channel(1);
+        let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
+
+        let keypair = Keypair::new();
+        let mut mempool = Mempool::new(keypair);
+
+        tokio::spawn(async move {
+            loop {
+                saito_message_tx
+                    .send(SaitoMessage::TryBundle)
+                    .expect("error: try bundle message failed to send");
+                sleep(Duration::from_millis(1000));
+            }
+        });
 
         loop {
-            while let Ok(message) = rx.recv().await {
-                println!("{:?}", message);
+            while let Ok(message) = saito_message_rx.recv().await {
+                if let Some(block) = mempool.process(message) {
+                    println!("{:?}", block);
+                    std::process::exit(1);
+                }
             }
         }
     }
