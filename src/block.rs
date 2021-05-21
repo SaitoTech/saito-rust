@@ -84,6 +84,11 @@ impl Block {
         }
     }
 
+    // Returns the `BlockHeader` of `Block`
+    pub fn header(&self) -> &BlockHeader {
+        &self.header
+    }
+
     /// Returns the `Block` id
     pub fn id(&self) -> u64 {
         self.header.id
