@@ -315,6 +315,11 @@
 <span id="312">312</span>
 <span id="313">313</span>
 <span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">PublicKey</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">time</span>::<span class="ident">create_timestamp</span>;
@@ -400,6 +405,11 @@
             <span class="ident">body</span>: <span class="ident">BlockBody</span>::<span class="ident">new</span>(),
             <span class="ident">hash</span>: <span class="prelude-val">None</span>,
         }
+    }
+
+    <span class="comment">// Returns the `BlockHeader` of `Block`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">header</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">BlockHeader</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">header</span>
     }
 
     <span class="doccomment">/// Returns the `Block` id</span>

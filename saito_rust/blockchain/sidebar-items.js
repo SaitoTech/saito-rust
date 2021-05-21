@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Blockchain","The structure represents the state of the blockchain itself, including the blocks that are on the longest-chain as well as the material that is sitting off the longest-chain but capable of being switched over."],["BlockchainIndex","Indexes of chain attribute"]],"type":[["BlockIndex",""]]});
