@@ -1,7 +1,8 @@
 use secp256k1::PublicKey;
+use std::hash::Hash;
 
 /// A record of owernship of funds on the network
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct Slip {
     /// Contains concrete data which is not relative to state of the chain
     body: SlipBody,
@@ -14,7 +15,7 @@ pub struct Slip {
 }
 
 /// An object that holds concrete data not subjective to state of chain
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct SlipBody {
     /// An `Sectp256K::PublicKey` determining who owns the `Slip`
     address: PublicKey,
@@ -25,7 +26,7 @@ pub struct SlipBody {
 }
 
 /// An enumerated set of `Slip` types
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub enum SlipBroadcastType {
     Normal,
 }
@@ -79,17 +80,17 @@ impl Slip {
         self.slip_id
     }
 
-    // Set the `Block` id
+    /// Set the `Block` id
     pub fn set_block_id(&mut self, block_id: u64) {
         self.block_id = block_id;
     }
 
-    // Set the `Transaction` id
+    /// Set the `Transaction` id
     pub fn set_tx_id(&mut self, tx_id: u64) {
         self.tx_id = tx_id;
     }
 
-    // Set the `Slip` id
+    /// Set the `Slip` id
     pub fn set_slip_id(&mut self, slip_id: u64) {
         self.slip_id = slip_id;
     }

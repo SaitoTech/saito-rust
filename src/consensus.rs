@@ -1,4 +1,4 @@
-use crate::{keypair::Keypair, mempool::Mempool, types::SaitoMessage};
+use crate::{blockchain::Blockchain, keypair::Keypair, mempool::Mempool, types::SaitoMessage};
 use std::{future::Future, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc};
 
@@ -13,7 +13,7 @@ struct Consensus {
     _shutdown_complete_tx: mpsc::Sender<()>,
 }
 
-/// Run the Saito server
+/// Run the Saito consensus runtime
 pub async fn run(shutdown: impl Future) -> crate::Result<()> {
     // When the provided `shutdown` future completes, we must send a shutdown
     // message to all active connections. We use a broadcast channel for this
@@ -52,21 +52,21 @@ impl Consensus {
 
         let keypair = Keypair::new();
         let mut mempool = Mempool::new(keypair);
+        let mut blockchain = Blockchain::new();
 
         tokio::spawn(async move {
             loop {
                 saito_message_tx
                     .send(SaitoMessage::TryBundle)
-                    .expect("error: try bundle message failed to send");
+                    .expect("error: TryBundle message failed to send");
                 sleep(Duration::from_millis(1000));
             }
         });
 
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
-                if let Some(block) = mempool.process(message) {
-                    println!("{:?}", block);
-                    std::process::exit(1);
+                if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
+                    blockchain.add_block(block);
                 }
             }
         }
