@@ -1,8 +1,11 @@
 use crate::{slip::Slip, time::create_timestamp};
+use merkle::Hashable;
+use ring::digest::Context;
 use secp256k1::{PublicKey, Signature};
+use serde::{Deserialize, Serialize};
 
 /// A single record used in the history of transactions being routed around the network
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub struct Hop {
     /// An `secp256k1::PublicKey` of the router
     pub address: PublicKey,
@@ -22,13 +25,13 @@ impl Hop {
 
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Transaction {
     body: TransactionBody,
 }
 
 /// Core data to be serialized/deserialized of `Transaction`
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct TransactionBody {
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,
@@ -47,9 +50,16 @@ pub struct TransactionBody {
 }
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum TransactionBroadcastType {
     Normal,
+}
+
+impl Hashable for Transaction {
+    fn update_context(&self, context: &mut Context) {
+        let bytes: Vec<u8> = bincode::serialize(&self).unwrap();
+        context.update(&bytes);
+    }
 }
 
 impl Transaction {

@@ -424,6 +424,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "merkle"
+version = "1.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d61d8271e4bc7a870786aa2bf4a0f75bd2ec235ace835770faab8aeba06b3645"
+dependencies = [
+ "ring",
+]
+
+[[package]]
 name = "mio"
 version = "0.7.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -873,6 +882,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ring"
+version = "0.16.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3053cf52e236a3ed746dfc745aa9cacf1b791d846bdaf412f60a8d7d6e17c8fc"
+dependencies = [
+ "cc",
+ "libc",
+ "once_cell",
+ "spin",
+ "untrusted",
+ "web-sys",
+ "winapi",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -895,10 +919,12 @@ dependencies = [
  "bincode",
  "criterion",
  "hex",
+ "merkle",
  "prost",
  "prost-build",
  "prost-types",
  "rand 0.8.3",
+ "ring",
  "secp256k1",
  "serde",
  "serde_cbor 0.10.2",
@@ -1040,6 +1066,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
 
 [[package]]
+name = "spin"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
+
+[[package]]
 name = "syn"
 version = "1.0.72"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1143,6 +1175,12 @@ name = "unicode-xid"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ccb82d61f80a663efe1f787a51b16b5a51e3314d6ac365b08639f52387b33f3"
+
+[[package]]
+name = "untrusted"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "version_check"

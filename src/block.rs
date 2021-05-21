@@ -1,6 +1,8 @@
 use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
+use merkle::MerkleTree;
+use ring::digest::SHA256;
 
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
@@ -12,6 +14,8 @@ pub struct Block {
     body: BlockBody,
     /// Memoized hash of the block
     hash: Option<[u8; 32]>,
+    /// Memoized merkle tree of transcations
+    merkle_tree: Option<MerkleTree<Transaction>>,
 }
 
 /// This `Header` holds `Block`'s metadata
@@ -81,6 +85,7 @@ impl Block {
             header: BlockHeader::new(creator, previous_block_hash),
             body: BlockBody::new(),
             hash: None,
+            merkle_tree: None,
         }
     }
 
@@ -132,6 +137,17 @@ impl Block {
     /// Returns the `Block` coinbase
     pub fn coinbase(&self) -> u64 {
         self.header.coinbase
+    }
+
+    /// Compute and memoize the merkle tree and return root hash
+    pub fn transaction_root(&mut self) -> &Vec<u8> {
+        if self.merkle_tree.is_none() {
+            self.merkle_tree = Some(MerkleTree::from_vec(
+                &SHA256,
+                self.body.transactions.clone(),
+            ));
+        }
+        self.merkle_tree.as_ref().unwrap().root_hash()
     }
 
     /// Compute and memoize the block hash
@@ -192,11 +208,13 @@ impl Block {
             }
         }
         self.body.transactions = transactions.to_vec();
+        self.merkle_tree = None;
     }
 
     /// Appends a transaction to the block
     pub fn add_transaction(&mut self, tx: Transaction) {
         self.body.transactions.push(tx);
+        self.merkle_tree = None;
     }
 
     /// Sets the id of the block
