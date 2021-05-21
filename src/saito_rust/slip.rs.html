@@ -128,11 +128,13 @@
 <span id="125">125</span>
 <span id="126">126</span>
 <span id="127">127</span>
+<span id="128">128</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">secp256k1</span>::<span class="ident">PublicKey</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">hash</span>::<span class="ident">Hash</span>;
 
 <span class="doccomment">/// A record of owernship of funds on the network</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Slip</span> {
     <span class="doccomment">/// Contains concrete data which is not relative to state of the chain</span>
     <span class="ident">body</span>: <span class="ident">SlipBody</span>,
@@ -145,7 +147,7 @@
 }
 
 <span class="doccomment">/// An object that holds concrete data not subjective to state of chain</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SlipBody</span> {
     <span class="doccomment">/// An `Sectp256K::PublicKey` determining who owns the `Slip`</span>
     <span class="ident">address</span>: <span class="ident">PublicKey</span>,
@@ -156,7 +158,7 @@
 }
 
 <span class="doccomment">/// An enumerated set of `Slip` types</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SlipBroadcastType</span> {
     <span class="ident">Normal</span>,
 }
@@ -210,17 +212,17 @@
         <span class="self">self</span>.<span class="ident">slip_id</span>
     }
 
-    <span class="comment">// Set the `Block` id</span>
+    <span class="doccomment">/// Set the `Block` id</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_block_id</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>) {
         <span class="self">self</span>.<span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block_id</span>;
     }
 
-    <span class="comment">// Set the `Transaction` id</span>
+    <span class="doccomment">/// Set the `Transaction` id</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_tx_id</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">tx_id</span>: <span class="ident">u64</span>) {
         <span class="self">self</span>.<span class="ident">tx_id</span> <span class="op">=</span> <span class="ident">tx_id</span>;
     }
 
-    <span class="comment">// Set the `Slip` id</span>
+    <span class="doccomment">/// Set the `Slip` id</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_slip_id</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip_id</span>: <span class="ident">u64</span>) {
         <span class="self">self</span>.<span class="ident">slip_id</span> <span class="op">=</span> <span class="ident">slip_id</span>;
     }
