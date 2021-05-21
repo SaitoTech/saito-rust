@@ -16,5 +16,4 @@ message Slip {
     uint64 block_id = 2;
     uint64 tx_id = 3;
     uint64 slip_id = 4;
-    bytes block_hash = 5;
 }
