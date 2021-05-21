@@ -150,6 +150,11 @@ impl Block {
         self.merkle_tree.as_ref().unwrap().root_hash()
     }
 
+    /// Returns the `MerkleTree` of `Transaction`'s
+    pub fn transaction_tree(&self) -> Option<&MerkleTree<Transaction>> {
+        self.merkle_tree.as_ref()
+    }
+
     /// Compute and memoize the block hash
     pub fn compute_hash(&mut self) -> [u8; 32] {
         let hash = self.hash();
