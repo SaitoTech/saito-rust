@@ -1,7 +1,10 @@
 use secp256k1::PublicKey;
+use serde::{Deserialize, Serialize};
+
+use crate::slip_proto as proto;
 
 /// A record of owernship of funds on the network
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub struct Slip {
     /// Contains concrete data which is not relative to state of the chain
     body: SlipBody,
@@ -14,9 +17,9 @@ pub struct Slip {
 }
 
 /// An object that holds concrete data not subjective to state of chain
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub struct SlipBody {
-    /// An `Sectp256K::PublicKey` determining who owns the `Slip`
+    /// An `secp256k1::PublicKey` determining who owns the `Slip`
     address: PublicKey,
     /// A enum brodcast type determining how to be processed by consensus
     broadcast_type: SlipBroadcastType,
@@ -25,7 +28,7 @@ pub struct SlipBody {
 }
 
 /// An enumerated set of `Slip` types
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum SlipBroadcastType {
     Normal,
 }
@@ -95,6 +98,21 @@ impl Slip {
     }
 }
 
+impl Into<proto::Slip> for Slip {
+    fn into(self) -> proto::Slip {
+        proto::Slip {
+            body: Some(proto::SlipBody {
+                address: self.body.address.serialize().to_vec(),
+                broadcast_type: self.broadcast_type() as i32,
+                amount: self.body.amount,
+            }),
+            block_id: self.block_id,
+            tx_id: self.tx_id,
+            slip_id: self.slip_id,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,5 +141,114 @@ mod tests {
         assert_eq!(slip.block_id(), 10);
         assert_eq!(slip.tx_id(), 10);
         assert_eq!(slip.slip_id(), 10);
+    }
+
+    #[test]
+    fn slip_serialization() {
+        //let mock_private_key = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
+        //let keypair = Keypair::from_secret_hex(mock_private_key).unwrap();
+        //let mut slip = Slip::new(
+        //    keypair.public_key().clone(),
+        //    SlipBroadcastType::Normal,
+        //    10_000_000,
+        //);
+        // let xs: Vec<u8> = bincode::serialize(&slip.body).unwrap();
+        //
+        // println!("Slip:\n{:?}\n serializes into byte array \n{:?}", slip, xs);
+        // println!("lenght: {}", xs.len());
+        // // let result = match IntoIterator::into_iter(xs) {
+        // //     mut iter => loop {
+        // //         let next;
+        // //         match iter.next() {
+        // //             Some(val) => next = val,
+        // //             None => break,
+        // //         };
+        // //         let x = next;
+        // //         let () = { println!("{}", x); };
+        // //     }
+        // // };
+        //
+        //
+        // let xd: SlipBody = bincode::deserialize(&xs).unwrap();
+        // println!("BincodedSlip:\n{:?}\n deserializes into \n{:?}", xs, xd);
+
+        let testbytes: [u8; 32] = [
+            12, 11, 23, 32, 31, 42, 43, 35, 12, 11, 23, 32, 31, 42, 43, 35, 12, 11, 23, 32, 31, 42,
+            43, 35, 12, 11, 23, 32, 31, 42, 43, 35,
+        ];
+        let serout: Vec<u8> = bincode::serialize(&testbytes).unwrap();
+
+        println!("{:?}", serout);
+        println!("{:?}", serout.len());
+
+        let testbytes: u64 = 10000000;
+        let serout: Vec<u8> = bincode::serialize(&testbytes).unwrap();
+        println!("{:?}", serout);
+
+        let testbytes: u32 = 10000000;
+        let serout: Vec<u8> = bincode::serialize(&testbytes).unwrap();
+        println!("{:?}", serout);
+
+        let testbytes: i64 = 10000000;
+        let serout: Vec<u8> = bincode::serialize(&testbytes).unwrap();
+        println!("{:?}", serout);
+
+        let testbytes: i32 = 10000000;
+        let serout: Vec<u8> = bincode::serialize(&testbytes).unwrap();
+        println!("{:?}", serout);
+
+        let testbytes: f64 = 10000000.0;
+        let serout: Vec<u8> = bincode::serialize(&testbytes).unwrap();
+        println!("{:?}", serout);
+
+        let testbytes: f32 = 0.0000000000000000000000000000000001;
+        println!("{}", testbytes);
+        let testbytes: f32 = 1.0000000000000000000000000000000001;
+        println!("{}", testbytes);
+        let testbytes: f32 = 10000000000000000000000000000.9 - 10000000000000000000000000000.0;
+        println!("{}", testbytes);
+        let testbytes: f32 = 10000000.9 - 10000000.0;
+        println!("{}", testbytes);
+
+        let serout: Vec<u8> = bincode::serialize(&testbytes).unwrap();
+        println!("{:?}", serout);
+        let xd: f32 = bincode::deserialize(&serout).unwrap();
+        println!("{}", xd);
+
+        let testbytes: SlipBroadcastType = SlipBroadcastType::Normal;
+        let serout: Vec<u8> = bincode::serialize(&testbytes).unwrap();
+        println!("SlipBroadcastType {:?}", serout);
+    }
+
+    #[test]
+    fn slip_bincode_serialization() {
+        let keypair = Keypair::from_secret_hex(
+            "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16",
+        )
+        .unwrap();
+        let slip = Slip::new(
+            keypair.public_key().clone(),
+            SlipBroadcastType::Normal,
+            10_000_000,
+        );
+
+        let serout: Vec<u8> = bincode::serialize(&slip).unwrap();
+        println!("{:?}", serout.len());
+    }
+
+    #[test]
+    fn slip_cbor_serialization() {
+        let keypair = Keypair::from_secret_hex(
+            "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16",
+        )
+        .unwrap();
+        let slip = Slip::new(
+            keypair.public_key().clone(),
+            SlipBroadcastType::Normal,
+            10_000_000,
+        );
+
+        let bytes = serde_cbor::to_vec(&slip).unwrap();
+        println!("{:?}", bytes.len());
     }
 }

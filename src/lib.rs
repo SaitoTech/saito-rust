@@ -32,6 +32,10 @@ pub mod slip;
 pub mod time;
 pub mod transaction;
 
+pub mod slip_proto {
+    include!(concat!(env!("OUT_DIR"), "/slip_proto.rs"));
+}
+
 /// Error returned by most functions.
 ///
 /// When writing a real application, one might want to consider a specialized

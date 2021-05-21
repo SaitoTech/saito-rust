@@ -1,0 +1,20 @@
+syntax = "proto3";
+package slip_proto;
+
+enum SlipBroadcastType {
+    Normal = 0;
+}
+
+message SlipBody {
+    bytes address = 1;
+    SlipBroadcastType broadcast_type = 2;
+    uint64 amount = 3;
+}
+
+message Slip {
+    SlipBody body = 1;
+    uint64 block_id = 2;
+    uint64 tx_id = 3;
+    uint64 slip_id = 4;
+    bytes block_hash = 5;
+}
