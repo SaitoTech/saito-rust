@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use saito_rust::{
     keypair::Keypair,
-    slip::{Slip, SlipBroadcastType}
+    slip::{Slip, SlipBroadcastType},
 };
 
 use saito_rust::slip_proto as proto;
@@ -31,9 +31,10 @@ fn bench_slip_bincode_serialize(c: &mut Criterion) {
         10_000_000,
     );
 
-    c.bench_function("slip bincode seriliazation", |b| b.iter(|| slip_bincode_serialize(slip)));
+    c.bench_function("slip bincode seriliazation", |b| {
+        b.iter(|| slip_bincode_serialize(slip))
+    });
 }
-
 
 fn slip_cbor_serialize(slip: Slip) {
     let bytes = serde_cbor::to_vec(&slip).unwrap();
@@ -49,7 +50,9 @@ fn bench_slip_cbor_serialize(c: &mut Criterion) {
         10_000_000,
     );
 
-    c.bench_function("slip cbor seriliazation", |b| b.iter(|| slip_cbor_serialize(slip)));
+    c.bench_function("slip cbor seriliazation", |b| {
+        b.iter(|| slip_cbor_serialize(slip))
+    });
 }
 
 fn slip_proto_serialize(slip: Slip) {
@@ -69,7 +72,9 @@ fn bench_slip_proto_serialize(c: &mut Criterion) {
         10_000_000,
     );
 
-    c.bench_function("slip protocol bufs seriliazation", |b| b.iter(|| slip_proto_serialize(slip)));
+    c.bench_function("slip protocol bufs seriliazation", |b| {
+        b.iter(|| slip_proto_serialize(slip))
+    });
 }
 
 criterion_group!(
