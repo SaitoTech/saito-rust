@@ -23,12 +23,6 @@ impl BlockchainIndex {
 pub struct Blockchain {
     /// Index of `Block`s
     index: BlockchainIndex,
-    /// The start of the blockchain UNIx timestamp
-    genesis_timestamp: u64,
-    /// The latest `Block` id in the genesis period
-    genesis_block_id: u64,
-    /// The amount of `Block`s kept on chain
-    genesis_period: u64,
 }
 
 impl Blockchain {
@@ -36,9 +30,6 @@ impl Blockchain {
     pub fn new() -> Self {
         Blockchain {
             index: BlockchainIndex::new(),
-            genesis_timestamp: 0,
-            genesis_block_id: 0,
-            genesis_period: 0,
         }
     }
 
@@ -49,12 +40,6 @@ impl Blockchain {
 
     /// Append `Block` to the index of `Blockchain`
     pub fn add_block(&mut self, block: Block) {
-        // ignore blocks that are pre-genesis
-        if block.timestamp() < self.genesis_timestamp || block.id() < self.genesis_block_id {
-            println!("not adding block to blockchain -- block precedes genesis");
-            return;
-        }
-
         let block_index: BlockIndex = (block.header().clone(), block.hash());
         self.index.blocks.push(block_index);
     }
@@ -70,12 +55,7 @@ mod tests {
     #[test]
     fn blockchain_test() {
         let blockchain = Blockchain::new();
-
         assert_eq!(blockchain.index.blocks, vec![]);
-
-        assert_eq!(blockchain.genesis_timestamp, 0);
-        assert_eq!(blockchain.genesis_block_id, 0);
-        assert_eq!(blockchain.genesis_period, 0);
     }
     #[test]
     fn blockchain_get_latest_block_none_test() {
