@@ -1,5 +1,17 @@
-use crate::{blockchain::Blockchain, keypair::Keypair, mempool::Mempool, types::SaitoMessage};
-use std::{future::Future, thread::sleep, time::Duration};
+use crate::{
+    blockchain::Blockchain,
+    crypto::hash,
+    golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
+    keypair::Keypair,
+    mempool::Mempool,
+    types::SaitoMessage,
+};
+use std::{
+    future::Future,
+    sync::{Arc, RwLock},
+    thread::sleep,
+    time::Duration,
+};
 use tokio::sync::{broadcast, mpsc};
 
 /// The consensus state which exposes a run method
@@ -49,9 +61,12 @@ impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
+        let block_tx = saito_message_tx.clone();
+        let miner_tx = saito_message_tx.clone();
+        let mut miner_rx = saito_message_tx.subscribe();
 
-        let keypair = Keypair::new();
-        let mut mempool = Mempool::new(keypair);
+        let keypair = Arc::new(RwLock::new(Keypair::new()));
+        let mut mempool = Mempool::new(keypair.clone());
         let mut blockchain = Blockchain::new();
 
         tokio::spawn(async move {
@@ -63,10 +78,35 @@ impl Consensus {
             }
         });
 
+        // sleep for 5 secs to simulate lottery game, then send a golden ticket
+        tokio::spawn(async move {
+            loop {
+                while let Ok(message) = miner_rx.recv().await {
+                    // simulate lottery game with creation of golden_ticket_transaction
+                    match message {
+                        SaitoMessage::NewBlock { payload } => {
+                            let gtx = generate_golden_ticket_transaction(
+                                hash(&generate_random_data()),
+                                &payload,
+                                &keypair.read().unwrap(),
+                            );
+                            miner_tx
+                                .send(SaitoMessage::Transaction { payload: gtx })
+                                .unwrap();
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        });
+
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
                 if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
-                    blockchain.add_block(block);
+                    blockchain.add_block(block.clone());
+                    block_tx
+                        .send(SaitoMessage::NewBlock { payload: block })
+                        .expect("Err: Could not send new block");
                 }
             }
         }
