@@ -47,7 +47,7 @@ impl Slip {
     /// * `address` - `Publickey` address to assign ownership
     /// * `broadcast_type` - `SlipBroadcastType` of `Slip`
     /// * `amount` - `u64` amount of Saito contained in the `Slip`
-    pub fn deserialize(bytes: [u8; 42]) -> Slip {
+    pub fn decerealize(bytes: [u8; 42]) -> Slip {
         // Slip::new(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64);
         let public_key: PublicKey = PublicKey::from_slice(&bytes[..33]).unwrap();
         let broadcast_type: SlipBroadcastType = SlipBroadcastType::try_from(bytes[41]).unwrap();
@@ -57,7 +57,7 @@ impl Slip {
         Slip::new(public_key, broadcast_type, amount)
     }
     
-    pub fn serialize(&self) -> [u8; 42] {
+    pub fn cerealize(&self) -> [u8; 42] {
         let mut ret = [0; 42];
         let serialized_pubkey: [u8; 33] = self.body.address.serialize();
         ret[..33].clone_from_slice(&serialized_pubkey);
@@ -190,7 +190,7 @@ mod tests {
             SlipBroadcastType::Another,
             amount,
         );
-        let serialized_slip = slip.serialize();
+        let serialized_slip = slip.cerealize();
         println!("{:?}", serialized_slip);
         
         let p: *const PublicKey = &slip.body.address;

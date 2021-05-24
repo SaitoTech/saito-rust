@@ -17,6 +17,21 @@ pub mod greeter {
 //    include!(concat!(env!("OUT_DIR"), "/slip_proto.rs"));
 //}
 
+fn slip_bespoke_serialize(slip: Slip) {
+
+}
+
+fn bench_slip_bespoke_serialize(c: &mut Criterion) {
+    let keypair = Keypair::new();
+    let slip = Slip::new(
+        keypair.public_key().clone(),
+        SlipBroadcastType::Normal,
+        10_000_000,
+    );
+
+    c.bench_function("slip bespoke seriliazation", |b| b.iter(|| slip_bespoke_serialize(slip)));
+}
+
 fn slip_bincode_serialize(slip: Slip) {
     let xs: Vec<u8> = bincode::serialize(&slip).unwrap();
     //let xd: Slip = bincode::deserialize(&xs).unwrap();
