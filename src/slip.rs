@@ -1,7 +1,5 @@
 use secp256k1::PublicKey;
-use std::convert::{TryFrom, TryInto};
-use std::mem::size_of_val;
-use std::mem::size_of;
+use std::convert::TryFrom;
 use std::{mem, slice};
 pub use enum_variant_count_derive::TryFromByte;
 
@@ -150,9 +148,7 @@ mod tests {
     use crate::keypair::Keypair;
     use rand;
     use std::{mem, slice};
-    use std::convert::{TryFrom, TryInto};
-    use std::mem::size_of_val;
-    use std::mem::size_of;
+    use std::convert::TryInto;
     
     #[test]
     fn slip_test() {
@@ -188,19 +184,14 @@ mod tests {
         
         let mock_private_key = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
         let keypair = Keypair::from_secret_hex(mock_private_key).unwrap();
-        let block_hash: [u8; 32] = [0;32];
         let amount = std::u64::MAX;
-        let mut slip = Slip::new(
+        let slip = Slip::new(
             *keypair.public_key(),
             SlipBroadcastType::Another,
             amount,
         );
         let serialized_slip = slip.serialize();
         println!("{:?}", serialized_slip);
-        
-        
-        
-        let testbytes: [u8; 32] = [12, 11, 23, 32, 31, 42, 43, 35, 12, 11, 23, 32, 31, 42, 43, 35, 12, 11, 23, 32, 31, 42, 43, 35, 12, 11, 23, 32, 31, 42, 43, 35];
         
         let p: *const PublicKey = &slip.body.address;
         let p: *const u8 = p as *const u8;
@@ -215,8 +206,6 @@ mod tests {
         println!("from_raw_parts u64: {:?}", serialized_pubkey);
         println!("            length: {:?}", serialized_pubkey.len());
         
-        let slip_type: SlipBroadcastType = SlipBroadcastType::Normal;
-        //let length = std::ptr::read(slip_type.as_ptr()); 
         let val3: SlipBroadcastType = (2 as u8).try_into().unwrap();
         dbg!(val3);
         dbg!(SlipBroadcastType::Another as u32);

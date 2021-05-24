@@ -1,11 +1,11 @@
 use proc_macro::{self, TokenStream};
 use quote::quote;
-use syn::{parse_macro_input, DataEnum, DataUnion, DeriveInput, FieldsNamed, FieldsUnnamed};
+use syn::{parse_macro_input, DeriveInput};
 
 
 // This also allows some_u8.try_into()
 #[proc_macro_derive(TryFromByte)]
-pub fn tryFromByte(input: TokenStream) -> TokenStream {
+pub fn try_from_byte(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
     let len = match data {
         syn::Data::Enum(enum_item) => enum_item.variants.len(),
