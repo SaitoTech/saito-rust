@@ -22,6 +22,9 @@ prost = "0.7"
 # Only necessary if using Protobuf well-known types:
 prost-types = "0.7"
 
+#needed from bespoke serialization
+enum-variant-count-derive = { path = "enum-variant-count-derive" }
+
 [build-dependencies]
 prost-build = { version = "0.7" }
 
