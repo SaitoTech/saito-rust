@@ -7,6 +7,7 @@ use crate::{
     transaction::Transaction,
     types::SaitoMessage,
 };
+use std::sync::{Arc, RwLock};
 
 pub const GENESIS_PERIOD: u64 = 21500;
 
@@ -17,7 +18,7 @@ pub const GENESIS_PERIOD: u64 = 21500;
 /// the `Blockchain`
 pub struct Mempool {
     /// `Keypair` used to sign and bundle blocks
-    _keypair: Keypair,
+    _keypair: Arc<RwLock<Keypair>>,
     /// A list of blocks to be added to the longest chain
     _blocks: Vec<Block>,
     /// A list of `Transaction`s to be bundled into `Block`s
@@ -30,7 +31,7 @@ pub struct Mempool {
 
 impl Mempool {
     /// Creates new `Memppol`
-    pub fn new(keypair: Keypair) -> Self {
+    pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
         Mempool {
             _keypair: keypair,
             _burnfee: BurnFee::new(10.0),
@@ -55,6 +56,7 @@ impl Mempool {
                 self.try_bundle(previous_block_index)
             }
             SaitoMessage::TryBundle => self.try_bundle(previous_block_index),
+            _ => None,
         }
     }
 
@@ -99,7 +101,9 @@ impl Mempool {
     ///
     /// * `previous_block` - `Option` of the previous block on the longest chain
     fn bundle_block(&mut self, previous_block_index: Option<&BlockIndex>) -> Block {
-        let publickey = self._keypair.public_key();
+        //while let Ok(keypair) = self._keypair.read() {
+        let keypair = self._keypair.read().unwrap();
+        let publickey = keypair.public_key();
         let mut block: Block;
 
         match previous_block_index {
@@ -141,18 +145,19 @@ mod tests {
 
     use super::*;
     use crate::keypair::Keypair;
+    use std::sync::{Arc, RwLock};
 
     #[test]
     fn mempool_test() {
         assert_eq!(true, true);
-        let keypair = Keypair::new();
+        let keypair = Arc::new(RwLock::new(Keypair::new()));
         let mempool = Mempool::new(keypair);
 
         assert_eq!(mempool.work_available, 0);
     }
     #[test]
     fn mempool_try_bundle_none_test() {
-        let keypair = Keypair::new();
+        let keypair = Arc::new(RwLock::new(Keypair::new()));
         let mut mempool = Mempool::new(keypair);
 
         let new_block = mempool.try_bundle(None);
@@ -167,7 +172,7 @@ mod tests {
     }
     #[test]
     fn mempool_try_bundle_some_test() {
-        let keypair = Keypair::new();
+        let keypair = Arc::new(RwLock::new(Keypair::new()));
         let mut mempool = Mempool::new(keypair);
 
         let prev_block = Block::new(Keypair::new().public_key().clone(), [0; 32]);

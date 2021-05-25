@@ -26,6 +26,7 @@ pub mod blockchain;
 pub mod burnfee;
 pub mod consensus;
 pub mod crypto;
+pub mod golden_ticket;
 pub mod keypair;
 pub mod mempool;
 pub mod slip;
