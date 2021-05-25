@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["run","Run the Saito server"]]});
+initSidebarItems({"fn":[["run","Run the Saito consensus runtime"]]});

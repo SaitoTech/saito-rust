@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["create_timestamp",""]]});
+initSidebarItems({"fn":[["create_timestamp",""],["format_timestamp",""]]});
