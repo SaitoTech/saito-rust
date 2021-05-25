@@ -101,7 +101,7 @@ impl Consensus {
 
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
-                if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
+                if let Some(block) = mempool.process(message, blockchain.get_latest_block_index()) {
                     blockchain.add_block(block.clone());
                     block_tx
                         .send(SaitoMessage::NewBlock { payload: block })
