@@ -1,10 +1,12 @@
+use serde::{Serialize, Deserialize};
 use secp256k1::PublicKey;
-use std::convert::TryFrom;
+use crate::slip_proto as proto;
+use std::convert::{TryFrom, TryInto};
 use std::{mem, slice};
 pub use enum_variant_count_derive::TryFromByte;
 
 /// A record of owernship of funds on the network
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub struct Slip {
     /// Contains concrete data which is not relative to state of the chain
     body: SlipBody,
@@ -19,7 +21,7 @@ pub struct Slip {
 }
 
 /// An object that holds concrete data not subjective to state of chain
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub struct SlipBody {
     /// An `Sectp256K::PublicKey` determining who owns the `Slip`
     address: PublicKey,
@@ -30,16 +32,12 @@ pub struct SlipBody {
 }
 
 /// An enumerated set of `Slip` types
-#[derive(Debug, PartialEq, Clone, Copy, TryFromByte)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy, TryFromByte)]
 pub enum SlipBroadcastType {
     Normal,
-    Other,
-    Another,
+    Other, // Added a few more values here just for testing purposes
+    Another, // TODO: DELETE THESE
 }
-
-
-
-
 
 impl Slip {
     /// Create new `Slip` with default type `SlipBroadcastType::Normal`
@@ -47,29 +45,6 @@ impl Slip {
     /// * `address` - `Publickey` address to assign ownership
     /// * `broadcast_type` - `SlipBroadcastType` of `Slip`
     /// * `amount` - `u64` amount of Saito contained in the `Slip`
-    pub fn deserialize(bytes: [u8; 42]) -> Slip {
-        // Slip::new(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64);
-        let public_key: PublicKey = PublicKey::from_slice(&bytes[..33]).unwrap();
-        let broadcast_type: SlipBroadcastType = SlipBroadcastType::try_from(bytes[41]).unwrap();
-        let mut amount_bytes: [u8;8] = [0;8];
-        amount_bytes.clone_from_slice(&bytes[33..41]);
-        let amount = u64::from_be_bytes(amount_bytes);
-        Slip::new(public_key, broadcast_type, amount)
-    }
-    
-    pub fn serialize(&self) -> [u8; 42] {
-        let mut ret = [0; 42];
-        let serialized_pubkey: [u8; 33] = self.body.address.serialize();
-        ret[..33].clone_from_slice(&serialized_pubkey);
-        let serialized_amount: &[u8] = unsafe { 
-            slice::from_raw_parts((&self.body.amount as *const u64) as *const u8, mem::size_of::<u64>())
-        };
-        ret[33..41].clone_from_slice(&serialized_amount);
-        let serialized_broadcast_type = self.body.broadcast_type as u8;
-        ret[41] = serialized_broadcast_type;
-        ret
-    }
-    
     pub fn new(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64) -> Slip {
         return Slip {
             body: SlipBody {
@@ -83,7 +58,23 @@ impl Slip {
             block_hash: [0; 32],
         };
     }
-
+    
+    pub fn deserialize(bytes: [u8; 42]) -> Slip {
+        let public_key: PublicKey = PublicKey::from_slice(&bytes[..33]).unwrap();
+        let broadcast_type: SlipBroadcastType = SlipBroadcastType::try_from(bytes[41]).unwrap();
+        let amount = u64::from_be_bytes(bytes[33..41].try_into().unwrap());
+        Slip::new(public_key, broadcast_type, amount)
+    }
+    
+    pub fn serialize(&self) -> [u8; 42] {
+        let mut ret = [0; 42];
+        ret[..33].clone_from_slice(&self.body.address.serialize());
+        unsafe {
+            ret[33..41].clone_from_slice(&slice::from_raw_parts((&self.body.amount as *const u64) as *const u8, mem::size_of::<u64>()));
+        }
+        ret[41] = self.body.broadcast_type as u8;
+        ret
+    }
     /// Returns address in `Slip`
     pub fn address(&self) -> &PublicKey {
         &self.body.address
@@ -141,26 +132,38 @@ impl Slip {
     
     
 }
+impl Into<proto::Slip> for Slip {
+    fn into(self) -> proto::Slip {
+        proto::Slip {
+            body: Some(proto::SlipBody {
+                address: self.body.address.serialize().to_vec(),
+                broadcast_type: self.broadcast_type() as i32,
+                amount: self.body.amount,
+            }),
+            block_id: self.block_id,
+            tx_id: self.tx_id,
+            slip_id: self.slip_id,
+            block_hash: self.block_hash.to_vec(),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::keypair::Keypair;
     use rand;
-    use std::{mem, slice};
-    use std::convert::TryInto;
-    
+    use std::str::FromStr;
     #[test]
     fn slip_test() {
-        let keypair = Keypair::new();
+        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
         let block_hash: [u8; 32] = rand::random();
         let mut slip = Slip::new(
-            keypair.public_key().clone(),
+            public_key,
             SlipBroadcastType::Normal,
             10_000_000,
         );
 
-        assert_eq!(slip.address(), keypair.public_key());
+        assert_eq!(slip.address(), &public_key);
         assert_eq!(slip.broadcast_type(), SlipBroadcastType::Normal);
         assert_eq!(slip.amount(), 10_000_000);
         assert_eq!(slip.block_id(), 0);
@@ -180,47 +183,50 @@ mod tests {
     }
     
     #[test]
-    fn slip_serialization_play() {
-        
-        let mock_private_key = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
-        let keypair = Keypair::from_secret_hex(mock_private_key).unwrap();
+    fn slip_custom_serialization() {
+        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
         let amount = std::u64::MAX;
         let slip = Slip::new(
-            *keypair.public_key(),
+            public_key,
             SlipBroadcastType::Another,
             amount,
         );
-        let serialized_slip = slip.serialize();
-        println!("{:?}", serialized_slip);
-        
-        let p: *const PublicKey = &slip.body.address;
-        let p: *const u8 = p as *const u8;
-        let s: &[u8] = unsafe { 
-            slice::from_raw_parts(p, mem::size_of::<PublicKey>())
-        };
-        println!("from_raw_parts u64: {:?}", s);
-        println!("            length: {:?}", s.len());
-        
-        //[u8; constants::PUBLIC_KEY_SIZE]
-        let serialized_pubkey: [u8; 33] = slip.body.address.serialize();
-        println!("from_raw_parts u64: {:?}", serialized_pubkey);
-        println!("            length: {:?}", serialized_pubkey.len());
-        
-        let val3: SlipBroadcastType = (2 as u8).try_into().unwrap();
-        dbg!(val3);
-        dbg!(SlipBroadcastType::Another as u32);
-        
-        let amount: u64 = 256*256*256*256*256*256*256;
-        
-        let s: &[u8] = unsafe { 
-            slice::from_raw_parts((&amount as *const u64) as *const u8, mem::size_of::<u64>())
-        };
-        println!("from_raw_parts u64: {:?}", s);
-        
-        //SlipBroadcastType::debug();
+        let serialized_slip: [u8; 42] = slip.serialize();
+        let deserialized_slip: Slip = Slip::deserialize(serialized_slip);
+        assert_eq!(slip, deserialized_slip);
+        println!("{}", slip.body.address);
     }
     
+    #[test]
+    fn slip_bincode_serialization() {
+        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
+        let slip = Slip::new(
+            public_key,
+            SlipBroadcastType::Normal,
+            10_000_000,
+        );
+
+        let serout: Vec<u8> = bincode::serialize(&slip).unwrap();
+        println!("{:?}", serout.len());
+    }
+
+    #[test]
+    fn slip_cbor_serialization() {
+        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
+        let slip = Slip::new(
+            public_key,
+            SlipBroadcastType::Normal,
+            10_000_000,
+        );
+
+        let bytes = serde_cbor::to_vec(&slip).unwrap();
+        println!("{:?}", bytes.len());
+    }
     
+    #[test]
+    fn slip_proto_serialization() {
+        
+    }
 }
 
 

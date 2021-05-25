@@ -3,10 +3,10 @@ use saito_rust::{
     keypair::Keypair,
     slip::{Slip, SlipBroadcastType}
 };
-
 use saito_rust::slip_proto as proto;
+use secp256k1::PublicKey;
 use std::io::Cursor;
-
+use std::str::FromStr;
 use prost::Message;
 
 pub mod greeter {
@@ -18,13 +18,14 @@ pub mod greeter {
 //}
 
 fn slip_bespoke_serialize(slip: Slip) {
-
+    let serialized_slip: [u8; 42] = slip.serialize();
+    let deserialized_slip: Slip = Slip::deserialize(serialized_slip);
 }
 
 fn bench_slip_bespoke_serialize(c: &mut Criterion) {
-    let keypair = Keypair::new();
+    let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
     let slip = Slip::new(
-        keypair.public_key().clone(),
+        public_key,
         SlipBroadcastType::Normal,
         10_000_000,
     );
@@ -34,14 +35,14 @@ fn bench_slip_bespoke_serialize(c: &mut Criterion) {
 
 fn slip_bincode_serialize(slip: Slip) {
     let xs: Vec<u8> = bincode::serialize(&slip).unwrap();
-    //let xd: Slip = bincode::deserialize(&xs).unwrap();
+    let xd: Slip = bincode::deserialize(&xs).unwrap();
     assert!(xs.len() > 0);
 }
 
 fn bench_slip_bincode_serialize(c: &mut Criterion) {
-    let keypair = Keypair::new();
+    let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
     let slip = Slip::new(
-        keypair.public_key().clone(),
+        public_key,
         SlipBroadcastType::Normal,
         10_000_000,
     );
@@ -53,13 +54,13 @@ fn bench_slip_bincode_serialize(c: &mut Criterion) {
 fn slip_cbor_serialize(slip: Slip) {
     let bytes = serde_cbor::to_vec(&slip).unwrap();
     assert!(bytes.len() > 0);
-    //let slp: Slip = serde_cbor::from_slice(&bytes).unwrap();
+    let slp: Slip = serde_cbor::from_slice(&bytes).unwrap();
 }
 
 fn bench_slip_cbor_serialize(c: &mut Criterion) {
-    let keypair = Keypair::new();
+    let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
     let slip = Slip::new(
-        keypair.public_key().clone(),
+        public_key,
         SlipBroadcastType::Normal,
         10_000_000,
     );
@@ -73,13 +74,13 @@ fn slip_proto_serialize(slip: Slip) {
     buf.reserve(proto.encoded_len());
     proto.encode(&mut buf).unwrap();
     assert!(buf.len() > 0);
-    //let decoded_slip = proto::Slip::decode(&mut Cursor::new(buf)).unwrap();
+    let decoded_proto_slip = proto::Slip::decode(&mut Cursor::new(buf)).unwrap();
 }
 
 fn bench_slip_proto_serialize(c: &mut Criterion) {
-    let keypair = Keypair::new();
+    let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
     let slip = Slip::new(
-        keypair.public_key().clone(),
+        public_key,
         SlipBroadcastType::Normal,
         10_000_000,
     );
@@ -91,6 +92,7 @@ criterion_group!(
     benches,
     bench_slip_bincode_serialize,
     bench_slip_cbor_serialize,
-    bench_slip_proto_serialize
+    bench_slip_proto_serialize,
+    bench_slip_bespoke_serialize
 );
 criterion_main!(benches);
