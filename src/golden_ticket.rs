@@ -10,17 +10,20 @@ use crate::{
 /// a winner for paysplit in saito consensus.
 #[derive(Debug, Clone, Copy)]
 pub struct GoldenTicket {
+    // the target `Block` hash to solve for
     target: [u8; 32],
-    random: [u8; 32],
+    // the random solution that matches the target hash to some arbitrary level of difficulty
+    solution: [u8; 32],
+    // `secp256k1::PublicKey` of the node that found the solution
     publickey: PublicKey,
 }
 
 impl GoldenTicket {
     /// Create new `GoldenTicket`
-    pub fn new(target: [u8; 32], random: [u8; 32], publickey: PublicKey) -> Self {
+    pub fn new(target: [u8; 32], solution: [u8; 32], publickey: PublicKey) -> Self {
         GoldenTicket {
             target,
-            random,
+            solution,
             publickey,
         }
     }
@@ -37,9 +40,10 @@ pub fn generate_golden_ticket_transaction(
     keypair: &Keypair,
 ) -> Transaction {
     let publickey = keypair.public_key();
+
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
-    // let gt_solution = GoldenTicket::new(previous_block.hash(), solution, publickey.clone());
+    let _gt_solution = GoldenTicket::new(previous_block.hash(), solution, publickey.clone());
 
     let winning_address = find_winner(&solution, previous_block);
 
@@ -83,4 +87,24 @@ fn find_winner(_solution: &[u8; 32], previous_block: &Block) -> PublicKey {
 /// Generate random data, used for generating solutions in lottery game
 pub fn generate_random_data() -> Vec<u8> {
     return (0..32).map(|_| rand::random::<u8>()).collect();
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::crypto::hash;
+    use crate::keypair::Keypair;
+
+    #[test]
+    fn golden_ticket_test() {
+        let keypair = Keypair::new();
+        let publickey = keypair.public_key();
+        let random_hash = hash(&generate_random_data());
+        let golden_ticket = GoldenTicket::new(random_hash, random_hash, *publickey);
+
+        assert_eq!(golden_ticket.publickey, publickey.clone());
+        assert_eq!(golden_ticket.target, random_hash);
+        assert_eq!(golden_ticket.solution, random_hash);
+    }
 }

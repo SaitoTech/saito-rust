@@ -78,20 +78,19 @@ impl Consensus {
             }
         });
 
-        // sleep for 5 secs to simulate lottery game, then send a golden ticket
         tokio::spawn(async move {
             loop {
                 while let Ok(message) = miner_rx.recv().await {
                     // simulate lottery game with creation of golden_ticket_transaction
                     match message {
                         SaitoMessage::NewBlock { payload } => {
-                            let gtx = generate_golden_ticket_transaction(
+                            let golden_tx = generate_golden_ticket_transaction(
                                 hash(&generate_random_data()),
                                 &payload,
                                 &keypair.read().unwrap(),
                             );
                             miner_tx
-                                .send(SaitoMessage::Transaction { payload: gtx })
+                                .send(SaitoMessage::Transaction { payload: golden_tx })
                                 .unwrap();
                         }
                         _ => {}
