@@ -39,8 +39,11 @@ impl Blockchain {
     }
 
     /// Append `Block` to the index of `Blockchain`
+    ///
+    /// * `block` - `Block` appended to index
     pub fn add_block(&mut self, block: Block) {
         let block_index: BlockIndex = (block.header().clone(), block.hash());
+        println!("{:?}", block_index.clone());
         self.index.blocks.push(block_index);
     }
 }
