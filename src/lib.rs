@@ -30,6 +30,7 @@ pub mod golden_ticket;
 pub mod keypair;
 pub mod mempool;
 pub mod slip;
+pub mod storage;
 pub mod time;
 pub mod transaction;
 pub mod types;

@@ -2,9 +2,11 @@ use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 
+use serde::{Deserialize, Serialize};
+
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
     /// The header of the block object
     header: BlockHeader,
@@ -15,7 +17,7 @@ pub struct Block {
 }
 
 /// This `Header` holds `Block`'s metadata
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BlockHeader {
     /// Block id
     id: u64,
@@ -37,7 +39,7 @@ pub struct BlockHeader {
 
 /// This `BlockBody` holds data to be serialized along with
 /// `Transaction`s
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BlockBody {
     /// List of transactions in the block
     transactions: Vec<Transaction>,
@@ -256,6 +258,18 @@ impl Block {
     /// Sets the `Block` coinbase
     pub fn set_coinbase(&mut self, coinbase: u64) {
         update_field(&mut self.hash, &mut self.header.coinbase, coinbase)
+    }
+}
+
+impl From<Vec<u8>> for Block {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for Block {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
     }
 }
 

@@ -1,8 +1,9 @@
 use crate::{slip::Slip, time::create_timestamp};
 use secp256k1::{PublicKey, Signature};
+use serde::{Deserialize, Serialize};
 
 /// A single record used in the history of transactions being routed around the network
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub struct Hop {
     /// An `secp256k1::PublicKey` of the router
     pub address: PublicKey,
@@ -22,13 +23,13 @@ impl Hop {
 
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Transaction {
     body: TransactionBody,
 }
 
 /// Core data to be serialized/deserialized of `Transaction`
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct TransactionBody {
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,
@@ -47,7 +48,7 @@ pub struct TransactionBody {
 }
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum TransactionBroadcastType {
     Normal,
 }
