@@ -5,7 +5,7 @@ use std::collections::HashMap;
 /// A hashmap storing the byte arrays of `Slip`s as keys
 /// with the `Block` ids as values. This is used to enforce when
 /// `Slip`s have been spent in the network
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct UTXOSet {
     utxo_hashmap: HashMap<Slip, i64>,
 }
@@ -31,7 +31,7 @@ impl UTXOSet {
     /// * `tx` - `Transaction` which the outputs are inserted into `HashMap`
     pub fn insert_new_transaction(&mut self, tx: &Transaction) {
         for output in tx.outputs().iter() {
-            self.utxo_hashmap.insert(output.clone(), -1);
+            self.utxo_hashmap.insert(*output, -1);
         }
     }
 
@@ -41,7 +41,7 @@ impl UTXOSet {
     /// * `block_id` - `Block` id used as value
     pub fn spend_transaction(&mut self, tx: &Transaction, block_id: u64) {
         for input in tx.inputs().iter() {
-            self.utxo_hashmap.insert(input.clone(), block_id as i64);
+            self.utxo_hashmap.insert(*input, block_id as i64);
         }
     }
 
@@ -50,7 +50,7 @@ impl UTXOSet {
     /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
     pub fn unspend_transaction(&mut self, tx: &Transaction) {
         for input in tx.inputs().iter() {
-            self.utxo_hashmap.insert(input.clone(), -1);
+            self.utxo_hashmap.insert(*input, -1);
         }
 
         for outer in tx.outputs().iter() {
@@ -63,14 +63,14 @@ impl UTXOSet {
     /// * `slip` - `Slip` as key
     /// * `block_id` - `Block` id as value
     pub fn spend_slip(&mut self, slip: &Slip, _bid: u64) {
-        self.utxo_hashmap.insert(slip.clone(), _bid as i64);
+        self.utxo_hashmap.insert(*slip, _bid as i64);
     }
 
     /// Insert a `Slip`s byte array with the `Block` id
     ///
     /// * `slip` - `&Slip` as key
     pub fn unspend_slip(&mut self, slip: &Slip) {
-        self.utxo_hashmap.insert(slip.clone(), -1);
+        self.utxo_hashmap.insert(*slip, -1);
     }
 
     /// Return the `Block` id based on `Slip`
