@@ -260,7 +260,7 @@ mod test {
         keypair::Keypair,
     };
     use crate::transaction::{TransactionBody, TransactionBroadcastType};
-    use crate::slip::{OutputSlip, SlipBroadcastType};
+    use crate::slip::{InputSlip, OutputSlip, SlipBroadcastType};
     use crate::crypto::{Signature, PublicKey};
     
     #[test]
@@ -299,9 +299,14 @@ mod test {
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
 
         let mut tx_body = TransactionBody::new(TransactionBroadcastType::Normal);
-        let from_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let mock_block_number: u64 = 1;
+        let mock_tx_number: u64 = 1;
+        let mock_input_slip = InputSlip::new(mock_block_number, mock_tx_number, 0);
+        
         let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        tx_body.add_input(from_slip);
+        
+        
+        tx_body.add_input(mock_input_slip);
         tx_body.add_output(to_slip);
         let signed_tx = SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), tx_body);
         block.set_transactions(&mut vec![signed_tx.clone()]);
