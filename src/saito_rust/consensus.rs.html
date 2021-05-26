@@ -218,7 +218,7 @@
 
         <span class="kw">loop</span> {
             <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">saito_message_rx</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">process</span>(<span class="ident">message</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>()) {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">process</span>(<span class="ident">message</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_index</span>()) {
                     <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
                     <span class="ident">block_tx</span>
                         .<span class="ident">send</span>(<span class="ident">SaitoMessage</span>::<span class="ident">NewBlock</span> { <span class="ident">payload</span>: <span class="ident">block</span> })

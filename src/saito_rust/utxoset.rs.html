@@ -206,7 +206,7 @@
 <span class="doccomment">/// A hashmap storing the byte arrays of `Slip`s as keys</span>
 <span class="doccomment">/// with the `Block` ids as values. This is used to enforce when</span>
 <span class="doccomment">/// `Slip`s have been spent in the network</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UTXOSet</span> {
     <span class="ident">utxo_hashmap</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Slip</span>, <span class="ident">i64</span><span class="op">&gt;</span>,
 }
@@ -232,7 +232,7 @@
     <span class="doccomment">/// * `tx` - `Transaction` which the outputs are inserted into `HashMap`</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_new_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">tx</span>: <span class="kw-2">&amp;</span><span class="ident">Transaction</span>) {
         <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">outputs</span>().<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="ident">output</span>.<span class="ident">clone</span>(), <span class="op">-</span><span class="number">1</span>);
+            <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">output</span>, <span class="op">-</span><span class="number">1</span>);
         }
     }
 
@@ -242,7 +242,7 @@
     <span class="doccomment">/// * `block_id` - `Block` id used as value</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">spend_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">tx</span>: <span class="kw-2">&amp;</span><span class="ident">Transaction</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>) {
         <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">inputs</span>().<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="ident">input</span>.<span class="ident">clone</span>(), <span class="ident">block_id</span> <span class="kw">as</span> <span class="ident">i64</span>);
+            <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">input</span>, <span class="ident">block_id</span> <span class="kw">as</span> <span class="ident">i64</span>);
         }
     }
 
@@ -251,7 +251,7 @@
     <span class="doccomment">/// * `tx` - `Transaction` where inputs are inserted, and outputs are removed</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unspend_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">tx</span>: <span class="kw-2">&amp;</span><span class="ident">Transaction</span>) {
         <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">inputs</span>().<span class="ident">iter</span>() {
-            <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="ident">input</span>.<span class="ident">clone</span>(), <span class="op">-</span><span class="number">1</span>);
+            <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">input</span>, <span class="op">-</span><span class="number">1</span>);
         }
 
         <span class="kw">for</span> <span class="ident">outer</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">outputs</span>().<span class="ident">iter</span>() {
@@ -264,14 +264,14 @@
     <span class="doccomment">/// * `slip` - `Slip` as key</span>
     <span class="doccomment">/// * `block_id` - `Block` id as value</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">spend_slip</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="kw-2">&amp;</span><span class="ident">Slip</span>, <span class="ident">_bid</span>: <span class="ident">u64</span>) {
-        <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="ident">slip</span>.<span class="ident">clone</span>(), <span class="ident">_bid</span> <span class="kw">as</span> <span class="ident">i64</span>);
+        <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">slip</span>, <span class="ident">_bid</span> <span class="kw">as</span> <span class="ident">i64</span>);
     }
 
     <span class="doccomment">/// Insert a `Slip`s byte array with the `Block` id</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// * `slip` - `&amp;Slip` as key</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unspend_slip</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="kw-2">&amp;</span><span class="ident">Slip</span>) {
-        <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="ident">slip</span>.<span class="ident">clone</span>(), <span class="op">-</span><span class="number">1</span>);
+        <span class="self">self</span>.<span class="ident">utxo_hashmap</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">slip</span>, <span class="op">-</span><span class="number">1</span>);
     }
 
     <span class="doccomment">/// Return the `Block` id based on `Slip`</span>

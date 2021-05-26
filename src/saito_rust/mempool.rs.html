@@ -189,7 +189,6 @@
 <span id="186">186</span>
 <span id="187">187</span>
 <span id="188">188</span>
-<span id="189">189</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block</span>::<span class="ident">Block</span>,
@@ -294,7 +293,6 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// * `previous_block` - `Option` of the previous block on the longest chain</span>
     <span class="kw">fn</span> <span class="ident">bundle_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">previous_block_index</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">BlockIndex</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
-        <span class="comment">//while let Ok(keypair) = self._keypair.read() {</span>
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">_keypair</span>.<span class="ident">read</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">public_key</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span>: <span class="ident">Block</span>;
