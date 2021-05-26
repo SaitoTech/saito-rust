@@ -4,7 +4,7 @@ use crate::{
     burnfee::BurnFee,
     keypair::Keypair,
     time::{create_timestamp, format_timestamp},
-    transaction::{TransactionBody, SignedTransaction},
+    transaction::SignedTransaction,
     types::SaitoMessage,
 };
 use std::sync::{Arc, RwLock};

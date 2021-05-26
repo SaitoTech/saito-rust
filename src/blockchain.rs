@@ -1,6 +1,6 @@
 use crate::block::{Block, BlockHeader};
 use crate::utxoset::UTXOSet;
-use crate::transaction::{Transaction, SignedTransaction};
+use crate::transaction::Transaction;
 use crate::crypto::SECP256K1Hash;
 
 /// A tuple of `Block` metadata
@@ -68,8 +68,8 @@ mod tests {
     use crate::block::Block;
     use crate::keypair::Keypair;
     use crate::slip::{OutputSlip, SlipBroadcastType};
-    use crate::transaction::{TransactionBody, TransactionBroadcastType};
-    use secp256k1::{PublicKey, Signature};
+    use crate::transaction::{SignedTransaction, TransactionBody, TransactionBroadcastType};
+    use secp256k1::Signature;
 
     #[test]
     fn blockchain_test() {
@@ -105,12 +105,12 @@ mod tests {
         let mut blockchain = Blockchain::new();
         let mut block = Block::new(keypair.public_key().clone(), [0; 32]);
         let mut transaction_body = TransactionBody::new(TransactionBroadcastType::Normal);
-        let slip_body = OutputSlip::new(
+        let output_slip = OutputSlip::new(
             *keypair.public_key(),
             SlipBroadcastType::Normal,
             2_0000_0000,
         );
-        transaction_body.add_output(slip_body);
+        transaction_body.add_output(output_slip);
         let transaction = SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), transaction_body);
         block.add_transaction(transaction);
 

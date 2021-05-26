@@ -1,4 +1,4 @@
-use crate::{block::Block, transaction::{TransactionBody, SignedTransaction}};
+use crate::{block::Block, transaction::SignedTransaction};
 
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {

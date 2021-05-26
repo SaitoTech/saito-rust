@@ -1,6 +1,5 @@
 use crate::{slip::OutputSlip, time::create_timestamp};
 use secp256k1::{PublicKey, Signature};
-use crate::crypto::SECP256K1Hash;
 
 /// A single record used in the history of transactions being routed around the network
 #[derive(Debug, PartialEq, Clone, Copy)]

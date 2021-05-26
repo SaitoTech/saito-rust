@@ -1,6 +1,6 @@
 use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
-use crate::transaction::{SignedTransaction, TransactionBody};
+use crate::transaction::SignedTransaction;
 use crate::crypto::SECP256K1Hash;
 
 /// The `Block` holds all transactions inside the `BlockBody` and metadata
@@ -258,10 +258,11 @@ mod test {
     use super::*;
     use crate::{
         keypair::Keypair,
-        slip::{OutputSlip, SlipBroadcastType},
-        transaction::{SignedTransaction, TransactionBody, TransactionBroadcastType},
     };
-
+    use crate::transaction::{TransactionBody, TransactionBroadcastType};
+    use crate::slip::{OutputSlip, SlipBroadcastType};
+    use crate::crypto::{Signature, PublicKey};
+    
     #[test]
     fn block_test() {
         let keypair = Keypair::new();
@@ -297,17 +298,17 @@ mod test {
         let keypair = Keypair::new();
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
 
-        // TODO: Fix me
-        // let mut tx = TransactionBody::new(TransactionBroadcastType::Normal);
-        // let from_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        // let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        // tx.add_input(from_slip);
-        // tx.add_output(to_slip);
-        // block.set_transactions(&mut vec![tx.clone()]);
-        // 
-        // assert_eq!(block.transactions().len(), 1);
+        let mut tx_body = TransactionBody::new(TransactionBroadcastType::Normal);
+        let from_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        tx_body.add_input(from_slip);
+        tx_body.add_output(to_slip);
+        let signed_tx = SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), tx_body);
+        block.set_transactions(&mut vec![signed_tx.clone()]);
+        
+        assert_eq!(block.transactions().len(), 1);
 
-        // assert_eq!(block.transactions()[0].outputs()[0].slip_id(), 0);
+        // assert_eq!(block.transactions()[0].body.outputs()[0].slip_id(), 0);
         // assert_eq!(block.transactions()[0].outputs()[0].tx_id(), 0);
         // assert_eq!(block.transactions()[0].outputs()[0].block_id(), 0);
         // 
@@ -318,12 +319,12 @@ mod test {
 
     #[test]
     fn block_add_transaction_test() {
-        // TODO: Fix me
-        // let keypair = Keypair::new();
-        // let mut block = Block::new(*keypair.public_key(), [0; 32]);
-        // let tx = TransactionBody::new(TransactionBroadcastType::Normal);
-        // assert_eq!(*block.transactions(), vec![]);
-        // block.add_transaction(tx.clone());
-        // assert_eq!(*block.transactions(), vec![tx.clone()]);
+        let keypair = Keypair::new();
+        let mut block = Block::new(*keypair.public_key(), [0; 32]);
+        let tx_body = TransactionBody::new(TransactionBroadcastType::Normal);
+        assert_eq!(*block.transactions(), vec![]);
+        let signed_tx = SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), tx_body);
+        block.add_transaction(signed_tx.clone());
+        assert_eq!(*block.transactions(), vec![signed_tx.clone()]);
     }
 }

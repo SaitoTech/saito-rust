@@ -1,12 +1,9 @@
 use secp256k1::PublicKey;
 use std::hash::Hash;
-use crate::crypto::SECP256K1Hash;
 
 /// A record of owernship of funds on the network
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct InputSlip {
-    // tx_id: SECP256K1Hash,
-    // slip_id: u64
     block_id: u64,
     tx_id: u64,
     slip_id: u64,
@@ -20,12 +17,6 @@ pub struct OutputSlip {
     broadcast_type: SlipBroadcastType,
     /// Amount of Saito
     amount: u64,
-}
-/// A full slip can be sent to a client so that it can be used to create inputs or to compute
-/// a balance or transaction history
-pub struct FullSlip {
-    hash_id: SECP256K1Hash,
-    output: OutputSlip
 }
 impl InputSlip {
     pub fn new(block_id: u64, tx_id: u64, slip_id: u64) -> InputSlip {
