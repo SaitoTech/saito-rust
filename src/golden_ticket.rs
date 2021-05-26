@@ -1,9 +1,9 @@
 use crate::{
     block::Block,
-    crypto::PublicKey,
+    crypto::{Signature, PublicKey},
     keypair::Keypair,
-    slip::{Slip, SlipBroadcastType},
-    transaction::{Transaction, TransactionBroadcastType},
+    slip::{OutputSlip, SlipBroadcastType},
+    transaction::{SignedTransaction, TransactionBody, TransactionBroadcastType},
 };
 
 /// The golden ticket is a data structure containing instructions for picking
@@ -29,7 +29,7 @@ impl GoldenTicket {
     }
 }
 
-/// Create a new `GoldenTicket` `Transaction`
+/// Create a new `GoldenTicket` `TransactionBody`
 ///
 /// * `solution` - `Hash` of solution we created in golden ticket game
 /// * `previous_block` - previous `Block` reference
@@ -38,7 +38,7 @@ pub fn generate_golden_ticket_transaction(
     solution: [u8; 32],
     previous_block: &Block,
     keypair: &Keypair,
-) -> Transaction {
+) -> SignedTransaction {
     let publickey = keypair.public_key();
 
     // TODO -- create our Golden Ticket
@@ -55,23 +55,24 @@ pub fn generate_golden_ticket_transaction(
     let miner_share = (total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
 
-    let mut golden_tx = Transaction::new(TransactionBroadcastType::Normal);
+    let mut golden_tx = TransactionBody::new(TransactionBroadcastType::Normal);
 
-    let miner_slip = Slip::new(*publickey, SlipBroadcastType::Normal, miner_share);
-    let node_slip = Slip::new(winning_address, SlipBroadcastType::Normal, node_share);
+    let miner_slip = OutputSlip::new(*publickey, SlipBroadcastType::Normal, miner_share);
+    let node_slip = OutputSlip::new(winning_address, SlipBroadcastType::Normal, node_share);
 
     golden_tx.add_output(miner_slip);
     golden_tx.add_output(node_slip);
 
-    // toodo -- serialize our golden_ticket solution into our msg field
+    let signed_golden_tx = SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), golden_tx);
+    // TODO -- serialize our golden_ticket solution into our msg field
     // this is used to change the difficulty and paysplit in the upcoming block
 
     // golden_tx.set_message()
 
-    // todo, sign the transaction and create signature
+    // TODO -- sign the transaction and create signature
     // complete once we've added serialization
 
-    golden_tx
+    signed_golden_tx
 }
 
 /// Find the winner of the golden ticket game

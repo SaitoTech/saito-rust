@@ -2,7 +2,7 @@
 
 A high-performance implementation of Saito in Rust.
 
-This project will serve as the reference implementation for other code-bases. It will also be a flexible implementation which can be easily extended to support various testnet implementations which we envision For example, we may use different epoch times or different sources of randomness for the Golden Ticket "Lottery Game" instead of sha256 difficult hashes(e.g. PoS or even 3rd party sources like BTC block hashes).
+This project will serve as the reference implementation for other code-bases. It will also be a flexible implementation which can be easily extended to support various testnet implementations which we envision. For example, we may use different epoch times or different sources of randomness for the Golden Ticket "Lottery Game" instead of sha256 difficult hashes(e.g. PoS or even 3rd party sources of randomness like BTC block hashes).
 
 ## Contributing
 
@@ -12,7 +12,7 @@ PRs should be made against the main branch in [the saito-rust project](https://g
 
 PRs must pass rust fmt check and should have full test coverage.
 
-# Roadmap
+## Roadmap
 
 A long-view backlog [can be seen on Trello](https://trello.com/b/gWPiQFZ1/saito-rust-project-management) for those who may be interested in such things. We use this for coordinating the team at a high level, to keep us focused on meaningful goals(user stories), and to try to produce an accurate roadmap. If you're looking for something to code, the sprint planning board will be better.
 

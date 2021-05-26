@@ -4,7 +4,7 @@ use crate::{
     burnfee::BurnFee,
     keypair::Keypair,
     time::{create_timestamp, format_timestamp},
-    transaction::Transaction,
+    transaction::{TransactionBody, SignedTransaction},
     types::SaitoMessage,
 };
 use std::sync::{Arc, RwLock};
@@ -12,8 +12,8 @@ use std::sync::{Arc, RwLock};
 pub const GENESIS_PERIOD: u64 = 21500;
 
 /// The `Mempool` is the structure that collects blocks and transactions
-/// and is control of discerning whether the node is allowed to create a block.
-/// It bundles the block, the sends it to `Blockchain` to be added to the longest chain.
+/// and is in control of discerning whether the node is allowed to create a block.
+/// It bundles the block and sends it to `Blockchain` to be added to the longest chain.
 /// New `Block`s coming in over the network will hit the `Mempool` before being added to
 /// the `Blockchain`
 pub struct Mempool {
@@ -22,10 +22,10 @@ pub struct Mempool {
     /// A list of blocks to be added to the longest chain
     _blocks: Vec<Block>,
     /// A list of `Transaction`s to be bundled into `Block`s
-    transactions: Vec<Transaction>,
+    transactions: Vec<SignedTransaction>,
     ///
     _burnfee: BurnFee,
-    /// The current work available in fees found in the list of `Transaction`s
+    /// The current work available in fees found in the list of `TransactionBody`s
     work_available: u64,
 }
 
@@ -51,7 +51,7 @@ impl Mempool {
         previous_block_index: Option<&BlockIndex>,
     ) -> Option<Block> {
         match message {
-            SaitoMessage::Transaction { payload } => {
+            SaitoMessage::SignedTransaction { payload } => {
                 self.transactions.push(payload);
                 self.try_bundle(previous_block_index)
             }
@@ -110,6 +110,9 @@ impl Mempool {
                 block = Block::new(publickey.clone(), previous_block_hash.clone());
 
                 // TODO -- include reclaimed fees here
+                
+                // TODO -- calculate difficulty and paysplit changes
+                // https://github.com/orgs/SaitoTech/projects/5#card-61347666
                 let treasury = previous_block_header.treasury();
                 let coinbase = (treasury as f64 / GENESIS_PERIOD as f64).round() as u64;
 
@@ -134,8 +137,6 @@ impl Mempool {
         block.set_transactions(&mut self.transactions);
 
         return block;
-        // TODO -- calculate difficulty and paysplit changes
-        // https://github.com/orgs/SaitoTech/projects/5#card-61347666
     }
 }
 

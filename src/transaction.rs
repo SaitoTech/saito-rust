@@ -1,5 +1,6 @@
-use crate::{slip::Slip, time::create_timestamp};
+use crate::{slip::OutputSlip, time::create_timestamp};
 use secp256k1::{PublicKey, Signature};
+use crate::crypto::SECP256K1Hash;
 
 /// A single record used in the history of transactions being routed around the network
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -24,20 +25,25 @@ impl Hop {
 /// contains additional information as an optinal message field to transfer data around the network
 #[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
-    body: TransactionBody,
+    id: u64,
+    pub signed_tx: SignedTransaction,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct SignedTransaction {
+    /// `secp256k1::Signature` verifying authenticity of `Transaction` data
+    signature: Signature,
+    pub body: TransactionBody,
+}
 /// Core data to be serialized/deserialized of `Transaction`
 #[derive(Debug, PartialEq, Clone)]
 pub struct TransactionBody {
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,
-    /// A list of `Slip` inputs
-    inputs: Vec<Slip>,
-    /// A list of `Slip` outputs
-    outputs: Vec<Slip>,
-    /// `secp256k1::Signature` verifying authenticity of `Transaction` data
-    signature: Signature,
+    /// A list of `OutputSlip` inputs
+    inputs: Vec<OutputSlip>,
+    /// A list of `OutputSlip` outputs
+    outputs: Vec<OutputSlip>,
     /// A enum brodcast type determining how to process `Transaction` in consensus
     broadcast_type: TransactionBroadcastType,
     /// A list of `Hop` stipulating the history of `Transaction` routing
@@ -51,108 +57,124 @@ pub struct TransactionBody {
 pub enum TransactionBroadcastType {
     Normal,
 }
-
-impl Transaction {
-    /// Creates new `Transaction`
+impl TransactionBody {
+    /// Creates new `TransactionBody`
     ///
     /// * `broadcast_type` - `TransactionBroadcastType` of the new `Transaction`
-    pub fn new(broadcast_type: TransactionBroadcastType) -> Transaction {
-        return Transaction {
-            body: TransactionBody {
-                timestamp: create_timestamp(),
-                inputs: vec![],
-                outputs: vec![],
-                signature: Signature::from_compact(&[0; 64]).unwrap(),
-                broadcast_type,
-                path: vec![],
-                message: vec![],
-            },
-        };
+    pub fn new(broadcast_type: TransactionBroadcastType) -> TransactionBody {
+        TransactionBody {
+            timestamp: create_timestamp(),
+            inputs: vec![],
+            outputs: vec![],
+            broadcast_type,
+            path: vec![],
+            message: vec![],
+        }
     }
-
+    
     /// Returns a timestamp when `Transaction` was created
     pub fn timestamp(&self) -> u64 {
-        self.body.timestamp
+        self.timestamp
     }
 
-    /// Returns list of `Slip` outputs
-    pub fn outputs(&self) -> &Vec<Slip> {
-        &self.body.outputs
+    /// Returns list of `OutputSlip` outputs
+    pub fn outputs(&self) -> &Vec<OutputSlip> {
+        &self.outputs
     }
 
-    /// Returns list of mutable `Slip` outputs
-    pub fn outputs_mut(&mut self) -> &mut Vec<Slip> {
-        &mut self.body.outputs
+    /// Returns list of mutable `OutputSlip` outputs
+    pub fn outputs_mut(&mut self) -> &mut Vec<OutputSlip> {
+        &mut self.outputs
     }
 
-    /// Returns list of `Slip` inputs
-    pub fn inputs(&self) -> &Vec<Slip> {
-        &self.body.inputs
+    /// Returns list of `OutputSlip` inputs
+    pub fn inputs(&self) -> &Vec<OutputSlip> {
+        &self.inputs
     }
 
-    /// Returns list of `Slip` inputs
-    pub fn inputs_mut(&mut self) -> &mut Vec<Slip> {
-        &mut self.body.inputs
-    }
-
-    /// Returns `secp256k1::Signature` verifying the validity of data on a transaction
-    pub fn signature(&self) -> &Signature {
-        &self.body.signature
+    /// Returns list of `OutputSlip` inputs
+    pub fn inputs_mut(&mut self) -> &mut Vec<OutputSlip> {
+        &mut self.inputs
     }
 
     /// Returns `TransactionBroadcastType` of the `Transaction`
     pub fn broadcast_type(&self) -> &TransactionBroadcastType {
-        &self.body.broadcast_type
+        &self.broadcast_type
     }
 
     /// Returns the list of `Hop`s serving as a routing history of the `Transaction`
     pub fn path(&self) -> &Vec<Hop> {
-        &self.body.path
+        &self.path
     }
 
     /// Returns the message of the `Transaction`
     pub fn message(&self) -> &Vec<u8> {
-        &self.body.message
+        &self.message
     }
 
-    /// Set the list of `Slip` outputs
-    pub fn set_outputs(&mut self, slips: Vec<Slip>) {
-        self.body.outputs = slips;
+    /// Set the list of `OutputSlip` outputs
+    pub fn set_outputs(&mut self, slips: Vec<OutputSlip>) {
+        self.outputs = slips;
     }
 
-    /// Add a new `Slip` to the list of `Slip` outputs
-    pub fn add_output(&mut self, slip: Slip) {
-        self.body.outputs.push(slip);
+    /// Add a new `OutputSlip` to the list of `OutputSlip` outputs
+    pub fn add_output(&mut self, slip: OutputSlip) {
+        self.outputs.push(slip);
     }
 
-    /// Set the list of `Slip` inputs
-    pub fn set_inputs(&mut self, slips: Vec<Slip>) {
-        self.body.inputs = slips;
+    /// Set the list of `OutputSlip` inputs
+    pub fn set_inputs(&mut self, slips: Vec<OutputSlip>) {
+        self.inputs = slips;
     }
 
-    /// Add a new `Slip` to the list of `Slip` inputs
-    pub fn add_input(&mut self, slip: Slip) {
-        self.body.inputs.push(slip);
+    /// Add a new `OutputSlip` to the list of `OutputSlip` inputs
+    pub fn add_input(&mut self, slip: OutputSlip) {
+        self.inputs.push(slip);
     }
 
-    /// Set the `secp256k1::Signature`
-    pub fn set_signature(&mut self, sig: Signature) {
-        self.body.signature = sig;
-    }
 
     /// Set the list of `Hop`s
     pub fn set_path(&mut self, path: Vec<Hop>) {
-        self.body.path = path;
+        self.path = path;
     }
 
     /// Add a new `Hop` to the list of `Hop`s
     pub fn add_hop_to_path(&mut self, path: Hop) {
-        self.body.path.push(path);
+        self.path.push(path);
     }
 
     /// Set the message
     pub fn set_message(&mut self, msg: Vec<u8>) {
-        self.body.message = msg;
+        self.message = msg;
+    }
+}
+
+impl SignedTransaction {
+    pub fn new(signature: Signature, transaction_body: TransactionBody) -> SignedTransaction {
+        SignedTransaction {
+            signature: signature,
+            body: transaction_body
+        }
+    }
+    /// Set the `secp256k1::Signature`
+    pub fn set_signature(&mut self, sig: Signature) {
+        self.signature = sig;
+    }
+
+}
+impl Transaction {
+    /// Creates new `Transaction`
+    ///
+    /// TODO
+    pub fn new(tx_id: u64, signed_tx: SignedTransaction) -> Transaction {
+        Transaction {
+            id: tx_id,
+            signed_tx: signed_tx,
+        }
+    }
+    /// Returns tx id, the ordinal of the tx in the serialized block
+    pub fn id(&self) -> u64 {
+        self.id
     }
 }
 
@@ -161,23 +183,23 @@ mod tests {
     use super::*;
     use crate::{
         keypair::Keypair,
-        slip::{Slip, SlipBroadcastType},
+        slip::{OutputSlip, SlipBroadcastType},
     };
 
     #[test]
     fn transaction_test() {
-        let mut tx = Transaction::new(TransactionBroadcastType::Normal);
+        let mut tx = TransactionBody::new(TransactionBroadcastType::Normal);
 
         assert_eq!(tx.outputs(), &vec![]);
         assert_eq!(tx.inputs(), &vec![]);
-        assert_eq!(tx.signature(), &Signature::from_compact(&[0; 64]).unwrap());
+        //assert_eq!(tx.signature(), &Signature::from_compact(&[0; 64]).unwrap());
         assert_eq!(tx.broadcast_type(), &TransactionBroadcastType::Normal);
         assert_eq!(tx.path(), &vec![]);
         assert_eq!(tx.message(), &vec![]);
 
         let keypair = Keypair::new();
-        let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let from_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
 
         let hop_message_bytes = Keypair::make_message_from_string("message_string");
         let signature = keypair.sign_message(&hop_message_bytes);
@@ -191,8 +213,8 @@ mod tests {
         assert_eq!(tx.inputs(), &vec![from_slip]);
         assert_eq!(tx.path(), &vec![hop]);
 
-        tx.set_signature(signature.clone());
-        assert_eq!(tx.signature(), &signature);
+        // tx.set_signature(signature.clone());
+        // assert_eq!(tx.signature(), &signature);
 
         let message_bytes: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
         tx.set_message(message_bytes.clone());

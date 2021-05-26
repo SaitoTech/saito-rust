@@ -90,7 +90,7 @@ impl Consensus {
                                 &keypair.read().unwrap(),
                             );
                             miner_tx
-                                .send(SaitoMessage::Transaction { payload: golden_tx })
+                                .send(SaitoMessage::SignedTransaction { payload: golden_tx })
                                 .unwrap();
                         }
                         _ => {}

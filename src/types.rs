@@ -1,8 +1,8 @@
-use crate::{block::Block, transaction::Transaction};
+use crate::{block::Block, transaction::{TransactionBody, SignedTransaction}};
 
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {
-    Transaction { payload: Transaction },
+    SignedTransaction { payload: SignedTransaction },
     NewBlock { payload: Block },
     TryBundle,
 }
