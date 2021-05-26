@@ -8,6 +8,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
+chrono = "0.4"
 secp256k1 = { version = "0.20.2", features = ["global-context"] }
 sha2 = "0.9.5"
 base58 = "0.1.0"

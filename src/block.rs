@@ -60,6 +60,31 @@ impl BlockHeader {
             coinbase: 0,
         }
     }
+
+    /// Returns the `Block` id
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+
+    /// Returns the `Block` timestamp
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
+
+    /// Returns the `Block` difficulty
+    pub fn difficulty(&self) -> f32 {
+        self.difficulty
+    }
+
+    /// Returns the `Block` treasury
+    pub fn treasury(&self) -> u64 {
+        self.treasury
+    }
+
+    /// Returns the `Block` coinbase
+    pub fn coinbase(&self) -> u64 {
+        self.coinbase
+    }
 }
 
 impl BlockBody {
