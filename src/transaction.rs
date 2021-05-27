@@ -1,4 +1,4 @@
-use crate::{slip::OutputSlip, slip::InputSlip, time::create_timestamp};
+use crate::{slip::SaitoSlip, slip::SlipReference, time::create_timestamp};
 use secp256k1::{PublicKey, Signature};
 
 /// A single record used in the history of transactions being routed around the network
@@ -23,7 +23,7 @@ impl Hop {
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network
 #[derive(Debug, PartialEq, Clone)]
-pub struct Transaction {
+pub struct RuntimeTransaction {
     block_id: u64,
     id: u64,
     pub signed_tx: SignedTransaction,
@@ -40,10 +40,10 @@ pub struct SignedTransaction {
 pub struct TransactionBody {
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,
-    /// A list of `InputSlip`s
-    inputs: Vec<InputSlip>,
-    /// A list of `OutputSlip`s
-    outputs: Vec<OutputSlip>,
+    /// A list of `SlipReference`s
+    inputs: Vec<SlipReference>,
+    /// A list of `SaitoSlip`s
+    outputs: Vec<SaitoSlip>,
     /// A enum brodcast type determining how to process `Transaction` in consensus
     broadcast_type: TransactionBroadcastType,
     /// A list of `Hop` stipulating the history of `Transaction` routing
@@ -71,29 +71,29 @@ impl TransactionBody {
             message: vec![],
         }
     }
-    
+
     /// Returns a timestamp when `Transaction` was created
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
 
-    /// Returns list of `OutputSlip` outputs
-    pub fn outputs(&self) -> &Vec<OutputSlip> {
+    /// Returns list of `SaitoSlip` outputs
+    pub fn outputs(&self) -> &Vec<SaitoSlip> {
         &self.outputs
     }
 
-    /// Returns list of mutable `OutputSlip` outputs
-    pub fn outputs_mut(&mut self) -> &mut Vec<OutputSlip> {
+    /// Returns list of mutable `SaitoSlip` outputs
+    pub fn outputs_mut(&mut self) -> &mut Vec<SaitoSlip> {
         &mut self.outputs
     }
 
-    /// Returns list of `OutputSlip` inputs
-    pub fn inputs(&self) -> &Vec<InputSlip> {
+    /// Returns list of `SaitoSlip` inputs
+    pub fn inputs(&self) -> &Vec<SlipReference> {
         &self.inputs
     }
 
-    /// Returns list of `OutputSlip` inputs
-    pub fn inputs_mut(&mut self) -> &mut Vec<InputSlip> {
+    /// Returns list of `SaitoSlip` inputs
+    pub fn inputs_mut(&mut self) -> &mut Vec<SlipReference> {
         &mut self.inputs
     }
 
@@ -112,23 +112,23 @@ impl TransactionBody {
         &self.message
     }
 
-    /// Set the list of `OutputSlip` outputs
-    pub fn set_outputs(&mut self, slips: Vec<OutputSlip>) {
+    /// Set the list of `SaitoSlip` outputs
+    pub fn set_outputs(&mut self, slips: Vec<SaitoSlip>) {
         self.outputs = slips;
     }
 
-    /// Add a new `OutputSlip` to the list of `OutputSlip` outputs
-    pub fn add_output(&mut self, slip: OutputSlip) {
+    /// Add a new `SaitoSlip` to the list of `SaitoSlip` outputs
+    pub fn add_output(&mut self, slip: SaitoSlip) {
         self.outputs.push(slip);
     }
 
-    /// Set the list of `OutputSlip` inputs
-    pub fn set_inputs(&mut self, slips: Vec<InputSlip>) {
+    /// Set the list of `SaitoSlip` inputs
+    pub fn set_inputs(&mut self, slips: Vec<SlipReference>) {
         self.inputs = slips;
     }
 
-    /// Add a new `OutputSlip` to the list of `OutputSlip` inputs
-    pub fn add_input(&mut self, slip: InputSlip) {
+    /// Add a new `SaitoSlip` to the list of `SaitoSlip` inputs
+    pub fn add_input(&mut self, slip: SlipReference) {
         self.inputs.push(slip);
     }
 
@@ -152,21 +152,20 @@ impl SignedTransaction {
     pub fn new(signature: Signature, transaction_body: TransactionBody) -> SignedTransaction {
         SignedTransaction {
             signature: signature,
-            body: transaction_body
+            body: transaction_body,
         }
     }
     /// Set the `secp256k1::Signature`
     pub fn set_signature(&mut self, sig: Signature) {
         self.signature = sig;
     }
-
 }
-impl Transaction {
+impl RuntimeTransaction {
     /// Creates new `Transaction`
     ///
     /// TODO
-    pub fn new(tx_id: u64, signed_tx: SignedTransaction) -> Transaction {
-        Transaction {
+    pub fn new(tx_id: u64, signed_tx: SignedTransaction) -> RuntimeTransaction {
+        RuntimeTransaction {
             block_id: 0,
             id: tx_id,
             signed_tx: signed_tx,
@@ -183,7 +182,7 @@ mod tests {
     use super::*;
     use crate::{
         keypair::Keypair,
-        slip::{InputSlip, OutputSlip, SlipBroadcastType},
+        slip::{SaitoSlip, SlipBroadcastType, SlipReference},
     };
 
     #[test]
@@ -198,11 +197,11 @@ mod tests {
         assert_eq!(tx.message(), &vec![]);
 
         let keypair = Keypair::new();
-        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let to_slip = SaitoSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
         let mock_block_number: u64 = 1;
         let mock_tx_number: u64 = 1;
-        let from_slip = InputSlip::new(mock_block_number, mock_tx_number, 0);
-        
+        let from_slip = SlipReference::new(mock_block_number, mock_tx_number, 0);
+
         let hop_message_bytes = Keypair::make_message_from_string("message_string");
         let signature = keypair.sign_message(&hop_message_bytes);
         let hop = Hop::new(keypair.public_key().clone(), signature);

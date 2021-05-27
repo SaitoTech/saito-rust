@@ -110,7 +110,7 @@ impl Mempool {
                 block = Block::new(publickey.clone(), previous_block_hash.clone());
 
                 // TODO -- include reclaimed fees here
-                
+
                 // TODO -- calculate difficulty and paysplit changes
                 // https://github.com/orgs/SaitoTech/projects/5#card-61347666
                 let treasury = previous_block_header.treasury();

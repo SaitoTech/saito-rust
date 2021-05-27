@@ -1,7 +1,7 @@
+use crate::crypto::SECP256K1Hash;
 use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
 use crate::transaction::SignedTransaction;
-use crate::crypto::SECP256K1Hash;
 
 /// The `Block` holds all transactions inside the `BlockBody` and metadata
 /// in the `BlockHeader`, both of which are serialized. The hash is not serialized and is
@@ -171,7 +171,7 @@ impl Block {
 
     /// Generate the block hash
     ///
-    /// TODO -- This should be calculated from the serialized form of the block, not from the 
+    /// TODO -- This should be calculated from the serialized form of the block, not from the
     /// the deserialized runtime objects. The hash function needs to be cross-implementation
     /// compatible.
     pub fn hash(&self) -> [u8; 32] {
@@ -256,13 +256,11 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        keypair::Keypair,
-    };
+    use crate::crypto::Signature;
+    use crate::keypair::Keypair;
+    use crate::slip::{SaitoSlip, SlipBroadcastType, SlipReference};
     use crate::transaction::{TransactionBody, TransactionBroadcastType};
-    use crate::slip::{InputSlip, OutputSlip, SlipBroadcastType};
-    use crate::crypto::{Signature, PublicKey};
-    
+
     #[test]
     fn block_test() {
         let keypair = Keypair::new();
@@ -301,22 +299,21 @@ mod test {
         let mut tx_body = TransactionBody::new(TransactionBroadcastType::Normal);
         let mock_block_number: u64 = 1;
         let mock_tx_number: u64 = 1;
-        let mock_input_slip = InputSlip::new(mock_block_number, mock_tx_number, 0);
-        
-        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        
-        
+        let mock_input_slip = SlipReference::new(mock_block_number, mock_tx_number, 0);
+
+        let to_slip = SaitoSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+
         tx_body.add_input(mock_input_slip);
         tx_body.add_output(to_slip);
         let signed_tx = SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), tx_body);
         block.set_transactions(&mut vec![signed_tx.clone()]);
-        
+
         assert_eq!(block.transactions().len(), 1);
 
         // assert_eq!(block.transactions()[0].body.outputs()[0].slip_id(), 0);
         // assert_eq!(block.transactions()[0].outputs()[0].tx_id(), 0);
         // assert_eq!(block.transactions()[0].outputs()[0].block_id(), 0);
-        // 
+        //
         // assert_eq!(block.transactions()[0].inputs()[0].slip_id(), 1);
         // assert_eq!(block.transactions()[0].inputs()[0].tx_id(), 0);
         // assert_eq!(block.transactions()[0].inputs()[0].block_id(), 0);

@@ -1,8 +1,8 @@
 use crate::{
     block::Block,
-    crypto::{Signature, PublicKey},
+    crypto::{PublicKey, Signature},
     keypair::Keypair,
-    slip::{OutputSlip, SlipBroadcastType},
+    slip::{SaitoSlip, SlipBroadcastType},
     transaction::{SignedTransaction, TransactionBody, TransactionBroadcastType},
 };
 
@@ -57,13 +57,14 @@ pub fn generate_golden_ticket_transaction(
 
     let mut golden_tx = TransactionBody::new(TransactionBroadcastType::Normal);
 
-    let miner_slip = OutputSlip::new(*publickey, SlipBroadcastType::Normal, miner_share);
-    let node_slip = OutputSlip::new(winning_address, SlipBroadcastType::Normal, node_share);
+    let miner_slip = SaitoSlip::new(*publickey, SlipBroadcastType::Normal, miner_share);
+    let node_slip = SaitoSlip::new(winning_address, SlipBroadcastType::Normal, node_share);
 
     golden_tx.add_output(miner_slip);
     golden_tx.add_output(node_slip);
 
-    let signed_golden_tx = SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), golden_tx);
+    let signed_golden_tx =
+        SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), golden_tx);
     // TODO -- serialize our golden_ticket solution into our msg field
     // this is used to change the difficulty and paysplit in the upcoming block
 

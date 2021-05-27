@@ -1,7 +1,7 @@
 use crate::block::{Block, BlockHeader};
-use crate::utxoset::UTXOSet;
-use crate::transaction::Transaction;
 use crate::crypto::SECP256K1Hash;
+use crate::transaction::RuntimeTransaction;
+use crate::utxoset::UTXOSet;
 
 /// A tuple of `Block` metadata
 pub type BlockIndex = (BlockHeader, SECP256K1Hash);
@@ -51,14 +51,13 @@ impl Blockchain {
     /// * `block` - `Block` appended to index
     pub fn add_block(&mut self, block: Block) {
         for (index, signed_tx) in block.transactions().iter().enumerate() {
-            let tx = Transaction::new(index as u64, signed_tx.clone());
+            let tx = RuntimeTransaction::new(index as u64, signed_tx.clone());
             self.utxoset.insert_transaction(&tx, block.id());
         }
         let block_index: BlockIndex = (block.header().clone(), block.hash());
         println!("{:?}", block_index.clone());
         self.index.blocks.push(block_index);
     }
-
 }
 
 #[cfg(test)]
@@ -67,7 +66,7 @@ mod tests {
     use super::*;
     use crate::block::Block;
     use crate::keypair::Keypair;
-    use crate::slip::{OutputSlip, SlipBroadcastType};
+    use crate::slip::{SaitoSlip, SlipBroadcastType};
     use crate::transaction::{SignedTransaction, TransactionBody, TransactionBroadcastType};
     use secp256k1::Signature;
 
@@ -105,13 +104,14 @@ mod tests {
         let mut blockchain = Blockchain::new();
         let mut block = Block::new(keypair.public_key().clone(), [0; 32]);
         let mut transaction_body = TransactionBody::new(TransactionBroadcastType::Normal);
-        let output_slip = OutputSlip::new(
+        let output_slip = SaitoSlip::new(
             *keypair.public_key(),
             SlipBroadcastType::Normal,
             2_0000_0000,
         );
         transaction_body.add_output(output_slip);
-        let transaction = SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), transaction_body);
+        let transaction =
+            SignedTransaction::new(Signature::from_compact(&[0; 64]).unwrap(), transaction_body);
         block.add_transaction(transaction);
 
         blockchain.add_block(block.clone());
