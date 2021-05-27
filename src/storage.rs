@@ -26,12 +26,9 @@ impl Storage {
         filename.push_str(&block.hash_as_hex());
         filename.push_str(&".sai");
 
-        println!("{:?}", filename);
-
         let mut buffer = File::create(filename).await?;
 
         let byte_array: Vec<u8> = block.into();
-        println!("{:?}", byte_array.clone());
         buffer.write_all(&byte_array[..]).await?;
 
         Ok(())
@@ -56,18 +53,37 @@ mod test {
     use super::*;
     use crate::{block::Block, keypair::Keypair};
 
+    fn teardown() -> io::Result<()> {
+        let dir_path = String::from("./src/data/blocks/");
+        for entry in std::fs::read_dir(dir_path)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() {
+                std::fs::remove_file(path)?;
+            }
+        }
+        std::fs::File::create("./src/data/blocks/empty")?;
+
+        Ok(())
+    }
+
     #[tokio::test]
     async fn storage_write_block_to_disk() {
+        let dir_path = String::from("./src/data/blocks/");
         let keypair = Keypair::new();
         let block = Block::new(*keypair.public_key(), [0; 32]);
-        let storage = Storage::new(Some(String::from("./src/data/blocks/")));
+        let storage = Storage::new(Some(dir_path));
         let result = storage.write_block_to_disk(block).await;
-        assert_eq!(result.unwrap(), ())
+        assert_eq!(result.unwrap(), ());
+
+        // TODO -- add unwind_panic to teardown when assert failes
+        teardown().expect("Teardown failed");
     }
 
     #[tokio::test]
     async fn storage_read_block_to_disk() {
-        let storage = Storage::new(Some(String::from("./src/data/blocks/")));
+        let dir_path = String::from("./src/data/blocks/");
+        let storage = Storage::new(Some(dir_path));
         let keypair = Keypair::new();
         let block = Block::new(*keypair.public_key(), [0; 32]);
         let block_hash = block.hash();
@@ -78,5 +94,8 @@ mod test {
             }
             Err(_err) => {}
         }
+
+        // TODO -- add unwind_panic to teardown when assert failes
+        teardown().expect("Teardown failed");
     }
 }
