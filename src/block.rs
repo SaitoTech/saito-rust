@@ -76,6 +76,11 @@ impl BlockHeader {
         self.difficulty
     }
 
+    /// Returns the `Block` difficulty
+    pub fn previous_block_hash(&self) -> [u8; 32] {
+        self.previous_block_hash
+    }
+
     /// Returns the `Block` treasury
     pub fn treasury(&self) -> u64 {
         self.treasury
