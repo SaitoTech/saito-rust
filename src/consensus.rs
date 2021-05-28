@@ -83,10 +83,10 @@ impl Consensus {
                 while let Ok(message) = miner_rx.recv().await {
                     // simulate lottery game with creation of golden_ticket_transaction
                     match message {
-                        SaitoMessage::Block { blk } => {
+                        SaitoMessage::Block { payload } => {
                             let golden_tx = generate_golden_ticket_transaction(
                                 hash(&generate_random_data()),
-                                &blk,
+                                &payload,
                                 &keypair.read().unwrap(),
                             );
                             miner_tx
