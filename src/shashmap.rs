@@ -1,13 +1,12 @@
-use crate::slip::Slip;
+use crate::slip::{OutputSlip, SlipID};
 use crate::transaction::Transaction;
 use std::collections::HashMap;
 
-/// A hashmap storing the byte arrays of `Slip`s as keys
-/// with the `Block` ids as values. This is used to enforce when
-/// `Slip`s have been spent in the network
+/// A hashmap storing Slips TODO fix this documentation once we've settled on what
+/// data structures actually belong here.
 #[derive(Debug, Clone)]
 pub struct Shashmap {
-    utxo_hashmap: HashMap<Slip, i64>,
+    utxo_hashmap: HashMap<SlipID, OutputSlip>,
 }
 
 impl Shashmap {
@@ -29,10 +28,10 @@ impl Shashmap {
     /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
     pub fn unspend_transaction(&mut self, _tx: &Transaction) {}
 
-    /// Return the `Block` id based on `Slip`
+    /// Return the `Block` id based on `OutputSlip`
     ///
-    /// * `slip` - `&Slip` as key
-    pub fn slip_block_id(&self, slip: &Slip) -> Option<&i64> {
+    /// * `slip` - `&OutputSlip` as key
+    pub fn slip_block_id(&self, slip: &SlipID) -> Option<&OutputSlip> {
         self.utxo_hashmap.get(slip)
     }
 }

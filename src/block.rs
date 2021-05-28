@@ -194,28 +194,6 @@ impl Block {
 
     /// Sets the `Block`s list of `Transaction`s
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
-        let bid = self.header.id;
-
-        for (i, tx) in transactions.iter_mut().enumerate() {
-            // The slips are assigned the ids based on their slip index
-            // in reference to all slips in the block, the transaction index,
-            // and the block id
-            let mut current_sid = 0;
-
-            for slip in tx.body.outputs_mut().iter_mut() {
-                slip.set_block_id(0);
-                slip.set_tx_id(0);
-                slip.set_slip_id(current_sid);
-                current_sid += 1;
-            }
-
-            for slip in tx.body.inputs_mut().iter_mut() {
-                slip.set_block_id(bid);
-                slip.set_tx_id(i as u64);
-                slip.set_slip_id(current_sid);
-                current_sid += 1;
-            }
-        }
         self.body.transactions = transactions.to_vec();
     }
 
@@ -275,7 +253,7 @@ mod test {
     use super::*;
     use crate::{
         keypair::Keypair,
-        slip::{Slip, SlipBroadcastType},
+        slip::{OutputSlip, SlipBroadcastType, SlipID},
         transaction::{Transaction, TransactionType},
     };
     use secp256k1::Signature;
@@ -316,8 +294,8 @@ mod test {
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
 
         let mut tx = Transaction::new(TransactionType::Normal);
-        let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let from_slip = SlipID::new(10, 10, 10);
+        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
         tx.add_input(from_slip);
         tx.add_output(to_slip);
 
@@ -327,13 +305,19 @@ mod test {
 
         assert_eq!(block.transactions().len(), 1);
 
-        assert_eq!(block.transactions()[0].body.outputs()[0].slip_id(), 0);
-        assert_eq!(block.transactions()[0].body.outputs()[0].tx_id(), 0);
-        assert_eq!(block.transactions()[0].body.outputs()[0].block_id(), 0);
+        assert_eq!(
+            block.transactions()[0].body.outputs()[0].address(),
+            keypair.public_key()
+        );
+        assert_eq!(block.transactions()[0].body.outputs()[0].amount(), 0);
+        assert_eq!(
+            block.transactions()[0].body.outputs()[0].broadcast_type(),
+            SlipBroadcastType::Normal
+        );
 
-        assert_eq!(block.transactions()[0].body.inputs()[0].slip_id(), 1);
-        assert_eq!(block.transactions()[0].body.inputs()[0].tx_id(), 0);
-        assert_eq!(block.transactions()[0].body.inputs()[0].block_id(), 0);
+        assert_eq!(block.transactions()[0].body.inputs()[0].slip_id(), 10);
+        assert_eq!(block.transactions()[0].body.inputs()[0].tx_id(), 10);
+        assert_eq!(block.transactions()[0].body.inputs()[0].block_id(), 10);
     }
 
     #[test]

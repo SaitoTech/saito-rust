@@ -1,4 +1,7 @@
-use crate::{slip::Slip, time::create_timestamp};
+use crate::{
+    slip::{OutputSlip, SlipID},
+    time::create_timestamp,
+};
 use secp256k1::{PublicKey, Signature};
 
 /// A single record used in the history of transactions being routed around the network
@@ -54,10 +57,10 @@ pub struct Transaction {
 pub struct TransactionBody {
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,
-    /// A list of `Slip` inputs
-    inputs: Vec<Slip>,
-    /// A list of `Slip` outputs
-    outputs: Vec<Slip>,
+    /// A list of `SlipID` inputs
+    inputs: Vec<SlipID>,
+    /// A list of `OutputSlip` outputs
+    outputs: Vec<OutputSlip>,
     /// A enum brodcast type determining how to process `Transaction` in consensus
     broadcast_type: TransactionType,
     /// A byte array of miscellaneous information
@@ -110,33 +113,33 @@ impl TransactionBody {
         self.timestamp
     }
 
-    /// Returns list of `Slip` outputs
-    pub fn outputs(&self) -> &Vec<Slip> {
+    /// Returns list of `OutputSlip` outputs
+    pub fn outputs(&self) -> &Vec<OutputSlip> {
         &self.outputs
     }
 
-    /// Returns list of mutable `Slip` outputs
-    pub fn outputs_mut(&mut self) -> &mut Vec<Slip> {
+    /// Returns list of mutable `OutputSlip` outputs
+    pub fn outputs_mut(&mut self) -> &mut Vec<OutputSlip> {
         &mut self.outputs
     }
 
-    /// Add a new `Slip` to the list of `Slip` outputs
-    pub fn add_output(&mut self, slip: Slip) {
+    /// Add a new `OutputSlip` to the list of `Slip` outputs
+    pub fn add_output(&mut self, slip: OutputSlip) {
         self.outputs.push(slip);
     }
 
-    /// Returns list of `Slip` inputs
-    pub fn inputs(&self) -> &Vec<Slip> {
+    /// Returns list of `SlipID` inputs
+    pub fn inputs(&self) -> &Vec<SlipID> {
         &self.inputs
     }
 
-    /// Returns list of `Slip` inputs
-    pub fn inputs_mut(&mut self) -> &mut Vec<Slip> {
+    /// Returns list of `SlipID` inputs
+    pub fn inputs_mut(&mut self) -> &mut Vec<SlipID> {
         &mut self.inputs
     }
 
-    /// Add a new `Slip` to the list of `Slip` inputs
-    pub fn add_input(&mut self, slip: Slip) {
+    /// Add a new `SlipID` to the list of `SlipID` inputs
+    pub fn add_input(&mut self, slip: SlipID) {
         self.inputs.push(slip);
     }
 
@@ -156,7 +159,7 @@ mod tests {
     use super::*;
     use crate::{
         keypair::Keypair,
-        slip::{Slip, SlipBroadcastType},
+        slip::{OutputSlip, SlipBroadcastType, SlipID},
     };
 
     #[test]
@@ -171,8 +174,8 @@ mod tests {
         assert_eq!(tx.message(), &vec![]);
 
         let keypair = Keypair::new();
-        let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let from_slip = SlipID::new(10, 10, 10);
 
         // let hop_message_bytes = Keypair::make_message_from_string("message_string");
         // let signature = keypair.sign_message(&hop_message_bytes);

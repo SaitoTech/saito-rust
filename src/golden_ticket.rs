@@ -2,7 +2,7 @@ use crate::{
     block::Block,
     crypto::PublicKey,
     keypair::Keypair,
-    slip::{Slip, SlipBroadcastType},
+    slip::{OutputSlip, SlipBroadcastType},
     transaction::{Transaction, TransactionType},
 };
 use secp256k1::Signature;
@@ -58,8 +58,8 @@ pub fn generate_golden_ticket_transaction(
 
     let mut golden_tx_body = Transaction::new(TransactionType::Normal);
 
-    let miner_slip = Slip::new(*publickey, SlipBroadcastType::Normal, miner_share);
-    let node_slip = Slip::new(winning_address, SlipBroadcastType::Normal, node_share);
+    let miner_slip = OutputSlip::new(*publickey, SlipBroadcastType::Normal, miner_share);
+    let node_slip = OutputSlip::new(winning_address, SlipBroadcastType::Normal, node_share);
 
     golden_tx_body.add_output(miner_slip);
     golden_tx_body.add_output(node_slip);
