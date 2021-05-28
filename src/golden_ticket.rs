@@ -3,7 +3,7 @@ use crate::{
     crypto::PublicKey,
     keypair::Keypair,
     slip::{Slip, SlipBroadcastType},
-    transaction::{Transaction, TransactionBroadcastType},
+    transaction::{Transaction, TransactionType},
 };
 
 /// The golden ticket is a data structure containing instructions for picking
@@ -55,7 +55,7 @@ pub fn generate_golden_ticket_transaction(
     let miner_share = (total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
 
-    let mut golden_tx = Transaction::new(TransactionBroadcastType::Normal);
+    let mut golden_tx = Transaction::new(TransactionType::Normal);
 
     let miner_slip = Slip::new(*publickey, SlipBroadcastType::Normal, miner_share);
     let node_slip = Slip::new(winning_address, SlipBroadcastType::Normal, node_share);

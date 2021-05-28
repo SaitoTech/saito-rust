@@ -24,6 +24,9 @@ impl Hop {
 /// contains additional information as an optinal message field to transfer data around the network
 #[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
+    /// `secp256k1::Signature` verifying authenticity of `Transaction` data
+    signature: Signature,
+    /// All data which is serialized and signed
     body: TransactionBody,
 }
 
@@ -36,10 +39,8 @@ pub struct TransactionBody {
     inputs: Vec<Slip>,
     /// A list of `Slip` outputs
     outputs: Vec<Slip>,
-    /// `secp256k1::Signature` verifying authenticity of `Transaction` data
-    signature: Signature,
     /// A enum brodcast type determining how to process `Transaction` in consensus
-    broadcast_type: TransactionBroadcastType,
+    broadcast_type: TransactionType,
     /// A list of `Hop` stipulating the history of `Transaction` routing
     path: Vec<Hop>,
     /// A byte array of miscellaneous information
@@ -48,21 +49,21 @@ pub struct TransactionBody {
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
-pub enum TransactionBroadcastType {
+pub enum TransactionType {
     Normal,
 }
 
 impl Transaction {
     /// Creates new `Transaction`
     ///
-    /// * `broadcast_type` - `TransactionBroadcastType` of the new `Transaction`
-    pub fn new(broadcast_type: TransactionBroadcastType) -> Transaction {
+    /// * `broadcast_type` - `TransactionType` of the new `Transaction`
+    pub fn new(broadcast_type: TransactionType) -> Transaction {
         return Transaction {
+            signature: Signature::from_compact(&[0; 64]).unwrap(),
             body: TransactionBody {
                 timestamp: create_timestamp(),
                 inputs: vec![],
                 outputs: vec![],
-                signature: Signature::from_compact(&[0; 64]).unwrap(),
                 broadcast_type,
                 path: vec![],
                 message: vec![],
@@ -97,11 +98,11 @@ impl Transaction {
 
     /// Returns `secp256k1::Signature` verifying the validity of data on a transaction
     pub fn signature(&self) -> &Signature {
-        &self.body.signature
+        &self.signature
     }
 
-    /// Returns `TransactionBroadcastType` of the `Transaction`
-    pub fn broadcast_type(&self) -> &TransactionBroadcastType {
+    /// Returns `TransactionType` of the `Transaction`
+    pub fn broadcast_type(&self) -> &TransactionType {
         &self.body.broadcast_type
     }
 
@@ -137,7 +138,7 @@ impl Transaction {
 
     /// Set the `secp256k1::Signature`
     pub fn set_signature(&mut self, sig: Signature) {
-        self.body.signature = sig;
+        self.signature = sig;
     }
 
     /// Set the list of `Hop`s
@@ -166,12 +167,12 @@ mod tests {
 
     #[test]
     fn transaction_test() {
-        let mut tx = Transaction::new(TransactionBroadcastType::Normal);
+        let mut tx = Transaction::new(TransactionType::Normal);
 
         assert_eq!(tx.outputs(), &vec![]);
         assert_eq!(tx.inputs(), &vec![]);
         assert_eq!(tx.signature(), &Signature::from_compact(&[0; 64]).unwrap());
-        assert_eq!(tx.broadcast_type(), &TransactionBroadcastType::Normal);
+        assert_eq!(tx.broadcast_type(), &TransactionType::Normal);
         assert_eq!(tx.path(), &vec![]);
         assert_eq!(tx.message(), &vec![]);
 

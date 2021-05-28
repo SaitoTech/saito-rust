@@ -63,7 +63,7 @@ mod tests {
     use crate::block::Block;
     use crate::keypair::Keypair;
     use crate::slip::{Slip, SlipBroadcastType};
-    use crate::transaction::{Transaction, TransactionBroadcastType};
+    use crate::transaction::{Transaction, TransactionType};
 
     #[test]
     fn blockchain_test() {
@@ -98,7 +98,7 @@ mod tests {
         let keypair = Keypair::new();
         let mut blockchain = Blockchain::new();
         let mut block = Block::new(keypair.public_key().clone(), [0; 32]);
-        let mut transaction = Transaction::new(TransactionBroadcastType::Normal);
+        let mut transaction = Transaction::new(TransactionType::Normal);
         let slip = Slip::new(
             *keypair.public_key(),
             SlipBroadcastType::Normal,

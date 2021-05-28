@@ -88,7 +88,7 @@ mod test {
     use crate::{
         keypair::Keypair,
         slip::{Slip, SlipBroadcastType},
-        transaction::{Transaction, TransactionBroadcastType},
+        transaction::{Transaction, TransactionType},
     };
     use std::collections::HashMap;
 
@@ -110,7 +110,7 @@ mod test {
     #[test]
     fn shashmap_insert_new_transaction_test() {
         let mut shashmap = Shashmap::new();
-        let mut tx = Transaction::new(TransactionBroadcastType::Normal);
+        let mut tx = Transaction::new(TransactionType::Normal);
 
         let keypair = Keypair::new();
         let output_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
@@ -126,7 +126,7 @@ mod test {
     #[test]
     fn shashmap_spend_transaction_test() {
         let mut shashmap = Shashmap::new();
-        let mut tx = Transaction::new(TransactionBroadcastType::Normal);
+        let mut tx = Transaction::new(TransactionType::Normal);
 
         let keypair = Keypair::new();
         let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
@@ -142,7 +142,7 @@ mod test {
     #[test]
     fn shashmap_unspend_transaction_test() {
         let mut shashmap = Shashmap::new();
-        let mut tx = Transaction::new(TransactionBroadcastType::Normal);
+        let mut tx = Transaction::new(TransactionType::Normal);
 
         let keypair = Keypair::new();
         let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);

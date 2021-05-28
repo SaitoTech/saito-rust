@@ -276,7 +276,7 @@ mod test {
     use crate::{
         keypair::Keypair,
         slip::{Slip, SlipBroadcastType},
-        transaction::{Transaction, TransactionBroadcastType},
+        transaction::{Transaction, TransactionType},
     };
 
     #[test]
@@ -314,7 +314,7 @@ mod test {
         let keypair = Keypair::new();
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
 
-        let mut tx = Transaction::new(TransactionBroadcastType::Normal);
+        let mut tx = Transaction::new(TransactionType::Normal);
         let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
         let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
         tx.add_input(from_slip);
@@ -336,7 +336,7 @@ mod test {
     fn block_add_transaction_test() {
         let keypair = Keypair::new();
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
-        let tx = Transaction::new(TransactionBroadcastType::Normal);
+        let tx = Transaction::new(TransactionType::Normal);
         assert_eq!(*block.transactions(), vec![]);
         block.add_transaction(tx.clone());
         assert_eq!(*block.transactions(), vec![tx.clone()]);
