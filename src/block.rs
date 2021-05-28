@@ -203,16 +203,16 @@ impl Block {
             let mut current_sid = 0;
 
             for slip in tx.outputs_mut().iter_mut() {
-                slip.set_block_id(0);
-                slip.set_tx_id(0);
-                slip.set_slip_id(current_sid);
+                slip.set_bid(0);
+                slip.set_tid(0);
+                slip.set_sid(current_sid);
                 current_sid += 1;
             }
 
             for slip in tx.inputs_mut().iter_mut() {
-                slip.set_block_id(bid);
-                slip.set_tx_id(i as u64);
-                slip.set_slip_id(current_sid);
+                slip.set_bid(bid);
+                slip.set_tid(i as u64);
+                slip.set_sid(current_sid);
                 current_sid += 1;
             }
         }
@@ -275,7 +275,7 @@ mod test {
     use super::*;
     use crate::{
         keypair::Keypair,
-        slip::{Slip, SlipBroadcastType},
+        slip::{Slip},
         transaction::{Transaction, TransactionBroadcastType},
     };
 
@@ -315,8 +315,8 @@ mod test {
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
 
         let mut tx = Transaction::new(TransactionBroadcastType::Normal);
-        let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        let from_slip = Slip::new(keypair.public_key().clone(), 0);
+        let to_slip = Slip::new(keypair.public_key().clone(), 0);
         tx.add_input(from_slip);
         tx.add_output(to_slip);
         block.set_transactions(&mut vec![tx.clone()]);

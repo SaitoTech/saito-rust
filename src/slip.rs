@@ -1,100 +1,130 @@
 use secp256k1::PublicKey;
 use std::hash::Hash;
 
-/// A record of owernship of funds on the network
+
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct Slip {
-    /// Contains concrete data which is not relative to state of the chain
-    body: SlipBody,
+
+    /// address `Sectp256K::PublicKey` controlling slip
+    add: PublicKey,
+    /// amount of Saito
+    amt: u64,
+    /// hash of bloch containing slip
+    hash: Option<[u8; 32]>,
     /// `Block` id
-    block_id: u64,
+    bid: u64,
     /// `Transaction` id
-    tx_id: u64,
+    tid: u64,
     /// `Slip` id
-    slip_id: u64,
-}
-
-/// An object that holds concrete data not subjective to state of chain
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-pub struct SlipBody {
-    /// An `Sectp256K::PublicKey` determining who owns the `Slip`
-    address: PublicKey,
+    sid: u64,
     /// A enum brodcast type determining how to be processed by consensus
-    broadcast_type: SlipBroadcastType,
-    /// Amount of Saito
-    amount: u64,
+    sliptype: SlipType,
 }
 
-/// An enumerated set of `Slip` types
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-pub enum SlipBroadcastType {
+pub enum SlipType {
     Normal,
 }
 
 impl Slip {
-    /// Create new `Slip` with default type `SlipBroadcastType::Normal`
-    ///
-    /// * `address` - `Publickey` address to assign ownership
-    /// * `broadcast_type` - `SlipBroadcastType` of `Slip`
-    /// * `amount` - `u64` amount of Saito contained in the `Slip`
-    pub fn new(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64) -> Self {
+
+    pub fn new(address: PublicKey) -> Self {
         Slip {
-            body: SlipBody {
-                address,
-                broadcast_type,
-                amount,
-            },
-            block_id: 0,
-            tx_id: 0,
-            slip_id: 0,
+            add:  address,
+            amt:  0,
+            hash: None,
+            bid:  0,
+            tid:  0,
+            sid:  0,
+            sliptype: SlipType::Normal,
+        }
+    }
+    pub fn new(address: PublicKey, amount: u64) -> Self {
+        Slip {
+            add:  address,
+            amt:  amount,
+            hash: None,
+            bid:  0,
+            tid:  0,
+            sid:  0,
+            sliptype: SlipType::Normal,
         }
     }
 
     /// Returns address in `Slip`
-    pub fn address(&self) -> &PublicKey {
-        &self.body.address
-    }
-
-    /// Returns`Slip` type from the enumerated set of `SlipBroadcastType`
-    pub fn broadcast_type(&self) -> SlipBroadcastType {
-        self.body.broadcast_type
+    pub fn add(&self) -> &PublicKey {
+        &self.add
     }
 
     /// Returns amount of Saito in `Slip`
-    pub fn amount(&self) -> u64 {
-        self.body.amount
+    pub fn amt(&self) -> u64 {
+        self.amt
+    }
+
+///
+/// TODO - help appreciated here - david
+///
+    /// Returns the block hash with slip
+    pub fn hash(&self) -> Option<[u8; 32]> {
+        self.hash
     }
 
     /// Returns the `Block` id the slip originated from
-    pub fn block_id(&self) -> u64 {
-        self.block_id
+    pub fn bid(&self) -> u64 {
+        self.bid
     }
 
     /// Returns the `Transaction` id the slip originated from
-    pub fn tx_id(&self) -> u64 {
-        self.tx_id
+    pub fn tid(&self) -> u64 {
+        self.tid
     }
 
     /// Returns the `Slip`
-    pub fn slip_id(&self) -> u64 {
-        self.slip_id
+    pub fn sid(&self) -> u64 {
+        self.sid
     }
 
+    /// Returns`Slip` type from the enumerated set of `SlipType`
+    pub fn sliptype(&self) -> SlipType {
+        self.sliptype
+    }
+
+
     /// Set the `Block` id
-    pub fn set_block_id(&mut self, block_id: u64) {
-        self.block_id = block_id;
+    pub fn set_bid(&mut self, bid: u64) {
+        self.bid = bid;
     }
 
     /// Set the `Transaction` id
-    pub fn set_tx_id(&mut self, tx_id: u64) {
-        self.tx_id = tx_id;
+    pub fn set_tid(&mut self, tid: u64) {
+        self.tid = tid;
     }
 
     /// Set the `Slip` id
-    pub fn set_slip_id(&mut self, slip_id: u64) {
-        self.slip_id = slip_id;
+    pub fn set_sid(&mut self, sid: u64) {
+        self.sid = sid;
     }
+
+//
+// TODO
+//
+    /// Set the `Block` hash
+///    pub fn set_sid(&mut self, sid: u64) {
+///    }
+
+    /// Set the `SlipType` 
+///    pub fn set_sid(&mut self, sid: u64) {
+///        self.sliptype = sliptype;
+///    }
+
+    /// Set the address
+///    pub fn set_add(&mut self, sid: u64) {
+///        self.add = add;
+///    }
+
 }
+
+
 
 #[cfg(test)]
 mod tests {
@@ -106,23 +136,22 @@ mod tests {
         let keypair = Keypair::new();
         let mut slip = Slip::new(
             keypair.public_key().clone(),
-            SlipBroadcastType::Normal,
             10_000_000,
         );
 
-        assert_eq!(slip.address(), keypair.public_key());
-        assert_eq!(slip.broadcast_type(), SlipBroadcastType::Normal);
-        assert_eq!(slip.amount(), 10_000_000);
-        assert_eq!(slip.block_id(), 0);
-        assert_eq!(slip.tx_id(), 0);
-        assert_eq!(slip.slip_id(), 0);
+        assert_eq!(slip.add(), keypair.public_key());
+        assert_eq!(slip.sliptype(), SlipBroadcastType::Normal);
+        assert_eq!(slip.amt(), 10_000_000);
+        assert_eq!(slip.bid(), 0);
+        assert_eq!(slip.tid(), 0);
+        assert_eq!(slip.sid(), 0);
 
-        slip.set_block_id(10);
-        slip.set_tx_id(10);
-        slip.set_slip_id(10);
+        slip.set_bid(10);
+        slip.set_tid(10);
+        slip.set_sid(10);
 
-        assert_eq!(slip.block_id(), 10);
-        assert_eq!(slip.tx_id(), 10);
-        assert_eq!(slip.slip_id(), 10);
+        assert_eq!(slip.bid(), 10);
+        assert_eq!(slip.tid(), 10);
+        assert_eq!(slip.sid(), 10);
     }
 }

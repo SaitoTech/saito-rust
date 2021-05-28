@@ -62,7 +62,7 @@ mod tests {
     use super::*;
     use crate::block::Block;
     use crate::keypair::Keypair;
-    use crate::slip::{Slip, SlipBroadcastType};
+    use crate::slip::{Slip};
     use crate::transaction::{Transaction, TransactionBroadcastType};
 
     #[test]
@@ -101,7 +101,6 @@ mod tests {
         let mut transaction = Transaction::new(TransactionBroadcastType::Normal);
         let slip = Slip::new(
             *keypair.public_key(),
-            SlipBroadcastType::Normal,
             2_0000_0000,
         );
         transaction.add_output(slip);
