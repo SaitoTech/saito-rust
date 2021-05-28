@@ -202,12 +202,14 @@
 <span id="199">199</span>
 <span id="200">200</span>
 <span id="201">201</span>
+<span id="202">202</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">slip</span>::<span class="ident">Slip</span>, <span class="ident">time</span>::<span class="ident">create_timestamp</span>};
 <span class="kw">use</span> <span class="ident">secp256k1</span>::{<span class="ident">PublicKey</span>, <span class="ident">Signature</span>};
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="doccomment">/// A single record used in the history of transactions being routed around the network</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Hop</span> {
     <span class="doccomment">/// An `secp256k1::PublicKey` of the router</span>
     <span class="kw">pub</span> <span class="ident">address</span>: <span class="ident">PublicKey</span>,
@@ -227,13 +229,13 @@
 
 <span class="doccomment">/// A record containging data of funds between transfered between public addresses. It</span>
 <span class="doccomment">/// contains additional information as an optinal message field to transfer data around the network</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Transaction</span> {
     <span class="ident">body</span>: <span class="ident">TransactionBody</span>,
 }
 
 <span class="doccomment">/// Core data to be serialized/deserialized of `Transaction`</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TransactionBody</span> {
     <span class="doccomment">/// UNIX timestamp when the `Transaction` was created</span>
     <span class="ident">timestamp</span>: <span class="ident">u64</span>,
@@ -252,7 +254,7 @@
 }
 
 <span class="doccomment">/// Enumerated types of `Transaction`s to be handlded by consensus</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TransactionBroadcastType</span> {
     <span class="ident">Normal</span>,
 }
