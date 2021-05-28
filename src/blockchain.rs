@@ -1,5 +1,5 @@
 use crate::block::{Block, BlockHeader};
-use crate::utxoset::UTXOSet;
+use crate::shashmap::Shashmap;
 
 pub type BlockIndex = (BlockHeader, [u8; 32]);
 /// Indexes of chain attribute
@@ -25,7 +25,7 @@ pub struct Blockchain {
     /// Index of `Block`s
     index: BlockchainIndex,
     /// Hashmap of slips used by the network
-    utxoset: UTXOSet,
+    shashmap: Shashmap,
 }
 
 impl Blockchain {
@@ -33,7 +33,7 @@ impl Blockchain {
     pub fn new() -> Self {
         Blockchain {
             index: BlockchainIndex::new(),
-            utxoset: UTXOSet::new(),
+            shashmap: Shashmap::new(),
         }
     }
 
@@ -47,7 +47,7 @@ impl Blockchain {
     /// * `block` - `Block` appended to index
     pub fn add_block(&mut self, block: Block) {
         for tx in block.transactions().iter() {
-            self.utxoset.insert_new_transaction(tx);
+            self.shashmap.insert_new_transaction(tx);
         }
 
         let block_index: BlockIndex = (block.header().clone(), block.hash());
@@ -111,6 +111,6 @@ mod tests {
         let (block_header, _) = blockchain.index.blocks[0].clone();
 
         assert_eq!(block_header, *block.clone().header());
-        assert_eq!(blockchain.utxoset.slip_block_id(&slip), Some(&-1));
+        assert_eq!(blockchain.shashmap.slip_block_id(&slip), Some(&-1));
     }
 }
