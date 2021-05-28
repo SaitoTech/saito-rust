@@ -83,7 +83,7 @@ impl Consensus {
                 while let Ok(message) = miner_rx.recv().await {
                     // simulate lottery game with creation of golden_ticket_transaction
                     match message {
-                        SaitoMessage::NewBlock { payload } => {
+                        SaitoMessage::Block { payload } => {
                             let golden_tx = generate_golden_ticket_transaction(
                                 hash(&generate_random_data()),
                                 &payload,
@@ -104,7 +104,7 @@ impl Consensus {
                 if let Some(block) = mempool.process(message, blockchain.get_latest_block_index()) {
                     blockchain.add_block(block.clone());
                     block_tx
-                        .send(SaitoMessage::NewBlock { payload: block })
+                        .send(SaitoMessage::Block { payload: block })
                         .expect("Err: Could not send new block");
                 }
             }
