@@ -31,6 +31,7 @@ pub mod keypair;
 pub mod mempool;
 pub mod shashmap;
 pub mod slip;
+pub mod storage;
 pub mod time;
 pub mod transaction;
 pub mod types;

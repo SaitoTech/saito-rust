@@ -1,8 +1,9 @@
 use secp256k1::PublicKey;
+use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
 /// A record of owernship of funds on the network
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct Slip {
     /// Contains concrete data which is not relative to state of the chain
     body: SlipBody,
@@ -15,7 +16,7 @@ pub struct Slip {
 }
 
 /// An object that holds concrete data not subjective to state of chain
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct SlipBody {
     /// An `Sectp256K::PublicKey` determining who owns the `Slip`
     address: PublicKey,
@@ -26,7 +27,7 @@ pub struct SlipBody {
 }
 
 /// An enumerated set of `Slip` types
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub enum SlipBroadcastType {
     Normal,
 }
