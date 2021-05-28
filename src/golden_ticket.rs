@@ -5,6 +5,7 @@ use crate::{
     slip::{Slip, SlipBroadcastType},
     transaction::{Transaction, TransactionType},
 };
+use secp256k1::Signature;
 
 /// The golden ticket is a data structure containing instructions for picking
 /// a winner for paysplit in saito consensus.
@@ -55,13 +56,13 @@ pub fn generate_golden_ticket_transaction(
     let miner_share = (total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
 
-    let mut golden_tx = Transaction::new(TransactionType::Normal);
+    let mut golden_tx_body = Transaction::new(TransactionType::Normal);
 
     let miner_slip = Slip::new(*publickey, SlipBroadcastType::Normal, miner_share);
     let node_slip = Slip::new(winning_address, SlipBroadcastType::Normal, node_share);
 
-    golden_tx.add_output(miner_slip);
-    golden_tx.add_output(node_slip);
+    golden_tx_body.add_output(miner_slip);
+    golden_tx_body.add_output(node_slip);
 
     // toodo -- serialize our golden_ticket solution into our msg field
     // this is used to change the difficulty and paysplit in the upcoming block
@@ -71,6 +72,9 @@ pub fn generate_golden_ticket_transaction(
     // todo, sign the transaction and create signature
     // complete once we've added serialization
 
+    // TODO sign transaction with wallet
+    let golden_tx =
+        Transaction::add_signature(golden_tx_body, Signature::from_compact(&[0; 64]).unwrap());
     golden_tx
 }
 

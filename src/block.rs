@@ -202,14 +202,14 @@ impl Block {
             // and the block id
             let mut current_sid = 0;
 
-            for slip in tx.outputs_mut().iter_mut() {
+            for slip in tx.body.outputs_mut().iter_mut() {
                 slip.set_block_id(0);
                 slip.set_tx_id(0);
                 slip.set_slip_id(current_sid);
                 current_sid += 1;
             }
 
-            for slip in tx.inputs_mut().iter_mut() {
+            for slip in tx.body.inputs_mut().iter_mut() {
                 slip.set_block_id(bid);
                 slip.set_tx_id(i as u64);
                 slip.set_slip_id(current_sid);
@@ -278,6 +278,7 @@ mod test {
         slip::{Slip, SlipBroadcastType},
         transaction::{Transaction, TransactionType},
     };
+    use secp256k1::Signature;
 
     #[test]
     fn block_test() {
@@ -319,17 +320,20 @@ mod test {
         let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
         tx.add_input(from_slip);
         tx.add_output(to_slip);
-        block.set_transactions(&mut vec![tx.clone()]);
+
+        let signed_transaction =
+            Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
+        block.set_transactions(&mut vec![signed_transaction.clone()]);
 
         assert_eq!(block.transactions().len(), 1);
 
-        assert_eq!(block.transactions()[0].outputs()[0].slip_id(), 0);
-        assert_eq!(block.transactions()[0].outputs()[0].tx_id(), 0);
-        assert_eq!(block.transactions()[0].outputs()[0].block_id(), 0);
+        assert_eq!(block.transactions()[0].body.outputs()[0].slip_id(), 0);
+        assert_eq!(block.transactions()[0].body.outputs()[0].tx_id(), 0);
+        assert_eq!(block.transactions()[0].body.outputs()[0].block_id(), 0);
 
-        assert_eq!(block.transactions()[0].inputs()[0].slip_id(), 1);
-        assert_eq!(block.transactions()[0].inputs()[0].tx_id(), 0);
-        assert_eq!(block.transactions()[0].inputs()[0].block_id(), 0);
+        assert_eq!(block.transactions()[0].body.inputs()[0].slip_id(), 1);
+        assert_eq!(block.transactions()[0].body.inputs()[0].tx_id(), 0);
+        assert_eq!(block.transactions()[0].body.inputs()[0].block_id(), 0);
     }
 
     #[test]
@@ -338,7 +342,9 @@ mod test {
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
         let tx = Transaction::new(TransactionType::Normal);
         assert_eq!(*block.transactions(), vec![]);
-        block.add_transaction(tx.clone());
-        assert_eq!(*block.transactions(), vec![tx.clone()]);
+        let signed_transaction =
+            Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
+        block.add_transaction(signed_transaction.clone());
+        assert_eq!(*block.transactions(), vec![signed_transaction.clone()]);
     }
 }

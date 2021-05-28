@@ -1,7 +1,9 @@
 use crate::block::{Block, BlockHeader};
 use crate::shashmap::Shashmap;
 
+/// A type for holding block meta data needed at runtime
 pub type BlockIndex = (BlockHeader, [u8; 32]);
+
 /// Indexes of chain attribute
 #[derive(Debug, Clone)]
 pub struct BlockchainIndex {
@@ -46,10 +48,6 @@ impl Blockchain {
     ///
     /// * `block` - `Block` appended to index
     pub fn add_block(&mut self, block: Block) {
-        for tx in block.transactions().iter() {
-            self.shashmap.insert_new_transaction(tx);
-        }
-
         let block_index: BlockIndex = (block.header().clone(), block.hash());
         println!("{:?}", block_index.clone());
         self.index.blocks.push(block_index);
@@ -64,6 +62,7 @@ mod tests {
     use crate::keypair::Keypair;
     use crate::slip::{Slip, SlipBroadcastType};
     use crate::transaction::{Transaction, TransactionType};
+    use secp256k1::Signature;
 
     #[test]
     fn blockchain_test() {
@@ -105,12 +104,15 @@ mod tests {
             2_0000_0000,
         );
         transaction.add_output(slip);
-        block.add_transaction(transaction);
+
+        let signed_transaction =
+            Transaction::add_signature(transaction, Signature::from_compact(&[0; 64]).unwrap());
+        block.add_transaction(signed_transaction);
 
         blockchain.add_block(block.clone());
         let (block_header, _) = blockchain.index.blocks[0].clone();
 
         assert_eq!(block_header, *block.clone().header());
-        assert_eq!(blockchain.shashmap.slip_block_id(&slip), Some(&-1));
+        //assert_eq!(blockchain.shashmap.slip_block_id(&slip), Some(&-1));
     }
 }
