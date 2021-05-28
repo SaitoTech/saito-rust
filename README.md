@@ -6,13 +6,10 @@ This project will serve as the reference implementation for other code-bases. It
 
 ## Contributing
 
-The next month of sprint planning can always [be found on our github kanban board](https://github.com/orgs/SaitoTech/projects/5).
+We're happy for an contribution.  
+Please have a look at our [contributing guidelines](CONTRIBUTING.md) before you start.
 
-PRs should be made against the main branch in [the saito-rust project](https://github.com/SaitoTech/saito-rust). 
-
-PRs must pass rust fmt check and should have full test coverage.
-
-# Roadmap
+## Roadmap
 
 A long-view backlog [can be seen on Trello](https://trello.com/b/gWPiQFZ1/saito-rust-project-management) for those who may be interested in such things. We use this for coordinating the team at a high level, to keep us focused on meaningful goals(user stories), and to try to produce an accurate roadmap. If you're looking for something to code, the sprint planning board will be better.
 
