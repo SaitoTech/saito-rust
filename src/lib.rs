@@ -33,7 +33,7 @@ pub mod slip;
 pub mod time;
 pub mod transaction;
 pub mod types;
-pub mod utxoset;
+pub mod shashmap;
 
 /// Error returned by most functions.
 ///
