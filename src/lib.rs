@@ -29,11 +29,11 @@ pub mod crypto;
 pub mod golden_ticket;
 pub mod keypair;
 pub mod mempool;
+pub mod shashmap;
 pub mod slip;
 pub mod time;
 pub mod transaction;
 pub mod types;
-pub mod shashmap;
 
 /// Error returned by most functions.
 ///
