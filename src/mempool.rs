@@ -101,7 +101,6 @@ impl Mempool {
     ///
     /// * `previous_block` - `Option` of the previous block on the longest chain
     fn bundle_block(&mut self, previous_block_index: Option<&BlockIndex>) -> Block {
-        //while let Ok(keypair) = self._keypair.read() {
         let keypair = self._keypair.read().unwrap();
         let publickey = keypair.public_key();
         let mut block: Block;

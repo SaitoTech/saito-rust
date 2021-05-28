@@ -5,15 +5,15 @@ use std::collections::HashMap;
 /// A hashmap storing the byte arrays of `Slip`s as keys
 /// with the `Block` ids as values. This is used to enforce when
 /// `Slip`s have been spent in the network
-#[derive(Clone)]
-pub struct UTXOSet {
+#[derive(Debug, Clone)]
+pub struct Shashmap {
     utxo_hashmap: HashMap<Slip, i64>,
 }
 
-impl UTXOSet {
-    /// Create new `UTXOSet`
+impl Shashmap {
+    /// Create new `Shashmap`
     pub fn new() -> Self {
-        UTXOSet {
+        Shashmap {
             utxo_hashmap: HashMap::new(),
         }
     }
@@ -31,7 +31,7 @@ impl UTXOSet {
     /// * `tx` - `Transaction` which the outputs are inserted into `HashMap`
     pub fn insert_new_transaction(&mut self, tx: &Transaction) {
         for output in tx.outputs().iter() {
-            self.utxo_hashmap.insert(output.clone(), -1);
+            self.utxo_hashmap.insert(*output, -1);
         }
     }
 
@@ -41,7 +41,7 @@ impl UTXOSet {
     /// * `block_id` - `Block` id used as value
     pub fn spend_transaction(&mut self, tx: &Transaction, block_id: u64) {
         for input in tx.inputs().iter() {
-            self.utxo_hashmap.insert(input.clone(), block_id as i64);
+            self.utxo_hashmap.insert(*input, block_id as i64);
         }
     }
 
@@ -50,7 +50,7 @@ impl UTXOSet {
     /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
     pub fn unspend_transaction(&mut self, tx: &Transaction) {
         for input in tx.inputs().iter() {
-            self.utxo_hashmap.insert(input.clone(), -1);
+            self.utxo_hashmap.insert(*input, -1);
         }
 
         for outer in tx.outputs().iter() {
@@ -63,14 +63,14 @@ impl UTXOSet {
     /// * `slip` - `Slip` as key
     /// * `block_id` - `Block` id as value
     pub fn spend_slip(&mut self, slip: &Slip, _bid: u64) {
-        self.utxo_hashmap.insert(slip.clone(), _bid as i64);
+        self.utxo_hashmap.insert(*slip, _bid as i64);
     }
 
     /// Insert a `Slip`s byte array with the `Block` id
     ///
     /// * `slip` - `&Slip` as key
     pub fn unspend_slip(&mut self, slip: &Slip) {
-        self.utxo_hashmap.insert(slip.clone(), -1);
+        self.utxo_hashmap.insert(*slip, -1);
     }
 
     /// Return the `Block` id based on `Slip`
@@ -93,23 +93,23 @@ mod test {
     use std::collections::HashMap;
 
     #[test]
-    fn utxoset_test() {
-        let utxoset = UTXOSet::new();
-        assert_eq!(utxoset.utxo_hashmap, HashMap::new());
+    fn shashmap_test() {
+        let shashmap = Shashmap::new();
+        assert_eq!(shashmap.utxo_hashmap, HashMap::new());
     }
 
     #[test]
-    fn utxoset_insert_test() {
-        let mut utxoset = UTXOSet::new();
+    fn shashmap_insert_test() {
+        let mut shashmap = Shashmap::new();
         let keypair = Keypair::new();
         let slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        utxoset.insert(slip, 0);
-        assert!(utxoset.utxo_hashmap.contains_key(&slip));
+        shashmap.insert(slip, 0);
+        assert!(shashmap.utxo_hashmap.contains_key(&slip));
     }
 
     #[test]
-    fn utxoset_insert_new_transaction_test() {
-        let mut utxoset = UTXOSet::new();
+    fn shashmap_insert_new_transaction_test() {
+        let mut shashmap = Shashmap::new();
         let mut tx = Transaction::new(TransactionBroadcastType::Normal);
 
         let keypair = Keypair::new();
@@ -117,15 +117,15 @@ mod test {
 
         tx.add_output(output_slip);
 
-        utxoset.insert_new_transaction(&tx);
+        shashmap.insert_new_transaction(&tx);
 
-        assert!(utxoset.utxo_hashmap.contains_key(&output_slip));
-        assert_eq!(utxoset.utxo_hashmap.get(&output_slip).unwrap(), &-1);
+        assert!(shashmap.utxo_hashmap.contains_key(&output_slip));
+        assert_eq!(shashmap.utxo_hashmap.get(&output_slip).unwrap(), &-1);
     }
 
     #[test]
-    fn utxoset_spend_transaction_test() {
-        let mut utxoset = UTXOSet::new();
+    fn shashmap_spend_transaction_test() {
+        let mut shashmap = Shashmap::new();
         let mut tx = Transaction::new(TransactionBroadcastType::Normal);
 
         let keypair = Keypair::new();
@@ -133,15 +133,15 @@ mod test {
 
         tx.add_input(input_slip);
 
-        utxoset.spend_transaction(&tx, 0);
+        shashmap.spend_transaction(&tx, 0);
 
-        assert!(utxoset.utxo_hashmap.contains_key(&input_slip));
-        assert_eq!(utxoset.utxo_hashmap.get(&input_slip).unwrap(), &0);
+        assert!(shashmap.utxo_hashmap.contains_key(&input_slip));
+        assert_eq!(shashmap.utxo_hashmap.get(&input_slip).unwrap(), &0);
     }
 
     #[test]
-    fn utxoset_unspend_transaction_test() {
-        let mut utxoset = UTXOSet::new();
+    fn shashmap_unspend_transaction_test() {
+        let mut shashmap = Shashmap::new();
         let mut tx = Transaction::new(TransactionBroadcastType::Normal);
 
         let keypair = Keypair::new();
@@ -149,47 +149,47 @@ mod test {
 
         tx.add_input(input_slip);
 
-        utxoset.unspend_transaction(&tx);
+        shashmap.unspend_transaction(&tx);
 
-        assert!(utxoset.utxo_hashmap.contains_key(&input_slip));
-        assert_eq!(utxoset.utxo_hashmap.get(&input_slip).unwrap(), &-1);
+        assert!(shashmap.utxo_hashmap.contains_key(&input_slip));
+        assert_eq!(shashmap.utxo_hashmap.get(&input_slip).unwrap(), &-1);
     }
 
     #[test]
-    fn utxoset_spend_slip_test() {
-        let mut utxoset = UTXOSet::new();
+    fn shashmap_spend_slip_test() {
+        let mut shashmap = Shashmap::new();
 
         let keypair = Keypair::new();
         let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
 
-        utxoset.spend_slip(&input_slip, 0);
+        shashmap.spend_slip(&input_slip, 0);
 
-        assert!(utxoset.utxo_hashmap.contains_key(&input_slip));
-        assert_eq!(utxoset.utxo_hashmap.get(&input_slip).unwrap(), &0);
+        assert!(shashmap.utxo_hashmap.contains_key(&input_slip));
+        assert_eq!(shashmap.utxo_hashmap.get(&input_slip).unwrap(), &0);
     }
 
     #[test]
-    fn utxoset_unspend_slip_test() {
-        let mut utxoset = UTXOSet::new();
+    fn shashmap_unspend_slip_test() {
+        let mut shashmap = Shashmap::new();
 
         let keypair = Keypair::new();
         let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
 
-        utxoset.unspend_slip(&input_slip);
+        shashmap.unspend_slip(&input_slip);
 
-        assert!(utxoset.utxo_hashmap.contains_key(&input_slip));
-        assert_eq!(utxoset.utxo_hashmap.get(&input_slip).unwrap(), &-1);
+        assert!(shashmap.utxo_hashmap.contains_key(&input_slip));
+        assert_eq!(shashmap.utxo_hashmap.get(&input_slip).unwrap(), &-1);
     }
 
     #[test]
-    fn utxoset_slip_block_id_test() {
-        let mut utxoset = UTXOSet::new();
+    fn shashmap_slip_block_id_test() {
+        let mut shashmap = Shashmap::new();
 
         let keypair = Keypair::new();
         let slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        utxoset.insert(slip, 1);
+        shashmap.insert(slip, 1);
 
-        match utxoset.slip_block_id(&slip) {
+        match shashmap.slip_block_id(&slip) {
             Some(id) => assert_eq!(id, &1),
             _ => assert!(false),
         }

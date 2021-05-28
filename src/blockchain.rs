@@ -1,4 +1,5 @@
 use crate::block::{Block, BlockHeader};
+use crate::shashmap::Shashmap;
 
 pub type BlockIndex = (BlockHeader, [u8; 32]);
 /// Indexes of chain attribute
@@ -23,6 +24,8 @@ impl BlockchainIndex {
 pub struct Blockchain {
     /// Index of `Block`s
     index: BlockchainIndex,
+    /// Hashmap of slips used by the network
+    shashmap: Shashmap,
 }
 
 impl Blockchain {
@@ -30,11 +33,12 @@ impl Blockchain {
     pub fn new() -> Self {
         Blockchain {
             index: BlockchainIndex::new(),
+            shashmap: Shashmap::new(),
         }
     }
 
     /// Returns the latest `Block` as part of the longest chain
-    pub fn get_latest_block(&self) -> Option<&BlockIndex> {
+    pub fn get_latest_block_index(&self) -> Option<&BlockIndex> {
         self.index.blocks.last()
     }
 
@@ -42,6 +46,10 @@ impl Blockchain {
     ///
     /// * `block` - `Block` appended to index
     pub fn add_block(&mut self, block: Block) {
+        for tx in block.transactions().iter() {
+            self.shashmap.insert_new_transaction(tx);
+        }
+
         let block_index: BlockIndex = (block.header().clone(), block.hash());
         println!("{:?}", block_index.clone());
         self.index.blocks.push(block_index);
@@ -54,6 +62,8 @@ mod tests {
     use super::*;
     use crate::block::Block;
     use crate::keypair::Keypair;
+    use crate::slip::{Slip, SlipBroadcastType};
+    use crate::transaction::{Transaction, TransactionBroadcastType};
 
     #[test]
     fn blockchain_test() {
@@ -61,21 +71,21 @@ mod tests {
         assert_eq!(blockchain.index.blocks, vec![]);
     }
     #[test]
-    fn blockchain_get_latest_block_none_test() {
+    fn blockchain_get_latest_block_index_none_test() {
         let blockchain = Blockchain::new();
-        match blockchain.get_latest_block() {
+        match blockchain.get_latest_block_index() {
             None => assert!(true),
             _ => assert!(false),
         }
     }
     #[test]
-    fn blockchain_get_latest_block_some_test() {
+    fn blockchain_get_latest_block_index_some_test() {
         let mut blockchain = Blockchain::new();
         let block = Block::new(Keypair::new().public_key().clone(), [0; 32]);
 
         blockchain.add_block(block.clone());
 
-        match blockchain.get_latest_block() {
+        match blockchain.get_latest_block_index() {
             Some((prev_block_header, _)) => {
                 assert_eq!(&prev_block_header.clone(), block.header());
                 assert!(true);
@@ -85,12 +95,22 @@ mod tests {
     }
     #[test]
     fn blockchain_add_block_test() {
+        let keypair = Keypair::new();
         let mut blockchain = Blockchain::new();
-        let block = Block::new(Keypair::new().public_key().clone(), [0; 32]);
+        let mut block = Block::new(keypair.public_key().clone(), [0; 32]);
+        let mut transaction = Transaction::new(TransactionBroadcastType::Normal);
+        let slip = Slip::new(
+            *keypair.public_key(),
+            SlipBroadcastType::Normal,
+            2_0000_0000,
+        );
+        transaction.add_output(slip);
+        block.add_transaction(transaction);
 
         blockchain.add_block(block.clone());
         let (block_header, _) = blockchain.index.blocks[0].clone();
 
         assert_eq!(block_header, *block.clone().header());
+        assert_eq!(blockchain.shashmap.slip_block_id(&slip), Some(&-1));
     }
 }

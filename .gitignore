@@ -1,3 +1,4 @@
 /target
+/data/blocks/*
 *.swp
 /data/blocks/*.sai
