@@ -1,4 +1,4 @@
-use crate::crypto::{hash, PublicKey};
+use crate::crypto::{hash, PublicKey, SECP256K1Hash};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 
@@ -11,7 +11,7 @@ pub struct Block {
     /// The body and content of the block object
     body: BlockBody,
     /// Memoized hash of the block
-    hash: Option<[u8; 32]>,
+    hash: Option<SECP256K1Hash>,
 }
 
 /// This `Header` holds `Block`'s metadata
@@ -22,7 +22,7 @@ pub struct BlockHeader {
     /// Block timestamp
     timestamp: u64,
     /// Byte array hash of the previous block in the chain
-    previous_block_hash: [u8; 32],
+    previous_block_hash: SECP256K1Hash,
     /// `Publickey` of the block creator
     creator: PublicKey,
     /// `BurnFee` containing the fees paid to produce the block
@@ -48,7 +48,7 @@ impl BlockHeader {
     ///
     /// * `creator` - `secp256k1::PublicKey` of the block creator
     /// * `previous_block_hash` - Previous block hash in bytes
-    pub fn new(creator: PublicKey, previous_block_hash: [u8; 32]) -> Self {
+    pub fn new(creator: PublicKey, previous_block_hash: SECP256K1Hash) -> Self {
         BlockHeader {
             id: 0,
             timestamp: create_timestamp(),
@@ -101,7 +101,7 @@ impl Block {
     ///
     /// * `creator` - `secp256k1::PublicKey` of the block creator
     /// * `previous_block_hash` - Previous block hash in bytes
-    pub fn new(creator: PublicKey, previous_block_hash: [u8; 32]) -> Block {
+    pub fn new(creator: PublicKey, previous_block_hash: SECP256K1Hash) -> Block {
         Block {
             header: BlockHeader::new(creator, previous_block_hash),
             body: BlockBody::new(),
@@ -125,7 +125,7 @@ impl Block {
     }
 
     /// Returns the previous `Block` hash
-    pub fn previous_block_hash(&self) -> &[u8; 32] {
+    pub fn previous_block_hash(&self) -> &SECP256K1Hash {
         &self.header.previous_block_hash
     }
 
@@ -160,7 +160,7 @@ impl Block {
     }
 
     /// Compute and memoize the block hash
-    pub fn compute_hash(&mut self) -> [u8; 32] {
+    pub fn compute_hash(&mut self) -> SECP256K1Hash {
         let hash = self.hash();
         self.hash = Some(hash);
         hash
@@ -169,7 +169,7 @@ impl Block {
     /// Generate the block hash
     ///
     /// TODO -- extend list of information we use to calculate the block hash
-    pub fn hash(&self) -> [u8; 32] {
+    pub fn hash(&self) -> SECP256K1Hash {
         if self.hash.is_none() {
             let mut data: Vec<u8> = vec![];
 
@@ -235,7 +235,7 @@ impl Block {
     }
 
     /// Sets the `Block` previous hash
-    pub fn set_previous_block_hash(&mut self, previous_block_hash: [u8; 32]) {
+    pub fn set_previous_block_hash(&mut self, previous_block_hash: SECP256K1Hash) {
         update_field(
             &mut self.hash,
             &mut self.header.previous_block_hash,
@@ -260,7 +260,7 @@ impl Block {
 }
 
 /// Update value of given field, reset memoised hash if changed.
-fn update_field<T>(hash: &mut Option<[u8; 32]>, field: &mut T, value: T)
+fn update_field<T>(hash: &mut Option<SECP256K1Hash>, field: &mut T, value: T)
 where
     T: PartialEq<T>,
 {

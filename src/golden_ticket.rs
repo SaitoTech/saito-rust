@@ -1,6 +1,6 @@
 use crate::{
     block::Block,
-    crypto::PublicKey,
+    crypto::{PublicKey, SECP256K1Hash},
     keypair::Keypair,
     slip::{Slip, SlipBroadcastType},
     transaction::{Transaction, TransactionBroadcastType},
@@ -11,16 +11,16 @@ use crate::{
 #[derive(Debug, Clone, Copy)]
 pub struct GoldenTicket {
     // the target `Block` hash to solve for
-    target: [u8; 32],
+    target: SECP256K1Hash,
     // the random solution that matches the target hash to some arbitrary level of difficulty
-    solution: [u8; 32],
+    solution: SECP256K1Hash,
     // `secp256k1::PublicKey` of the node that found the solution
     publickey: PublicKey,
 }
 
 impl GoldenTicket {
     /// Create new `GoldenTicket`
-    pub fn new(target: [u8; 32], solution: [u8; 32], publickey: PublicKey) -> Self {
+    pub fn new(target: SECP256K1Hash, solution: SECP256K1Hash, publickey: PublicKey) -> Self {
         GoldenTicket {
             target,
             solution,
@@ -35,7 +35,7 @@ impl GoldenTicket {
 /// * `previous_block` - previous `Block` reference
 /// * `keypair` - `Keypair`
 pub fn generate_golden_ticket_transaction(
-    solution: [u8; 32],
+    solution: SECP256K1Hash,
     previous_block: &Block,
     keypair: &Keypair,
 ) -> Transaction {
@@ -78,7 +78,7 @@ pub fn generate_golden_ticket_transaction(
 ///
 /// * `solution` - `Hash` of solution we created in golden ticket game
 /// * `previous_block` - Previous `Block`
-fn find_winner(_solution: &[u8; 32], previous_block: &Block) -> PublicKey {
+fn find_winner(_solution: &SECP256K1Hash, previous_block: &Block) -> PublicKey {
     // TODO -- use fees paid in the block to determine the block winner with routing algorithm
     // for now, we just use the block creator to determine who the winner is
     *previous_block.creator()

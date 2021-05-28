@@ -1,7 +1,8 @@
 use crate::block::{Block, BlockHeader};
+use crate::crypto::SECP256K1Hash;
 use crate::shashmap::Shashmap;
 
-pub type BlockIndex = (BlockHeader, [u8; 32]);
+pub type BlockIndex = (BlockHeader, SECP256K1Hash);
 /// Indexes of chain attribute
 #[derive(Debug, Clone)]
 pub struct BlockchainIndex {

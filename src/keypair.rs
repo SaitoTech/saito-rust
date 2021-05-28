@@ -1,3 +1,4 @@
+use crate::crypto::SECP256K1Hash;
 use base58::{FromBase58, ToBase58};
 use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
 use sha2::{Digest, Sha256};
@@ -66,7 +67,7 @@ impl Keypair {
     /// Hash the message string with sha256 for signing by secp256k1 and return as byte array
     /// TODO: Make sure this handles utf correctly. We probably want to ensure that the message
     /// is actually just ascii encoded...
-    pub fn make_message_from_string(message_string: &str) -> [u8; 32] {
+    pub fn make_message_from_string(message_string: &str) -> SECP256K1Hash {
         let mut hasher = Sha256::new();
         hasher.update(message_string.as_bytes());
         let hashvalue = hasher.finalize();
