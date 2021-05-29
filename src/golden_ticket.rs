@@ -3,7 +3,7 @@ use crate::{
     crypto::PublicKey,
     keypair::Keypair,
     slip::{Slip, SlipBroadcastType},
-    transaction::{Transaction, TransactionType},
+    transaction::{TransactionCore, TransactionType},
 };
 use secp256k1::Signature;
 
@@ -30,7 +30,7 @@ impl GoldenTicket {
     }
 }
 
-/// Create a new `GoldenTicket` `Transaction`
+/// Create a new `GoldenTicket` `TransactionCore`
 ///
 /// * `solution` - `Hash` of solution we created in golden ticket game
 /// * `previous_block` - previous `Block` reference
@@ -39,7 +39,7 @@ pub fn generate_golden_ticket_transaction(
     solution: [u8; 32],
     previous_block: &Block,
     keypair: &Keypair,
-) -> Transaction {
+) -> TransactionCore {
     let publickey = keypair.public_key();
 
     // TODO -- create our Golden Ticket
@@ -56,7 +56,7 @@ pub fn generate_golden_ticket_transaction(
     let miner_share = (total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
 
-    let mut golden_tx_body = Transaction::new(TransactionType::Normal);
+    let mut golden_tx_body = TransactionCore::new(TransactionType::Normal);
 
     let miner_slip = Slip::new(*publickey, SlipBroadcastType::Normal, miner_share);
     let node_slip = Slip::new(winning_address, SlipBroadcastType::Normal, node_share);
@@ -74,7 +74,7 @@ pub fn generate_golden_ticket_transaction(
 
     // TODO sign transaction with wallet
     let golden_tx =
-        Transaction::add_signature(golden_tx_body, Signature::from_compact(&[0; 64]).unwrap());
+        TransactionCore::add_signature(golden_tx_body, Signature::from_compact(&[0; 64]).unwrap());
     golden_tx
 }
 

@@ -20,7 +20,7 @@ impl Hop {
     }
 }
 
-/// Enumerated types of `Transaction`s to be handlded by consensus
+/// Enumerated types of `TransactionCore`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
 pub enum TransactionType {
     Normal,
@@ -29,48 +29,51 @@ pub enum TransactionType {
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network
 #[derive(Debug, PartialEq, Clone)]
-pub struct ConfirmedTransaction {
+pub struct Transaction {
     /// the ordinal of the transaction in the block
-    /// TODO: remove this if it is unused, we just want something here to demonstrate the usage of this struct
+    /// TODO: remove id and work if unused, we just want something here to demonstrate the usage of
+    /// this struct
     id: u64,
+    /// The amount of routing work computed from the path and fee
+    work: u64,
     /// The transaction as it appears in a block
-    pub transaction: Transaction,
+    pub transaction: TransactionCore,
 }
 
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network
 #[derive(Debug, PartialEq, Clone)]
-pub struct Transaction {
-    /// `secp256k1::Signature` verifying authenticity of `TransactionBody` data
+pub struct TransactionCore {
+    /// `secp256k1::Signature` verifying authenticity of `UnsignedTransaction` data
     signature: Signature,
-    /// A list of `Hop` stipulating the history of `Transaction` routing
+    /// A list of `Hop` stipulating the history of `TransactionCore` routing
     path: Vec<Hop>,
     /// All data which is serialized and signed
-    pub body: TransactionBody,
+    pub body: UnsignedTransaction,
 }
 
-/// Core data to be serialized/deserialized of `Transaction`
+/// Core data to be serialized/deserialized of `TransactionCore`
 #[derive(Debug, PartialEq, Clone)]
-pub struct TransactionBody {
-    /// UNIX timestamp when the `Transaction` was created
+pub struct UnsignedTransaction {
+    /// UNIX timestamp when the `TransactionCore` was created
     timestamp: u64,
     /// A list of `Slip` inputs
     inputs: Vec<Slip>,
     /// A list of `Slip` outputs
     outputs: Vec<Slip>,
-    /// A enum brodcast type determining how to process `Transaction` in consensus
+    /// A enum brodcast type determining how to process `TransactionCore` in consensus
     broadcast_type: TransactionType,
     /// A byte array of miscellaneous information
     message: Vec<u8>,
 }
 
-impl Transaction {
-    /// Creates new `Transaction`
+impl TransactionCore {
+    /// Creates new `TransactionCore`
     ///
-    /// * `broadcast_type` - `TransactionType` of the new `Transaction`
-    pub fn new(broadcast_type: TransactionType) -> TransactionBody {
+    /// * `broadcast_type` - `TransactionType` of the new `TransactionCore`
+    pub fn new(broadcast_type: TransactionType) -> UnsignedTransaction {
         // TODO add inputs, outputs, and message here
-        TransactionBody {
+        UnsignedTransaction {
             timestamp: create_timestamp(),
             inputs: vec![],
             outputs: vec![],
@@ -79,15 +82,15 @@ impl Transaction {
         }
     }
 
-    pub fn sign(body: TransactionBody) -> Transaction {
-        Transaction {
+    pub fn sign(body: UnsignedTransaction) -> TransactionCore {
+        TransactionCore {
             signature: Signature::from_compact(&[0; 64]).unwrap(),
             path: vec![],
             body: body,
         }
     }
-    pub fn add_signature(body: TransactionBody, signature: Signature) -> Transaction {
-        Transaction {
+    pub fn add_signature(body: UnsignedTransaction, signature: Signature) -> TransactionCore {
+        TransactionCore {
             signature: signature,
             path: vec![],
             body: body,
@@ -104,8 +107,8 @@ impl Transaction {
     }
 }
 
-impl TransactionBody {
-    /// Returns a timestamp when `Transaction` was created
+impl UnsignedTransaction {
+    /// Returns a timestamp when `TransactionCore` was created
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
@@ -140,12 +143,12 @@ impl TransactionBody {
         self.inputs.push(slip);
     }
 
-    /// Returns `TransactionType` of the `Transaction`
+    /// Returns `TransactionType` of the `TransactionCore`
     pub fn broadcast_type(&self) -> &TransactionType {
         &self.broadcast_type
     }
 
-    /// Returns the message of the `Transaction`
+    /// Returns the message of the `TransactionCore`
     pub fn message(&self) -> &Vec<u8> {
         &self.message
     }
@@ -161,7 +164,7 @@ mod tests {
 
     #[test]
     fn transaction_test() {
-        let mut tx: TransactionBody = Transaction::new(TransactionType::Normal);
+        let mut tx: UnsignedTransaction = TransactionCore::new(TransactionType::Normal);
 
         assert_eq!(tx.outputs(), &vec![]);
         assert_eq!(tx.inputs(), &vec![]);

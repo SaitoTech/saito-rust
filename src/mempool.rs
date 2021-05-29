@@ -4,7 +4,7 @@ use crate::{
     burnfee::BurnFee,
     keypair::Keypair,
     time::{create_timestamp, format_timestamp},
-    transaction::Transaction,
+    transaction::TransactionCore,
     types::SaitoMessage,
 };
 use std::sync::{Arc, RwLock};
@@ -21,11 +21,11 @@ pub struct Mempool {
     _keypair: Arc<RwLock<Keypair>>,
     /// A list of blocks to be added to the longest chain
     _blocks: Vec<Block>,
-    /// A list of `Transaction`s to be bundled into `Block`s
-    transactions: Vec<Transaction>,
+    /// A list of `TransactionCore`s to be bundled into `Block`s
+    transactions: Vec<TransactionCore>,
     ///
     _burnfee: BurnFee,
-    /// The current work available in fees found in the list of `Transaction`s
+    /// The current work available in fees found in the list of `TransactionCore`s
     work_available: u64,
 }
 
@@ -51,7 +51,7 @@ impl Mempool {
         previous_block_index: Option<&BlockIndex>,
     ) -> Option<Block> {
         match message {
-            SaitoMessage::Transaction { payload } => {
+            SaitoMessage::TransactionCore { payload } => {
                 self.transactions.push(payload);
                 self.try_bundle(previous_block_index)
             }

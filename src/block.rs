@@ -1,6 +1,6 @@
 use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
-use crate::transaction::Transaction;
+use crate::transaction::TransactionCore;
 
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
@@ -36,11 +36,11 @@ pub struct BlockHeader {
 }
 
 /// This `BlockBody` holds data to be serialized along with
-/// `Transaction`s
+/// `TransactionCore`s
 #[derive(PartialEq, Debug, Clone)]
 pub struct BlockBody {
     /// List of transactions in the block
-    transactions: Vec<Transaction>,
+    transactions: Vec<TransactionCore>,
 }
 
 impl BlockHeader {
@@ -134,8 +134,8 @@ impl Block {
         &self.header.creator
     }
 
-    /// Returns the `Block`'s `Transaction`s
-    pub fn transactions(&self) -> &Vec<Transaction> {
+    /// Returns the `Block`'s `TransactionCore`s
+    pub fn transactions(&self) -> &Vec<TransactionCore> {
         &self.body.transactions
     }
 
@@ -192,8 +192,8 @@ impl Block {
         hex::encode(hash)
     }
 
-    /// Sets the `Block`s list of `Transaction`s
-    pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
+    /// Sets the `Block`s list of `TransactionCore`s
+    pub fn set_transactions(&mut self, transactions: &mut Vec<TransactionCore>) {
         let bid = self.header.id;
 
         for (i, tx) in transactions.iter_mut().enumerate() {
@@ -220,7 +220,7 @@ impl Block {
     }
 
     /// Appends a transaction to the block
-    pub fn add_transaction(&mut self, tx: Transaction) {
+    pub fn add_transaction(&mut self, tx: TransactionCore) {
         self.body.transactions.push(tx);
     }
 
@@ -276,7 +276,7 @@ mod test {
     use crate::{
         keypair::Keypair,
         slip::{Slip, SlipBroadcastType},
-        transaction::{Transaction, TransactionType},
+        transaction::{TransactionCore, TransactionType},
     };
     use secp256k1::Signature;
 
@@ -315,14 +315,14 @@ mod test {
         let keypair = Keypair::new();
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
 
-        let mut tx = Transaction::new(TransactionType::Normal);
+        let mut tx = TransactionCore::new(TransactionType::Normal);
         let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
         let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
         tx.add_input(from_slip);
         tx.add_output(to_slip);
 
         let signed_transaction =
-            Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
+            TransactionCore::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
         block.set_transactions(&mut vec![signed_transaction.clone()]);
 
         assert_eq!(block.transactions().len(), 1);
@@ -340,10 +340,10 @@ mod test {
     fn block_add_transaction_test() {
         let keypair = Keypair::new();
         let mut block = Block::new(*keypair.public_key(), [0; 32]);
-        let tx = Transaction::new(TransactionType::Normal);
+        let tx = TransactionCore::new(TransactionType::Normal);
         assert_eq!(*block.transactions(), vec![]);
         let signed_transaction =
-            Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
+            TransactionCore::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
         block.add_transaction(signed_transaction.clone());
         assert_eq!(*block.transactions(), vec![signed_transaction.clone()]);
     }

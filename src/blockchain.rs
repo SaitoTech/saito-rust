@@ -61,7 +61,7 @@ mod tests {
     use crate::block::Block;
     use crate::keypair::Keypair;
     use crate::slip::{Slip, SlipBroadcastType};
-    use crate::transaction::{Transaction, TransactionType};
+    use crate::transaction::{TransactionCore, TransactionType};
     use secp256k1::Signature;
 
     #[test]
@@ -97,7 +97,7 @@ mod tests {
         let keypair = Keypair::new();
         let mut blockchain = Blockchain::new();
         let mut block = Block::new(keypair.public_key().clone(), [0; 32]);
-        let mut transaction = Transaction::new(TransactionType::Normal);
+        let mut transaction = TransactionCore::new(TransactionType::Normal);
         let slip = Slip::new(
             *keypair.public_key(),
             SlipBroadcastType::Normal,
@@ -106,7 +106,7 @@ mod tests {
         transaction.add_output(slip);
 
         let signed_transaction =
-            Transaction::add_signature(transaction, Signature::from_compact(&[0; 64]).unwrap());
+            TransactionCore::add_signature(transaction, Signature::from_compact(&[0; 64]).unwrap());
         block.add_transaction(signed_transaction);
 
         blockchain.add_block(block.clone());
