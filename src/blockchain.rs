@@ -1,4 +1,5 @@
 use crate::block::{Block, BlockHeader};
+use crate::longestchainqueue::roll_forward;
 use crate::shashmap::Shashmap;
 
 pub type BlockIndex = (BlockHeader, [u8; 32]);
@@ -46,6 +47,7 @@ impl Blockchain {
     ///
     /// * `block` - `Block` appended to index
     pub fn add_block(&mut self, block: Block) {
+        roll_forward(&block);
         for tx in block.transactions().iter() {
             self.shashmap.insert_new_transaction(tx);
         }

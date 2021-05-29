@@ -28,6 +28,7 @@ pub mod consensus;
 pub mod crypto;
 pub mod golden_ticket;
 pub mod keypair;
+pub mod longestchainqueue;
 pub mod mempool;
 pub mod shashmap;
 pub mod slip;
@@ -35,6 +36,9 @@ pub mod storage;
 pub mod time;
 pub mod transaction;
 pub mod types;
+
+#[macro_use]
+extern crate lazy_static;
 
 /// Error returned by most functions.
 ///
