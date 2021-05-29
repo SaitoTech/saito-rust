@@ -26,6 +26,9 @@ impl Hop {
 pub struct Transaction {
     body: TransactionBody,
 }
+#[derive(Debug, PartialEq, Clone)]
+pub struct TransactionCore {
+}
 
 /// Core data to be serialized/deserialized of `Transaction`
 #[derive(Debug, PartialEq, Clone)]

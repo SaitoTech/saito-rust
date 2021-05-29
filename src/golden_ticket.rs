@@ -43,7 +43,13 @@ pub fn generate_golden_ticket_transaction(
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
-    let _gt_solution = GoldenTicket::new(previous_block.hash(), solution, publickey.clone());
+    let mut previous_block_hash = previous_block.hash();
+
+    if previous_block_hash.is_none() {
+      previous_block_hash = Some([0; 32]);
+    } 
+
+    let _gt_solution = GoldenTicket::new(previous_block_hash.unwrap(), solution, publickey.clone());
 
     let winning_address = find_winner(&solution, previous_block);
 
@@ -81,7 +87,8 @@ pub fn generate_golden_ticket_transaction(
 fn find_winner(_solution: &[u8; 32], previous_block: &Block) -> PublicKey {
     // TODO -- use fees paid in the block to determine the block winner with routing algorithm
     // for now, we just use the block creator to determine who the winner is
-    *previous_block.creator()
+    /// TODO - don't die here
+    previous_block.creator().unwrap()
 }
 
 /// Generate random data, used for generating solutions in lottery game

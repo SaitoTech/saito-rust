@@ -38,7 +38,7 @@ impl Block {
     }
 
     /// Returns the `Block` transactions
-    pub fn transactions(&self) -> Vec<Transactions> {
+    pub fn transactions(&self) -> Vec<Transaction> {
 
 	/// TODO - if transactions do not exist, create from TransactionCore
 
@@ -56,13 +56,13 @@ impl Block {
 
         let id_bytes: [u8; 8] = self.core.id.to_be_bytes();
         let ts_bytes: [u8; 8] = self.core.timestamp.to_be_bytes();
-        let cr_bytes: Vec<u8> = self.core.creator.serialize().iter().cloned().collect();
+        let cr_bytes: Vec<u8> = self.core.creator.unwrap().serialize().iter().cloned().collect();
 
         data.extend(&id_bytes);
         data.extend(&ts_bytes);
         data.extend(&cr_bytes);
 
-        self.hash = hash(&data);
+        self.hash = Some(hash(&data));
 
       }
 
@@ -76,8 +76,8 @@ impl Block {
     }
 
     /// Returns the `Block` creator's `secp256k1::PublicKey`
-    pub fn creator(&self) -> &PublicKey {
-        &self.core.creator
+    pub fn creator(&self) -> Option<PublicKey> {
+        self.core.creator
     }
 
     /// Returns the `Block` burnfee
@@ -123,8 +123,9 @@ impl Block {
     }
 
     /// Sets the `Block` creator
-    pub fn set_creator(&mut self, creator: &Publickey) {
-        update_field(&mut self.hash, &mut self.core.creator, creator)
+    pub fn set_creator(&mut self, creator: PublicKey) {
+	self.hash = None;
+	self.core.creator = Some(creator);
     }
 
     /// Sets the `Block` previous hash
@@ -155,7 +156,7 @@ impl Block {
     }
 
     /// check if `Block` is valid, returns true if valid, false if invalid
-    pub fn validate(&mut self, tx: Transaction) {
+    pub fn validate(&mut self, tx: Transaction) -> bool {
       true
     }
 
@@ -201,6 +202,7 @@ impl BlockCore {
         BlockCore {
             id: 0,
             previous_block_hash: [0; 32],
+	    timestamp: create_timestamp(),
             creator: None,
             burnfee: 0,
             difficulty: 0.0,

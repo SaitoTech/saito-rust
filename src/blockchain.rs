@@ -10,7 +10,7 @@ use crate::shashmap::Shashmap;
 pub struct Blockchain {
 
     /// Vector of blocks
-    blocks: Vec<BlockIndex>,
+    blocks: Vec<Block>,
 
     /// Hashmap of slips used by the network
     shashmap: Shashmap,
@@ -29,13 +29,19 @@ impl Blockchain {
 
     /// Append `Block` to the index of `Blockchain`
     pub fn add_block(&mut self, block: Block) {
-        self.blocks.push(block_index);
+        self.blocks.push(block);
     }
 
     /// Return latest `Block` in blockchain
-    pub fn get_latest_block(&mut self) -> Option<Block> {
-        pub block = Block::new();
-	block
+    pub fn get_latest_block(&mut self) -> &Block {
+
+	if self.blocks.len() > 0 {
+	  let latest_block = self.blocks[self.blocks.len()-1];
+	  &latest_block
+        } else {
+          let mut block = Block::new();
+    	  &block
+	}
     }
 }
 

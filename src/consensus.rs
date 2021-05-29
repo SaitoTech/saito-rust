@@ -58,6 +58,7 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
 }
 
 impl Consensus {
+
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);

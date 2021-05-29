@@ -1,6 +1,6 @@
 use crate::{
     block::Block,
-    blockchain::BlockIndex,
+    blockchain::Blockchain,
     burnfee::BurnFee,
     keypair::Keypair,
     time::{create_timestamp, format_timestamp},
@@ -49,7 +49,7 @@ impl Mempool {
     pub fn process(
         &mut self,
         message: SaitoMessage,
-        previous_block: Option<&Block>,
+        previous_block: &Block,
     ) -> Option<Block> {
         match message {
             SaitoMessage::Transaction { payload } => {
@@ -65,7 +65,7 @@ impl Mempool {
     /// Attempt to create a new `Block`
     ///
     /// * `previous_block` - `Option` of previous `Block`
-    fn try_bundle(&mut self, previous_block: Option<&Block>) -> Option<Block> {
+    fn try_bundle(&mut self, previous_block: &Block) -> Option<Block> {
         if self.can_bundle_block(previous_block) {
             Some(self.bundle_block(previous_block))
         } else {
@@ -76,7 +76,8 @@ impl Mempool {
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
     /// * `previous_block` - `Option` of previous `Block`
-    fn can_bundle_block(&self, previous_block: Option<&Block>) -> bool {
+    fn can_bundle_block(&self, previous_block: &Block) -> bool {
+/****
         match previous_block {
             Some((block_header, _)) => {
                 let current_timestamp = create_timestamp();
@@ -97,6 +98,8 @@ impl Mempool {
             }
             None => true,
 	        }
+****/
+        false
     }
 
 
@@ -105,12 +108,12 @@ impl Mempool {
     /// Create a new `Block` from the `Mempool`'s list of `Transaction`s
     ///
     /// * `previous_block` - `Option` of the previous block on the longest chain
-    fn bundle_block(&mut self, previous_block_index: Option<&BlockIndex>) -> Block {
+    fn bundle_block(&mut self, previous_block: &Block) -> Block {
 
         let keypair = self._keypair.read().unwrap();
         let publickey = keypair.public_key();
         let mut block: Block;
-
+/****
         match previous_block_index {
             Some((previous_block_header, previous_block_hash)) => {
    
@@ -139,8 +142,8 @@ impl Mempool {
                 block = Block::new(publickey.clone(), [0; 32]);
             }
         }
-
         block.set_transactions(&mut self.transactions);
+****/
 
         return block;
         // TODO -- calculate difficulty and paysplit changes
