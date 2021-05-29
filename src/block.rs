@@ -32,9 +32,7 @@ impl Block {
         }
     }
 
-
-
-    // Returns the `BlockCore` of `Block`
+    /// Returns the `BlockCore` of `Block`
     pub fn core(&self) -> &BlockCore {
         &self.core
     }
