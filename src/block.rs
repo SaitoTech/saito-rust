@@ -32,6 +32,8 @@ impl Block {
         }
     }
 
+
+
     // Returns the `BlockCore` of `Block`
     pub fn core(&self) -> &BlockCore {
         &self.core
@@ -40,9 +42,9 @@ impl Block {
     /// Returns the `Block` transactions
     pub fn transactions(&self) -> Vec<Transactions> {
 
-	/// TODO - if transactions does not exist, create from TransactionCore
+	/// TODO - if transactions do not exist, create from TransactionCore
 
-	/// TODO - if TransactionCore does not exist, load from disk
+	/// TODO - if TransactionCores do not exist, load from disk
 
         self.transactions
     }
@@ -122,6 +124,11 @@ impl Block {
         update_field(&mut self.hash, &mut self.core.burnfee, bf)
     }
 
+    /// Sets the `Block` creator
+    pub fn set_creator(&mut self, creator: &Publickey) {
+        update_field(&mut self.hash, &mut self.core.creator, creator)
+    }
+
     /// Sets the `Block` previous hash
     pub fn set_previous_block_hash(&mut self, previous_block_hash: [u8; 32]) {
         update_field(&mut self.hash, &mut self.core.previous_block_hash, previous_block_hash)
@@ -196,7 +203,7 @@ impl BlockCore {
         BlockCore {
             id: 0,
             previous_block_hash: [0; 32],
-            creator: [0; 32],
+            creator: None,
             burnfee: 0,
             difficulty: 0.0,
             treasury: 286_810_000_000_000_000,
@@ -323,37 +330,4 @@ mod test {
         assert_eq!(block.coinbase(), 100_000);
     }
 
-/****************
-    #[test]
-    fn block_set_transactions_test() {
-        let mut block = Block::new();
-
-        let mut tx = Transaction::new(TransactionBroadcastType::Normal);
-        let from_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        let to_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        tx.add_input(from_slip);
-        tx.add_output(to_slip);
-        block.set_transactions(&mut vec![tx.clone()]);
-
-        assert_eq!(block.transactions().len(), 1);
-
-        assert_eq!(block.transactions()[0].outputs()[0].slip_id(), 0);
-        assert_eq!(block.transactions()[0].outputs()[0].tx_id(), 0);
-        assert_eq!(block.transactions()[0].outputs()[0].block_id(), 0);
-
-        assert_eq!(block.transactions()[0].inputs()[0].slip_id(), 1);
-        assert_eq!(block.transactions()[0].inputs()[0].tx_id(), 0);
-        assert_eq!(block.transactions()[0].inputs()[0].block_id(), 0);
-    }
-
-    #[test]
-    fn block_add_transaction_test() {
-        let keypair = Keypair::new();
-        let mut block = Block::new(*keypair.public_key(), [0; 32]);
-        let tx = Transaction::new(TransactionBroadcastType::Normal);
-        assert_eq!(*block.transactions(), vec![]);
-        block.add_transaction(tx.clone());
-        assert_eq!(*block.transactions(), vec![tx.clone()]);
-    }
-**************/
 }
