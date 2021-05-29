@@ -9,8 +9,6 @@ pub struct Slip {
     add: PublicKey,
     /// amount of Saito
     amt: u64,
-    /// hash of bloch containing slip
-    hash: Option<[u8; 32]>,
     /// `Block` id
     bid: u64,
     /// `Transaction` id
@@ -28,22 +26,10 @@ pub enum SlipType {
 
 impl Slip {
 
-    pub fn new(address: PublicKey) -> Self {
-        Slip {
-            add:  address,
-            amt:  0,
-            hash: None,
-            bid:  0,
-            tid:  0,
-            sid:  0,
-            sliptype: SlipType::Normal,
-        }
-    }
     pub fn new(address: PublicKey, amount: u64) -> Self {
         Slip {
             add:  address,
             amt:  amount,
-            hash: None,
             bid:  0,
             tid:  0,
             sid:  0,
@@ -59,14 +45,6 @@ impl Slip {
     /// Returns amount of Saito in `Slip`
     pub fn amt(&self) -> u64 {
         self.amt
-    }
-
-///
-/// TODO - help appreciated here - david
-///
-    /// Returns the block hash with slip
-    pub fn hash(&self) -> Option<[u8; 32]> {
-        self.hash
     }
 
     /// Returns the `Block` id the slip originated from
@@ -104,23 +82,6 @@ impl Slip {
     pub fn set_sid(&mut self, sid: u64) {
         self.sid = sid;
     }
-
-//
-// TODO
-//
-    /// Set the `Block` hash
-///    pub fn set_sid(&mut self, sid: u64) {
-///    }
-
-    /// Set the `SlipType` 
-///    pub fn set_sid(&mut self, sid: u64) {
-///        self.sliptype = sliptype;
-///    }
-
-    /// Set the address
-///    pub fn set_add(&mut self, sid: u64) {
-///        self.add = add;
-///    }
 
 }
 
