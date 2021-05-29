@@ -47,7 +47,7 @@ impl Blockchain {
     ///
     /// * `block` - `Block` appended to index
     pub fn add_block(&mut self, block: Block) {
-        roll_forward(&block);
+        roll_forward(block.hash());
         for tx in block.transactions().iter() {
             self.shashmap.insert_new_transaction(tx);
         }
