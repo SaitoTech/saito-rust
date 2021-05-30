@@ -2,8 +2,8 @@ use crate::{
     block::Block,
     crypto::PublicKey,
     keypair::Keypair,
-    slip::{Slip, SlipBroadcastType},
-    transaction::{Transaction, TransactionBroadcastType},
+    slip::Slip,
+    transaction::Transaction,
 };
 
 /// The golden ticket is a data structure containing instructions for picking
@@ -39,37 +39,40 @@ pub fn generate_golden_ticket_transaction(
     previous_block: &Block,
     keypair: &Keypair,
 ) -> Transaction {
-    let publickey = keypair.public_key();
+
+    let mut golden_tx = Transaction::new();
+
+
+
+/*********
+    let publickey = keypair.publickey();
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
-    let _gt_solution = GoldenTicket::new(previous_block.hash(), solution, publickey.clone());
+    
+    let previous_block_hash = previous_block.clone_hash();
+    //let previous_block_hash = previous_block.hash;
+
+    let _gt_solution = GoldenTicket::new(previous_block_hash, solution, publickey.clone());
 
     let winning_address = find_winner(&solution, previous_block);
 
     // TODO -- calculate captured fees in blocks based on transaction fees
     // for now, we just split the coinbase between the miners and the routers
 
-    let total_fees_for_miners_and_nodes = previous_block.coinbase();
-
-    let miner_share = (total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
+    let mut golden_tx = Transaction::new_mock();
+    
+    let total_fees_for_miners_and_nodes = &previous_block.coinbase();
+    
+    let miner_share = (*total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
-
-    let mut golden_tx = Transaction::new(TransactionBroadcastType::Normal);
-
-    let miner_slip = Slip::new(*publickey, SlipBroadcastType::Normal, miner_share);
-    let node_slip = Slip::new(winning_address, SlipBroadcastType::Normal, node_share);
-
-    golden_tx.add_output(miner_slip);
-    golden_tx.add_output(node_slip);
-
-    // toodo -- serialize our golden_ticket solution into our msg field
-    // this is used to change the difficulty and paysplit in the upcoming block
-
-    // golden_tx.set_message()
-
-    // todo, sign the transaction and create signature
-    // complete once we've added serialization
+    let miner_slip = Slip::new(*publickey, miner_share);
+    let node_slip = Slip::new(winning_address, node_share);
+     
+    // TODO - DO NOT INTERACT WITH INTERNALS Block.fn or Transaction.fn unless we design explicitly otherwise
+    //golden_tx.core.add_output(miner_slip);
+    //golden_tx.core.add_output(node_slip);    
+*******/
 
     golden_tx
 }
@@ -81,7 +84,8 @@ pub fn generate_golden_ticket_transaction(
 fn find_winner(_solution: &[u8; 32], previous_block: &Block) -> PublicKey {
     // TODO -- use fees paid in the block to determine the block winner with routing algorithm
     // for now, we just use the block creator to determine who the winner is
-    *previous_block.creator()
+    // TODO - don't die here
+    previous_block.creator().clone()
 }
 
 /// Generate random data, used for generating solutions in lottery game
@@ -99,7 +103,7 @@ mod tests {
     #[test]
     fn golden_ticket_test() {
         let keypair = Keypair::new();
-        let publickey = keypair.public_key();
+        let publickey = keypair.publickey();
         let random_hash = hash(&generate_random_data());
         let golden_ticket = GoldenTicket::new(random_hash, random_hash, *publickey);
 

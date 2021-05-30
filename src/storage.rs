@@ -17,6 +17,7 @@ impl Storage {
         }
     }
 
+/***
     pub async fn write_block_to_disk(&self, block: Block) -> io::Result<()> {
         let mut filename = match self.blocks_dir_path.clone() {
             Some(dir) => dir,
@@ -28,7 +29,10 @@ impl Storage {
 
         let mut buffer = File::create(filename).await?;
 
-        let byte_array: Vec<u8> = block.into();
+	//
+	// TODO -- just outputting creator for now 
+	//
+        let byte_array: Vec<u8> = block.creator();
         buffer.write_all(&byte_array[..]).await?;
 
         Ok(())
@@ -46,6 +50,7 @@ impl Storage {
 
         Ok(Block::from(encoded))
     }
+***/
 }
 
 #[cfg(test)]
