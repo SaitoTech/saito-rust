@@ -38,12 +38,9 @@ impl Block {
     }
 
     /// Returns the `Block` transactions
+    // TODO - if transactions do not exist, create from TransactionCore
+    // TODO - if TransactionCores do not exist, load from disk
     pub fn transactions(&self) -> Vec<Transaction> {
-
-	/// TODO - if transactions do not exist, create from TransactionCore
-
-	/// TODO - if TransactionCores do not exist, load from disk
-
         self.transactions
     }
 
@@ -156,7 +153,7 @@ impl Block {
     }
 
     /// check if `Block` is valid, returns true if valid, false if invalid
-    pub fn validate(&mut self, tx: Transaction) -> bool {
+    pub fn validate(&mut self) -> bool {
       true
     }
 
