@@ -85,7 +85,7 @@ fn find_winner(_solution: &[u8; 32], previous_block: &Block) -> PublicKey {
     // TODO -- use fees paid in the block to determine the block winner with routing algorithm
     // for now, we just use the block creator to determine who the winner is
     // TODO - don't die here
-    previous_block.creator()
+    previous_block.creator().clone()
 }
 
 /// Generate random data, used for generating solutions in lottery game

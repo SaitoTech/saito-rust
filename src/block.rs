@@ -1,4 +1,4 @@
-use crate::crypto::PublicKey;
+use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
 use crate::transaction::{Transaction, TransactionCore};
 use std::str::FromStr;
@@ -8,7 +8,9 @@ pub struct Block {
     /// Memoized hash of the block
     hash: Option<[u8; 32]>,
     /// BlockCore contains most of the critical block data maintained by consensus
-    core: BlockCore,
+    pub core: BlockCore,
+    /// full transaction set
+    transactions: Vec<Transaction>,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -39,8 +41,51 @@ impl Block {
         Block {
             hash: None,
             core: BlockCore::new(),
+            transactions: vec![],
         }
     }
+
+
+    /// Returns the `Block` hash
+    pub fn hash(&mut self) -> Option<[u8; 32]> {
+
+      if self.hash.is_none() {
+
+        let mut data: Vec<u8> = vec![];
+
+        let id_bytes: [u8; 8] = self.core.id.to_be_bytes();
+        let ts_bytes: [u8; 8] = self.core.timestamp.to_be_bytes();
+        let cr_bytes: Vec<u8> = self.core.creator.serialize().iter().cloned().collect();
+
+        data.extend(&id_bytes);
+        data.extend(&ts_bytes);
+        data.extend(&cr_bytes);
+
+        self.hash = Some(hash(&data));
+
+      }
+
+      self.hash
+
+    }
+
+
+    /// Returns the previous `Block` hash
+    pub fn block_id(&self) -> u64 {
+        self.core.id
+    }
+
+    /// Returns the previous `Block` hash
+    pub fn creator(&self) -> &PublicKey {
+        &self.core.creator
+    }
+
+    /// Returns the previous `Block` hash
+    pub fn previous_block_hash(&self) -> &[u8; 32] {
+        &self.core.previous_block_hash
+    }
+
+
 }
 
 impl BlockCore {
