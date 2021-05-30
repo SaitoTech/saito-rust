@@ -1,4 +1,4 @@
-use crate::block::{Block, BlockCore};
+use crate::block::Block;
 use crate::shashmap::Shashmap;
 
 
@@ -42,12 +42,12 @@ impl Blockchain {
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::block::Block;
-    use crate::keypair::Keypair;
-    use crate::slip::{OutputSlip, SlipType};
-    use crate::transaction::{Transaction, TransactionType};
-    use secp256k1::Signature;
+    // use super::*;
+    // use crate::block::Block;
+    // use crate::keypair::Keypair;
+    // use crate::slip::{OutputSlip, SlipID};
+    // use crate::transaction::{Transaction, TransactionType};
+    // use secp256k1::Signature;
 
     // #[test]
     // fn blockchain_test() {

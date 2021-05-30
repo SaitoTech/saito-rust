@@ -3,9 +3,8 @@ use crate::{
     crypto::PublicKey,
     keypair::Keypair,
     slip::{OutputSlip, SlipBroadcastType},
-    transaction::{Transaction, TransactionType},
+    transaction::Transaction,
 };
-use secp256k1::Signature;
 
 /// The golden ticket is a data structure containing instructions for picking
 /// a winner for paysplit in saito consensus.

@@ -1,13 +1,3 @@
-use crate::{
-    block::Block,
-    blockchain::Blockchain,
-    burnfee::BurnFee,
-    keypair::Keypair,
-    time::{create_timestamp, format_timestamp},
-    transaction::Transaction,
-    types::SaitoMessage,
-};
-use std::sync::{Arc, RwLock};
 
 pub const GENESIS_PERIOD: u64 = 21500;
 
@@ -17,91 +7,77 @@ pub const GENESIS_PERIOD: u64 = 21500;
 /// New `Block`s coming in over the network will hit the `Mempool` before being added to
 /// the `Blockchain`
 pub struct Mempool {
-    /// `Keypair` used to sign and bundle blocks
-    _keypair: Arc<RwLock<Keypair>>,
-    /// A list of blocks to be added to the longest chain
-    _blocks: Vec<Block>,
-    /// A list of `Transaction`s to be bundled into `Block`s
-    transactions: Vec<Transaction>,
-    ///
-    _burnfee: BurnFee,
-    /// The current work available in fees found in the list of `Transaction`s
-    work_available: u64,
+    // /// A list of `Transaction`s to be bundled into `Block`s
+    // transactions: Vec<Transaction>,
 }
 
 impl Mempool {
 
-    /// Creates new `Memppol`
-    pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
-        Mempool {
-            _keypair: keypair,
-            _burnfee: BurnFee::new(10.0),
-            _blocks: vec![],
-            transactions: vec![],
-            work_available: 0,
-        }
-    }
+    // /// Creates new `Memppol`
+    // pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
+    //     Mempool {
+    //         transactions: vec![],
+    //     }
+    // }
 
-    /// Processes `SaitoMessage` and attempts to return `Block`
-    ///
-    /// * `message` - `SaitoMessage` enum commanding `Mempool` operation
-    /// * `previous_block` - `Block` at longest chain position in `Blockchain`
-    pub fn process(
-        &mut self,
-        message: SaitoMessage,
-        previous_block: &Block,
-    ) -> Option<Block> {
-        match message {
-            SaitoMessage::Transaction { payload } => {
-                self.transactions.push(payload);
-                self.try_bundle(previous_block)
-            }
-            SaitoMessage::TryBundle => self.try_bundle(previous_block),
-            _ => None,
-        }
-    }
+    // /// Processes `SaitoMessage` and attempts to return `Block`
+    // ///
+    // /// * `message` - `SaitoMessage` enum commanding `Mempool` operation
+    // /// * `previous_block` - `Block` at longest chain position in `Blockchain`
+    // pub fn process(
+    //     &mut self,
+    //     message: SaitoMessage,
+    //     previous_block: &Block,
+    // ) -> Option<Block> {
+    //     match message {
+    //         SaitoMessage::Transaction { payload } => {
+    //             self.transactions.push(payload);
+    //             self.try_bundle(previous_block)
+    //         }
+    //         SaitoMessage::TryBundle => self.try_bundle(previous_block),
+    //         _ => None,
+    //     }
+    // }
 
 
-    /// Attempt to create a new `Block`
-    ///
-    /// * `previous_block` - `Option` of previous `Block`
-    fn try_bundle(&mut self, previous_block: &Block) -> Option<Block> {
-        // if self.can_bundle_block(previous_block) {
-        //     Some(self.bundle_block(previous_block))
-        // } else {
-        //     None
-        // }
-        None
-    }
+    // /// Attempt to create a new `Block`
+    // ///
+    // /// * `previous_block` - `Option` of previous `Block`
+    // fn try_bundle(&mut self, previous_block: &Block) -> Option<Block> {
+    //     if self.can_bundle_block(previous_block) {
+    //         Some(self.bundle_block(previous_block))
+    //     } else {
+    //         None
+    //     }
+    //     None
+    // }
 
-    /// Check to see if the `Mempool` has enough work to bundle a block
-    ///
-    /// * `previous_block` - `Option` of previous `Block`
-    fn can_bundle_block(&self, previous_block: &Block) -> bool {
-/****
-        match previous_block {
-            Some((block_header, _)) => {
-                let current_timestamp = create_timestamp();
-                let work_needed = self
-                    ._burnfee
-                    .return_work_needed(current_timestamp, block_header.timestamp());
-
-                println!(
-                    "TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}",
-                    format_timestamp(current_timestamp),
-                    work_needed,
-                    self.work_available,
-                    self.transactions.len(),
-                );
-
-                // TODO -- add check for transactions in Mempool
-                self.work_available >= work_needed
-            }
-            None => true,
-	        }
-****/
-        false
-    }
+    // /// Check to see if the `Mempool` has enough work to bundle a block
+    // ///
+    // /// * `previous_block` - `Option` of previous `Block`
+    // fn can_bundle_block(&self, previous_block: &Block) -> bool {
+    //     match previous_block {
+    //         Some((block_header, _)) => {
+    //             let current_timestamp = create_timestamp();
+    //             let work_needed = self
+    //                 ._burnfee
+    //                 .return_work_needed(current_timestamp, block_header.timestamp());
+    // 
+    //             println!(
+    //                 "TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}",
+    //                 format_timestamp(current_timestamp),
+    //                 work_needed,
+    //                 self.work_available,
+    //                 self.transactions.len(),
+    //             );
+    // 
+    //             // TODO -- add check for transactions in Mempool
+    //             self.work_available >= work_needed
+    //         }
+    //         None => true,
+	//         }
+    //     false
+    // }
 
 
 
@@ -154,11 +130,11 @@ impl Mempool {
 
 #[cfg(test)]
 mod tests {
-
-    use super::*;
-    use crate::keypair::Keypair;
-    use std::sync::{Arc, RwLock};
-
+    // 
+    // use super::*;
+    // use crate::keypair::Keypair;
+    // use std::sync::{Arc, RwLock};
+    //
     // #[test]
     // fn mempool_test() {
     //     assert_eq!(true, true);

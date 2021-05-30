@@ -1,4 +1,4 @@
-use crate::crypto::{hash, PublicKey};
+use crate::crypto::PublicKey;
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 use std::str::FromStr;
@@ -7,32 +7,40 @@ use std::str::FromStr;
 /// and additional metadata not to be serialized
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
-    /// BlockCore contains consensus data like id, creator,  etc.
-    /// when we receive blocks over the network, we are receiving
-    /// this data. The remaining data associated with this Block
-    /// is created locally.
-    core: BlockCore,
     /// Memoized hash of the block
     hash: [u8; 32],
     /// `BurnFee` containing the fees paid to produce the block
     burnfee: u64,
     /// Block difficulty required to win the `LotteryGame` in golden ticket generation
     difficulty: f32,
+    /// BlockCore contains consensus data like id, creator,  etc.
+    /// when we receive blocks over the network, we are receiving
+    /// this data. The remaining data associated with this Block
+    /// is created locally.
+    core: BlockCore,
 }
 
 impl Block {
     pub fn new_mock() -> Self {
-        Block::new(BlockCore::new_mock(), [0;32], 0, 0.0);
+        Block::new([0;32], 0, 0.0, BlockCore::new_mock())
     }
-    pub fn new(core: BlockCore, hash: [u8; 32], burnfee: u64, difficulty: f32) -> Block {
+    pub fn new(hash: [u8; 32], burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
         Block {
-            core: core,
             hash: hash,
             burnfee: burnfee,
             difficulty: difficulty,
+            core: core,
         }
     }
-
+    /// Returns the `Block` difficulty
+    pub fn difficulty(&self) -> f32 {
+        self.difficulty
+    }
+    
+    /// Returns the `Block` burnfee
+    pub fn burnfee(&self) -> u64 {
+        self.burnfee
+    }
     /// Returns the `BlockCore` of `Block`
     pub fn core(&self) -> &BlockCore {
         &self.core
@@ -53,14 +61,18 @@ impl Block {
         self.core.coinbase
     }
     
-    /// Returns the `Block` difficulty
-    pub fn difficulty(&self) -> f32 {
-        self.header.difficulty
+
+    /// Returns the `Block`'s `Transaction`s
+    pub fn transactions(&self) -> &Vec<Transaction> {
+        &self.core.transactions
     }
-    
-    /// Returns the `Block` burnfee
-    pub fn burnfee(&self) -> u64 {
-        self.header.burnfee
+    /// Returns the previous `Block` hash
+    pub fn previous_block_hash(&self) -> &[u8; 32] {
+        &self.core.previous_block_hash
+    }
+    /// Returns the `Block` id
+    pub fn id(&self) -> u64 {
+        self.core.id
     }
 }
 
@@ -85,7 +97,6 @@ pub struct BlockCore {
 
 }
 
-
 impl BlockCore {
     /// Creates a new mock `BlockCore` for use as we develop code. Please replace the fields with actual fields as we get them
     /// until we arrive at something the actual constructor:
@@ -109,36 +120,18 @@ impl BlockCore {
 
 }
 
-
-/// Update value of given field, reset memoised hash if changed.
-fn update_field<T>(hash: &mut Option<[u8; 32]>, field: &mut T, value: T)
-where
-    T: PartialEq<T>,
-{
-    if field != &value {
-        *field = value;
-        *hash = None;
-    }
-}
-
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        keypair::Keypair,
-        slip::{OutputSlip, SlipBroadcastType, SlipID},
-        transaction::{Transaction, TransactionType},
-    };
-    use secp256k1::Signature;
-
+    
     #[test]
     fn block_test() {
-        let mut block = Block::new_mock();
-
+        let block = Block::new_mock();
+        
+        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
         assert_eq!(block.id(), 0);
         assert_eq!(block.previous_block_hash(), &[0; 32]);
-        assert_eq!(block.creator(), &[0; 32]);
+        assert_eq!(block.creator(), public_key);
         assert_eq!(*block.transactions(), vec![]);
         assert_eq!(block.burnfee(), 0);
         assert_eq!(block.difficulty(), 0.0);

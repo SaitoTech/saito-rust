@@ -1,9 +1,7 @@
 use crate::{
-    blockchain::Blockchain,
     crypto::hash,
     golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
     keypair::Keypair,
-    mempool::Mempool,
     types::SaitoMessage,
 };
 use std::{
@@ -62,14 +60,11 @@ impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
-        let block_tx = saito_message_tx.clone();
         let miner_tx = saito_message_tx.clone();
         let mut miner_rx = saito_message_tx.subscribe();
 
         let keypair = Arc::new(RwLock::new(Keypair::new()));
-        let mut mempool = Mempool::new(keypair.clone());
-        let mut blockchain = Blockchain::new();
-
+        
         tokio::spawn(async move {
             loop {
                 saito_message_tx
