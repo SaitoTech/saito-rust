@@ -1,22 +1,174 @@
 use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
-use crate::transaction::Transaction;
+use crate::transaction::{Transaction, TransactionCore};
+
 
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
-    /// The header of the block object
-    header: BlockHeader,
-    /// The body and content of the block object
-    body: BlockBody,
+
+    /// BlockCore contains consensus data like id, creator,  etc.
+    /// when we receive blocks over the network, we are receiving
+    /// this data. The remaining data associated with this Block
+    /// is created locally.
+    core: BlockCore,
+
+    /// full transactions in block
+    transactions: Vec<Transaction>,
+
     /// Memoized hash of the block
     hash: Option<[u8; 32]>,
+
 }
 
-/// This `Header` holds `Block`'s metadata
+impl Block {
+
+    pub fn new() -> Block {
+        Block {
+            core: BlockCore::new(),
+            transactions: vec![],
+            hash: None,
+        }
+    }
+
+    /// Returns the `BlockCore` of `Block`
+    pub fn core(&self) -> &BlockCore {
+        &self.core
+    }
+
+    /// Returns the `Block` transactions
+    // TODO - if transactions do not exist, create from TransactionCore
+    // TODO - if TransactionCores do not exist, load from disk
+    pub fn transactions(&self) -> Vec<Transaction> {
+        self.transactions
+    }
+
+    /// Returns the `Block` hash
+    pub fn hash(&self) -> Option<[u8; 32]> {
+
+      if self.hash.is_none() {
+
+        let mut data: Vec<u8> = vec![];
+
+        let id_bytes: [u8; 8] = self.core.id.to_be_bytes();
+        let ts_bytes: [u8; 8] = self.core.timestamp.to_be_bytes();
+        let cr_bytes: Vec<u8> = self.core.creator.unwrap().serialize().iter().cloned().collect();
+
+        data.extend(&id_bytes);
+        data.extend(&ts_bytes);
+        data.extend(&cr_bytes);
+
+        self.hash = Some(hash(&data));
+
+      }
+
+      self.hash
+
+    }
+
+    /// Returns the previous `Block` hash
+    pub fn previous_block_hash(&self) -> &[u8; 32] {
+        &self.core.previous_block_hash
+    }
+
+    /// Returns the `Block` creator's `secp256k1::PublicKey`
+    pub fn creator(&self) -> Option<PublicKey> {
+        self.core.creator
+    }
+
+    /// Returns the `Block` burnfee
+    pub fn burnfee(&self) -> u64 {
+        self.core.burnfee
+    }
+
+    /// Returns the `Block` difficulty
+    pub fn difficulty(&self) -> f32 {
+        self.core.difficulty
+    }
+
+    /// Returns the `Block` treasury
+    pub fn treasury(&self) -> u64 {
+        self.core.treasury
+    }
+
+    /// Returns the `Block` coinbase
+    pub fn coinbase(&self) -> u64 {
+        self.core.coinbase
+    }
+
+
+    /// Converts our blockhash from a byte array into a hex string
+    /// -- is there any reason to keep the hash as binary? why not
+    /// -- just. in that case we do not really need this additional
+    /// -- function and can keep things a bit cleaner -- convert to
+    /// -- hex automatically in hash() function if we need to run it
+    ///pub fn hash_as_hex(&self) -> String {
+    ///    let hash = self.hash.unwrap_or_else(|| self.hash());
+    ///    hex::encode(hash)
+    ///}
+
+
+    /// Sets the id of the block
+    pub fn set_id(&mut self, id: u64) {
+        update_field(&mut self.hash, &mut self.core.id, id)
+    }
+
+    /// Sets the `Block` burnfee
+    pub fn set_burnfee(&mut self, bf: u64) {
+        update_field(&mut self.hash, &mut self.core.burnfee, bf)
+    }
+
+    /// Sets the `Block` creator
+    pub fn set_creator(&mut self, creator: PublicKey) {
+	self.hash = None;
+	self.core.creator = Some(creator);
+    }
+
+    /// Sets the `Block` previous hash
+    pub fn set_previous_block_hash(&mut self, previous_block_hash: [u8; 32]) {
+        update_field(&mut self.hash, &mut self.core.previous_block_hash, previous_block_hash)
+    }
+
+    /// Sets the `Block` difficulty
+    pub fn set_difficulty(&mut self, difficulty: f32) {
+        update_field(&mut self.hash, &mut self.core.difficulty, difficulty)
+    }
+
+    /// Sets the `Block` treasury
+    pub fn set_treasury(&mut self, treasury: u64) {
+        update_field(&mut self.hash, &mut self.core.treasury, treasury)
+    }
+
+    /// Sets the `Block` coinbase
+    pub fn set_coinbase(&mut self, coinbase: u64) {
+        update_field(&mut self.hash, &mut self.core.coinbase, coinbase)
+    }
+
+
+
+    /// adds transaction to `Block`
+    pub fn add_transaction(&mut self, tx: Transaction) {
+      self.transactions.push(tx);
+    }
+
+    /// check if `Block` is valid, returns true if valid, false if invalid
+    pub fn validate(&mut self) -> bool {
+      true
+    }
+
+}
+
+
+
+
+
+/// The `BlockCore` holds the most important metadata associated with the `Block`
+/// it is essentially the critical block data needed for distribution from which
+/// nodes can derive the block and transaction and slip data.
 #[derive(PartialEq, Debug, Clone)]
-pub struct BlockHeader {
+pub struct BlockCore {
+
     /// Block id
     id: u64,
     /// Block timestamp
@@ -24,7 +176,7 @@ pub struct BlockHeader {
     /// Byte array hash of the previous block in the chain
     previous_block_hash: [u8; 32],
     /// `Publickey` of the block creator
-    creator: PublicKey,
+    creator: Option<PublicKey>,
     /// `BurnFee` containing the fees paid to produce the block
     burnfee: u64,
     /// Block difficulty required to win the `LotteryGame` in golden ticket generation
@@ -33,209 +185,94 @@ pub struct BlockHeader {
     treasury: u64,
     /// Total block reward being released in the block
     coinbase: u64,
+
+    /// simplified transaction cores
+    transaction_cores: Vec<TransactionCore>,
+
 }
 
-/// This `BlockBody` holds data to be serialized along with
-/// `Transaction`s
-#[derive(PartialEq, Debug, Clone)]
-pub struct BlockBody {
-    /// List of transactions in the block
-    transactions: Vec<Transaction>,
-}
 
-impl BlockHeader {
-    /// Creates a new `BlockHeader`
-    ///
-    /// * `creator` - `secp256k1::PublicKey` of the block creator
-    /// * `previous_block_hash` - Previous block hash in bytes
-    pub fn new(creator: PublicKey, previous_block_hash: [u8; 32]) -> Self {
-        BlockHeader {
+impl BlockCore {
+
+    /// Creates a new `BlockCore`
+    pub fn new() -> Self {
+        BlockCore {
             id: 0,
-            timestamp: create_timestamp(),
-            previous_block_hash,
-            creator,
+            previous_block_hash: [0; 32],
+	    timestamp: create_timestamp(),
+            creator: None,
             burnfee: 0,
             difficulty: 0.0,
             treasury: 286_810_000_000_000_000,
             coinbase: 0,
+            transaction_cores: vec![],
         }
     }
 
-    /// Returns the `Block` id
+    /// Returns the `BlockCore` id
     pub fn id(&self) -> u64 {
         self.id
     }
 
-    /// Returns the `Block` timestamp
+    /// Returns the `BlockCore` id
+    pub fn previous_block_hash(&self) -> [u8; 32] {
+        self.previous_block_hash
+    }
+
+    /// Returns the `BlockCore` timestamp
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
 
-    /// Returns the `Block` difficulty
+    /// Returns the `BlockCore` difficulty
     pub fn difficulty(&self) -> f32 {
         self.difficulty
     }
 
-    /// Returns the `Block` treasury
+    /// Returns the `BlockCore` treasury
     pub fn treasury(&self) -> u64 {
         self.treasury
     }
 
-    /// Returns the `Block` coinbase
+    /// Returns the `BlockCore` coinbase
     pub fn coinbase(&self) -> u64 {
         self.coinbase
     }
-}
 
-impl BlockBody {
-    /// Creates a new `BlockBody`
-    pub fn new() -> Self {
-        BlockBody {
-            transactions: vec![],
-        }
-    }
-}
 
-impl Block {
-    /// Receives the a publickey and the previous block hash
-    ///
-    /// * `creator` - `secp256k1::PublicKey` of the block creator
-    /// * `previous_block_hash` - Previous block hash in bytes
-    pub fn new(creator: PublicKey, previous_block_hash: [u8; 32]) -> Block {
-        Block {
-            header: BlockHeader::new(creator, previous_block_hash),
-            body: BlockBody::new(),
-            hash: None,
-        }
-    }
-
-    // Returns the `BlockHeader` of `Block`
-    pub fn header(&self) -> &BlockHeader {
-        &self.header
-    }
-
-    /// Returns the `Block` id
-    pub fn id(&self) -> u64 {
-        self.header.id
-    }
-
-    /// Returns the `Block` timestamp
-    pub fn timestamp(&self) -> u64 {
-        self.header.timestamp
-    }
-
-    /// Returns the previous `Block` hash
-    pub fn previous_block_hash(&self) -> &[u8; 32] {
-        &self.header.previous_block_hash
-    }
-
-    /// Returns the `Block` creator's `secp256k1::PublicKey`
-    pub fn creator(&self) -> &PublicKey {
-        &self.header.creator
-    }
-
-    /// Returns the `Block`'s `Transaction`s
-    pub fn transactions(&self) -> &Vec<Transaction> {
-        &self.body.transactions
-    }
-
-    /// Returns the `Block` burnfee
-    pub fn burnfee(&self) -> u64 {
-        self.header.burnfee
-    }
-
-    /// Returns the `Block` difficulty
-    pub fn difficulty(&self) -> f32 {
-        self.header.difficulty
-    }
-
-    /// Returns the `Block` treasury
-    pub fn treasury(&self) -> u64 {
-        self.header.treasury
-    }
-
-    /// Returns the `Block` coinbase
-    pub fn coinbase(&self) -> u64 {
-        self.header.coinbase
-    }
-
-    /// Compute and memoize the block hash
-    pub fn compute_hash(&mut self) -> [u8; 32] {
-        let hash = self.hash();
-        self.hash = Some(hash);
-        hash
-    }
-
-    /// Generate the block hash
-    ///
-    /// TODO -- extend list of information we use to calculate the block hash
-    pub fn hash(&self) -> [u8; 32] {
-        if self.hash.is_none() {
-            let mut data: Vec<u8> = vec![];
-
-            let id_bytes: [u8; 8] = self.header.id.to_be_bytes();
-            let ts_bytes: [u8; 8] = self.header.timestamp.to_be_bytes();
-            let cr_bytes: Vec<u8> = self.header.creator.serialize().iter().cloned().collect();
-
-            data.extend(&id_bytes);
-            data.extend(&ts_bytes);
-            data.extend(&cr_bytes);
-            hash(&data)
-        } else {
-            self.hash.unwrap()
-        }
-    }
-
-    /// Converts our blockhash from a byte array into a hex string
-    pub fn hash_as_hex(&self) -> String {
-        let hash = self.hash.unwrap_or_else(|| self.hash());
-        hex::encode(hash)
-    }
-
-    /// Sets the `Block`s list of `Transaction`s
-    pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
-        self.body.transactions = transactions.to_vec();
-    }
-
-    /// Appends a transaction to the block
-    pub fn add_transaction(&mut self, tx: Transaction) {
-        self.body.transactions.push(tx);
-    }
-
-    /// Sets the id of the block
+    /// Sets the `BlockCore` id
     pub fn set_id(&mut self, id: u64) {
-        update_field(&mut self.hash, &mut self.header.id, id)
+        self.id = id;
     }
 
-    /// Sets the `Block` burnfee
+    /// Sets the `BlockCore` burnfee
     pub fn set_burnfee(&mut self, bf: u64) {
-        update_field(&mut self.hash, &mut self.header.burnfee, bf)
+        self.burnfee = bf;
     }
 
-    /// Sets the `Block` previous hash
+    /// Sets the `BlockCore` previous hash
     pub fn set_previous_block_hash(&mut self, previous_block_hash: [u8; 32]) {
-        update_field(
-            &mut self.hash,
-            &mut self.header.previous_block_hash,
-            previous_block_hash,
-        )
+        self.previous_block_hash = previous_block_hash;
     }
 
-    /// Sets the `Block` difficulty
+    /// Sets the `BlockCore` difficulty
     pub fn set_difficulty(&mut self, difficulty: f32) {
-        update_field(&mut self.hash, &mut self.header.difficulty, difficulty)
+        self.difficulty = difficulty;
     }
 
-    /// Sets the `Block` treasury
+    /// Sets the `BlockCore` treasury
     pub fn set_treasury(&mut self, treasury: u64) {
-        update_field(&mut self.hash, &mut self.header.treasury, treasury)
+        self.treasury = treasury;
     }
 
-    /// Sets the `Block` coinbase
+    /// Sets the `BlockCore` coinbase
     pub fn set_coinbase(&mut self, coinbase: u64) {
-        update_field(&mut self.hash, &mut self.header.coinbase, coinbase)
+        self.coinbase = coinbase;
     }
+
+
 }
+
 
 /// Update value of given field, reset memoised hash if changed.
 fn update_field<T>(hash: &mut Option<[u8; 32]>, field: &mut T, value: T)
@@ -247,6 +284,10 @@ where
         *hash = None;
     }
 }
+
+
+
+
 
 #[cfg(test)]
 mod test {
@@ -260,12 +301,11 @@ mod test {
 
     #[test]
     fn block_test() {
-        let keypair = Keypair::new();
-        let mut block = Block::new(*keypair.public_key(), [0; 32]);
+        let mut block = Block::new();
 
         assert_eq!(block.id(), 0);
         assert_eq!(block.previous_block_hash(), &[0; 32]);
-        assert_eq!(block.creator(), keypair.public_key());
+        assert_eq!(block.creator(), &[0; 32]);
         assert_eq!(*block.transactions(), vec![]);
         assert_eq!(block.burnfee(), 0);
         assert_eq!(block.difficulty(), 0.0);
@@ -288,47 +328,47 @@ mod test {
         assert_eq!(block.coinbase(), 100_000);
     }
 
-    #[test]
-    fn block_set_transactions_test() {
-        let keypair = Keypair::new();
-        let mut block = Block::new(*keypair.public_key(), [0; 32]);
-
-        let mut tx = Transaction::new(TransactionType::Normal);
-        let from_slip = SlipID::new(10, 10, 10);
-        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        tx.add_input(from_slip);
-        tx.add_output(to_slip);
-
-        let signed_transaction =
-            Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
-        block.set_transactions(&mut vec![signed_transaction.clone()]);
-
-        assert_eq!(block.transactions().len(), 1);
-
-        assert_eq!(
-            block.transactions()[0].body.outputs()[0].address(),
-            keypair.public_key()
-        );
-        assert_eq!(block.transactions()[0].body.outputs()[0].amount(), 0);
-        assert_eq!(
-            block.transactions()[0].body.outputs()[0].broadcast_type(),
-            SlipBroadcastType::Normal
-        );
-
-        assert_eq!(block.transactions()[0].body.inputs()[0].slip_id(), 10);
-        assert_eq!(block.transactions()[0].body.inputs()[0].tx_id(), 10);
-        assert_eq!(block.transactions()[0].body.inputs()[0].block_id(), 10);
-    }
-
-    #[test]
-    fn block_add_transaction_test() {
-        let keypair = Keypair::new();
-        let mut block = Block::new(*keypair.public_key(), [0; 32]);
-        let tx = Transaction::new(TransactionType::Normal);
-        assert_eq!(*block.transactions(), vec![]);
-        let signed_transaction =
-            Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
-        block.add_transaction(signed_transaction.clone());
-        assert_eq!(*block.transactions(), vec![signed_transaction.clone()]);
-    }
+    // #[test]
+    // fn block_set_transactions_test() {
+    //     let keypair = Keypair::new();
+    //     let mut block = Block::new(*keypair.public_key(), [0; 32]);
+    // 
+    //     let mut tx = Transaction::new(TransactionType::Normal);
+    //     let from_slip = SlipID::new(10, 10, 10);
+    //     let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     tx.add_input(from_slip);
+    //     tx.add_output(to_slip);
+    // 
+    //     let signed_transaction =
+    //         Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
+    //     block.set_transactions(&mut vec![signed_transaction.clone()]);
+    // 
+    //     assert_eq!(block.transactions().len(), 1);
+    // 
+    //     assert_eq!(
+    //         block.transactions()[0].body.outputs()[0].address(),
+    //         keypair.public_key()
+    //     );
+    //     assert_eq!(block.transactions()[0].body.outputs()[0].amount(), 0);
+    //     assert_eq!(
+    //         block.transactions()[0].body.outputs()[0].broadcast_type(),
+    //         SlipBroadcastType::Normal
+    //     );
+    // 
+    //     assert_eq!(block.transactions()[0].body.inputs()[0].slip_id(), 10);
+    //     assert_eq!(block.transactions()[0].body.inputs()[0].tx_id(), 10);
+    //     assert_eq!(block.transactions()[0].body.inputs()[0].block_id(), 10);
+    // }
+    // 
+    // #[test]
+    // fn block_add_transaction_test() {
+    //     let keypair = Keypair::new();
+    //     let mut block = Block::new(*keypair.public_key(), [0; 32]);
+    //     let tx = Transaction::new(TransactionType::Normal);
+    //     assert_eq!(*block.transactions(), vec![]);
+    //     let signed_transaction =
+    //         Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
+    //     block.add_transaction(signed_transaction.clone());
+    //     assert_eq!(*block.transactions(), vec![signed_transaction.clone()]);
+    // }
 }

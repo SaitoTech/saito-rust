@@ -51,6 +51,9 @@ pub struct Transaction {
     /// All data which is serialized and signed
     pub body: TransactionBody,
 }
+#[derive(Debug, PartialEq, Clone)]
+pub struct TransactionCore {
+}
 
 /// Core data to be serialized/deserialized of `Transaction`
 #[derive(Debug, PartialEq, Clone)]

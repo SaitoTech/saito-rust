@@ -58,6 +58,7 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
 }
 
 impl Consensus {
+
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
@@ -101,7 +102,10 @@ impl Consensus {
 
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
-                if let Some(block) = mempool.process(message, blockchain.get_latest_block_index()) {
+//
+// TODO - "process" what? descriptive function name -- should fetch latest block not block index
+//
+                if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
                     blockchain.add_block(block.clone());
                     block_tx
                         .send(SaitoMessage::Block { payload: block })

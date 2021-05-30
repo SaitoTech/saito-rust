@@ -1,6 +1,6 @@
 use crate::{
     block::Block,
-    blockchain::BlockIndex,
+    blockchain::Blockchain,
     burnfee::BurnFee,
     keypair::Keypair,
     time::{create_timestamp, format_timestamp},
@@ -30,6 +30,7 @@ pub struct Mempool {
 }
 
 impl Mempool {
+
     /// Creates new `Memppol`
     pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
         Mempool {
@@ -44,28 +45,29 @@ impl Mempool {
     /// Processes `SaitoMessage` and attempts to return `Block`
     ///
     /// * `message` - `SaitoMessage` enum commanding `Mempool` operation
-    /// * `previous_block_index` - `BlockIndex` of previous block in `Blockchain` longest chain
+    /// * `previous_block` - `Block` at longest chain position in `Blockchain`
     pub fn process(
         &mut self,
         message: SaitoMessage,
-        previous_block_index: Option<&BlockIndex>,
+        previous_block: &Block,
     ) -> Option<Block> {
         match message {
             SaitoMessage::Transaction { payload } => {
                 self.transactions.push(payload);
-                self.try_bundle(previous_block_index)
+                self.try_bundle(previous_block)
             }
-            SaitoMessage::TryBundle => self.try_bundle(previous_block_index),
+            SaitoMessage::TryBundle => self.try_bundle(previous_block),
             _ => None,
         }
     }
 
+
     /// Attempt to create a new `Block`
     ///
     /// * `previous_block` - `Option` of previous `Block`
-    fn try_bundle(&mut self, previous_block_index: Option<&BlockIndex>) -> Option<Block> {
-        if self.can_bundle_block(previous_block_index) {
-            Some(self.bundle_block(previous_block_index))
+    fn try_bundle(&mut self, previous_block: &Block) -> Option<Block> {
+        if self.can_bundle_block(previous_block) {
+            Some(self.bundle_block(previous_block))
         } else {
             None
         }
@@ -74,8 +76,9 @@ impl Mempool {
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
     /// * `previous_block` - `Option` of previous `Block`
-    fn can_bundle_block(&self, previous_block_index: Option<&BlockIndex>) -> bool {
-        match previous_block_index {
+    fn can_bundle_block(&self, previous_block: &Block) -> bool {
+/****
+        match previous_block {
             Some((block_header, _)) => {
                 let current_timestamp = create_timestamp();
                 let work_needed = self
@@ -94,24 +97,33 @@ impl Mempool {
                 self.work_available >= work_needed
             }
             None => true,
-        }
+	        }
+****/
+        false
     }
+
+
+
 
     /// Create a new `Block` from the `Mempool`'s list of `Transaction`s
     ///
     /// * `previous_block` - `Option` of the previous block on the longest chain
-    fn bundle_block(&mut self, previous_block_index: Option<&BlockIndex>) -> Block {
+    fn bundle_block(&mut self, previous_block: &Block) -> Block {
+
         let keypair = self._keypair.read().unwrap();
         let publickey = keypair.public_key();
         let mut block: Block;
-
+/****
         match previous_block_index {
             Some((previous_block_header, previous_block_hash)) => {
-                block = Block::new(publickey.clone(), previous_block_hash.clone());
+   
+                block = Block::new();
+		//block.set_creator();
+		//block.set_previous_block_hash();
 
                 // TODO -- include reclaimed fees here
-                let treasury = previous_block_header.treasury();
-                let coinbase = (treasury as f64 / GENESIS_PERIOD as f64).round() as u64;
+                //let treasury = previous_block_header.treasury();
+                //let coinbase = (treasury as f64 / GENESIS_PERIOD as f64).round() as u64;
 
                 block.set_id(previous_block_header.id() + 1);
                 block.set_coinbase(coinbase);
@@ -130,8 +142,8 @@ impl Mempool {
                 block = Block::new(publickey.clone(), [0; 32]);
             }
         }
-
         block.set_transactions(&mut self.transactions);
+****/
 
         return block;
         // TODO -- calculate difficulty and paysplit changes
