@@ -1,4 +1,4 @@
-use crate::slip::{OutputSlip, SlipID};
+use crate::slip::Slip;
 use crate::transaction::Transaction;
 use std::collections::HashMap;
 

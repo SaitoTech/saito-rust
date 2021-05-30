@@ -21,10 +21,13 @@ impl Transaction {
     /// Creates new `Transaction`
     ///
     pub fn new() -> Transaction {
-       signature: Signature::from_compact(&[0; 64]).unwrap(),
-       core: TransactionCore::new();
-       path: Path::new();
+        Transaction {
+            signature: Signature::from_compact(&[0; 64]).unwrap(),
+            core: TransactionCore::new(),
+            path: Path::new(),
+        }
     }
+
 }
 
 
@@ -50,12 +53,14 @@ impl TransactionCore {
     /// Creates new `TransactionCore`
     ///
     pub fn new() -> TransactionCore {
-        id: 0,
-	timestamp: create_timestamp(),
-	inputs: vec![],
-	outputs: vec![],
-	transaction_type: TransactionType::Normal,
-	message: vec![],
+        TransactionCore {
+            id: 0,
+	    timestamp: create_timestamp(),
+	    inputs: vec![],
+	    outputs: vec![],
+	    transaction_type: TransactionType::Normal,
+	    message: vec![],
+        }
     }
 
 }

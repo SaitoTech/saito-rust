@@ -2,7 +2,7 @@ use crate::{
     block::Block,
     crypto::PublicKey,
     keypair::Keypair,
-    slip::{OutputSlip, SlipBroadcastType},
+    slip::Slip,
     transaction::Transaction,
 };
 
@@ -60,11 +60,12 @@ pub fn generate_golden_ticket_transaction(
     
     let miner_share = (*total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
-    let miner_slip = OutputSlip::new(*publickey, SlipBroadcastType::Normal, miner_share);
-    let node_slip = OutputSlip::new(winning_address, SlipBroadcastType::Normal, node_share);
-    
-    golden_tx.core.add_output(miner_slip);
-    golden_tx.core.add_output(node_slip);    
+    let miner_slip = Slip::new(*publickey, miner_share);
+    let node_slip = Slip::new(winning_address, node_share);
+     
+    // TODO - DO NOT INTERACT WITH INTERNALS Block.fn or Transaction.fn unless we design explicitly otherwise
+    //golden_tx.core.add_output(miner_slip);
+    //golden_tx.core.add_output(node_slip);    
     
     golden_tx
 }
