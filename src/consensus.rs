@@ -105,12 +105,12 @@ impl Consensus {
 //
 // TODO - "process" what? descriptive function name -- should fetch latest block not block index
 //
-                if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
-                    blockchain.add_block(block.clone());
-                    block_tx
-                        .send(SaitoMessage::Block { payload: block })
-                        .expect("Err: Could not send new block");
-                }
+                // if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
+                //     blockchain.add_block(block.clone());
+                //     block_tx
+                //         .send(SaitoMessage::Block { payload: block })
+                //         .expect("Err: Could not send new block");
+                // }
             }
         }
     }

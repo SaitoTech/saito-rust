@@ -48,16 +48,6 @@ pub struct Transaction {
     signature: Signature,
     /// A list of `Hop` stipulating the history of `Transaction` routing
     path: Vec<Hop>,
-    /// All data which is serialized and signed
-    pub body: TransactionBody,
-}
-#[derive(Debug, PartialEq, Clone)]
-pub struct TransactionCore {
-}
-
-/// Core data to be serialized/deserialized of `Transaction`
-#[derive(Debug, PartialEq, Clone)]
-pub struct TransactionBody {
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,
     /// A list of `SlipID` inputs
@@ -74,29 +64,16 @@ impl Transaction {
     /// Creates new `Transaction`
     ///
     /// * `broadcast_type` - `TransactionType` of the new `Transaction`
-    pub fn new(broadcast_type: TransactionType) -> TransactionBody {
-        // TODO add inputs, outputs, and message here
-        TransactionBody {
+
+    pub fn new(broadcast_type: TransactionType, signature: Signature) -> Transaction {
+        Transaction {
+            signature: signature,
+            path: vec![],
             timestamp: create_timestamp(),
             inputs: vec![],
             outputs: vec![],
             broadcast_type,
             message: vec![],
-        }
-    }
-
-    pub fn sign(body: TransactionBody) -> Transaction {
-        Transaction {
-            signature: Signature::from_compact(&[0; 64]).unwrap(),
-            path: vec![],
-            body: body,
-        }
-    }
-    pub fn add_signature(body: TransactionBody, signature: Signature) -> Transaction {
-        Transaction {
-            signature: signature,
-            path: vec![],
-            body: body,
         }
     }
     /// Returns `secp256k1::Signature` verifying the validity of data on a transaction
@@ -108,10 +85,6 @@ impl Transaction {
     pub fn add_hop_to_path(&mut self, path: Hop) {
         self.path.push(path);
     }
-}
-
-impl TransactionBody {
-    /// Returns a timestamp when `Transaction` was created
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }

@@ -1,25 +1,23 @@
 use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
-use crate::transaction::{Transaction, TransactionCore};
+use crate::transaction::Transaction;
 
 
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
-
     /// BlockCore contains consensus data like id, creator,  etc.
     /// when we receive blocks over the network, we are receiving
     /// this data. The remaining data associated with this Block
     /// is created locally.
     core: BlockCore,
-
-    /// full transactions in block
-    transactions: Vec<Transaction>,
-
     /// Memoized hash of the block
     hash: Option<[u8; 32]>,
-
+    /// `BurnFee` containing the fees paid to produce the block
+    burnfee: Option<u64>,
+    /// Block difficulty required to win the `LotteryGame` in golden ticket generation
+    difficulty: Option<f32>,
 }
 
 impl Block {
@@ -27,8 +25,9 @@ impl Block {
     pub fn new() -> Block {
         Block {
             core: BlockCore::new(),
-            transactions: vec![],
             hash: None,
+            burnfee: None,
+            difficulty: None,
         }
     }
 
@@ -37,23 +36,16 @@ impl Block {
         &self.core
     }
 
-    /// Returns the `Block` transactions
-    // TODO - if transactions do not exist, create from TransactionCore
-    // TODO - if TransactionCores do not exist, load from disk
-    pub fn transactions(&self) -> Vec<Transaction> {
-        self.transactions
-    }
-
     /// Returns the `Block` hash
-    pub fn hash(&self) -> Option<[u8; 32]> {
+    pub fn hash(self) -> Option<[u8; 32]> {
 
       if self.hash.is_none() {
 
         let mut data: Vec<u8> = vec![];
 
-        let id_bytes: [u8; 8] = self.core.id.to_be_bytes();
-        let ts_bytes: [u8; 8] = self.core.timestamp.to_be_bytes();
-        let cr_bytes: Vec<u8> = self.core.creator.unwrap().serialize().iter().cloned().collect();
+        let id_bytes: [u8; 8] = self.core.id().to_be_bytes();
+        let ts_bytes: [u8; 8] = self.core.timestamp().to_be_bytes();
+        let cr_bytes: Vec<u8> = self.core.creator().unwrap().serialize().iter().cloned().collect();
 
         data.extend(&id_bytes);
         data.extend(&ts_bytes);
@@ -66,6 +58,16 @@ impl Block {
       self.hash
 
     }
+    /// Returns the `Block` burnfee
+    pub fn burnfee(&self) -> u64 {
+        self.burnfee
+    }
+
+    /// Returns the `Block` difficulty
+    pub fn difficulty(&self) -> f32 {
+        self.difficulty
+    }
+
 
     /// Returns the previous `Block` hash
     pub fn previous_block_hash(&self) -> &[u8; 32] {
@@ -77,20 +79,6 @@ impl Block {
         self.core.creator
     }
 
-    /// Returns the `Block` burnfee
-    pub fn burnfee(&self) -> u64 {
-        self.core.burnfee
-    }
-
-    /// Returns the `Block` difficulty
-    pub fn difficulty(&self) -> f32 {
-        self.core.difficulty
-    }
-
-    /// Returns the `Block` treasury
-    pub fn treasury(&self) -> u64 {
-        self.core.treasury
-    }
 
     /// Returns the `Block` coinbase
     pub fn coinbase(&self) -> u64 {
@@ -121,8 +109,9 @@ impl Block {
 
     /// Sets the `Block` creator
     pub fn set_creator(&mut self, creator: PublicKey) {
-	self.hash = None;
-	self.core.creator = Some(creator);
+        update_field(&mut self.hash, &mut self.core.previous_block_hash, previous_block_hash)
+        // self.hash = None;
+        // self.core.creator = Some(creator);
     }
 
     /// Sets the `Block` previous hash
@@ -145,22 +134,12 @@ impl Block {
         update_field(&mut self.hash, &mut self.core.coinbase, coinbase)
     }
 
-
-
     /// adds transaction to `Block`
     pub fn add_transaction(&mut self, tx: Transaction) {
       self.transactions.push(tx);
     }
 
-    /// check if `Block` is valid, returns true if valid, false if invalid
-    pub fn validate(&mut self) -> bool {
-      true
-    }
-
 }
-
-
-
 
 
 /// The `BlockCore` holds the most important metadata associated with the `Block`
@@ -169,25 +148,16 @@ impl Block {
 #[derive(PartialEq, Debug, Clone)]
 pub struct BlockCore {
 
-    /// Block id
-    id: u64,
     /// Block timestamp
     timestamp: u64,
     /// Byte array hash of the previous block in the chain
     previous_block_hash: [u8; 32],
     /// `Publickey` of the block creator
     creator: Option<PublicKey>,
-    /// `BurnFee` containing the fees paid to produce the block
-    burnfee: u64,
-    /// Block difficulty required to win the `LotteryGame` in golden ticket generation
-    difficulty: f32,
-    /// Treasury of existing Saito in the network
-    treasury: u64,
     /// Total block reward being released in the block
     coinbase: u64,
-
     /// simplified transaction cores
-    transaction_cores: Vec<TransactionCore>,
+    transactions: Vec<Transaction>,
 
 }
 
@@ -199,11 +169,8 @@ impl BlockCore {
         BlockCore {
             id: 0,
             previous_block_hash: [0; 32],
-	    timestamp: create_timestamp(),
+            timestamp: create_timestamp(),
             creator: None,
-            burnfee: 0,
-            difficulty: 0.0,
-            treasury: 286_810_000_000_000_000,
             coinbase: 0,
             transaction_cores: vec![],
         }
@@ -223,10 +190,15 @@ impl BlockCore {
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
-
+    
     /// Returns the `BlockCore` difficulty
     pub fn difficulty(&self) -> f32 {
         self.difficulty
+    }
+    
+    /// Returns the `BlockCore` difficulty
+    pub fn creator(&self) -> Option<PublicKey> {
+        self.creator
     }
 
     /// Returns the `BlockCore` treasury

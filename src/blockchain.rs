@@ -32,17 +32,10 @@ impl Blockchain {
         self.blocks.push(block);
     }
 
-    /// Return latest `Block` in blockchain
-    pub fn get_latest_block(&mut self) -> &Block {
-
-	if self.blocks.len() > 0 {
-	  let latest_block = self.blocks[self.blocks.len()-1];
-	  &latest_block
-        } else {
-          let mut block = Block::new();
-    	  &block
-	}
-    }
+    // /// Return latest `Block` in blockchain
+    // pub fn get_latest_block(&mut self) -> &Block {
+    // 
+    // }
 }
 
 

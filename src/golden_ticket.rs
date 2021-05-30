@@ -57,30 +57,19 @@ pub fn generate_golden_ticket_transaction(
     // TODO -- calculate captured fees in blocks based on transaction fees
     // for now, we just split the coinbase between the miners and the routers
 
+    let golden_tx =
+        Transaction::new(TransactionType::Normal, Signature::from_compact(&[0; 64]).unwrap());
+    
     let total_fees_for_miners_and_nodes = previous_block.coinbase();
 
     let miner_share = (total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
-
-    let mut golden_tx_body = Transaction::new(TransactionType::Normal);
-
     let miner_slip = OutputSlip::new(*publickey, SlipBroadcastType::Normal, miner_share);
     let node_slip = OutputSlip::new(winning_address, SlipBroadcastType::Normal, node_share);
 
-    golden_tx_body.add_output(miner_slip);
-    golden_tx_body.add_output(node_slip);
-
-    // toodo -- serialize our golden_ticket solution into our msg field
-    // this is used to change the difficulty and paysplit in the upcoming block
-
-    // golden_tx.set_message()
-
-    // todo, sign the transaction and create signature
-    // complete once we've added serialization
-
-    // TODO sign transaction with wallet
-    let golden_tx =
-        Transaction::add_signature(golden_tx_body, Signature::from_compact(&[0; 64]).unwrap());
+    golden_tx.add_output(miner_slip);
+    golden_tx.add_output(node_slip);    
+        
     golden_tx
 }
 
