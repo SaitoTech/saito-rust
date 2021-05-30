@@ -9,12 +9,8 @@ use secp256k1::Signature;
 /// contains additional information as an optinal message field to transfer data around the network
 #[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
-    /// `secp256k1::Signature` verifying authenticity of `TransactionCore` data
-    signature: Signature,
-    /// All data which is serialized and signed
+    /// we sign the data here, 
     pub core: TransactionCore,
-    /// Routing Path for the Transaction
-    path: Path,
 }
 
 impl Transaction {
@@ -22,14 +18,11 @@ impl Transaction {
     ///
     pub fn new() -> Transaction {
         Transaction {
-            signature: Signature::from_compact(&[0; 64]).unwrap(),
             core: TransactionCore::new(),
-            path: Path::new(),
         }
     }
 
 }
-
 
 /// Core data to be serialized/deserialized of `Transaction`
 #[derive(Debug, PartialEq, Clone)]
@@ -38,6 +31,8 @@ pub struct TransactionCore {
     id: u64,
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,
+    /// `secp256k1::Signature`
+    signature: Signature,
     /// a vector of UTXO input `Slip`
     inputs: Vec<Slip>,
     /// A vector of UTXO output `Slip`
@@ -46,6 +41,8 @@ pub struct TransactionCore {
     transaction_type: TransactionType,
     /// A byte array of miscellaneous information
     message: Vec<u8>,
+    /// Routing Path for the Transaction
+    path: Path,
 }
 
 impl TransactionCore {
@@ -56,10 +53,12 @@ impl TransactionCore {
         TransactionCore {
             id: 0,
 	    timestamp: create_timestamp(),
+            signature: Signature::from_compact(&[0; 64]).unwrap(),
 	    inputs: vec![],
 	    outputs: vec![],
 	    transaction_type: TransactionType::Normal,
 	    message: vec![],
+            path: Path::new(),
         }
     }
 

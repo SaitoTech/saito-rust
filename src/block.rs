@@ -1,85 +1,16 @@
 use crate::crypto::PublicKey;
 use crate::time::create_timestamp;
-use crate::transaction::Transaction;
+use crate::transaction::{Transaction, TransactionCore};
 use std::str::FromStr;
 
-/// The `Block` holds all data inside the block body,
-/// and additional metadata not to be serialized
 #[derive(PartialEq, Debug, Clone)]
 pub struct Block {
     /// Memoized hash of the block
-    hash: [u8; 32],
-    /// `BurnFee` containing the fees paid to produce the block
-    burnfee: u64,
-    /// Block difficulty required to win the `LotteryGame` in golden ticket generation
-    difficulty: f32,
-    /// BlockCore contains consensus data like id, creator,  etc.
-    /// when we receive blocks over the network, we are receiving
-    /// this data. The remaining data associated with this Block
-    /// is created locally.
+    hash: Option<[u8; 32]>,
+    /// BlockCore contains most of the critical block data maintained by consensus
     core: BlockCore,
 }
 
-impl Block {
-    pub fn new_mock() -> Self {
-        Block::new([0;32], 0, 0.0, BlockCore::new_mock())
-    }
-    pub fn new(hash: [u8; 32], burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
-        Block {
-            hash: hash,
-            burnfee: burnfee,
-            difficulty: difficulty,
-            core: core,
-        }
-    }
-    /// Returns the `Block` difficulty
-    pub fn difficulty(&self) -> f32 {
-        self.difficulty
-    }
-    
-    /// Returns the `Block` burnfee
-    pub fn burnfee(&self) -> u64 {
-        self.burnfee
-    }
-    /// Returns the `BlockCore` of `Block`
-    pub fn core(&self) -> &BlockCore {
-        &self.core
-    }
-
-    /// Returns the `Block` hash
-    pub fn clone_hash(&self) -> [u8; 32] {
-      self.hash.clone()
-    }
-    
-    /// Returns the `Block` creator's `secp256k1::PublicKey`
-    pub fn creator(&self) -> PublicKey {
-        self.core.creator
-    }
-    
-    /// Returns the `Block` coinbase
-    pub fn coinbase(&self) -> u64 {
-        self.core.coinbase
-    }
-    
-
-    /// Returns the `Block`'s `Transaction`s
-    pub fn transactions(&self) -> &Vec<Transaction> {
-        &self.core.transactions
-    }
-    /// Returns the previous `Block` hash
-    pub fn previous_block_hash(&self) -> &[u8; 32] {
-        &self.core.previous_block_hash
-    }
-    /// Returns the `Block` id
-    pub fn id(&self) -> u64 {
-        self.core.id
-    }
-}
-
-
-/// The `BlockCore` holds the most important metadata associated with the `Block`
-/// it is essentially the critical block data needed for distribution from which
-/// nodes can derive the block and transaction and slip data.
 #[derive(PartialEq, Debug, Clone)]
 pub struct BlockCore {
     /// Block id
@@ -88,37 +19,46 @@ pub struct BlockCore {
     timestamp: u64,
     /// Byte array hash of the previous block in the chain
     previous_block_hash: [u8; 32],
+    /// merkle root of transactions in Block
+    merkle_root: [u8; 32],
     /// `Publickey` of the block creator
     creator: PublicKey,
-    /// Total block reward being released in the block
-    coinbase: u64,
+    /// `BurnFee` containing the fees paid to produce the block
+    burnfee: u64,
+    /// Block difficulty required to win the `LotteryGame` in golden ticket generation
+    difficulty: f32,
+    /// Total amount in network treasury
+    treasury: u64,
     /// simplified transaction cores
-    transactions: Vec<Transaction>,
+    transaction_cores: Vec<TransactionCore>,
+}
 
+
+impl Block {
+    pub fn new() -> Block {
+        Block {
+            hash: None,
+            core: BlockCore::new(),
+        }
+    }
 }
 
 impl BlockCore {
-    /// Creates a new mock `BlockCore` for use as we develop code. Please replace the fields with actual fields as we get them
-    /// until we arrive at something the actual constructor:
-    /// new(id: , timestamp: u64, previous_block_hash: [u8; 32], creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>)
-    /// For example, blockchain.add_block shoudl at least know the id, so new_mock() can become new_mock(id: u64) when we write that.
-    pub fn new_mock() -> Self {
-        let publickey: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
-        BlockCore::new(0, create_timestamp(), [0;32], publickey, 0, vec![])
-    }
-    /// Creates a new `BlockCore`
-    pub fn new(id: u64, timestamp: u64, previous_block_hash: [u8; 32], creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>) -> Self {
+    pub fn new() -> BlockCore {
         BlockCore {
-            id: id,
-            timestamp: timestamp,
-            previous_block_hash: previous_block_hash,
-            creator: creator,
-            coinbase: coinbase,
-            transactions: transactions,
+            id: 0,
+            timestamp: create_timestamp(),
+            previous_block_hash: [0;32],
+            merkle_root: [0;32],
+            creator: PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap(),
+            burnfee: 0,
+            difficulty: 0.0,
+            treasury: 0,
+            transaction_cores: vec![],
         }
     }
-
 }
+
 
 #[cfg(test)]
 mod test {
@@ -138,47 +78,6 @@ mod test {
         assert_eq!(block.coinbase(), 0);
     }
 
-    // #[test]
-    // fn block_set_transactions_test() {
-    //     let keypair = Keypair::new();
-    //     let mut block = Block::new(*keypair.publickey(), [0; 32]);
-    // 
-    //     let mut tx = Transaction::new(TransactionType::Normal);
-    //     let from_slip = SlipID::new(10, 10, 10);
-    //     let to_slip = OutputSlip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
-    //     tx.add_input(from_slip);
-    //     tx.add_output(to_slip);
-    // 
-    //     let signed_transaction =
-    //         Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
-    //     block.set_transactions(&mut vec![signed_transaction.clone()]);
-    // 
-    //     assert_eq!(block.transactions().len(), 1);
-    // 
-    //     assert_eq!(
-    //         block.transactions()[0].body.outputs()[0].address(),
-    //         keypair.publickey()
-    //     );
-    //     assert_eq!(block.transactions()[0].body.outputs()[0].amount(), 0);
-    //     assert_eq!(
-    //         block.transactions()[0].body.outputs()[0].broadcast_type(),
-    //         SlipBroadcastType::Normal
-    //     );
-    // 
-    //     assert_eq!(block.transactions()[0].body.inputs()[0].slip_id(), 10);
-    //     assert_eq!(block.transactions()[0].body.inputs()[0].tx_id(), 10);
-    //     assert_eq!(block.transactions()[0].body.inputs()[0].block_id(), 10);
-    // }
-    // 
-    // #[test]
-    // fn block_add_transaction_test() {
-    //     let keypair = Keypair::new();
-    //     let mut block = Block::new(*keypair.publickey(), [0; 32]);
-    //     let tx = Transaction::new(TransactionType::Normal);
-    //     assert_eq!(*block.transactions(), vec![]);
-    //     let signed_transaction =
-    //         Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
-    //     block.add_transaction(signed_transaction.clone());
-    //     assert_eq!(*block.transactions(), vec![signed_transaction.clone()]);
-    // }
 }
+
+
