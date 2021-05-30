@@ -1,9 +1,9 @@
 use crate::{
-    slip::{OutputSlip, SlipID},
+    slip::Slip,
     path::Path,
     time::create_timestamp,
 };
-use secp256k1::{PublicKey, Signature};
+use secp256k1::Signature;
 
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network
@@ -38,10 +38,10 @@ pub struct TransactionCore {
     id: u64,
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,
-    /// A list of `SlipID` inputs
-    inputs: Vec<SlipID>,
-    /// A list of `OutputSlip` outputs
-    outputs: Vec<OutputSlip>,
+    /// a vector of UTXO input `Slip`
+    inputs: Vec<Slip>,
+    /// A vector of UTXO output `Slip`
+    outputs: Vec<Slip>,
     /// A enum transaction type determining how to process `Transaction` in consensus
     transaction_type: TransactionType,
     /// A byte array of miscellaneous information
@@ -81,7 +81,7 @@ mod tests {
     use super::*;
     use crate::{
         keypair::Keypair,
-        slip::{OutputSlip, SlipBroadcastType, SlipID},
+        slip::Slip,
     };
 
     #[test]
@@ -96,7 +96,7 @@ mod tests {
         assert_eq!(tx.core.message(), &vec![]);
 
         let keypair = Keypair::new();
-        //let to_slip = OutputSlip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
+        //let to_slip = Slip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
         //let from_slip = SlipID::new(10, 10, 10);
 
         // let hop_message_bytes = Keypair::make_message_from_string("message_string");

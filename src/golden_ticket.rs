@@ -39,6 +39,12 @@ pub fn generate_golden_ticket_transaction(
     previous_block: &Block,
     keypair: &Keypair,
 ) -> Transaction {
+
+    let mut golden_tx = Transaction::new();
+
+
+
+/*********
     let publickey = keypair.publickey();
 
     // TODO -- create our Golden Ticket
@@ -66,7 +72,8 @@ pub fn generate_golden_ticket_transaction(
     // TODO - DO NOT INTERACT WITH INTERNALS Block.fn or Transaction.fn unless we design explicitly otherwise
     //golden_tx.core.add_output(miner_slip);
     //golden_tx.core.add_output(node_slip);    
-    
+*******/
+
     golden_tx
 }
 
