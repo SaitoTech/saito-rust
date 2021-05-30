@@ -100,8 +100,10 @@ impl Consensus {
 //
 // TODO - "process" what? descriptive function name -- should fetch latest block not block index
 //
+// if this is how we are adding blocks, how does mempool validate TXS against the shashmap
+//
                 // if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
-                //     blockchain.add_block(block.clone());
+                //     blockchain.add_block(block);
                 //     block_tx
                 //         .send(SaitoMessage::Block { payload: block })
                 //         .expect("Err: Could not send new block");

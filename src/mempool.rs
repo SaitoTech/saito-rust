@@ -1,4 +1,15 @@
+use crate::{
+    block::Block,
+    blockchain::Blockchain,
+    burnfee::BurnFee,
+    keypair::Keypair,
+    time::{create_timestamp, format_timestamp},
+    transaction::Transaction,
+    types::SaitoMessage,
+};
+use std::sync::{Arc, RwLock};
 
+/// TODO -- 
 pub const GENESIS_PERIOD: u64 = 21500;
 
 /// The `Mempool` is the structure that collects blocks and transactions
@@ -7,50 +18,54 @@ pub const GENESIS_PERIOD: u64 = 21500;
 /// New `Block`s coming in over the network will hit the `Mempool` before being added to
 /// the `Blockchain`
 pub struct Mempool {
-    // /// A list of `Transaction`s to be bundled into `Block`s
-    // transactions: Vec<Transaction>,
+    /// A list of `Transaction`s to be bundled into `Block`s
+    transactions: Vec<Transaction>,
+    blocks: Vec<Block>,
 }
 
 impl Mempool {
 
-    // /// Creates new `Memppol`
-    // pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
-    //     Mempool {
-    //         transactions: vec![],
-    //     }
-    // }
+    /// Creates new `Memppol`
+    pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
+         Mempool {
+             blocks: vec![],
+             transactions: vec![],
+         }
+     }
 
     // /// Processes `SaitoMessage` and attempts to return `Block`
     // ///
     // /// * `message` - `SaitoMessage` enum commanding `Mempool` operation
     // /// * `previous_block` - `Block` at longest chain position in `Blockchain`
-    // pub fn process(
-    //     &mut self,
-    //     message: SaitoMessage,
-    //     previous_block: &Block,
-    // ) -> Option<Block> {
-    //     match message {
-    //         SaitoMessage::Transaction { payload } => {
-    //             self.transactions.push(payload);
-    //             self.try_bundle(previous_block)
-    //         }
-    //         SaitoMessage::TryBundle => self.try_bundle(previous_block),
-    //         _ => None,
-    //     }
-    // }
+    pub fn process(
+         &mut self,
+         message: SaitoMessage,
+         previous_block: &Block,
+    ) -> Option<Block> {
+         match message {
+             SaitoMessage::Transaction { payload } => {
+                 self.transactions.push(payload);
+                 self.try_bundle(previous_block)
+             }
+             SaitoMessage::TryBundle => self.try_bundle(previous_block),
+             _ => None,
+         }
+     }
 
 
     // /// Attempt to create a new `Block`
     // ///
     // /// * `previous_block` - `Option` of previous `Block`
-    // fn try_bundle(&mut self, previous_block: &Block) -> Option<Block> {
-    //     if self.can_bundle_block(previous_block) {
-    //         Some(self.bundle_block(previous_block))
-    //     } else {
-    //         None
-    //     }
-    //     None
-    // }
+    fn try_bundle(&mut self, previous_block: &Block) -> Option<Block> {
+//        if self.can_bundle_block(previous_block) {
+//            Some(self.bundle_block(previous_block))
+//        } else {
+//            None
+//        }
+        None
+    }
+
+
 
     // /// Check to see if the `Mempool` has enough work to bundle a block
     // ///
