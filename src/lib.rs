@@ -29,6 +29,7 @@ pub mod crypto;
 pub mod golden_ticket;
 pub mod keypair;
 pub mod mempool;
+pub mod path;
 pub mod shashmap;
 pub mod slip;
 pub mod time;

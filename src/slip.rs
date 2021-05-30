@@ -3,7 +3,7 @@ use std::hash::Hash;
 
 /// An enumerated set of `Slip` types
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-pub enum SlipBroadcastType {
+pub enum SlipType {
     Normal,
 }
 
