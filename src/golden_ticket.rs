@@ -39,7 +39,7 @@ pub fn generate_golden_ticket_transaction(
     previous_block: &Block,
     keypair: &Keypair,
 ) -> Transaction {
-    let publickey = keypair.public_key();
+    let publickey = keypair.publickey();
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
@@ -95,7 +95,7 @@ mod tests {
     #[test]
     fn golden_ticket_test() {
         let keypair = Keypair::new();
-        let publickey = keypair.public_key();
+        let publickey = keypair.publickey();
         let random_hash = hash(&generate_random_data());
         let golden_ticket = GoldenTicket::new(random_hash, random_hash, *publickey);
 

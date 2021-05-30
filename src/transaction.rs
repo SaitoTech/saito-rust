@@ -91,12 +91,12 @@ mod tests {
         assert_eq!(tx.core.message(), &vec![]);
 
         let keypair = Keypair::new();
-        //let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+        //let to_slip = OutputSlip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
         //let from_slip = SlipID::new(10, 10, 10);
 
         // let hop_message_bytes = Keypair::make_message_from_string("message_string");
         // let signature = keypair.sign_message(&hop_message_bytes);
-        // let hop = Hop::new(keypair.public_key().clone(), signature);
+        // let hop = Hop::new(keypair.publickey().clone(), signature);
 
         //tx.core.add_output(to_slip);
         //tx.core.add_input(from_slip);

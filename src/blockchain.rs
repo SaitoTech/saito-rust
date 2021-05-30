@@ -65,7 +65,7 @@ mod tests {
     // #[test]
     // fn blockchain_get_latest_block_index_some_test() {
     //     let mut blockchain = Blockchain::new();
-    //     let block = Block::new(Keypair::new().public_key().clone(), [0; 32]);
+    //     let block = Block::new(Keypair::new().publickey().clone(), [0; 32]);
     // 
     //     blockchain.add_block(block.clone());
     // 
@@ -81,9 +81,9 @@ mod tests {
     // fn blockchain_add_block_test() {
     //     let keypair = Keypair::new();
     //     let mut blockchain = Blockchain::new();
-    //     let mut block = Block::new(keypair.public_key().clone(), [0; 32]);
+    //     let mut block = Block::new(keypair.publickey().clone(), [0; 32]);
     //     let mut transaction = Transaction::new(TransactionType::Normal);
-    //     let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let to_slip = OutputSlip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
     //     transaction.add_output(to_slip);
     // 
     //     let signed_transaction =

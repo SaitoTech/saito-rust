@@ -8,36 +8,34 @@ use std::fmt::Write;
 /// An secp256k1 keypair for signing and verifying messages
 #[derive(Debug, PartialEq)]
 pub struct Keypair {
-    secret_key: SecretKey,
-    public_key: PublicKey,
+    privatekey: SecretKey,
+    publickey: PublicKey,
 }
 
 impl Keypair {
     /// Create and return a keypair with a randomly generated private key.
     pub fn new() -> Keypair {
-        let (mut secret_key, mut public_key) =
-            SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
-        while public_key.serialize().to_base58().len() != 44 {
+        let (mut privatekey, mut publickey) = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
+        while publickey.serialize().to_base58().len() != 44 {
             // sometimes secp256k1 address is too big to store in 44 base-58 digits
             let keypair_tuple = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
-            secret_key = keypair_tuple.0;
-            public_key = keypair_tuple.1;
+            privatekey = keypair_tuple.0;
+            publickey = keypair_tuple.1;
         }
 
         Keypair {
-            secret_key: secret_key,
-            public_key: public_key,
+            privatekey: privatekey,
+            publickey: publickey,
         }
     }
 
     /// Create and return a keypair with  the given hex u8 array as the private key
     pub fn from_secret_slice(slice: &[u8]) -> Result<Keypair, secp256k1::Error> {
-        let secret_key = SecretKey::from_slice(slice)?;
-        let public_key = PublicKey::from_secret_key(&SECP256K1, &secret_key);
-
+        let privatekey = SecretKey::from_slice(slice)?;
+        let publickey = PublicKey::from_privatekey(&SECP256K1, &privatekey);
         Ok(Keypair {
-            secret_key: secret_key,
-            public_key: public_key,
+            privatekey: privatekey,
+            publickey: publickey,
         })
     }
 
@@ -50,17 +48,17 @@ impl Keypair {
 
     /// Get the public key of the keypair in base58(i.e. address) format
     pub fn address(&self) -> String {
-        self.public_key.serialize().to_base58()
+        self.publickey.serialize().to_base58()
     }
 
     /// Get the public key of the keypair as secp256k1::key::PublicKey
-    pub fn public_key(&self) -> &PublicKey {
-        &self.public_key
+    pub fn publickey(&self) -> &PublicKey {
+        &self.publickey
     }
 
     /// Get the private key as a hex-encoded string
-    pub fn secret_key(&self) -> &SecretKey {
-        &self.secret_key
+    pub fn privatekey(&self) -> &SecretKey {
+        &self.privatekey
     }
 
     /// Hash the message string with sha256 for signing by secp256k1 and return as byte array
@@ -90,27 +88,26 @@ impl Keypair {
     /// Hash and sign message bytes
     pub fn sign_message(&self, message_bytes: &[u8]) -> Signature {
         let msg = Message::from_slice(message_bytes).unwrap();
-        SECP256K1.sign(&msg, &self.secret_key)
+        SECP256K1.sign(&msg, &self.privatekey)
     }
 
     /// Verify a message signed by secp256k1. Message is a plain string. Sig and pubkey should be base58 encoded.
-    pub fn verify_string_message(message: &str, sig: &str, public_key: &str) -> bool {
+    pub fn verify_string_message(message: &str, sig: &str, publickey: &str) -> bool {
         let message = Message::from_slice(&Keypair::make_message_from_string(message)).unwrap();
         let sig = Signature::from_der(&String::from(sig).from_base58().unwrap()).unwrap();
-        let public_key =
-            PublicKey::from_slice(&String::from(public_key).from_base58().unwrap()).unwrap();
-        Keypair::verify_message(message, sig, public_key)
+        let publickey = PublicKey::from_slice(&String::from(publickey).from_base58().unwrap()).unwrap();
+        Keypair::verify_message(message, sig, publickey)
     }
-    fn verify_message(msg: Message, sig: Signature, public_key: PublicKey) -> bool {
-        SECP256K1.verify(&msg, &sig, &public_key).is_ok()
+    fn verify_message(msg: Message, sig: Signature, publickey: PublicKey) -> bool {
+        SECP256K1.verify(&msg, &sig, &publickey).is_ok()
     }
 }
 
 impl fmt::Display for Keypair {
     /// formats a Keypair for println!
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let pubkey = self.public_key();
-        write!(f, "pubkey:{} privkey:{}", pubkey, self.secret_key)
+        let pubkey = self.publickey();
+        write!(f, "pubkey:{} privkey:{}", pubkey, self.privatekey)
     }
 }
 
@@ -128,8 +125,8 @@ mod test {
 
     #[test]
     fn test_signing() {
-        let mock_secret_key = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
-        let keypair = Keypair::from_secret_hex(mock_secret_key).unwrap();
+        let mock_privatekey = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
+        let keypair = Keypair::from_secret_hex(mock_privatekey).unwrap();
         let sig_string2 = keypair
             .sign_string_message(&String::from("hello world"))
             .unwrap();
@@ -145,12 +142,12 @@ mod test {
     }
 
     #[test]
-    fn test_new_from_secret_key() {
-        let mock_secret_key = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
-        let keypair = Keypair::from_secret_hex(mock_secret_key).unwrap();
+    fn test_new_from_privatekey() {
+        let mock_privatekey = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
+        let keypair = Keypair::from_secret_hex(mock_privatekey).unwrap();
         let mut pubkey_string = String::new();
-        assert!(write!(&mut pubkey_string, "{:?}", keypair.public_key()).is_ok());
-        assert_eq!(keypair.secret_key().to_string(), mock_secret_key);
+        assert!(write!(&mut pubkey_string, "{:?}", keypair.publickey()).is_ok());
+        assert_eq!(keypair.privatekey().to_string(), mock_privatekey);
         assert_eq!(pubkey_string, "PublicKey(7280275e7c1b54f91a27a4b28291dab2b00b762a91292eb413065771fc90ee2552022d1fc27557465a8e86c147fff767b414495008b904dcdab490992add99a5)");
         assert_eq!(
             keypair.address(),
@@ -165,6 +162,6 @@ mod test {
     fn test_new() {
         let keypair = Keypair::new();
         assert_eq!(keypair.address().len(), 44);
-        assert_eq!(keypair.secret_key().to_string().len(), 64);
+        assert_eq!(keypair.privatekey().to_string().len(), 64);
     }
 }

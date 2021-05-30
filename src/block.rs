@@ -103,8 +103,8 @@ impl BlockCore {
     /// new(id: , timestamp: u64, previous_block_hash: [u8; 32], creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>)
     /// For example, blockchain.add_block shoudl at least know the id, so new_mock() can become new_mock(id: u64) when we write that.
     pub fn new_mock() -> Self {
-        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
-        BlockCore::new(0, create_timestamp(), [0;32], public_key, 0, vec![])
+        let publickey: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
+        BlockCore::new(0, create_timestamp(), [0;32], publickey, 0, vec![])
     }
     /// Creates a new `BlockCore`
     pub fn new(id: u64, timestamp: u64, previous_block_hash: [u8; 32], creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>) -> Self {
@@ -128,10 +128,10 @@ mod test {
     fn block_test() {
         let block = Block::new_mock();
         
-        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
+        let publickey: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
         assert_eq!(block.id(), 0);
         assert_eq!(block.previous_block_hash(), &[0; 32]);
-        assert_eq!(block.creator(), public_key);
+        assert_eq!(block.creator(), publickey);
         assert_eq!(*block.transactions(), vec![]);
         assert_eq!(block.burnfee(), 0);
         assert_eq!(block.difficulty(), 0.0);
@@ -141,11 +141,11 @@ mod test {
     // #[test]
     // fn block_set_transactions_test() {
     //     let keypair = Keypair::new();
-    //     let mut block = Block::new(*keypair.public_key(), [0; 32]);
+    //     let mut block = Block::new(*keypair.publickey(), [0; 32]);
     // 
     //     let mut tx = Transaction::new(TransactionType::Normal);
     //     let from_slip = SlipID::new(10, 10, 10);
-    //     let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let to_slip = OutputSlip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
     //     tx.add_input(from_slip);
     //     tx.add_output(to_slip);
     // 
@@ -157,7 +157,7 @@ mod test {
     // 
     //     assert_eq!(
     //         block.transactions()[0].body.outputs()[0].address(),
-    //         keypair.public_key()
+    //         keypair.publickey()
     //     );
     //     assert_eq!(block.transactions()[0].body.outputs()[0].amount(), 0);
     //     assert_eq!(
@@ -173,7 +173,7 @@ mod test {
     // #[test]
     // fn block_add_transaction_test() {
     //     let keypair = Keypair::new();
-    //     let mut block = Block::new(*keypair.public_key(), [0; 32]);
+    //     let mut block = Block::new(*keypair.publickey(), [0; 32]);
     //     let tx = Transaction::new(TransactionType::Normal);
     //     assert_eq!(*block.transactions(), vec![]);
     //     let signed_transaction =

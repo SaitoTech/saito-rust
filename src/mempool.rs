@@ -88,7 +88,7 @@ impl Mempool {
 //     fn bundle_block(&mut self, previous_block: &Block) -> Block {
 // 
 //         let keypair = self._keypair.read().unwrap();
-//         let publickey = keypair.public_key();
+//         let publickey = keypair.publickey();
 //         let block: Block;
 // /****
 //         match previous_block_index {
@@ -163,7 +163,7 @@ mod tests {
     //     let keypair = Arc::new(RwLock::new(Keypair::new()));
     //     let mut mempool = Mempool::new(keypair);
     // 
-    //     let prev_block = Block::new(Keypair::new().public_key().clone(), [0; 32]);
+    //     let prev_block = Block::new(Keypair::new().publickey().clone(), [0; 32]);
     //     let prev_block_index = &(prev_block.header().clone(), prev_block.hash());
     //     let new_block = mempool.try_bundle(Some(prev_block_index));
     // 

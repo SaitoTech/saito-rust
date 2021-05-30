@@ -57,7 +57,7 @@ mod test {
     // fn shashmap_insert_test() {
     //     let mut shashmap = Shashmap::new();
     //     let keypair = Keypair::new();
-    //     let slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let slip = Slip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
     //     shashmap.insert(slip, 0);
     //     assert!(shashmap.utxo_hashmap.contains_key(&slip));
     // }
@@ -66,12 +66,12 @@ mod test {
     // fn shashmap_insert_new_transaction_test() {
     //     let mut shashmap = Shashmap::new();
     //
-    //     let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
-    //     let mut tx_body = Transaction::new(TransactionType::Normal, public_key);
+    //     let publickey: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
+    //     let mut tx_body = Transaction::new(TransactionType::Normal, publickey);
     //     let mut tx Transaction::add_signature(tx_body, &Signature::from_compact(&[0; 64]).unwrap());
     //
     //     let keypair = Keypair::new();
-    //     let output_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let output_slip = Slip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
     //
     //     tx.add_output(output_slip);
     //
@@ -84,11 +84,11 @@ mod test {
     // #[test]
     // fn shashmap_spend_transaction_test() {
     //     let mut shashmap = Shashmap::new();
-    //     let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
-    //     let mut tx_body = Transaction::new(TransactionType::Normal, public_key);
+    //     let publickey: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
+    //     let mut tx_body = Transaction::new(TransactionType::Normal, publickey);
     //     let mut tx Transaction::add_signature(tx_body, &Signature::from_compact(&[0; 64]).unwrap());
     //     let keypair = Keypair::new();
-    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let input_slip = Slip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
     //
     //     tx.add_input(input_slip);
     //
@@ -101,12 +101,12 @@ mod test {
     // #[test]
     // fn shashmap_unspend_transaction_test() {
     //     let mut shashmap = Shashmap::new();
-    //     let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
-    //     let mut tx_body = Transaction::new(TransactionType::Normal, public_key);
+    //     let publickey: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
+    //     let mut tx_body = Transaction::new(TransactionType::Normal, publickey);
     //     let mut tx Transaction::add_signature(tx_body, &Signature::from_compact(&[0; 64]).unwrap());
     //
     //     let keypair = Keypair::new();
-    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let input_slip = Slip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
     //
     //     tx.add_input(input_slip);
     //
@@ -121,7 +121,7 @@ mod test {
     //     let mut shashmap = Shashmap::new();
     //
     //     let keypair = Keypair::new();
-    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let input_slip = Slip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
     //
     //     shashmap.spend_slip(&input_slip, 0);
     //
@@ -134,7 +134,7 @@ mod test {
     //     let mut shashmap = Shashmap::new();
     //
     //     let keypair = Keypair::new();
-    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let input_slip = Slip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
     //
     //     shashmap.unspend_slip(&input_slip);
     //
@@ -147,7 +147,7 @@ mod test {
     //     let mut shashmap = Shashmap::new();
     //
     //     let keypair = Keypair::new();
-    //     let slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let slip = Slip::new(keypair.publickey().clone(), SlipBroadcastType::Normal, 0);
     //     shashmap.insert(slip, 1);
     //
     //     match shashmap.slip_block_id(&slip) {
