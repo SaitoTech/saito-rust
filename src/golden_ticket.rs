@@ -44,32 +44,29 @@ pub fn generate_golden_ticket_transaction(
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
-    let mut previous_block_hash = previous_block.hash();
+    
+    let previous_block_hash = previous_block.clone_hash();
+    //let previous_block_hash = previous_block.hash;
 
-    if previous_block_hash.is_none() {
-      previous_block_hash = Some([0; 32]);
-    } 
-
-    let _gt_solution = GoldenTicket::new(previous_block_hash.unwrap(), solution, publickey.clone());
+    let _gt_solution = GoldenTicket::new(previous_block_hash, solution, publickey.clone());
 
     let winning_address = find_winner(&solution, previous_block);
 
     // TODO -- calculate captured fees in blocks based on transaction fees
     // for now, we just split the coinbase between the miners and the routers
 
-    let golden_tx =
-        Transaction::new(TransactionType::Normal, Signature::from_compact(&[0; 64]).unwrap());
+    let mut golden_tx = Transaction::new_mock();
     
-    let total_fees_for_miners_and_nodes = previous_block.coinbase();
-
-    let miner_share = (total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
+    let total_fees_for_miners_and_nodes = &previous_block.coinbase();
+    
+    let miner_share = (*total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
     let miner_slip = OutputSlip::new(*publickey, SlipBroadcastType::Normal, miner_share);
     let node_slip = OutputSlip::new(winning_address, SlipBroadcastType::Normal, node_share);
-
-    golden_tx.add_output(miner_slip);
-    golden_tx.add_output(node_slip);    
-        
+    
+    golden_tx.core.add_output(miner_slip);
+    golden_tx.core.add_output(node_slip);    
+    
     golden_tx
 }
 
@@ -81,7 +78,7 @@ fn find_winner(_solution: &[u8; 32], previous_block: &Block) -> PublicKey {
     // TODO -- use fees paid in the block to determine the block winner with routing algorithm
     // for now, we just use the block creator to determine who the winner is
     // TODO - don't die here
-    previous_block.creator().unwrap()
+    previous_block.creator()
 }
 
 /// Generate random data, used for generating solutions in lottery game

@@ -1,7 +1,7 @@
 use crate::crypto::{hash, PublicKey};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
-
+use std::str::FromStr;
 
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
@@ -13,21 +13,23 @@ pub struct Block {
     /// is created locally.
     core: BlockCore,
     /// Memoized hash of the block
-    hash: Option<[u8; 32]>,
+    hash: [u8; 32],
     /// `BurnFee` containing the fees paid to produce the block
-    burnfee: Option<u64>,
+    burnfee: u64,
     /// Block difficulty required to win the `LotteryGame` in golden ticket generation
-    difficulty: Option<f32>,
+    difficulty: f32,
 }
 
 impl Block {
-
-    pub fn new() -> Block {
+    pub fn new_mock() -> Self {
+        Block::new(BlockCore::new_mock(), [0;32], 0, 0.0);
+    }
+    pub fn new(core: BlockCore, hash: [u8; 32], burnfee: u64, difficulty: f32) -> Block {
         Block {
-            core: BlockCore::new(),
-            hash: None,
-            burnfee: None,
-            difficulty: None,
+            core: core,
+            hash: hash,
+            burnfee: burnfee,
+            difficulty: difficulty,
         }
     }
 
@@ -37,108 +39,29 @@ impl Block {
     }
 
     /// Returns the `Block` hash
-    pub fn hash(self) -> Option<[u8; 32]> {
-
-      if self.hash.is_none() {
-
-        let mut data: Vec<u8> = vec![];
-
-        let id_bytes: [u8; 8] = self.core.id().to_be_bytes();
-        let ts_bytes: [u8; 8] = self.core.timestamp().to_be_bytes();
-        let cr_bytes: Vec<u8> = self.core.creator().unwrap().serialize().iter().cloned().collect();
-
-        data.extend(&id_bytes);
-        data.extend(&ts_bytes);
-        data.extend(&cr_bytes);
-
-        self.hash = Some(hash(&data));
-
-      }
-
-      self.hash
-
+    pub fn clone_hash(&self) -> [u8; 32] {
+      self.hash.clone()
     }
-    /// Returns the `Block` burnfee
-    pub fn burnfee(&self) -> u64 {
-        self.burnfee
-    }
-
-    /// Returns the `Block` difficulty
-    pub fn difficulty(&self) -> f32 {
-        self.difficulty
-    }
-
-
-    /// Returns the previous `Block` hash
-    pub fn previous_block_hash(&self) -> &[u8; 32] {
-        &self.core.previous_block_hash
-    }
-
+    
     /// Returns the `Block` creator's `secp256k1::PublicKey`
-    pub fn creator(&self) -> Option<PublicKey> {
+    pub fn creator(&self) -> PublicKey {
         self.core.creator
     }
-
-
+    
     /// Returns the `Block` coinbase
     pub fn coinbase(&self) -> u64 {
         self.core.coinbase
     }
-
-
-    /// Converts our blockhash from a byte array into a hex string
-    /// -- is there any reason to keep the hash as binary? why not
-    /// -- just. in that case we do not really need this additional
-    /// -- function and can keep things a bit cleaner -- convert to
-    /// -- hex automatically in hash() function if we need to run it
-    ///pub fn hash_as_hex(&self) -> String {
-    ///    let hash = self.hash.unwrap_or_else(|| self.hash());
-    ///    hex::encode(hash)
-    ///}
-
-
-    /// Sets the id of the block
-    pub fn set_id(&mut self, id: u64) {
-        update_field(&mut self.hash, &mut self.core.id, id)
+    
+    /// Returns the `Block` difficulty
+    pub fn difficulty(&self) -> f32 {
+        self.header.difficulty
     }
-
-    /// Sets the `Block` burnfee
-    pub fn set_burnfee(&mut self, bf: u64) {
-        update_field(&mut self.hash, &mut self.core.burnfee, bf)
+    
+    /// Returns the `Block` burnfee
+    pub fn burnfee(&self) -> u64 {
+        self.header.burnfee
     }
-
-    /// Sets the `Block` creator
-    pub fn set_creator(&mut self, creator: PublicKey) {
-        update_field(&mut self.hash, &mut self.core.previous_block_hash, previous_block_hash)
-        // self.hash = None;
-        // self.core.creator = Some(creator);
-    }
-
-    /// Sets the `Block` previous hash
-    pub fn set_previous_block_hash(&mut self, previous_block_hash: [u8; 32]) {
-        update_field(&mut self.hash, &mut self.core.previous_block_hash, previous_block_hash)
-    }
-
-    /// Sets the `Block` difficulty
-    pub fn set_difficulty(&mut self, difficulty: f32) {
-        update_field(&mut self.hash, &mut self.core.difficulty, difficulty)
-    }
-
-    /// Sets the `Block` treasury
-    pub fn set_treasury(&mut self, treasury: u64) {
-        update_field(&mut self.hash, &mut self.core.treasury, treasury)
-    }
-
-    /// Sets the `Block` coinbase
-    pub fn set_coinbase(&mut self, coinbase: u64) {
-        update_field(&mut self.hash, &mut self.core.coinbase, coinbase)
-    }
-
-    /// adds transaction to `Block`
-    pub fn add_transaction(&mut self, tx: Transaction) {
-      self.transactions.push(tx);
-    }
-
 }
 
 
@@ -147,13 +70,14 @@ impl Block {
 /// nodes can derive the block and transaction and slip data.
 #[derive(PartialEq, Debug, Clone)]
 pub struct BlockCore {
-
+    /// Block id
+    id: u64,
     /// Block timestamp
     timestamp: u64,
     /// Byte array hash of the previous block in the chain
     previous_block_hash: [u8; 32],
     /// `Publickey` of the block creator
-    creator: Option<PublicKey>,
+    creator: PublicKey,
     /// Total block reward being released in the block
     coinbase: u64,
     /// simplified transaction cores
@@ -163,85 +87,25 @@ pub struct BlockCore {
 
 
 impl BlockCore {
-
+    /// Creates a new mock `BlockCore` for use as we develop code. Please replace the fields with actual fields as we get them
+    /// until we arrive at something the actual constructor:
+    /// new(id: , timestamp: u64, previous_block_hash: [u8; 32], creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>)
+    /// For example, blockchain.add_block shoudl at least know the id, so new_mock() can become new_mock(id: u64) when we write that.
+    pub fn new_mock() -> Self {
+        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
+        BlockCore::new(0, create_timestamp(), [0;32], public_key, 0, vec![])
+    }
     /// Creates a new `BlockCore`
-    pub fn new() -> Self {
+    pub fn new(id: u64, timestamp: u64, previous_block_hash: [u8; 32], creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>) -> Self {
         BlockCore {
-            id: 0,
-            previous_block_hash: [0; 32],
-            timestamp: create_timestamp(),
-            creator: None,
-            coinbase: 0,
-            transaction_cores: vec![],
+            id: id,
+            timestamp: timestamp,
+            previous_block_hash: previous_block_hash,
+            creator: creator,
+            coinbase: coinbase,
+            transactions: transactions,
         }
     }
-
-    /// Returns the `BlockCore` id
-    pub fn id(&self) -> u64 {
-        self.id
-    }
-
-    /// Returns the `BlockCore` id
-    pub fn previous_block_hash(&self) -> [u8; 32] {
-        self.previous_block_hash
-    }
-
-    /// Returns the `BlockCore` timestamp
-    pub fn timestamp(&self) -> u64 {
-        self.timestamp
-    }
-    
-    /// Returns the `BlockCore` difficulty
-    pub fn difficulty(&self) -> f32 {
-        self.difficulty
-    }
-    
-    /// Returns the `BlockCore` difficulty
-    pub fn creator(&self) -> Option<PublicKey> {
-        self.creator
-    }
-
-    /// Returns the `BlockCore` treasury
-    pub fn treasury(&self) -> u64 {
-        self.treasury
-    }
-
-    /// Returns the `BlockCore` coinbase
-    pub fn coinbase(&self) -> u64 {
-        self.coinbase
-    }
-
-
-    /// Sets the `BlockCore` id
-    pub fn set_id(&mut self, id: u64) {
-        self.id = id;
-    }
-
-    /// Sets the `BlockCore` burnfee
-    pub fn set_burnfee(&mut self, bf: u64) {
-        self.burnfee = bf;
-    }
-
-    /// Sets the `BlockCore` previous hash
-    pub fn set_previous_block_hash(&mut self, previous_block_hash: [u8; 32]) {
-        self.previous_block_hash = previous_block_hash;
-    }
-
-    /// Sets the `BlockCore` difficulty
-    pub fn set_difficulty(&mut self, difficulty: f32) {
-        self.difficulty = difficulty;
-    }
-
-    /// Sets the `BlockCore` treasury
-    pub fn set_treasury(&mut self, treasury: u64) {
-        self.treasury = treasury;
-    }
-
-    /// Sets the `BlockCore` coinbase
-    pub fn set_coinbase(&mut self, coinbase: u64) {
-        self.coinbase = coinbase;
-    }
-
 
 }
 
@@ -258,9 +122,6 @@ where
 }
 
 
-
-
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -273,7 +134,7 @@ mod test {
 
     #[test]
     fn block_test() {
-        let mut block = Block::new();
+        let mut block = Block::new_mock();
 
         assert_eq!(block.id(), 0);
         assert_eq!(block.previous_block_hash(), &[0; 32]);
@@ -281,23 +142,7 @@ mod test {
         assert_eq!(*block.transactions(), vec![]);
         assert_eq!(block.burnfee(), 0);
         assert_eq!(block.difficulty(), 0.0);
-        assert_eq!(block.treasury(), 286_810_000_000_000_000);
         assert_eq!(block.coinbase(), 0);
-
-        block.set_id(1);
-        assert_eq!(block.id(), 1);
-
-        block.set_burnfee(10_000);
-        assert_eq!(block.burnfee(), 10_000);
-
-        block.set_difficulty(5.0);
-        assert_eq!(block.difficulty(), 5.0);
-
-        block.set_treasury(1_000_000_000);
-        assert_eq!(block.treasury(), 1_000_000_000);
-
-        block.set_coinbase(100_000);
-        assert_eq!(block.coinbase(), 100_000);
     }
 
     // #[test]

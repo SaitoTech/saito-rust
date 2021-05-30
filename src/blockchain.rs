@@ -49,11 +49,11 @@ mod tests {
     use crate::transaction::{Transaction, TransactionType};
     use secp256k1::Signature;
 
-    #[test]
-    fn blockchain_test() {
-        let blockchain = Blockchain::new();
-        assert_eq!(blockchain.index.blocks, vec![]);
-    }
+    // #[test]
+    // fn blockchain_test() {
+    //     let blockchain = Blockchain::new();
+    //     assert_eq!(blockchain.index.blocks, vec![]);
+    // }
     // #[test]
     // fn blockchain_get_latest_block_index_none_test() {
     //     let blockchain = Blockchain::new();

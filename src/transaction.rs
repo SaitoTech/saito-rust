@@ -44,10 +44,17 @@ pub struct ConfirmedTransaction {
 /// contains additional information as an optinal message field to transfer data around the network
 #[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
-    /// `secp256k1::Signature` verifying authenticity of `TransactionBody` data
+    /// `secp256k1::Signature` verifying authenticity of `TransactionCore` data
     signature: Signature,
     /// A list of `Hop` stipulating the history of `Transaction` routing
     path: Vec<Hop>,
+    /// All data which is serialized and signed
+    pub core: TransactionCore,
+}
+
+/// Core data to be serialized/deserialized of `Transaction`
+#[derive(Debug, PartialEq, Clone)]
+pub struct TransactionCore {
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,
     /// A list of `SlipID` inputs
@@ -61,19 +68,49 @@ pub struct Transaction {
 }
 
 impl Transaction {
+    /// 
+    pub fn new_mock() -> Transaction {
+        Transaction::new(
+            Signature::from_compact(&[0; 64]).unwrap(),
+            vec![],
+            create_timestamp(),
+            vec![],
+            vec![],
+            TransactionType::Normal,
+            vec![],
+        )
+    }
     /// Creates new `Transaction`
     ///
     /// * `broadcast_type` - `TransactionType` of the new `Transaction`
+    pub fn new(signature: Signature, path: Vec<Hop>, timestamp: u64, inputs: Vec<SlipID>, outputs: Vec<OutputSlip>, broadcast_type: TransactionType, message: Vec<u8>) -> Transaction {
+        // TODO add inputs, outputs, and message here
+        Transaction {
+            signature: signature,
+            path: path,
+            core: TransactionCore {
+                timestamp: timestamp,
+                inputs: inputs,
+                outputs: outputs,
+                broadcast_type: broadcast_type,
+                message: message,
+            }
+        }
+        
+    }
 
-    pub fn new(broadcast_type: TransactionType, signature: Signature) -> Transaction {
+    pub fn sign(core: TransactionCore) -> Transaction {
+        Transaction {
+            signature: Signature::from_compact(&[0; 64]).unwrap(),
+            path: vec![],
+            core: core,
+        }
+    }
+    pub fn add_signature(core: TransactionCore, signature: Signature) -> Transaction {
         Transaction {
             signature: signature,
             path: vec![],
-            timestamp: create_timestamp(),
-            inputs: vec![],
-            outputs: vec![],
-            broadcast_type,
-            message: vec![],
+            core: core,
         }
     }
     /// Returns `secp256k1::Signature` verifying the validity of data on a transaction
@@ -85,6 +122,10 @@ impl Transaction {
     pub fn add_hop_to_path(&mut self, path: Hop) {
         self.path.push(path);
     }
+}
+
+impl TransactionCore {
+    /// Returns a timestamp when `Transaction` was created
     pub fn timestamp(&self) -> u64 {
         self.timestamp
     }
@@ -140,14 +181,14 @@ mod tests {
 
     #[test]
     fn transaction_test() {
-        let mut tx: TransactionBody = Transaction::new(TransactionType::Normal);
+        let mut tx: Transaction = Transaction::new_mock();
 
-        assert_eq!(tx.outputs(), &vec![]);
-        assert_eq!(tx.inputs(), &vec![]);
+        assert_eq!(tx.core.outputs(), &vec![]);
+        assert_eq!(tx.core.inputs(), &vec![]);
         //assert_eq!(tx.signature(), &Signature::from_compact(&[0; 64]).unwrap());
-        assert_eq!(tx.broadcast_type(), &TransactionType::Normal);
+        assert_eq!(tx.core.broadcast_type(), &TransactionType::Normal);
         //assert_eq!(tx.path(), &vec![]);
-        assert_eq!(tx.message(), &vec![]);
+        assert_eq!(tx.core.message(), &vec![]);
 
         let keypair = Keypair::new();
         let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
@@ -157,11 +198,11 @@ mod tests {
         // let signature = keypair.sign_message(&hop_message_bytes);
         // let hop = Hop::new(keypair.public_key().clone(), signature);
 
-        tx.add_output(to_slip);
-        tx.add_input(from_slip);
+        tx.core.add_output(to_slip);
+        tx.core.add_input(from_slip);
 
-        assert_eq!(tx.outputs(), &vec![to_slip]);
-        assert_eq!(tx.inputs(), &vec![from_slip]);
+        assert_eq!(tx.core.outputs(), &vec![to_slip]);
+        assert_eq!(tx.core.inputs(), &vec![from_slip]);
         // assert_eq!(tx.path(), &vec![hop]);
 
         // let message_bytes: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
