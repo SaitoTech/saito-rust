@@ -26,19 +26,20 @@ pub enum TransactionType {
     Normal,
 }
 
-/// A record containging data of funds between transfered between public addresses. It
-/// contains additional information as an optinal message field to transfer data around the network
-#[derive(Debug, PartialEq, Clone)]
-pub struct Transaction {
-    /// the ordinal of the transaction in the block
-    /// TODO: remove id and work if unused, we just want something here to demonstrate the usage of
-    /// this struct
-    id: u64,
-    /// The amount of routing work computed from the path and fee
-    work: u64,
-    /// The transaction as it appears in a block
-    pub transaction: TransactionCore,
-}
+// Removing this for now until it's needed
+// /// A record containging data of funds between transfered between public addresses. It
+// /// contains additional information as an optinal message field to transfer data around the network
+// #[derive(Debug, PartialEq, Clone)]
+// pub struct Transaction {
+//     /// the ordinal of the transaction in the block
+//     /// TODO: remove id and work if unused, we just want something here to demonstrate the usage of
+//     /// this struct
+//     id: u64,
+//     /// The amount of routing work computed from the path and fee
+//     work: u64,
+//     /// The transaction as it appears in a block
+//     pub transaction: TransactionCore,
+// }
 
 /// A record containging data of funds between transfered between public addresses. It
 /// contains additional information as an optinal message field to transfer data around the network

@@ -1,5 +1,5 @@
 use crate::slip::Slip;
-use crate::transaction::Transaction;
+use crate::transaction::TransactionCore;
 use std::collections::HashMap;
 
 /// A hashmap storing the byte arrays of `Slip`s as keys
@@ -18,16 +18,16 @@ impl Shashmap {
         }
     }
 
-    /// Insert the inputs of a `Transaction` with the `Block` id
+    /// Insert the inputs of a `TransactionCore` with the `Block` id
     ///
-    /// * `tx` - `Transaction` which the inputs are inserted into `HashMap`
+    /// * `tx` - `TransactionCore` which the inputs are inserted into `HashMap`
     /// * `block_id` - `Block` id used as value
-    pub fn spend_transaction(&mut self, _tx: &Transaction, _block_id: u64) {}
+    pub fn spend_transaction(&mut self, _tx: &TransactionCore, _block_id: u64) {}
 
-    /// Remove the inputs of a `Transaction` with the `Block` id
+    /// Remove the inputs of a `TransactionCore` with the `Block` id
     ///
-    /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
-    pub fn unspend_transaction(&mut self, _tx: &Transaction) {}
+    /// * `tx` - `TransactionCore` where inputs are inserted, and outputs are removed
+    pub fn unspend_transaction(&mut self, _tx: &TransactionCore) {}
 
     /// Return the `Block` id based on `Slip`
     ///
@@ -44,7 +44,7 @@ mod test {
     // use crate::{
     //     keypair::Keypair,
     //     slip::{Slip, SlipBroadcastType},
-    //     transaction::{Transaction, TransactionType},
+    //     transaction::{TransactionCore, TransactionType},
     // };
     // use std::collections::HashMap;
     //
