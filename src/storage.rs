@@ -51,7 +51,7 @@ impl Storage {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{block::Block, keypair::Keypair};
+    use crate::block::Block;
 
     fn teardown() -> io::Result<()> {
         let dir_path = String::from("./src/data/blocks/");
@@ -70,8 +70,7 @@ mod test {
     #[tokio::test]
     async fn storage_write_block_to_disk() {
         let dir_path = String::from("./src/data/blocks/");
-        let keypair = Keypair::new();
-        let block = Block::new(*keypair.public_key(), [0; 32]);
+        let block = Block::new_mock();
         let storage = Storage::new(Some(dir_path));
         let result = storage.write_block_to_disk(block).await;
         assert_eq!(result.unwrap(), ());
@@ -84,8 +83,7 @@ mod test {
     async fn storage_read_block_to_disk() {
         let dir_path = String::from("./src/data/blocks/");
         let storage = Storage::new(Some(dir_path));
-        let keypair = Keypair::new();
-        let block = Block::new(*keypair.public_key(), [0; 32]);
+        let block = Block::new_mock();
         let block_hash = block.hash();
         storage.write_block_to_disk(block).await.unwrap();
         match storage.read_block_from_disk(block_hash).await {

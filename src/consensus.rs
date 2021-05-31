@@ -1,9 +1,7 @@
 use crate::{
-    blockchain::Blockchain,
     crypto::hash,
     golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
     keypair::Keypair,
-    mempool::Mempool,
     types::SaitoMessage,
 };
 use std::{
@@ -61,13 +59,10 @@ impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
-        let block_tx = saito_message_tx.clone();
         let miner_tx = saito_message_tx.clone();
         let mut miner_rx = saito_message_tx.subscribe();
 
         let keypair = Arc::new(RwLock::new(Keypair::new()));
-        let mut mempool = Mempool::new(keypair.clone());
-        let mut blockchain = Blockchain::new();
 
         tokio::spawn(async move {
             loop {
@@ -101,12 +96,15 @@ impl Consensus {
 
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
-                if let Some(block) = mempool.process(message, blockchain.get_latest_block_index()) {
-                    blockchain.add_block(block.clone());
-                    block_tx
-                        .send(SaitoMessage::Block { payload: block })
-                        .expect("Err: Could not send new block");
-                }
+                //
+                // TODO - "process" what? descriptive function name -- should fetch latest block not block index
+                //
+                // if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
+                //     blockchain.add_block(block.clone());
+                //     block_tx
+                //         .send(SaitoMessage::Block { payload: block })
+                //         .expect("Err: Could not send new block");
+                // }
             }
         }
     }
