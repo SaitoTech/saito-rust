@@ -107,17 +107,13 @@
 <span id="104">104</span>
 <span id="105">105</span>
 <span id="106">106</span>
-<span id="107">107</span>
-<span id="108">108</span>
-<span id="109">109</span>
-<span id="110">110</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block</span>::<span class="ident">Block</span>,
     <span class="ident">crypto</span>::<span class="ident">PublicKey</span>,
     <span class="ident">keypair</span>::<span class="ident">Keypair</span>,
-    <span class="ident">slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipBroadcastType</span>},
-    <span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionBroadcastType</span>},
+    <span class="ident">slip</span>::{<span class="ident">OutputSlip</span>, <span class="ident">SlipBroadcastType</span>},
+    <span class="ident">transaction</span>::<span class="ident">Transaction</span>,
 };
 
 <span class="doccomment">/// The golden ticket is a data structure containing instructions for picking</span>
@@ -157,33 +153,28 @@
 
     <span class="comment">// TODO -- create our Golden Ticket</span>
     <span class="comment">// until we implement serializers, paysplit and difficulty functionality this doesn&#39;t do much</span>
-    <span class="kw">let</span> <span class="ident">_gt_solution</span> <span class="op">=</span> <span class="ident">GoldenTicket</span>::<span class="ident">new</span>(<span class="ident">previous_block</span>.<span class="ident">hash</span>(), <span class="ident">solution</span>, <span class="ident">publickey</span>.<span class="ident">clone</span>());
+
+    <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">clone_hash</span>();
+    <span class="comment">//let previous_block_hash = previous_block.hash;</span>
+
+    <span class="kw">let</span> <span class="ident">_gt_solution</span> <span class="op">=</span> <span class="ident">GoldenTicket</span>::<span class="ident">new</span>(<span class="ident">previous_block_hash</span>, <span class="ident">solution</span>, <span class="ident">publickey</span>.<span class="ident">clone</span>());
 
     <span class="kw">let</span> <span class="ident">winning_address</span> <span class="op">=</span> <span class="ident">find_winner</span>(<span class="kw-2">&amp;</span><span class="ident">solution</span>, <span class="ident">previous_block</span>);
 
     <span class="comment">// TODO -- calculate captured fees in blocks based on transaction fees</span>
     <span class="comment">// for now, we just split the coinbase between the miners and the routers</span>
 
-    <span class="kw">let</span> <span class="ident">total_fees_for_miners_and_nodes</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">coinbase</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">golden_tx</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">new_mock</span>();
 
-    <span class="kw">let</span> <span class="ident">miner_share</span> <span class="op">=</span> (<span class="ident">total_fees_for_miners_and_nodes</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">*</span> <span class="number">0.5</span>).<span class="ident">round</span>() <span class="kw">as</span> <span class="ident">u64</span>;
+    <span class="kw">let</span> <span class="ident">total_fees_for_miners_and_nodes</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">previous_block</span>.<span class="ident">coinbase</span>();
+
+    <span class="kw">let</span> <span class="ident">miner_share</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">total_fees_for_miners_and_nodes</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">*</span> <span class="number">0.5</span>).<span class="ident">round</span>() <span class="kw">as</span> <span class="ident">u64</span>;
     <span class="kw">let</span> <span class="ident">node_share</span> <span class="op">=</span> <span class="ident">total_fees_for_miners_and_nodes</span> <span class="op">-</span> <span class="ident">miner_share</span>;
+    <span class="kw">let</span> <span class="ident">miner_slip</span> <span class="op">=</span> <span class="ident">OutputSlip</span>::<span class="ident">new</span>(<span class="kw-2">*</span><span class="ident">publickey</span>, <span class="ident">SlipBroadcastType</span>::<span class="ident">Normal</span>, <span class="ident">miner_share</span>);
+    <span class="kw">let</span> <span class="ident">node_slip</span> <span class="op">=</span> <span class="ident">OutputSlip</span>::<span class="ident">new</span>(<span class="ident">winning_address</span>, <span class="ident">SlipBroadcastType</span>::<span class="ident">Normal</span>, <span class="ident">node_share</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">golden_tx</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">new</span>(<span class="ident">TransactionBroadcastType</span>::<span class="ident">Normal</span>);
-
-    <span class="kw">let</span> <span class="ident">miner_slip</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">new</span>(<span class="kw-2">*</span><span class="ident">publickey</span>, <span class="ident">SlipBroadcastType</span>::<span class="ident">Normal</span>, <span class="ident">miner_share</span>);
-    <span class="kw">let</span> <span class="ident">node_slip</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">new</span>(<span class="ident">winning_address</span>, <span class="ident">SlipBroadcastType</span>::<span class="ident">Normal</span>, <span class="ident">node_share</span>);
-
-    <span class="ident">golden_tx</span>.<span class="ident">add_output</span>(<span class="ident">miner_slip</span>);
-    <span class="ident">golden_tx</span>.<span class="ident">add_output</span>(<span class="ident">node_slip</span>);
-
-    <span class="comment">// toodo -- serialize our golden_ticket solution into our msg field</span>
-    <span class="comment">// this is used to change the difficulty and paysplit in the upcoming block</span>
-
-    <span class="comment">// golden_tx.set_message()</span>
-
-    <span class="comment">// todo, sign the transaction and create signature</span>
-    <span class="comment">// complete once we&#39;ve added serialization</span>
+    <span class="ident">golden_tx</span>.<span class="ident">core</span>.<span class="ident">add_output</span>(<span class="ident">miner_slip</span>);
+    <span class="ident">golden_tx</span>.<span class="ident">core</span>.<span class="ident">add_output</span>(<span class="ident">node_slip</span>);
 
     <span class="ident">golden_tx</span>
 }
@@ -195,7 +186,8 @@
 <span class="kw">fn</span> <span class="ident">find_winner</span>(<span class="ident">_solution</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="number">32</span>], <span class="ident">previous_block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PublicKey</span> {
     <span class="comment">// TODO -- use fees paid in the block to determine the block winner with routing algorithm</span>
     <span class="comment">// for now, we just use the block creator to determine who the winner is</span>
-    <span class="kw-2">*</span><span class="ident">previous_block</span>.<span class="ident">creator</span>()
+    <span class="comment">// TODO - don&#39;t die here</span>
+    <span class="ident">previous_block</span>.<span class="ident">creator</span>()
 }
 
 <span class="doccomment">/// Generate random data, used for generating solutions in lottery game</span>

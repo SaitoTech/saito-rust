@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Shashmap","A hashmap storing the byte arrays of `Slip`s as keys with the `Block` ids as values. This is used to enforce when `Slip`s have been spent in the network"]]});
+initSidebarItems({"struct":[["Shashmap","A hashmap storing Slips TODO fix this documentation once we’ve settled on what data structures actually belong here."]]});

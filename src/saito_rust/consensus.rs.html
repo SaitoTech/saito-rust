@@ -112,15 +112,11 @@
 <span id="109">109</span>
 <span id="110">110</span>
 <span id="111">111</span>
-<span id="112">112</span>
-<span id="113">113</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">blockchain</span>::<span class="ident">Blockchain</span>,
     <span class="ident">crypto</span>::<span class="ident">hash</span>,
     <span class="ident">golden_ticket</span>::{<span class="ident">generate_golden_ticket_transaction</span>, <span class="ident">generate_random_data</span>},
     <span class="ident">keypair</span>::<span class="ident">Keypair</span>,
-    <span class="ident">mempool</span>::<span class="ident">Mempool</span>,
     <span class="ident">types</span>::<span class="ident">SaitoMessage</span>,
 };
 <span class="kw">use</span> <span class="ident">std</span>::{
@@ -178,13 +174,10 @@
     <span class="doccomment">/// Run consensus</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">_run</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">saito_message_tx</span>, <span class="kw-2">mut</span> <span class="ident">saito_message_rx</span>) <span class="op">=</span> <span class="ident">broadcast</span>::<span class="ident">channel</span>(<span class="number">32</span>);
-        <span class="kw">let</span> <span class="ident">block_tx</span> <span class="op">=</span> <span class="ident">saito_message_tx</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">miner_tx</span> <span class="op">=</span> <span class="ident">saito_message_tx</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">miner_rx</span> <span class="op">=</span> <span class="ident">saito_message_tx</span>.<span class="ident">subscribe</span>();
 
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Keypair</span>::<span class="ident">new</span>()));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool</span>::<span class="ident">new</span>(<span class="ident">keypair</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">Blockchain</span>::<span class="ident">new</span>();
 
         <span class="ident">tokio</span>::<span class="ident">spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
             <span class="kw">loop</span> {
@@ -218,12 +211,15 @@
 
         <span class="kw">loop</span> {
             <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">saito_message_rx</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">process</span>(<span class="ident">message</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_index</span>()) {
-                    <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
-                    <span class="ident">block_tx</span>
-                        .<span class="ident">send</span>(<span class="ident">SaitoMessage</span>::<span class="ident">Block</span> { <span class="ident">payload</span>: <span class="ident">block</span> })
-                        .<span class="ident">expect</span>(<span class="string">&quot;Err: Could not send new block&quot;</span>);
-                }
+                <span class="comment">//</span>
+                <span class="comment">// TODO - &quot;process&quot; what? descriptive function name -- should fetch latest block not block index</span>
+                <span class="comment">//</span>
+                <span class="comment">// if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {</span>
+                <span class="comment">//     blockchain.add_block(block.clone());</span>
+                <span class="comment">//     block_tx</span>
+                <span class="comment">//         .send(SaitoMessage::Block { payload: block })</span>
+                <span class="comment">//         .expect(&quot;Err: Could not send new block&quot;);</span>
+                <span class="comment">// }</span>
             }
         }
     }
