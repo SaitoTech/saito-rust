@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
 /// An enumerated set of `Slip` types
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub enum SlipBroadcastType {
     Normal,
 }
 
 /// A record of owernship of funds on the network
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct SlipID {
     /// `Block` id
     block_id: u64,
@@ -20,7 +20,7 @@ pub struct SlipID {
 }
 
 /// An object that holds concrete data not subjective to state of chain
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct OutputSlip {
     /// An `Sectp256K::PublicKey` determining who owns the `Slip`
     address: PublicKey,

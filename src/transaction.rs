@@ -25,20 +25,9 @@ impl Hop {
 }
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum TransactionType {
     Normal,
-}
-
-/// A record containging data of funds between transfered between public addresses. It
-/// contains additional information as an optinal message field to transfer data around the network
-#[derive(Debug, PartialEq, Clone)]
-pub struct ConfirmedTransaction {
-    /// the ordinal of the transaction in the block
-    /// TODO: remove this if it is unused, we just want something here to demonstrate the usage of this struct
-    id: u64,
-    /// The transaction as it appears in a block
-    pub transaction: Transaction,
 }
 
 /// A record containging data of funds between transfered between public addresses. It
@@ -54,7 +43,7 @@ pub struct Transaction {
 }
 
 /// Core data to be serialized/deserialized of `Transaction`
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct TransactionCore {
     /// UNIX timestamp when the `Transaction` was created
     timestamp: u64,

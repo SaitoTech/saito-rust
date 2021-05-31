@@ -75,12 +75,32 @@ impl Block {
     pub fn id(&self) -> u64 {
         self.core.id
     }
+    /// Returns the `hash`
+    pub fn hash(&self) -> [u8; 32] {
+        self.hash
+    }
+    /// Converts our blockhash from a byte array into a hex string
+    pub fn hash_as_hex(&self) -> String {
+        hex::encode(self.hash)
+    }
+}
+
+impl From<Vec<u8>> for Block {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for Block {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
 }
 
 /// The `BlockCore` holds the most important metadata associated with the `Block`
 /// it is essentially the critical block data needed for distribution from which
 /// nodes can derive the block and transaction and slip data.
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BlockCore {
     /// Block id
     id: u64,
