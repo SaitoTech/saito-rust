@@ -1,14 +1,23 @@
 use crate::slip::{OutputSlip, SlipID};
 use crate::transaction::Transaction;
+use crate::block::Block;
 use secp256k1::PublicKey;
 use std::collections::HashMap;
 use std::str::FromStr;
+
+enum UtxoSetValue {
+    Unspent,
+    Spent(u64),
+    PotentialForkUnspent([u8;32]),
+    PotentialForkSpent([u8;32]),
+}
 
 /// A hashmap storing Slips TODO fix this documentation once we've settled on what
 /// data structures actually belong here.
 #[derive(Debug, Clone)]
 pub struct UtxoSet {
     utxo_hashmap: HashMap<SlipID, OutputSlip>,
+    shashmap: HashMap<SlipID, UtxoSetValue>,
 }
 
 impl UtxoSet {
@@ -18,35 +27,60 @@ impl UtxoSet {
             utxo_hashmap: HashMap::new(),
         }
     }
-
-    /// Insert the inputs of a `Transaction` with the `Block` id
-    ///
-    /// * `tx` - `Transaction` which the inputs are inserted into `HashMap`
-    pub fn spend_transaction(&mut self, _tx: &Transaction) {}
-
-    /// Remove the inputs of a `Transaction` with the `Block` id
-    ///
-    /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
-    pub fn unspend_transaction(&mut self, _tx: &Transaction) {}
-
+    
+    pub fn rollback_on_potential_fork(block: &Block){
+        // for tx in block.transactions().iter() {
+        //     self.unspend_transaction(tx);
+        // }
+    }
+    pub fn rollforward_on_potential_fork(block: &Block){
+        // for tx in transactions.iter() {
+        //     self.spend_transaction(tx);
+        // }
+    }
+    pub fn rollback(block: &Block){
+        // for tx in transactions.iter() {
+        //     self.unspend_transaction(tx);
+        // }
+    }
+    pub fn rollforward(block: &Block){
+        // for tx in transactions.iter() {
+        //     self.spend_transaction(tx);
+        // }
+    }
+    
+    pub fn is_slip_spent() {
+        
+    }
     /// Return the `Block` id based on `OutputSlip`
     ///
     /// * `slip` - `&OutputSlip` as key
-    pub fn slip_block_id(&self, slip_id: &SlipID) -> &OutputSlip {
-        self.utxo_hashmap.get(slip_id).unwrap()
-    }
-
+    // pub fn slip_block_id(&self, slip_id: &SlipID) -> &OutputSlip {
+    //     self.utxo_hashmap.get(slip_id).unwrap()
+    // }
+    
     /// Returns true if the slip has been seen in the blockchain
-    pub fn is_slip_spendable(&self, _slip_id: &SlipID) -> bool {
+    pub fn is_slip_spendable_at_block(&self, _block: &Block, _slip_id: &SlipID) -> bool {
+        // if Slip is Unspent, return true
+        // else if Slip is PotentialForkUnspent, find common ancestor and do 
+        // 
+        let common_ancestor = BLOCKCHAIN.find_common_ancestor_in_longest_chain();
+        let next_block = block;
+        while next_block.previous_block_hash() != common_ancestor.hash() {
+            if(next_block.hash() == ) {
+                
+            }
+            next_block = block.previous_block_hash();
+        }
         true
     }
 
-    // Returns true if the SlipOutput found in the utxoset matches the SlipOutput
+    /// Returns true if the SlipOutput found in the utxoset matches the SlipOutput
     pub fn get_total_for_slips(&self, _slip_ids: Vec<SlipID>) -> u64 {
         100
     }
 
-    // Returns true if the SlipOutput found in the utxoset matches the SlipOutput
+    /// Returns true if the SlipOutput found in the utxoset matches the SlipOutput
     pub fn get_sender_for_slips(&self, _slip_ids: Vec<SlipID>) -> Option<PublicKey> {
         Some(
             PublicKey::from_str(
@@ -55,6 +89,18 @@ impl UtxoSet {
             .unwrap(),
         )
     }
+
+    /// Insert the inputs of a `Transaction` with the `Block` id
+    ///
+    /// * `tx` - `Transaction` which the inputs are inserted into `HashMap`
+    fn spend_transaction(&mut self, _tx: &Transaction) {}
+
+    /// Remove the inputs of a `Transaction` with the `Block` id
+    ///
+    /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
+    fn unspend_transaction(&mut self, _tx: &Transaction) {}
+
+
 }
 
 #[cfg(test)]

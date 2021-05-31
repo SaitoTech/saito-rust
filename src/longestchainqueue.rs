@@ -20,7 +20,6 @@ impl LongestChainQueue {
     pub fn new() -> Self {
         LongestChainQueue {
             epoch_ring_array: [[0; 32]; RING_BUFFER_LENGTH],
-
             epoch_ring_top_location: 0,
             epoch_ring_length: 0,
         }

@@ -15,8 +15,11 @@ lazy_static! {
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
 pub enum AddBlockReason {
-    OK,
+    AcceptedAsLongestChain,
+    Accepted,
+    AlreadyKnown,
     ParentNotFound,
+    InvalidTransaction,
 }
 
 /// The structure represents the state of the
@@ -44,23 +47,71 @@ impl Blockchain {
     }
 
     /// If the block is in the fork
-    pub fn is_block_hash_known(&mut self, _block_hash: [u8; 32]) -> bool {
+    fn is_block_hash_known(&mut self, _block_hash: &[u8; 32]) -> bool {
         // TODO check if the block is in the fork tree
         true
     }
+    // If is the new longest chain
+    fn is_new_longest_chain_tip(block: Block) -> bool {
+        true
+    }
+    // Get the block from fork_tree and check if the hash matches the one in longest_chain_queue
+    fn is_in_longest_chain(block_hash: [u8; 32]) -> bool {
+        true
+    }
+
+    // Start at the block and go back, checking with longest_chain_queue by block_id until
+    // the hash matches
+    fn find_common_ancestor_in_longest_chain(new_tip_block: Block) -> [u8; 32] {
+        [0; 32]
+    }
     /// Append `Block` to the index of `Blockchain`
+    /// These `AddBlockReason`s will be turned into network responses so peers can figure out
+    /// what's going on.
     pub fn add_block(&mut self, block: Block) -> AddBlockReason {
-        if !self.is_block_hash_known(block.hash()) {
+        // if(!all tx are valid)
+        //   return some AddBlockReason
+        // else
+        //   add the block to the fork_tree
+        //   if(!if_is_new_longest_chain())
+        //
+        //     return some AddBlockReason
+        //   else
+        //     find_common_ancestor_in_longest_chain()
+        //     rollback from latest_block to common_ancestor
+        //     rollforward to the new tip(i.e. block)
+        if !block.are_sigs_valid() | block.are_slips_spendable(){
+            return AddBlockReason::InvalidTransaction;
+        } else if self.is_block_hash_known(block.hash()) {
+            return AddBlockReason::AlreadyKnown;
+        } else if !self.is_block_hash_known(block.previous_block_hash()) {
             return AddBlockReason::ParentNotFound;
+        } else {
+            self.fork_tree.insert(block.hash(), block);
+            if (!self.is_new_longest_chain_tip(block)){
+                self.longest_chain_queue.rollforward(block.hash())
+                self.utxoset.rollforward(block.transactions());
+                return AddBlockReason::Accepted;
+            } else {
+                // block is the tip of a new longest chain
+                let common_ancestor = self.find_common_ancestor_in_longest_chain();
+                let next_block = block;
+                
+                while next_block.previous_block_hash() != common_ancestor.hash() {
+                    self.longest_chain_queue.rollback(block.hash())
+                    self.utxoset.rollback( block.transactions());    
+                }
+                
+                
+                next_block = block;
+                // 1) build a vec of blocks going back up the chain by walking it backwards once and
+                // saving references to a Vec
+                // 2) loop through the blocks in forward-order and do:
+                //   self.longest_chain_queue.rollforward(block.hash())
+                //   self.utxoset.rollforward( block.transactions());
+                return AddBlockReason::AcceptedAsLongestChain
+            }    
         }
-        // if(!all tx in block have valid sigs)
-        // if(!all tx)
-        self.longest_chain_queue.roll_forward(block.hash());
-        for tx in block.transactions().iter() {
-            self.utxoset.spend_transaction(tx);
-        }
-        self.fork_tree.insert(block.hash(), block);
-        AddBlockReason::OK
     }
 
     // /// Return latest `Block` in blockchain

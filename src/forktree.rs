@@ -13,9 +13,10 @@ impl ForkTree {
             fork_tree: HashMap::new(),
         }
     }
-
     pub fn insert(&self, _block_hash: [u8; 32], _block: Block) {}
-
+    pub fn get_parent(block_hash: [u8; 32]) -> [u8; 32] {
+        [0; 32]
+    }
     pub fn contains_block_hash(&self) -> bool {
         true
     }

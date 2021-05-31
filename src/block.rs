@@ -88,6 +88,19 @@ impl Block {
     pub fn hash_as_hex(&self) -> String {
         hex::encode(self.hash)
     }
+    
+    /// Loops through all tx and 
+    pub fn are_sigs_valid(&self) -> bool {
+        // loops through all tx and do tx.sig_is_valid()
+        true
+    }
+    
+    /// Loops through all tx and 
+    pub fn are_slips_spendable(&self) -> bool {
+        // loops through all tx and check with utxoset that all inputs are spendable
+        // their receiver and amount are correct
+        true
+    }
 }
 
 impl From<Vec<u8>> for Block {
