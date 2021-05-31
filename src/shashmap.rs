@@ -16,12 +16,14 @@ impl Shashmap {
             utxo_hashmap: HashMap::new(),
         }
     }
-
+    pub fn insert_new_transaction(&mut self, _tx: &Transaction) {
+        
+    }
     /// Insert the inputs of a `Transaction` with the `Block` id
     ///
     /// * `tx` - `Transaction` which the inputs are inserted into `HashMap`
     /// * `block_id` - `Block` id used as value
-    pub fn spend_transaction(&mut self, _tx: &Transaction, _block_id: u64) {}
+    pub fn spend_transaction(&mut self, _tx: &Transaction) {}
 
     /// Remove the inputs of a `Transaction` with the `Block` id
     ///

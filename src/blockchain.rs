@@ -1,4 +1,4 @@
-use crate::block::{Block, BlockHeader};
+use crate::block::Block;
 use crate::longestchainqueue::roll_forward;
 use crate::shashmap::Shashmap;
 
@@ -30,10 +30,7 @@ impl Blockchain {
         for tx in block.transactions().iter() {
             self.shashmap.insert_new_transaction(tx);
         }
-
-        let block_index: BlockIndex = (block.header().clone(), block.hash());
-        println!("{:?}", block_index.clone());
-        self.index.blocks.push(block_index);
+        self.blocks.push(block);
     }
 
     // /// Return latest `Block` in blockchain
