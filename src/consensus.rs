@@ -56,7 +56,6 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
 }
 
 impl Consensus {
-
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
@@ -64,7 +63,7 @@ impl Consensus {
         let mut miner_rx = saito_message_tx.subscribe();
 
         let keypair = Arc::new(RwLock::new(Keypair::new()));
-        
+
         tokio::spawn(async move {
             loop {
                 saito_message_tx
@@ -97,9 +96,9 @@ impl Consensus {
 
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
-//
-// TODO - "process" what? descriptive function name -- should fetch latest block not block index
-//
+                //
+                // TODO - "process" what? descriptive function name -- should fetch latest block not block index
+                //
                 // if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
                 //     blockchain.add_block(block.clone());
                 //     block_tx

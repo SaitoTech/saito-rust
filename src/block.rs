@@ -22,7 +22,7 @@ pub struct Block {
 
 impl Block {
     pub fn new_mock() -> Self {
-        Block::new([0;32], 0, 0.0, BlockCore::new_mock())
+        Block::new([0; 32], 0, 0.0, BlockCore::new_mock())
     }
     pub fn new(hash: [u8; 32], burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
         Block {
@@ -36,7 +36,7 @@ impl Block {
     pub fn difficulty(&self) -> f32 {
         self.difficulty
     }
-    
+
     /// Returns the `Block` burnfee
     pub fn burnfee(&self) -> u64 {
         self.burnfee
@@ -48,19 +48,18 @@ impl Block {
 
     /// Returns the `Block` hash
     pub fn clone_hash(&self) -> [u8; 32] {
-      self.hash.clone()
+        self.hash.clone()
     }
-    
+
     /// Returns the `Block` creator's `secp256k1::PublicKey`
     pub fn creator(&self) -> PublicKey {
         self.core.creator
     }
-    
+
     /// Returns the `Block` coinbase
     pub fn coinbase(&self) -> u64 {
         self.core.coinbase
     }
-    
 
     /// Returns the `Block`'s `Transaction`s
     pub fn transactions(&self) -> &Vec<Transaction> {
@@ -75,7 +74,6 @@ impl Block {
         self.core.id
     }
 }
-
 
 /// The `BlockCore` holds the most important metadata associated with the `Block`
 /// it is essentially the critical block data needed for distribution from which
@@ -94,7 +92,6 @@ pub struct BlockCore {
     coinbase: u64,
     /// simplified transaction cores
     transactions: Vec<Transaction>,
-
 }
 
 impl BlockCore {
@@ -103,11 +100,21 @@ impl BlockCore {
     /// new(id: , timestamp: u64, previous_block_hash: [u8; 32], creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>)
     /// For example, blockchain.add_block shoudl at least know the id, so new_mock() can become new_mock(id: u64) when we write that.
     pub fn new_mock() -> Self {
-        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
-        BlockCore::new(0, create_timestamp(), [0;32], public_key, 0, vec![])
+        let public_key: PublicKey = PublicKey::from_str(
+            "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
+        )
+        .unwrap();
+        BlockCore::new(0, create_timestamp(), [0; 32], public_key, 0, vec![])
     }
     /// Creates a new `BlockCore`
-    pub fn new(id: u64, timestamp: u64, previous_block_hash: [u8; 32], creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>) -> Self {
+    pub fn new(
+        id: u64,
+        timestamp: u64,
+        previous_block_hash: [u8; 32],
+        creator: PublicKey,
+        coinbase: u64,
+        transactions: Vec<Transaction>,
+    ) -> Self {
         BlockCore {
             id: id,
             timestamp: timestamp,
@@ -117,18 +124,20 @@ impl BlockCore {
             transactions: transactions,
         }
     }
-
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    
+
     #[test]
     fn block_test() {
         let block = Block::new_mock();
-        
-        let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
+
+        let public_key: PublicKey = PublicKey::from_str(
+            "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
+        )
+        .unwrap();
         assert_eq!(block.id(), 0);
         assert_eq!(block.previous_block_hash(), &[0; 32]);
         assert_eq!(block.creator(), public_key);
@@ -142,19 +151,19 @@ mod test {
     // fn block_set_transactions_test() {
     //     let keypair = Keypair::new();
     //     let mut block = Block::new(*keypair.public_key(), [0; 32]);
-    // 
+    //
     //     let mut tx = Transaction::new(TransactionType::Normal);
     //     let from_slip = SlipID::new(10, 10, 10);
     //     let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
     //     tx.add_input(from_slip);
     //     tx.add_output(to_slip);
-    // 
+    //
     //     let signed_transaction =
     //         Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
     //     block.set_transactions(&mut vec![signed_transaction.clone()]);
-    // 
+    //
     //     assert_eq!(block.transactions().len(), 1);
-    // 
+    //
     //     assert_eq!(
     //         block.transactions()[0].body.outputs()[0].address(),
     //         keypair.public_key()
@@ -164,12 +173,12 @@ mod test {
     //         block.transactions()[0].body.outputs()[0].broadcast_type(),
     //         SlipBroadcastType::Normal
     //     );
-    // 
+    //
     //     assert_eq!(block.transactions()[0].body.inputs()[0].slip_id(), 10);
     //     assert_eq!(block.transactions()[0].body.inputs()[0].tx_id(), 10);
     //     assert_eq!(block.transactions()[0].body.inputs()[0].block_id(), 10);
     // }
-    // 
+    //
     // #[test]
     // fn block_add_transaction_test() {
     //     let keypair = Keypair::new();

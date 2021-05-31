@@ -68,7 +68,7 @@ pub struct TransactionCore {
 }
 
 impl Transaction {
-    /// 
+    ///
     pub fn new_mock() -> Transaction {
         Transaction::new(
             Signature::from_compact(&[0; 64]).unwrap(),
@@ -83,7 +83,15 @@ impl Transaction {
     /// Creates new `Transaction`
     ///
     /// * `broadcast_type` - `TransactionType` of the new `Transaction`
-    pub fn new(signature: Signature, path: Vec<Hop>, timestamp: u64, inputs: Vec<SlipID>, outputs: Vec<OutputSlip>, broadcast_type: TransactionType, message: Vec<u8>) -> Transaction {
+    pub fn new(
+        signature: Signature,
+        path: Vec<Hop>,
+        timestamp: u64,
+        inputs: Vec<SlipID>,
+        outputs: Vec<OutputSlip>,
+        broadcast_type: TransactionType,
+        message: Vec<u8>,
+    ) -> Transaction {
         // TODO add inputs, outputs, and message here
         Transaction {
             signature: signature,
@@ -94,9 +102,8 @@ impl Transaction {
                 outputs: outputs,
                 broadcast_type: broadcast_type,
                 message: message,
-            }
+            },
         }
-        
     }
 
     pub fn sign(core: TransactionCore) -> Transaction {

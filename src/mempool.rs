@@ -1,4 +1,3 @@
-
 pub const GENESIS_PERIOD: u64 = 21500;
 
 /// The `Mempool` is the structure that collects blocks and transactions
@@ -8,11 +7,10 @@ pub const GENESIS_PERIOD: u64 = 21500;
 /// the `Blockchain`
 pub struct Mempool {
     // /// A list of `Transaction`s to be bundled into `Block`s
-    // transactions: Vec<Transaction>,
+// transactions: Vec<Transaction>,
 }
 
 impl Mempool {
-
     // /// Creates new `Memppol`
     // pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
     //     Mempool {
@@ -39,7 +37,6 @@ impl Mempool {
     //     }
     // }
 
-
     // /// Attempt to create a new `Block`
     // ///
     // /// * `previous_block` - `Option` of previous `Block`
@@ -62,7 +59,7 @@ impl Mempool {
     //             let work_needed = self
     //                 ._burnfee
     //                 .return_work_needed(current_timestamp, block_header.timestamp());
-    // 
+    //
     //             println!(
     //                 "TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}",
     //                 format_timestamp(current_timestamp),
@@ -70,67 +67,64 @@ impl Mempool {
     //                 self.work_available,
     //                 self.transactions.len(),
     //             );
-    // 
+    //
     //             // TODO -- add check for transactions in Mempool
     //             self.work_available >= work_needed
     //         }
     //         None => true,
-	//         }
+    //         }
     //     false
     // }
-
-
-
 
     // /// Create a new `Block` from the `Mempool`'s list of `Transaction`s
     // ///
     // /// * `previous_block` - `Option` of the previous block on the longest chain
-//     fn bundle_block(&mut self, previous_block: &Block) -> Block {
-// 
-//         let keypair = self._keypair.read().unwrap();
-//         let publickey = keypair.public_key();
-//         let block: Block;
-// /****
-//         match previous_block_index {
-//             Some((previous_block_header, previous_block_hash)) => {
-// 
-//                 block = Block::new();
-// 		//block.set_creator();
-// 		//block.set_previous_block_hash();
-// 
-//                 // TODO -- include reclaimed fees here
-//                 //let treasury = previous_block_header.treasury();
-//                 //let coinbase = (treasury as f64 / GENESIS_PERIOD as f64).round() as u64;
-// 
-//                 block.set_id(previous_block_header.id() + 1);
-//                 block.set_coinbase(coinbase);
-//                 block.set_treasury(treasury - coinbase);
-//                 block.set_previous_block_hash(previous_block_hash.clone());
-//                 block.set_difficulty(previous_block_header.difficulty());
-// 
-//                 self._burnfee
-//                     .adjust_work_needed(block.timestamp(), previous_block_header.timestamp());
-//                 block.set_burnfee(
-//                     self._burnfee
-//                         .return_work_needed(block.timestamp(), previous_block_header.timestamp()),
-//                 );
-//             }
-//             None => {
-//                 block = Block::new(publickey.clone(), [0; 32]);
-//             }
-//         }
-//         block.set_transactions(&mut self.transactions);
-// ****/
-// 
-//         return block;
-//         // TODO -- calculate difficulty and paysplit changes
-//         // https://github.com/orgs/SaitoTech/projects/5#card-61347666
-//     }
+    //     fn bundle_block(&mut self, previous_block: &Block) -> Block {
+    //
+    //         let keypair = self._keypair.read().unwrap();
+    //         let publickey = keypair.public_key();
+    //         let block: Block;
+    // /****
+    //         match previous_block_index {
+    //             Some((previous_block_header, previous_block_hash)) => {
+    //
+    //                 block = Block::new();
+    // 		//block.set_creator();
+    // 		//block.set_previous_block_hash();
+    //
+    //                 // TODO -- include reclaimed fees here
+    //                 //let treasury = previous_block_header.treasury();
+    //                 //let coinbase = (treasury as f64 / GENESIS_PERIOD as f64).round() as u64;
+    //
+    //                 block.set_id(previous_block_header.id() + 1);
+    //                 block.set_coinbase(coinbase);
+    //                 block.set_treasury(treasury - coinbase);
+    //                 block.set_previous_block_hash(previous_block_hash.clone());
+    //                 block.set_difficulty(previous_block_header.difficulty());
+    //
+    //                 self._burnfee
+    //                     .adjust_work_needed(block.timestamp(), previous_block_header.timestamp());
+    //                 block.set_burnfee(
+    //                     self._burnfee
+    //                         .return_work_needed(block.timestamp(), previous_block_header.timestamp()),
+    //                 );
+    //             }
+    //             None => {
+    //                 block = Block::new(publickey.clone(), [0; 32]);
+    //             }
+    //         }
+    //         block.set_transactions(&mut self.transactions);
+    // ****/
+    //
+    //         return block;
+    //         // TODO -- calculate difficulty and paysplit changes
+    //         // https://github.com/orgs/SaitoTech/projects/5#card-61347666
+    //     }
 }
 
 #[cfg(test)]
 mod tests {
-    // 
+    //
     // use super::*;
     // use crate::keypair::Keypair;
     // use std::sync::{Arc, RwLock};
@@ -140,16 +134,16 @@ mod tests {
     //     assert_eq!(true, true);
     //     let keypair = Arc::new(RwLock::new(Keypair::new()));
     //     let mempool = Mempool::new(keypair);
-    // 
+    //
     //     assert_eq!(mempool.work_available, 0);
     // }
     // #[test]
     // fn mempool_try_bundle_none_test() {
     //     let keypair = Arc::new(RwLock::new(Keypair::new()));
     //     let mut mempool = Mempool::new(keypair);
-    // 
+    //
     //     let new_block = mempool.try_bundle(None);
-    // 
+    //
     //     match new_block {
     //         Some(block) => {
     //             assert_eq!(block.id(), 0);
@@ -162,11 +156,11 @@ mod tests {
     // fn mempool_try_bundle_some_test() {
     //     let keypair = Arc::new(RwLock::new(Keypair::new()));
     //     let mut mempool = Mempool::new(keypair);
-    // 
+    //
     //     let prev_block = Block::new(Keypair::new().public_key().clone(), [0; 32]);
     //     let prev_block_index = &(prev_block.header().clone(), prev_block.hash());
     //     let new_block = mempool.try_bundle(Some(prev_block_index));
-    // 
+    //
     //     match new_block {
     //         Some(_) => {}
     //         None => {

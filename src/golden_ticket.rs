@@ -43,7 +43,7 @@ pub fn generate_golden_ticket_transaction(
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
-    
+
     let previous_block_hash = previous_block.clone_hash();
     //let previous_block_hash = previous_block.hash;
 
@@ -55,17 +55,17 @@ pub fn generate_golden_ticket_transaction(
     // for now, we just split the coinbase between the miners and the routers
 
     let mut golden_tx = Transaction::new_mock();
-    
+
     let total_fees_for_miners_and_nodes = &previous_block.coinbase();
-    
+
     let miner_share = (*total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
     let miner_slip = OutputSlip::new(*publickey, SlipBroadcastType::Normal, miner_share);
     let node_slip = OutputSlip::new(winning_address, SlipBroadcastType::Normal, node_share);
-    
+
     golden_tx.core.add_output(miner_slip);
-    golden_tx.core.add_output(node_slip);    
-    
+    golden_tx.core.add_output(node_slip);
+
     golden_tx
 }
 
