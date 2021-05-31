@@ -88,20 +88,21 @@ impl Blockchain {
             return AddBlockReason::ParentNotFound;
         } else {
             self.fork_tree.insert(block.hash(), block);
-            if (!self.is_new_longest_chain_tip(block)){
-                self.longest_chain_queue.rollforward(block.hash())
-                self.utxoset.rollforward(block.transactions());
+            if self.longest_chain_queue.get_latest_block().hash() == block.hash(){
+                self.utxoset.rollforward(block);
+                self.longest_chain_queue.rollforward(block.hash());
+                return AddBlockReason::Accepted;
+            } else if (!self.is_new_longest_chain_tip(block)){
+                self.utxoset.rollforward_on_potential_fork(block);
                 return AddBlockReason::Accepted;
             } else {
                 // block is the tip of a new longest chain
                 let common_ancestor = self.find_common_ancestor_in_longest_chain();
                 let next_block = block;
-                
                 while next_block.previous_block_hash() != common_ancestor.hash() {
                     self.longest_chain_queue.rollback(block.hash())
                     self.utxoset.rollback( block.transactions());    
                 }
-                
                 
                 next_block = block;
                 // 1) build a vec of blocks going back up the chain by walking it backwards once and

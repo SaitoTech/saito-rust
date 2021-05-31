@@ -7,7 +7,7 @@ use std::str::FromStr;
 
 enum UtxoSetValue {
     Unspent,
-    Spent(u64),
+    Spent(u64), // block_id
     PotentialForkUnspent([u8;32]),
     PotentialForkSpent([u8;32]),
 }
@@ -62,16 +62,18 @@ impl UtxoSet {
     /// Returns true if the slip has been seen in the blockchain
     pub fn is_slip_spendable_at_block(&self, _block: &Block, _slip_id: &SlipID) -> bool {
         // if Slip is Unspent, return true
-        // else if Slip is PotentialForkUnspent, find common ancestor and do 
+        // else if Slip is PotentialForkUnspent, find common ancestor and check if the hash in
+        // shashmap PotentialForkUnspent is in any of the ancestors before common_ancestor
         // 
-        let common_ancestor = BLOCKCHAIN.find_common_ancestor_in_longest_chain();
-        let next_block = block;
-        while next_block.previous_block_hash() != common_ancestor.hash() {
-            if(next_block.hash() == ) {
-                
-            }
-            next_block = block.previous_block_hash();
-        }
+        // let common_ancestor = BLOCKCHAIN.find_common_ancestor_in_longest_chain();
+        // let next_block = block;
+        // while next_block.previous_block_hash() != common_ancestor.hash() {
+        // 
+        //     if(next_block.hash() == common_ancestor.hash()) {
+        //         // cheese it
+        //     }
+        //     next_block = block.previous_block_hash();
+        // }
         true
     }
 
