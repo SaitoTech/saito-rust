@@ -3,9 +3,11 @@ use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 use std::str::FromStr;
 
+use serde::{Deserialize, Serialize};
+
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
     /// Memoized hash of the block
     hash: [u8; 32],
@@ -125,6 +127,7 @@ impl BlockCore {
         }
     }
 }
+
 
 #[cfg(test)]
 mod test {

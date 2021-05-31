@@ -1,4 +1,5 @@
 use secp256k1::PublicKey;
+use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
 /// An enumerated set of `Slip` types
