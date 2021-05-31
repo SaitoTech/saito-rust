@@ -148,7 +148,6 @@ impl BlockCore {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
