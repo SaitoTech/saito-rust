@@ -34,6 +34,7 @@ impl Block {
             core: core,
         }
     }
+
     /// Returns the `Block` difficulty
     pub fn difficulty(&self) -> f32 {
         self.difficulty
@@ -67,18 +68,22 @@ impl Block {
     pub fn transactions(&self) -> &Vec<Transaction> {
         &self.core.transactions
     }
+
     /// Returns the previous `Block` hash
     pub fn previous_block_hash(&self) -> &[u8; 32] {
         &self.core.previous_block_hash
     }
+
     /// Returns the `Block` id
     pub fn id(&self) -> u64 {
         self.core.id
     }
+
     /// Returns the `hash`
     pub fn hash(&self) -> [u8; 32] {
         self.hash
     }
+
     /// Converts our blockhash from a byte array into a hex string
     pub fn hash_as_hex(&self) -> String {
         hex::encode(self.hash)

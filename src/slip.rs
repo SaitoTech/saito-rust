@@ -9,6 +9,7 @@ pub enum SlipType {
     Normal,
 }
 
+/// A record of owernship of funds on the network
 impl Hash for SlipID {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(&self.slip_ordinal.to_ne_bytes());
@@ -28,7 +29,7 @@ pub struct SlipID {
 /// An object that holds concrete data not subjective to state of chain
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
 pub struct OutputSlip {
-    /// An `Sectp256K::PublicKey` determining who owns the `Slip`
+    /// An `Secp256K1::PublicKey` determining who owns the `Slip`
     address: PublicKey,
     /// A enum brodcast type determining how to be processed by consensus
     broadcast_type: SlipType,

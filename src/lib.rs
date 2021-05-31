@@ -26,16 +26,17 @@ pub mod blockchain;
 pub mod burnfee;
 pub mod consensus;
 pub mod crypto;
+pub mod forktree;
 pub mod golden_ticket;
 pub mod keypair;
 pub mod longestchainqueue;
 pub mod mempool;
-pub mod shashmap;
 pub mod slip;
 pub mod storage;
 pub mod time;
 pub mod transaction;
 pub mod types;
+pub mod utxoset;
 
 #[macro_use]
 extern crate lazy_static;

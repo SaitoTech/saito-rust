@@ -1,6 +1,23 @@
 use crate::block::Block;
-use crate::longestchainqueue::roll_forward;
-use crate::shashmap::Shashmap;
+use crate::forktree::ForkTree;
+use crate::longestchainqueue::LongestChainQueue;
+use crate::utxoset::UtxoSet;
+
+lazy_static! {
+    // This allows us to get a reference to blockchain, utxoset, longest_chain_queue, or fork_tree
+    // from anywhere in the codebase. In the future we can also use message passing or put
+    // other objects into global statics when needed. This is just a temporary solution to get
+    // things working before we optimize.
+    // To use: add crate::blockchain::BLOCKCHAIN and add getters to Blockchain if needed
+    pub static ref BLOCKCHAIN: Blockchain = Blockchain::new();
+}
+
+/// Enumerated types of `Transaction`s to be handlded by consensus
+#[derive(Debug, PartialEq, Clone)]
+pub enum AddBlockReason {
+    OK,
+    ParentNotFound,
+}
 
 /// The structure represents the state of the
 /// blockchain itself, including the blocks that are on the
@@ -8,29 +25,42 @@ use crate::shashmap::Shashmap;
 /// the longest-chain but capable of being switched over.
 #[derive(Debug, Clone)]
 pub struct Blockchain {
-    /// Vector of blocks
-    blocks: Vec<Block>,
-
     /// Hashmap of slips used by the network
-    shashmap: Shashmap,
+    utxoset: UtxoSet,
+    // A queue-like structure that holds the longest chain
+    longest_chain_queue: LongestChainQueue,
+    // hashmap back tree to track blocks and potential forks
+    fork_tree: ForkTree,
 }
 
 impl Blockchain {
     /// Create new `Blockchain`
     pub fn new() -> Self {
         Blockchain {
-            blocks: vec![],
-            shashmap: Shashmap::new(),
+            utxoset: UtxoSet::new(),
+            longest_chain_queue: LongestChainQueue::new(),
+            fork_tree: ForkTree::new(),
         }
     }
 
+    /// If the block is in the fork
+    pub fn is_block_hash_known(&mut self, _block_hash: [u8; 32]) -> bool {
+        // TODO check if the block is in the fork tree
+        true
+    }
     /// Append `Block` to the index of `Blockchain`
-    pub fn add_block(&mut self, block: Block) {
-        roll_forward(block.hash());
-        for tx in block.transactions().iter() {
-            self.shashmap.insert_new_transaction(tx);
+    pub fn add_block(&mut self, block: Block) -> AddBlockReason {
+        if !self.is_block_hash_known(block.hash()) {
+            return AddBlockReason::ParentNotFound;
         }
-        self.blocks.push(block);
+        // if(!all tx in block have valid sigs)
+        // if(!all tx)
+        self.longest_chain_queue.roll_forward(block.hash());
+        for tx in block.transactions().iter() {
+            self.utxoset.spend_transaction(tx);
+        }
+        self.fork_tree.insert(block.hash(), block);
+        AddBlockReason::OK
     }
 
     // /// Return latest `Block` in blockchain
@@ -94,6 +124,6 @@ mod tests {
     //     let (block_header, _) = blockchain.index.blocks[0].clone();
     //
     //     assert_eq!(block_header, *block.clone().header());
-    //     //assert_eq!(blockchain.shashmap.slip_block_id(&slip), Some(&-1));
+    //     //assert_eq!(blockchain.utxoset.slip_block_id(&slip), Some(&-1));
     // }
 }

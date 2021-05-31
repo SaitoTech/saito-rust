@@ -1,26 +1,27 @@
 use crate::slip::{OutputSlip, SlipID};
 use crate::transaction::Transaction;
+use secp256k1::PublicKey;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 /// A hashmap storing Slips TODO fix this documentation once we've settled on what
 /// data structures actually belong here.
 #[derive(Debug, Clone)]
-pub struct Shashmap {
+pub struct UtxoSet {
     utxo_hashmap: HashMap<SlipID, OutputSlip>,
 }
 
-impl Shashmap {
-    /// Create new `Shashmap`
+impl UtxoSet {
+    /// Create new `UtxoSet`
     pub fn new() -> Self {
-        Shashmap {
+        UtxoSet {
             utxo_hashmap: HashMap::new(),
         }
     }
-    pub fn insert_new_transaction(&mut self, _tx: &Transaction) {}
+
     /// Insert the inputs of a `Transaction` with the `Block` id
     ///
     /// * `tx` - `Transaction` which the inputs are inserted into `HashMap`
-    /// * `block_id` - `Block` id used as value
     pub fn spend_transaction(&mut self, _tx: &Transaction) {}
 
     /// Remove the inputs of a `Transaction` with the `Block` id
@@ -33,6 +34,26 @@ impl Shashmap {
     /// * `slip` - `&OutputSlip` as key
     pub fn slip_block_id(&self, slip_id: &SlipID) -> &OutputSlip {
         self.utxo_hashmap.get(slip_id).unwrap()
+    }
+
+    /// Returns true if the slip has been seen in the blockchain
+    pub fn is_slip_spendable(&self, _slip_id: &SlipID) -> bool {
+        true
+    }
+
+    // Returns true if the SlipOutput found in the utxoset matches the SlipOutput
+    pub fn get_total_for_slips(&self, _slip_ids: Vec<SlipID>) -> u64 {
+        100
+    }
+
+    // Returns true if the SlipOutput found in the utxoset matches the SlipOutput
+    pub fn get_sender_for_slips(&self, _slip_ids: Vec<SlipID>) -> Option<PublicKey> {
+        Some(
+            PublicKey::from_str(
+                "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
+            )
+            .unwrap(),
+        )
     }
 }
 
@@ -49,13 +70,13 @@ mod test {
     //
     // #[test]
     // fn shashmap_test() {
-    //     let shashmap = Shashmap::new();
+    //     let shashmap = UtxoSet::new();
     //     assert_eq!(shashmap.utxo_hashmap, HashMap::new());
     // }
     //
     // #[test]
     // fn shashmap_insert_test() {
-    //     let mut shashmap = Shashmap::new();
+    //     let mut shashmap = UtxoSet::new();
     //     let keypair = Keypair::new();
     //     let slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //     shashmap.insert(slip, 0);
@@ -64,7 +85,7 @@ mod test {
     //
     // #[test]
     // fn shashmap_insert_new_transaction_test() {
-    //     let mut shashmap = Shashmap::new();
+    //     let mut shashmap = UtxoSet::new();
     //
     //     let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
     //     let mut tx_body = Transaction::new(TransactionType::Normal, public_key);
@@ -83,7 +104,7 @@ mod test {
     //
     // #[test]
     // fn shashmap_spend_transaction_test() {
-    //     let mut shashmap = Shashmap::new();
+    //     let mut shashmap = UtxoSet::new();
     //     let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
     //     let mut tx_body = Transaction::new(TransactionType::Normal, public_key);
     //     let mut tx Transaction::add_signature(tx_body, &Signature::from_compact(&[0; 64]).unwrap());
@@ -100,7 +121,7 @@ mod test {
     //
     // #[test]
     // fn shashmap_unspend_transaction_test() {
-    //     let mut shashmap = Shashmap::new();
+    //     let mut shashmap = UtxoSet::new();
     //     let public_key: PublicKey = PublicKey::from_str("0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072").unwrap();
     //     let mut tx_body = Transaction::new(TransactionType::Normal, public_key);
     //     let mut tx Transaction::add_signature(tx_body, &Signature::from_compact(&[0; 64]).unwrap());
@@ -118,7 +139,7 @@ mod test {
     //
     // #[test]
     // fn shashmap_spend_slip_test() {
-    //     let mut shashmap = Shashmap::new();
+    //     let mut shashmap = UtxoSet::new();
     //
     //     let keypair = Keypair::new();
     //     let input_slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
@@ -131,7 +152,7 @@ mod test {
     //
     // #[test]
     // fn shashmap_unspend_slip_test() {
-    //     let mut shashmap = Shashmap::new();
+    //     let mut shashmap = UtxoSet::new();
     //
     //     let keypair = Keypair::new();
     //     let input_slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
@@ -144,7 +165,7 @@ mod test {
     //
     // #[test]
     // fn shashmap_slip_block_id_test() {
-    //     let mut shashmap = Shashmap::new();
+    //     let mut shashmap = UtxoSet::new();
     //
     //     let keypair = Keypair::new();
     //     let slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);

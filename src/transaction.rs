@@ -119,6 +119,31 @@ impl Transaction {
     pub fn add_hop_to_path(&mut self, path: Hop) {
         self.path.push(path);
     }
+
+    pub fn is_valid(&self) -> bool {
+        let result = self.sig_is_valid();
+        // TODO
+        // self.inputs.iter()
+        // result = result && self.is_slip_spendable(slip_id);
+        // result = result && self.is_slip_id_valid(slip_id, output_slip);
+        result
+    }
+
+    /// Returns true if the slip has been seen in the blockchain
+    pub fn is_slip_spendable(&self, _slip_id: &SlipID) -> bool {
+        // TODO check with utxoset to see if slip is spendable
+        true
+    }
+    // Returns true if the OutputSlip found in the utxoset matches the OutputSlip
+    pub fn is_slip_id_valid(&self, _slip_id: &SlipID, _slip_as_output: &OutputSlip) -> bool {
+        // TODO loop through all sigs in utxo set and make sure they have to correct receiver and amount
+        true
+    }
+
+    pub fn sig_is_valid(&self) -> bool {
+        // TODO check with keypair if things are valid
+        true
+    }
 }
 
 impl TransactionCore {
