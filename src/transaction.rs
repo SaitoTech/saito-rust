@@ -173,7 +173,7 @@ mod tests {
     use super::*;
     use crate::{
         keypair::Keypair,
-        slip::{OutputSlip, SlipBroadcastType, SlipID},
+        slip::{OutputSlip, SlipID, SlipType},
     };
 
     #[test]
@@ -188,8 +188,8 @@ mod tests {
         assert_eq!(tx.core.message(), &vec![]);
 
         let keypair = Keypair::new();
-        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        let from_slip = SlipID::new(10, 10, 10);
+        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 0);
+        let from_slip = SlipID::new_mock();
 
         // let hop_message_bytes = Keypair::make_message_from_string("message_string");
         // let signature = keypair.sign_message(&hop_message_bytes);

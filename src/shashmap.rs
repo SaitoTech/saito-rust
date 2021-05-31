@@ -31,8 +31,8 @@ impl Shashmap {
     /// Return the `Block` id based on `OutputSlip`
     ///
     /// * `slip` - `&OutputSlip` as key
-    pub fn slip_block_id(&self, slip: &SlipID) -> Option<&OutputSlip> {
-        self.utxo_hashmap.get(slip)
+    pub fn slip_block_id(&self, slip_id: &SlipID) -> &OutputSlip {
+        self.utxo_hashmap.get(slip_id).unwrap()
     }
 }
 
@@ -42,7 +42,7 @@ mod test {
     // use super::*;
     // use crate::{
     //     keypair::Keypair,
-    //     slip::{Slip, SlipBroadcastType},
+    //     slip::{Slip, SlipType},
     //     transaction::{Transaction, TransactionType},
     // };
     // use std::collections::HashMap;
@@ -57,7 +57,7 @@ mod test {
     // fn shashmap_insert_test() {
     //     let mut shashmap = Shashmap::new();
     //     let keypair = Keypair::new();
-    //     let slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //     shashmap.insert(slip, 0);
     //     assert!(shashmap.utxo_hashmap.contains_key(&slip));
     // }
@@ -71,7 +71,7 @@ mod test {
     //     let mut tx Transaction::add_signature(tx_body, &Signature::from_compact(&[0; 64]).unwrap());
     //
     //     let keypair = Keypair::new();
-    //     let output_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let output_slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //
     //     tx.add_output(output_slip);
     //
@@ -88,7 +88,7 @@ mod test {
     //     let mut tx_body = Transaction::new(TransactionType::Normal, public_key);
     //     let mut tx Transaction::add_signature(tx_body, &Signature::from_compact(&[0; 64]).unwrap());
     //     let keypair = Keypair::new();
-    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //
     //     tx.add_input(input_slip);
     //
@@ -106,7 +106,7 @@ mod test {
     //     let mut tx Transaction::add_signature(tx_body, &Signature::from_compact(&[0; 64]).unwrap());
     //
     //     let keypair = Keypair::new();
-    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //
     //     tx.add_input(input_slip);
     //
@@ -121,7 +121,7 @@ mod test {
     //     let mut shashmap = Shashmap::new();
     //
     //     let keypair = Keypair::new();
-    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //
     //     shashmap.spend_slip(&input_slip, 0);
     //
@@ -134,7 +134,7 @@ mod test {
     //     let mut shashmap = Shashmap::new();
     //
     //     let keypair = Keypair::new();
-    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let input_slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //
     //     shashmap.unspend_slip(&input_slip);
     //
@@ -147,7 +147,7 @@ mod test {
     //     let mut shashmap = Shashmap::new();
     //
     //     let keypair = Keypair::new();
-    //     let slip = Slip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let slip = Slip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //     shashmap.insert(slip, 1);
     //
     //     match shashmap.slip_block_id(&slip) {

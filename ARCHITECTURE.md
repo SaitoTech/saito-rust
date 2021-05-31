@@ -19,7 +19,7 @@ Modules will publish events like blockCandidateFound, DifficultHashFound, TxSign
 * setIds(int bid, int tid, int sid)
 * getAmt() -> int
 * setAmt(int amt)
-* setBroadcastType(broadcast_type: SlipBroadcastType)
+* setBroadcastType(broadcast_type: SlipType)
 * setSpentStatus(spent_status: SlipSpentStatus)
 * returnAddress() -> PublicKey
 * returnSignatureSource() -> Vec<u8>

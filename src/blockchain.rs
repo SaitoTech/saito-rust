@@ -83,7 +83,7 @@ mod tests {
     //     let mut blockchain = Blockchain::new();
     //     let mut block = Block::new(keypair.public_key().clone(), [0; 32]);
     //     let mut transaction = Transaction::new(TransactionType::Normal);
-    //     let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //     transaction.add_output(to_slip);
     //
     //     let signed_transaction =

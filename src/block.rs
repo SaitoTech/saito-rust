@@ -176,7 +176,7 @@ mod test {
     //
     //     let mut tx = Transaction::new(TransactionType::Normal);
     //     let from_slip = SlipID::new(10, 10, 10);
-    //     let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
+    //     let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 0);
     //     tx.add_input(from_slip);
     //     tx.add_output(to_slip);
     //
@@ -193,10 +193,10 @@ mod test {
     //     assert_eq!(block.transactions()[0].body.outputs()[0].amount(), 0);
     //     assert_eq!(
     //         block.transactions()[0].body.outputs()[0].broadcast_type(),
-    //         SlipBroadcastType::Normal
+    //         SlipType::Normal
     //     );
     //
-    //     assert_eq!(block.transactions()[0].body.inputs()[0].slip_id(), 10);
+    //     assert_eq!(block.transactions()[0].body.inputs()[0].slip_ordinal(), 10);
     //     assert_eq!(block.transactions()[0].body.inputs()[0].tx_id(), 10);
     //     assert_eq!(block.transactions()[0].body.inputs()[0].block_id(), 10);
     // }
