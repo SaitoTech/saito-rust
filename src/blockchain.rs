@@ -47,8 +47,8 @@ impl Blockchain {
         }
     }
 
-    fn latest_block(&self) -> Option<Sha256Hash> {
-        self.longest_chain_queue.latest_block()
+    fn latest_block(&self) -> Option<&Block> {
+        self.fork_tree.block_by_hash(&self.longest_chain_queue.latest_block_hash())
     }
 
     /// If the block is in the fork
@@ -83,10 +83,10 @@ impl Blockchain {
         if !found_ancestor {
             false
         } else {
-            let ancestor_block= target_block;
-            let mut i = self.longest_chain_queue.epoch_ring_top_location;
+            let ancestor_block = target_block;
+            let mut i = self.longest_chain_queue.latest_block_id();
 
-            while i > ancestor_block.id() as usize {
+            while i > ancestor_block.id() {
                 let hash = self.longest_chain_queue.block_hash_by_id(i as u64);
                 old_chain.push(self.fork_tree.block_by_hash(&hash).unwrap());
                 i = i - 1;
@@ -139,8 +139,8 @@ impl Blockchain {
             AddBlockEvent::ParentNotFound
         } else {
             self.fork_tree.insert(block.hash(), block.clone());
-            let latest_block_hash = self.latest_block();
-            if latest_block_hash == None || latest_block_hash == Some(*(&block).previous_block_hash()) {
+            let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
+            if latest_block_hash == block.previous_block_hash() {
                 self.utxoset.roll_forward(&block);
                 self.longest_chain_queue.roll_forward(block.hash());
                 AddBlockEvent::AcceptedAsLongestChain
@@ -149,15 +149,15 @@ impl Blockchain {
                 AddBlockEvent::Accepted
             } else {
                 // block is the tip of a new longest chain
-                let common_ancestor = self.find_common_ancestor_in_longest_chain(&block);
-                let mut next_block = &block;
-                while next_block.previous_block_hash() != &common_ancestor {
-                        //self.longest_chain_queue.roll_back(block.hash());
-                    self.longest_chain_queue.roll_back();
-                    self.utxoset.roll_back(&block);
+                let common_ancestor_hash = self.find_common_ancestor_in_longest_chain(&block);
+                let mut prev_block_hash = block.hash();
+                while prev_block_hash != common_ancestor_hash {
+                    prev_block_hash = self.longest_chain_queue.roll_back();
+                    let block = &self.fork_tree.block_by_hash(&prev_block_hash).unwrap();
+                    self.utxoset.roll_back(block);
                 }
 
-                next_block = &block;
+                // let next_block = &block;
                 // 1) build a vec of blocks going back up the chain by walking it backwards once and
                 // saving references to a Vec
                 // 2) loop through the blocks in forward-order and do:

@@ -1,5 +1,5 @@
 use crate::block::Block;
-use crate::crypto::{PublicKey, Sha256Hash};
+use crate::crypto::Sha256Hash;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]

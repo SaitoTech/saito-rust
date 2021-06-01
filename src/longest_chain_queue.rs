@@ -1,55 +1,98 @@
 use crate::crypto::Sha256Hash;
 
 // TODO put these sort of consts into a single location.
-pub const EPOCH_LENGTH: usize = 30_000;
+pub const EPOCH_LENGTH: u64 = 30_000;
 
-const RING_BUFFER_LENGTH: usize = 2 * EPOCH_LENGTH;
+const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
 
 // TODO Put this into crypto and use it everywhere we have Sha256Hash
 
 #[derive(Debug, Clone)]
 pub struct LongestChainQueue {
-    pub epoch_ring_array: [Sha256Hash; RING_BUFFER_LENGTH],
-    // like a stack pointer
-    pub epoch_ring_top_location: usize,
-    // This should either be the lenght of the blockchain or 2x EPOCH_LENGTH(RING_BUFFER_LENGTH)
-    epoch_ring_length: usize,
+    /// This will hold a ring of blocks by block_id, but index is not the block_id.
+    epoch_ring_array: [Sha256Hash; RING_BUFFER_LENGTH as usize],
+    /// Longest Chain total length, i.e. the latest_block's id
+    longest_chain_total_length: u64,
+    /// like a stack pointer, this points to the latest_block
+    epoch_ring_top_location: u64,
+    /// This should either be the length of the valid data or 2x EPOCH_LENGTH(RING_BUFFER_LENGTH)
+    /// When we roll back, some data simply becomes invalid and this number decreases
+    epoch_ring_length: u64,
 }
 
 impl LongestChainQueue {
     /// Create new `LongestChainQueue`
     pub fn new() -> Self {
         LongestChainQueue {
-            epoch_ring_array: [[0; 32]; RING_BUFFER_LENGTH],
-            epoch_ring_top_location: 0,
+            epoch_ring_array: [[0; 32]; RING_BUFFER_LENGTH as usize],
+            longest_chain_total_length: 0,
+            epoch_ring_top_location: RING_BUFFER_LENGTH - 1, // equivalent to -1, but we have a u64
             epoch_ring_length: 0,
         }
     }
-    pub fn roll_back(&self) -> Sha256Hash {
-        println!("rollback");
-        [0; 32]
+    /// Roll back the longest chain by 1.
+    /// We don't actually remove any data, we just assume that only data going back
+    /// epoch_ring_length from epoch_ring_top_location is valid(with rollover at 0).
+    /// i.e. epoch_ring_length keeps track of how much data is valid.
+    pub fn roll_back(&mut self) -> Sha256Hash {
+        if self.longest_chain_total_length == 0 {
+            panic!("The longest chain is already 0, we cannot rollback!");
+        }
+        self.longest_chain_total_length -= 1;
+        if self.epoch_ring_top_location == 0 {
+            self.epoch_ring_top_location = RING_BUFFER_LENGTH - 1;
+        } else {
+            self.epoch_ring_top_location -= 1;    
+        }
+        self.epoch_ring_length -= 1;
+        if self.epoch_ring_length < EPOCH_LENGTH {
+            panic!("It seems you're trying to rollback an entire epoch-length of blocks...");
+        }
+        self.latest_block_hash()
     }
-    pub fn roll_forward(&self, _new_block_hash: Sha256Hash) {
+    /// Roll forward the longest chain by 1.
+    /// If the length of this has exceeded RING_BUFFER_LENGTH, we simply start over again at 0.
+    /// If the length epoch_ring_length exceeds RING_BUFFER_LENGTH, we are overwriting data and 
+    /// therefore cap epoch_ring_length at RING_BUFFER_LENGTH.
+    pub fn roll_forward(&mut self, new_block_hash: Sha256Hash) {
         println!("rollfoward");
+        self.longest_chain_total_length += 1;
+        self.epoch_ring_top_location += 1;
+        self.epoch_ring_top_location = self.epoch_ring_top_location % RING_BUFFER_LENGTH;
+        self.epoch_ring_length += 1;
+        self.epoch_ring_length = std::cmp::min(self.epoch_ring_length, RING_BUFFER_LENGTH);
+        self.epoch_ring_array[self.epoch_ring_top_location as usize] = new_block_hash;
     }
 
     pub fn block_hash_by_id(&self, id: u64) -> Sha256Hash {
-        self.epoch_ring_array[id as usize & RING_BUFFER_LENGTH]
-    }
-
-    pub fn latest_block(&self) -> Option<Sha256Hash> {
-        let latest_block_hash = self.epoch_ring_array[self.epoch_ring_top_location];
-        if latest_block_hash == [0; 32] {
-            None
-        } else {
-            Some(latest_block_hash)
+        if id > self.longest_chain_total_length - 1 {
+            panic!("The block id is great than the latest block id");
         }
+        if self.longest_chain_total_length - id > self.epoch_ring_length {
+            panic!("The block id has fallen off the longest chain ring buffer and cannot be retrieved");
+        }
+        // The index should be valid as long as the previous check passed
+        // We calculate how far back the block is: self.longest_chain_total_length - id
+        // We substract this from the latest_block pointer self.epoch_ring_top_location - how_far_back
+        // We then might be less than 0, so we mod with RING_BUFFER_LENGTH.
+        let index = (self.epoch_ring_top_location - (self.longest_chain_total_length - id)) % RING_BUFFER_LENGTH;
+        self.epoch_ring_array[index as usize]
+    }
+    
+    pub fn latest_block_id(&self) -> u64 {
+        self.longest_chain_total_length
+    }
+    pub fn latest_block_hash(&self) -> Sha256Hash {
+        if self.longest_chain_total_length <= 0 {
+            panic!("There are no blocks in the longest chain");
+        }
+        self.epoch_ring_array[self.epoch_ring_top_location as usize]
     }
     pub fn last_block_in_epoch(&self) -> Sha256Hash {
         if self.epoch_ring_length < RING_BUFFER_LENGTH || self.epoch_ring_top_location == RING_BUFFER_LENGTH - 1 {
             self.epoch_ring_array[0]
         } else {
-            self.epoch_ring_array[self.epoch_ring_top_location + 1]
+            self.epoch_ring_array[(self.epoch_ring_top_location + 1) as usize]
         }
     }
 

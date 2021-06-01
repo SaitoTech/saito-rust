@@ -45,10 +45,10 @@ impl UtxoSet {
     pub fn roll_back(&self, block: &Block){
         // unspend outputs and spend the inputs
 
-        block.transactions()
-            .for_each(|tx| {
-                self.unspend_transaction(tx)
-            })
+        // block.transactions()
+        //     .for_each(|tx| {
+        //         self.unspend_transaction(tx)
+        //     });
 
         // for tx in transactions.iter() {
         //     self.unspend_transaction(tx);
@@ -113,15 +113,15 @@ impl UtxoSet {
     ///
     /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
     fn unspend_transaction(&mut self, tx: &Transaction) {
-        tx.core.inputs().iter()
-          .for_each(|input| {
-              self.shashmap.insert(*input, UtxoSetValue::Unspent);
-          });
-
-        tx.core.outputs().iter().enumerate()
-          .for_each(|(idx, output)| {
-              self.shashmap.remove(&SlipID { tx_id: *tx.signature(), slip_ordinal: idx as u64 });
-          });
+        // tx.core.inputs().iter()
+        //   .for_each(|input| {
+        //       self.shashmap.insert(*input, UtxoSetValue::Unspent);
+        //   });
+        // 
+        // tx.core.outputs().iter().enumerate()
+        //   .for_each(|(idx, output)| {
+        //       self.shashmap.remove(&SlipID { tx_id: *tx.signature(), slip_ordinal: idx as u64 });
+        //   });
     }
 
 
