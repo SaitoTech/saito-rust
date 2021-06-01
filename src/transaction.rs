@@ -132,17 +132,15 @@ impl Transaction {
         true
     }
     /// Returns true if the slip has been seen in the blockchain
-    fn is_slip_spendable(&self, _slip_id: &SlipID) -> bool {
+    fn _is_slip_spendable(&self, _slip_id: &SlipID) -> bool {
         // TODO check with utxoset to see if slip is spendable
         true
     }
     // Returns true if the OutputSlip found in the utxoset matches the OutputSlip
-    fn is_slip_id_valid(&self, _slip_id: &SlipID, _slip_as_output: &OutputSlip) -> bool {
+    fn _is_slip_id_valid(&self, _slip_id: &SlipID, _slip_as_output: &OutputSlip) -> bool {
         // TODO loop through all sigs in utxo set and make sure they have to correct receiver and amount
         true
     }
-
-
 }
 
 impl TransactionCore {

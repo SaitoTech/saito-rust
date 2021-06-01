@@ -10,4 +10,3 @@ pub fn hash(data: &Vec<u8>) -> Sha256Hash {
     hasher.update(data);
     hasher.finalize().as_slice().try_into().unwrap()
 }
-

@@ -1,5 +1,5 @@
-use crate::crypto::Sha256Hash;
 use crate::block::Block;
+use crate::crypto::Sha256Hash;
 use crate::forktree::ForkTree;
 use crate::longest_chain_queue::LongestChainQueue;
 use crate::utxoset::UtxoSet;
@@ -16,11 +16,18 @@ lazy_static! {
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
 pub enum AddBlockEvent {
+    AcceptedAsNewLongestChain,
     AcceptedAsLongestChain,
     Accepted,
     AlreadyKnown,
+    AncestorNotFound,
     ParentNotFound,
     InvalidTransaction,
+}
+
+pub struct ChainFork {
+    // TODO -- add lifetime and reference to block
+    blocks: Vec<Block>
 }
 
 /// The structure represents the state of the
@@ -47,8 +54,14 @@ impl Blockchain {
         }
     }
 
-    fn latest_block(&self) -> Option<&Block> {
-        self.fork_tree.block_by_hash(&self.longest_chain_queue.latest_block_hash())
+    pub fn latest_block(&self) -> Option<&Block> {
+        self.fork_tree
+            .block_by_hash(&self.longest_chain_queue.latest_block_hash())
+    }
+
+    // Get the block from fork_tree and check if the hash matches the one in longest_chain_queue
+    fn _contains_block_hash_in_longest_chain(&self, block_hash: &Sha256Hash) -> bool {
+        self.longest_chain_queue.contains_hash(block_hash)
     }
 
     /// If the block is in the fork
@@ -56,63 +69,47 @@ impl Blockchain {
         self.fork_tree.contains_block_hash(block_hash)
     }
 
-    // If is the new longest chain
-    fn is_new_longest_chain_tip(&self, block: &Block) -> bool {
-        let mut old_chain = vec![];
-        let mut new_chain = vec![];
-
-        // new_chain.push(block);
+    fn fork_chains(&self, block: &Block) -> Option<(Block, ChainFork, ChainFork)> {
+        let mut old_chain = ChainFork { blocks: vec![] };
+        let mut new_chain = ChainFork { blocks: vec![] };
 
         let mut target_block = block;
         let mut found_ancestor = false;
         let mut search_completed = false;
 
         while !search_completed {
-            new_chain.push(target_block);
-            if self.longest_chain_queue.contains_hash(&(target_block.hash())) {
+            new_chain.blocks.push(target_block.clone());
+            if self
+                .longest_chain_queue
+                .contains_hash_by_block_id(target_block.hash(), target_block.id())
+            {
                 search_completed = true;
                 found_ancestor = true;
             } else {
-                match self.fork_tree.block_by_hash(target_block.previous_block_hash()) {
+                match self
+                    .fork_tree
+                    .block_by_hash(target_block.previous_block_hash())
+                {
                     Some(previous_block) => target_block = previous_block,
-                    None => search_completed = true
+                    None => search_completed = true,
                 }
             }
         }
 
         if !found_ancestor {
-            false
+            None
         } else {
-            let ancestor_block = target_block;
+            let ancestor_block = target_block.clone();
             let mut i = self.longest_chain_queue.latest_block_id();
 
             while i > ancestor_block.id() {
                 let hash = self.longest_chain_queue.block_hash_by_id(i as u64);
-                old_chain.push(self.fork_tree.block_by_hash(&hash).unwrap());
+                let block = self.fork_tree.block_by_hash(&hash).unwrap();
+                old_chain.blocks.push(block.clone());
                 i = i - 1;
             }
 
-            new_chain.len() >= old_chain.len()
-        }
-    }
-
-    // Get the block from fork_tree and check if the hash matches the one in longest_chain_queue
-    fn is_in_longest_chain(&self, block_hash: &Sha256Hash) -> bool {
-        // self.longest_chain_queue.epoch_ring_array.iter().any(|&hash| &hash == block_hash)
-        self.longest_chain_queue.contains_hash(block_hash)
-    }
-
-    // Start at the block and go back, checking with longest_chain_queue by block_id until
-    // the hash matches
-    fn find_common_ancestor_in_longest_chain(&self, block: &Block) -> Sha256Hash {
-        let hash = block.hash();
-        if self.longest_chain_queue.block_hash_by_id(block.id()) == hash {
-           hash
-        } else {
-            match self.fork_tree.block_by_hash(block.previous_block_hash()) {
-                Some(previous_block) => self.find_common_ancestor_in_longest_chain(previous_block),
-                None => [0; 32]
-            }
+            Some((ancestor_block, old_chain, new_chain))
         }
     }
 
@@ -127,32 +124,46 @@ impl Blockchain {
         } else if !self.contains_block_hash(block.previous_block_hash()) {
             AddBlockEvent::ParentNotFound
         } else {
+
             self.fork_tree.insert(block.hash(), block.clone());
             let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
+
+            // We're on the longest chain so this is simple for us!
             if latest_block_hash == block.previous_block_hash() {
                 self.utxoset.roll_forward(&block);
                 self.longest_chain_queue.roll_forward(block.hash());
                 AddBlockEvent::AcceptedAsLongestChain
-            } else if !self.is_new_longest_chain_tip(&block) {
-                self.utxoset.roll_forward_on_potential_fork(&block);
-                AddBlockEvent::Accepted
+            // We are not on the longest chain, need to find the commone ancestor
             } else {
-                // block is the tip of a new longest chain
-                let common_ancestor_hash = self.find_common_ancestor_in_longest_chain(&block);
-                let mut prev_block_hash = block.hash();
-                while prev_block_hash != common_ancestor_hash {
-                    prev_block_hash = self.longest_chain_queue.roll_back();
-                    let block = &self.fork_tree.block_by_hash(&prev_block_hash).unwrap();
-                    self.utxoset.roll_back(block);
-                }
 
-                // let next_block = &block;
-                // 1) build a vec of blocks going back up the chain by walking it backwards once and
-                // saving references to a Vec
-                // 2) loop through the blocks in forward-order and do:
-                //   self.longest_chain_queue.rollforward(block.hash())
-                //   self.utxoset.rollforward( block.transactions());
-                AddBlockEvent::AcceptedAsLongestChain
+                if let Some((_ancestor_block, old_chain, new_chain)) = self.fork_chains(&block) {
+                    if self.is_longer_chain(&new_chain, &old_chain) {
+
+                        // Unwind the old chain
+                        old_chain.blocks.iter().rev().for_each(|block| {
+                            self.longest_chain_queue.roll_back();
+                            self.utxoset.roll_back(block);
+                        });
+
+                        // Wind up the new chain
+                        new_chain.blocks.iter().for_each(|block| {
+                            self.longest_chain_queue.roll_forward(block.hash());
+                            self.utxoset.roll_forward(block);
+                        });
+
+                        AddBlockEvent::AcceptedAsNewLongestChain
+
+                    } else {
+                        // we're just building on a new chain. Won't take over... yet!
+                        self.utxoset.roll_forward_on_potential_fork(&block);
+                        AddBlockEvent::Accepted
+                    }
+                } else {
+                    // We're in deep trouble here, we can't find any ancestor!
+                    // Let's delete this from the forktree and pretend it never happened
+                    self.fork_tree.remove(&(block.hash()));
+                    AddBlockEvent::AncestorNotFound
+                }
             }
         }
     }
@@ -161,10 +172,9 @@ impl Blockchain {
         !block.are_sigs_valid() | block.are_slips_spendable()
     }
 
-    // /// Return latest `Block` in blockchain
-    // pub fn get_latest_block(&mut self) -> &Block {
-    //
-    // }
+    fn is_longer_chain(&self, new_chain: &ChainFork, old_chain: &ChainFork) -> bool {
+        new_chain.blocks.len() >= old_chain.blocks.len()
+    }
 }
 
 #[cfg(test)]

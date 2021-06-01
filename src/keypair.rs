@@ -1,7 +1,7 @@
+use crate::crypto::Sha256Hash;
 use base58::{FromBase58, ToBase58};
 use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
 use sha2::{Digest, Sha256};
-use crate::crypto::Sha256Hash;
 use std::convert::TryInto;
 use std::fmt;
 use std::fmt::Write;

@@ -18,7 +18,7 @@ fn main() {
 // EPOCH_LENGTH=10000 cargo test
 // EPOCH_LENGTH=10000 cargo build
 
-fn write_epoch_length_to_constants () {
+fn write_epoch_length_to_constants() {
     let out_dir = env::var("OUT_DIR").expect("No out dir");
     let dest_path = Path::new(&out_dir).join("constants.rs");
     let epoch_length = option_env!("EPOCH_LENGTH");
@@ -26,7 +26,6 @@ fn write_epoch_length_to_constants () {
         .map_or(Ok(EPOCH_LENGTH), str::parse)
         .expect("Could not parse EPOCH_LENGTH");
     let mut f = File::create(&dest_path).expect("Could not create file");
-    write!(&mut f, "const EPOCH_LENGTH: u64 = {};", epoch_length)
-        .expect("Could not write file");    
+    write!(&mut f, "const EPOCH_LENGTH: u64 = {};", epoch_length).expect("Could not write file");
     println!("cargo:rerun-if-env-changed=EPOCH_LENGTH");
 }

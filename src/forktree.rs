@@ -14,15 +14,23 @@ impl ForkTree {
             fork_tree: HashMap::new(),
         }
     }
+
     pub fn insert(&mut self, block_hash: Sha256Hash, block: Block) {
         self.fork_tree.insert(block_hash, block);
     }
+
+    pub fn remove(&mut self, block_hash: &Sha256Hash) {
+        self.fork_tree.remove(block_hash);
+    }
+
     pub fn block_by_hash(&self, block_hash: &Sha256Hash) -> Option<&Block> {
         self.fork_tree.get(block_hash)
     }
+
     pub fn parent_by_hash(&self, block_hash: &Sha256Hash) -> Option<&Block> {
         self.fork_tree.get(block_hash)
     }
+
     pub fn contains_block_hash(&self, block_hash: &Sha256Hash) -> bool {
         self.fork_tree.contains_key(block_hash)
     }

@@ -1,6 +1,7 @@
+use crate::block::Block;
+use crate::crypto::Sha256Hash;
 use crate::slip::{OutputSlip, SlipID};
 use crate::transaction::Transaction;
-use crate::block::Block;
 use secp256k1::PublicKey;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -9,8 +10,8 @@ use std::str::FromStr;
 enum UtxoSetValue {
     Unspent,
     Spent(u64), // block_id
-    PotentialForkUnspent([u8;32]),
-    PotentialForkSpent([u8;32]),
+    PotentialForkUnspent([u8; 32]),
+    PotentialForkSpent([u8; 32]),
 }
 
 /// A hashmap storing Slips TODO fix this documentation once we've settled on what
@@ -26,43 +27,49 @@ impl UtxoSet {
     pub fn new() -> Self {
         UtxoSet {
             utxo_hashmap: HashMap::new(),
-            shashmap: HashMap::new()
+            shashmap: HashMap::new(),
         }
     }
 
-    pub fn roll_back_on_potential_fork(&self, block: &Block){
-        // for tx in block.transactions().iter() {
-        //     self.unspend_transaction(tx);
-        // }
+    pub fn roll_back_on_potential_fork(&mut self, block: &Block) {
+        block
+            .transactions()
+            .iter()
+            .for_each(|tx| self.fork_unspend_transaction(tx, block));
     }
 
-    pub fn roll_forward_on_potential_fork(&self, block: &Block){
-        // for tx in transactions.iter() {
-        //     self.spend_transaction(tx);
-        // }
+    pub fn roll_forward_on_potential_fork(&mut self, block: &Block) {
+        // spendoutputs and spend the inputs
+        block
+            .transactions()
+            .iter()
+            .for_each(|tx| self.fork_spend_transaction(tx, block));
     }
 
-    pub fn roll_back(&self, block: &Block){
+    pub fn roll_back(&mut self, block: &Block) {
         // unspend outputs and spend the inputs
-
-        // block.transactions()
-        //     .for_each(|tx| {
-        //         self.unspend_transaction(tx)
-        //     });
-
-        // for tx in transactions.iter() {
-        //     self.unspend_transaction(tx);
-        // }
+        block
+            .transactions()
+            .iter()
+            .for_each(|tx| self.unspend_transaction(tx, block));
     }
 
-    pub fn roll_forward(&self, block: &Block){
-        // for tx in transactions.iter() {
-        //     self.spend_transaction(tx);
-        // }
+    pub fn roll_forward(&mut self, block: &Block) {
+        block
+            .transactions()
+            .iter()
+            .for_each(|tx| self.spend_transaction(tx, block));
     }
 
-    pub fn is_slip_spent(&self) {
-        
+    pub fn is_slip_spent(&self, slip_id: &SlipID) -> bool {
+        match self.shashmap.get(slip_id) {
+            Some(value) => match value {
+                UtxoSetValue::Spent(_) => true,
+                UtxoSetValue::PotentialForkSpent(_) => true,
+                _ => false,
+            },
+            None => true,
+        }
     }
     /// Return the `Block` id based on `OutputSlip`
     ///
@@ -70,17 +77,17 @@ impl UtxoSet {
     // pub fn slip_block_id(&self, slip_id: &SlipID) -> &OutputSlip {
     //     self.utxo_hashmap.get(slip_id).unwrap()
     // }
-    
+
     /// Returns true if the slip has been seen in the blockchain
     pub fn is_slip_spendable_at_block(&self, _block: &Block, _slip_id: &SlipID) -> bool {
         // if Slip is Unspent, return true
         // else if Slip is PotentialForkUnspent, find common ancestor and check if the hash in
         // shashmap PotentialForkUnspent is in any of the ancestors before common_ancestor
-        // 
+        //
         // let common_ancestor = BLOCKCHAIN.find_common_ancestor_in_longest_chain();
         // let next_block = block;
         // while next_block.previous_block_hash() != common_ancestor.hash() {
-        // 
+        //
         //     if(next_block.hash() == common_ancestor.hash()) {
         //         // cheese it
         //     }
@@ -107,24 +114,95 @@ impl UtxoSet {
     /// Insert the inputs of a `Transaction` with the `Block` id
     ///
     /// * `tx` - `Transaction` which the inputs are inserted into `HashMap`
-    fn spend_transaction(&mut self, _tx: &Transaction) {}
+    fn spend_transaction(&mut self, tx: &Transaction, block: &Block) {
+        tx.core
+            .inputs()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, _input)| {
+                let slip_id = SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                // self.shashmap.remove(&slip_id);
+                self.shashmap
+                    .insert(slip_id.clone(), UtxoSetValue::Spent(block.id()));
+                // self.utxo_hashmap.remove(&slip_id);
+            });
+
+        tx.core
+            .outputs()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, output)| {
+                let slip_id = SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                self.shashmap.insert(slip_id.clone(), UtxoSetValue::Unspent);
+                self.utxo_hashmap.insert(slip_id, *output);
+            });
+    }
 
     /// Remove the inputs of a `Transaction` with the `Block` id
     ///
     /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
-    fn unspend_transaction(&mut self, tx: &Transaction) {
-        // tx.core.inputs().iter()
-        //   .for_each(|input| {
-        //       self.shashmap.insert(*input, UtxoSetValue::Unspent);
-        //   });
-        // 
-        // tx.core.outputs().iter().enumerate()
-        //   .for_each(|(idx, output)| {
-        //       self.shashmap.remove(&SlipID { tx_id: *tx.signature(), slip_ordinal: idx as u64 });
-        //   });
+    fn unspend_transaction(&mut self, tx: &Transaction, block: &Block) {
+        tx.core.inputs().iter().for_each(|input| {
+            self.shashmap.insert(*input, UtxoSetValue::Unspent);
+        });
+
+        tx.core
+            .outputs()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, _output)| {
+                let slip_id = &SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                self.shashmap.remove(&slip_id);
+            });
     }
 
+    fn fork_spend_transaction(&mut self, tx: &Transaction, block: &Block) {
+        tx.core
+            .inputs()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, _input)| {
+                let slip_id = SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                // self.shashmap.remove(&slip_id);
+                self.shashmap.insert(
+                    slip_id.clone(),
+                    UtxoSetValue::PotentialForkSpent(block.hash()),
+                );
+                // self.utxo_hashmap.remove(&slip_id);
+            });
 
+        tx.core
+            .outputs()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, output)| {
+                let slip_id = SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                self.shashmap.insert(
+                    slip_id.clone(),
+                    UtxoSetValue::PotentialForkUnspent(block.hash()),
+                );
+                self.utxo_hashmap.insert(slip_id, *output);
+            });
+    }
+
+    /// Remove the inputs of a `Transaction` with the `Block` id
+    ///
+    /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
+    fn fork_unspend_transaction(&mut self, tx: &Transaction, block: &Block) {
+        tx.core.inputs().iter().for_each(|input| {
+            self.shashmap
+                .insert(*input, UtxoSetValue::PotentialForkUnspent(block.hash()));
+        });
+
+        tx.core
+            .outputs()
+            .iter()
+            .enumerate()
+            .for_each(|(idx, _output)| {
+                let slip_id = &SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                self.shashmap.remove(&slip_id);
+            });
+    }
 }
 
 #[cfg(test)]
