@@ -131,12 +131,9 @@ println!("done with process Saito Message");
 	// does this just prevent the main loop closing?
 	loop {
                 while let Ok(message) = saito_message_rx.recv().await {
-println!("MSG: {:?}", message); 
                     match message {
 		        SaitoMessage::TryBundle { } => {
-println!("We have picked up our broadcast message in our receiver in a separate async loop");
                   	    mempool.processSaitoMessage(message, &mempool_channel_sender);
-println!("done with process Saito Message");
 		        }
                         SaitoMessage::Block { payload } => {
 			    // transfer ownership of that block to me
