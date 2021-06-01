@@ -104,7 +104,7 @@ impl LongestChainQueue {
             self.epoch_ring_array[(self.epoch_ring_top_location + 1) as usize]
         }
     }
-
+    
     pub fn contains_hash(&self, block_hash: &Sha256Hash) -> bool {
         self.epoch_ring_array.iter().any(|&hash| &hash == block_hash)
     }
@@ -127,17 +127,48 @@ mod test {
     use super::*;
     use std::env;
     use crate::longest_chain_queue;
+    use sha2::{Digest, Sha256};
+    use crate::keypair::Keypair;
     #[test]
     fn test_longest_chain_queue() {
-        let envvar = match env::var("EPOCH_LENGTH") {
+        let epoch_length = match env::var("EPOCH_LENGTH") {
             Ok(s) => s == "yes",
             _ => false
         };
+        
+        // hasher.update(1.to_string().as_bytes());
+        // let hashvalue = hasher.finalize();
         //let envvar = env::var("ENVIRONMENT_VARIABLE")?;
         //env::set_var("ENVIRONMENT_VARIABLE", "no");
         println!("{}", longest_chain_queue::EPOCH_LENGTH);
+        let mut longest_chain_queue = longest_chain_queue::LongestChainQueue::new();
+        let mut sum = 0;
+        for n in 1..1000 {
+            let mock_hash = Keypair::make_message_from_string(&n.to_string());
+            longest_chain_queue.roll_forward(mock_hash);
+            println!("{:?}", n);
+            println!("{:?}", mock_hash);
+        }
+        //block_hash_by_id()
+        //latest_block_id()
+        //latest_block_hash()
+        //last_block_in_epoch()
+        println!("{}", sum);
         assert!(true);
-        
+        // loop {
+        //     count += 1;
+        //     if count == 3 {
+        //         println!("three");
+        //         continue;
+        //     }
+        // 
+        //     println!("{}", count);
+        //     if count == 5 {
+        //         println!("OK, that's enough");
+        //         // Exit this loop
+        //         break;
+        //     }
+        // }
     
     }
 }
