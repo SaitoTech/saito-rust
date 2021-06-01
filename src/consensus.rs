@@ -1,6 +1,8 @@
 use crate::{
+    blockchain::Blockchain,
     crypto::hash,
-    golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
+    mempool::Mempool,
+    miner::{Miner},
     keypair::Keypair,
     types::SaitoMessage,
 };
@@ -57,16 +59,37 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
 
 impl Consensus {
 
-    /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
+
+	// initialize modules
+	let mut blockchain = Blockchain::new();
+        let mut keypair = Arc::new(RwLock::new(Keypair::new()));
+	let mut miner = Miner::new(keypair.read().unwrap().publickey().clone());
+	let mut mempool = Mempool::new();
+
+        
+	// inter-module channels
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
+	let blockchain_channel_sender    = saito_message_tx.clone();
+	let mut blockchain_channel_receiver  = saito_message_tx.subscribe();
+	let miner_channel_sender         = saito_message_tx.clone();
+	let mut miner_channel_receiver       = saito_message_tx.subscribe();
+	let mempool_channel_sender       = saito_message_tx.clone();
+	let mut mempool_channel_receiver     = saito_message_tx.subscribe();
+
+
         let miner_tx = saito_message_tx.clone();
         let mut miner_rx = saito_message_tx.subscribe();
 
-        let keypair = Arc::new(RwLock::new(Keypair::new()));
-        
+	//
+	// Async Thread sends message triggering TryBundle every second
+	//
+	// TODO - this should be moved into a loop contained within the mempool class
+	//
+        //tokio::spawn(async move {
         tokio::spawn(async move {
             loop {
+		println!("Sending TryBundle message!");
                 saito_message_tx
                     .send(SaitoMessage::TryBundle)
                     .expect("error: TryBundle message failed to send");
@@ -74,41 +97,61 @@ impl Consensus {
             }
         });
 
+
+	// move ownership of Blockchain, Mempool, Network into our ASYNC loop
+/***
         tokio::spawn(async move {
-            loop {
-                while let Ok(message) = miner_rx.recv().await {
-                    // simulate lottery game with creation of golden_ticket_transaction
+        //tokio::spawn(async {
+        //    loop {
+                while let Ok(message) = saito_message_rx.recv().await {
+println!("MSG: {:?}", message); 
                     match message {
+		        SaitoMessage::TryBundle { } => {
+println!("We have picked up our broadcast message in our receiver in a separate async loop");
+                  	    mempool.processSaitoMessage(message, &mempool_channel_sender);
+println!("done with process Saito Message");
+		        }
                         SaitoMessage::Block { payload } => {
-                            let golden_tx = generate_golden_ticket_transaction(
-                                hash(&generate_random_data()),
-                                &payload,
-                                &keypair.read().unwrap(),
-                            );
-                            miner_tx
-                                .send(SaitoMessage::Transaction { payload: golden_tx })
-                                .unwrap();
+			    // transfer ownership of that block to me
+                            let block = mempool.get_block(payload);
+			    if block.is_none() {
+				// bad block
+			    } else {
+				// send it to the blockchain
+			    	blockchain.add_block(block.unwrap());
+                            }
                         }
                         _ => {}
-                    }
+                   }
                 }
-            }
+        //    }
         });
+***/
 
-        loop {
-            while let Ok(message) = saito_message_rx.recv().await {
-//
-// TODO - "process" what? descriptive function name -- should fetch latest block not block index
-//
-// if this is how we are adding blocks, how does mempool validate TXS against the shashmap
-//
-                // if let Some(block) = mempool.process(message, blockchain.get_latest_block()) {
-                //     blockchain.add_block(block);
-                //     block_tx
-                //         .send(SaitoMessage::Block { payload: block })
-                //         .expect("Err: Could not send new block");
-                // }
-            }
+	// does this just prevent the main loop closing?
+	loop {
+                while let Ok(message) = saito_message_rx.recv().await {
+println!("MSG: {:?}", message); 
+                    match message {
+		        SaitoMessage::TryBundle { } => {
+println!("We have picked up our broadcast message in our receiver in a separate async loop");
+                  	    mempool.processSaitoMessage(message, &mempool_channel_sender);
+println!("done with process Saito Message");
+		        }
+                        SaitoMessage::Block { payload } => {
+			    // transfer ownership of that block to me
+                            let block = mempool.get_block(payload);
+			    if block.is_none() {
+				// bad block
+			    } else {
+				// send it to the blockchain
+			    	blockchain.add_block(block.unwrap());
+                            }
+                        }
+                        _ => {}
+                   }
+                }
         }
     }
+
 }

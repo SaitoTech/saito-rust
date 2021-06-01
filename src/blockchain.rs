@@ -30,6 +30,7 @@ impl Blockchain {
     /// Append `Block` to the index of `Blockchain`
     pub fn add_block(&mut self, block: Block) {
         self.blocks.push(block);
+	println!("Added block. Blocks now: {}", self.blocks.len());
     }
 
     // /// Return latest `Block` in blockchain

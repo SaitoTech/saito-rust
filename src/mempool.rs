@@ -7,7 +7,9 @@ use crate::{
     transaction::Transaction,
     types::SaitoMessage,
 };
+use tokio::sync::{broadcast, mpsc};
 use std::sync::{Arc, RwLock};
+use std::thread;
 
 /// TODO -- 
 pub const GENESIS_PERIOD: u64 = 21500;
@@ -18,21 +20,68 @@ pub const GENESIS_PERIOD: u64 = 21500;
 /// New `Block`s coming in over the network will hit the `Mempool` before being added to
 /// the `Blockchain`
 pub struct Mempool {
-    /// A list of `Transaction`s to be bundled into `Block`s
+
     transactions: Vec<Transaction>,
     blocks: Vec<Block>,
+    bundler_active: u64,
+    bundler_count: u8,
+
 }
 
 impl Mempool {
 
     /// Creates new `Memppol`
-    pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
+    pub fn new() -> Self {
          Mempool {
              blocks: vec![],
              transactions: vec![],
+	     bundler_active: 1,
+	     bundler_count: 10,
          }
      }
 
+    pub fn get_block(&mut self, hash: [u8;32]) -> Option<Block> {
+	let block = Block::new();
+	Some(block)
+    }
+
+    pub fn get_transaction(&mut self, hash: [u8;32]) -> Option<Transaction> {
+	let transaction = Transaction::new();
+	Some(transaction)
+    }
+
+    pub fn start_bundling(&mut self) {
+	self.bundler_active = 1;
+    }
+
+    pub fn stop_bundling(&mut self) {
+	self.bundler_active = 0;
+    }
+
+    pub fn processSaitoMessage(
+         &mut self,
+         message: SaitoMessage,
+         mempool_sender_channel: &broadcast::Sender<(SaitoMessage)>,
+    ) {
+
+         match message {
+             SaitoMessage::TryBundle => {
+		 if self.bundler_count == 0 {
+		     self.bundler_count = 10;
+		     mempool_sender_channel
+			.send(SaitoMessage::Block { payload: [0;32] })
+                        .expect("error: Mempool TryBundle Block message failed to send");
+		 }
+		 self.bundler_count -= 1;
+                 println!("This is a line printing in TryBundle: {}", self.bundler_count);
+	     }
+             _ => (),
+
+	}
+    }
+
+
+/****
     // /// Processes `SaitoMessage` and attempts to return `Block`
     // ///
     // /// * `message` - `SaitoMessage` enum commanding `Mempool` operation
@@ -51,7 +100,7 @@ impl Mempool {
              _ => None,
          }
      }
-
+****/
 
     // /// Attempt to create a new `Block`
     // ///
