@@ -1,9 +1,10 @@
 use crate::block::Block;
+use crate::crypto::{PublicKey, Sha256Hash};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct ForkTree {
-    fork_tree: HashMap<[u8; 32], Block>,
+    fork_tree: HashMap<Sha256Hash, Block>,
 }
 
 impl ForkTree {
@@ -13,14 +14,17 @@ impl ForkTree {
             fork_tree: HashMap::new(),
         }
     }
-    pub fn insert(&self, _block_hash: [u8; 32], _block: Block) {
-        
+    pub fn insert(&mut self, block_hash: Sha256Hash, block: Block) {
+        self.fork_tree.insert(block_hash, block);
     }
-    pub fn get_parent(block_hash: [u8; 32]) -> [u8; 32] {
-        [0; 32]
+    pub fn block_by_hash(&self, block_hash: &Sha256Hash) -> Option<&Block> {
+        self.fork_tree.get(block_hash)
     }
-    pub fn contains_block_hash(&self) -> bool {
-        true
+    pub fn parent_by_hash(&self, block_hash: &Sha256Hash) -> Option<&Block> {
+        self.fork_tree.get(block_hash)
+    }
+    pub fn contains_block_hash(&self, block_hash: &Sha256Hash) -> bool {
+        self.fork_tree.contains_key(block_hash)
     }
 }
 

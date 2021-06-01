@@ -1,4 +1,4 @@
-use crate::crypto::PublicKey;
+use crate::crypto::{PublicKey, Sha256Hash};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 use std::str::FromStr;
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
     /// Memoized hash of the block
-    hash: [u8; 32],
+    hash: Sha256Hash,
     /// `BurnFee` containing the fees paid to produce the block
     burnfee: u64,
     /// Block difficulty required to win the `LotteryGame` in golden ticket generation
@@ -23,10 +23,10 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new_mock() -> Self {
-        Block::new([0; 32], 0, 0.0, BlockCore::new_mock())
+    pub fn default() -> Self {
+        Block::new([0; 32], 0, 0.0, BlockCore::default())
     }
-    pub fn new(hash: [u8; 32], burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
+    pub fn new(hash: Sha256Hash, burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
         Block {
             hash: hash,
             burnfee: burnfee,
@@ -50,7 +50,7 @@ impl Block {
     }
 
     /// Returns the `Block` hash
-    pub fn clone_hash(&self) -> [u8; 32] {
+    pub fn clone_hash(&self) -> Sha256Hash {
         self.hash.clone()
     }
 
@@ -70,7 +70,7 @@ impl Block {
     }
 
     /// Returns the previous `Block` hash
-    pub fn previous_block_hash(&self) -> &[u8; 32] {
+    pub fn previous_block_hash(&self) -> &Sha256Hash {
         &self.core.previous_block_hash
     }
 
@@ -80,7 +80,7 @@ impl Block {
     }
 
     /// Returns the `hash`
-    pub fn hash(&self) -> [u8; 32] {
+    pub fn hash(&self) -> Sha256Hash {
         self.hash
     }
 
@@ -125,7 +125,7 @@ pub struct BlockCore {
     /// Block timestamp
     timestamp: u64,
     /// Byte array hash of the previous block in the chain
-    previous_block_hash: [u8; 32],
+    previous_block_hash: Sha256Hash,
     /// `Publickey` of the block creator
     creator: PublicKey,
     /// Total block reward being released in the block
@@ -137,9 +137,9 @@ pub struct BlockCore {
 impl BlockCore {
     /// Creates a new mock `BlockCore` for use as we develop code. Please replace the fields with actual fields as we get them
     /// until we arrive at something the actual constructor:
-    /// new(id: , timestamp: u64, previous_block_hash: [u8; 32], creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>)
-    /// For example, blockchain.add_block shoudl at least know the id, so new_mock() can become new_mock(id: u64) when we write that.
-    pub fn new_mock() -> Self {
+    /// new(id: , timestamp: u64, previous_block_hash: Sha256Hash, creator: PublicKey, coinbase: u64, transactions: Vec<Transaction>)
+    /// For example, blockchain.add_block shoudl at least know the id, so default() can become default(id: u64) when we write that.
+    pub fn default() -> Self {
         let public_key: PublicKey = PublicKey::from_str(
             "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
         )
@@ -150,7 +150,7 @@ impl BlockCore {
     pub fn new(
         id: u64,
         timestamp: u64,
-        previous_block_hash: [u8; 32],
+        previous_block_hash: Sha256Hash,
         creator: PublicKey,
         coinbase: u64,
         transactions: Vec<Transaction>,
@@ -172,7 +172,7 @@ mod test {
 
     #[test]
     fn block_test() {
-        let block = Block::new_mock();
+        let block = Block::default();
 
         let public_key: PublicKey = PublicKey::from_str(
             "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",

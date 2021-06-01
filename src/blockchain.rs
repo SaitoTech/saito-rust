@@ -1,6 +1,7 @@
+use crate::crypto::Sha256Hash;
 use crate::block::Block;
 use crate::forktree::ForkTree;
-use crate::longestchainqueue::LongestChainQueue;
+use crate::longest_chain_queue::LongestChainQueue;
 use crate::utxoset::UtxoSet;
 
 lazy_static! {
@@ -14,7 +15,7 @@ lazy_static! {
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
-pub enum AddBlockReason {
+pub enum AddBlockEvent {
     AcceptedAsLongestChain,
     Accepted,
     AlreadyKnown,
@@ -46,73 +47,129 @@ impl Blockchain {
         }
     }
 
+    fn latest_block(&self) -> Option<Sha256Hash> {
+        self.longest_chain_queue.latest_block()
+    }
+
     /// If the block is in the fork
-    fn is_block_hash_known(&mut self, _block_hash: &[u8; 32]) -> bool {
-        // TODO check if the block is in the fork tree
-        true
+    fn contains_block_hash(&self, block_hash: &Sha256Hash) -> bool {
+        self.fork_tree.contains_block_hash(block_hash)
     }
+
     // If is the new longest chain
-    fn is_new_longest_chain_tip(block: Block) -> bool {
-        true
+    fn is_new_longest_chain_tip(&self, block: &Block) -> bool {
+        let mut old_chain = vec![];
+        let mut new_chain = vec![];
+
+        // new_chain.push(block);
+
+        let mut target_block = block;
+        let mut found_ancestor = false;
+        let mut search_completed = false;
+
+        while !search_completed {
+            new_chain.push(target_block);
+            if self.longest_chain_queue.contains_hash(&(target_block.hash())) {
+                search_completed = true;
+                found_ancestor = true;
+            } else {
+                match self.fork_tree.block_by_hash(target_block.previous_block_hash()) {
+                    Some(previous_block) => target_block = previous_block,
+                    None => search_completed = true
+                }
+            }
+        }
+
+        if !found_ancestor {
+            false
+        } else {
+            let ancestor_block= target_block;
+            let mut i = self.longest_chain_queue.epoch_ring_top_location;
+
+            while i > ancestor_block.id() as usize {
+                let hash = self.longest_chain_queue.block_hash_by_id(i as u64);
+                old_chain.push(self.fork_tree.block_by_hash(&hash).unwrap());
+                i = i - 1;
+            }
+
+            new_chain.len() >= old_chain.len()
+        }
     }
+
     // Get the block from fork_tree and check if the hash matches the one in longest_chain_queue
-    fn is_in_longest_chain(block_hash: [u8; 32]) -> bool {
-        true
+    fn is_in_longest_chain(&self, block_hash: &Sha256Hash) -> bool {
+        // self.longest_chain_queue.epoch_ring_array.iter().any(|&hash| &hash == block_hash)
+        self.longest_chain_queue.contains_hash(block_hash)
     }
 
     // Start at the block and go back, checking with longest_chain_queue by block_id until
     // the hash matches
-    fn find_common_ancestor_in_longest_chain(new_tip_block: Block) -> [u8; 32] {
-        [0; 32]
+    fn find_common_ancestor_in_longest_chain(&self, block: &Block) -> Sha256Hash {
+        let hash = block.hash();
+        if self.longest_chain_queue.block_hash_by_id(block.id()) == hash {
+           hash
+        } else {
+            match self.fork_tree.block_by_hash(block.previous_block_hash()) {
+                Some(previous_block) => self.find_common_ancestor_in_longest_chain(previous_block),
+                None => [0; 32]
+            }
+        }
     }
+
     /// Append `Block` to the index of `Blockchain`
-    /// These `AddBlockReason`s will be turned into network responses so peers can figure out
+    /// These `AddBlockEvent`s will be turned into network responses so peers can figure out
     /// what's going on.
-    pub fn add_block(&mut self, block: Block) -> AddBlockReason {
+    pub fn add_block(&mut self, block: Block) -> AddBlockEvent {
         // if(!all tx are valid)
-        //   return some AddBlockReason
+        //   return some AddBlockEvent
         // else
         //   add the block to the fork_tree
         //   if(!if_is_new_longest_chain())
         //
-        //     return some AddBlockReason
+        //     return some AddBlockEvent
         //   else
         //     find_common_ancestor_in_longest_chain()
         //     rollback from latest_block to common_ancestor
         //     rollforward to the new tip(i.e. block)
-        if !block.are_sigs_valid() | block.are_slips_spendable(){
-            return AddBlockReason::InvalidTransaction;
-        } else if self.is_block_hash_known(block.hash()) {
-            return AddBlockReason::AlreadyKnown;
-        } else if !self.is_block_hash_known(block.previous_block_hash()) {
-            return AddBlockReason::ParentNotFound;
+        if !self.validate_block(&block) {
+            AddBlockEvent::InvalidTransaction
+        } else if self.contains_block_hash(&(block.hash())) {
+            AddBlockEvent::AlreadyKnown
+        } else if !self.contains_block_hash(block.previous_block_hash()) {
+            AddBlockEvent::ParentNotFound
         } else {
-            self.fork_tree.insert(block.hash(), block);
-            if self.longest_chain_queue.get_latest_block().hash() == block.hash(){
-                self.utxoset.rollforward(block);
-                self.longest_chain_queue.rollforward(block.hash());
-                return AddBlockReason::Accepted;
-            } else if (!self.is_new_longest_chain_tip(block)){
-                self.utxoset.rollforward_on_potential_fork(block);
-                return AddBlockReason::Accepted;
+            self.fork_tree.insert(block.hash(), block.clone());
+            let latest_block_hash = self.latest_block();
+            if latest_block_hash == None || latest_block_hash == Some(*(&block).previous_block_hash()) {
+                self.utxoset.roll_forward(&block);
+                self.longest_chain_queue.roll_forward(block.hash());
+                AddBlockEvent::AcceptedAsLongestChain
+            } else if !self.is_new_longest_chain_tip(&block) {
+                self.utxoset.roll_forward_on_potential_fork(&block);
+                AddBlockEvent::Accepted
             } else {
                 // block is the tip of a new longest chain
-                let common_ancestor = self.find_common_ancestor_in_longest_chain();
-                let next_block = block;
-                while next_block.previous_block_hash() != common_ancestor.hash() {
-                    self.longest_chain_queue.rollback(block.hash())
-                    self.utxoset.rollback( block.transactions());    
+                let common_ancestor = self.find_common_ancestor_in_longest_chain(&block);
+                let mut next_block = &block;
+                while next_block.previous_block_hash() != &common_ancestor {
+                        //self.longest_chain_queue.roll_back(block.hash());
+                    self.longest_chain_queue.roll_back();
+                    self.utxoset.roll_back(&block);
                 }
-                
-                next_block = block;
+
+                next_block = &block;
                 // 1) build a vec of blocks going back up the chain by walking it backwards once and
                 // saving references to a Vec
                 // 2) loop through the blocks in forward-order and do:
                 //   self.longest_chain_queue.rollforward(block.hash())
                 //   self.utxoset.rollforward( block.transactions());
-                return AddBlockReason::AcceptedAsLongestChain
-            }    
+                AddBlockEvent::AcceptedAsLongestChain
+            }
         }
+    }
+
+    fn validate_block(&self, block: &Block) -> bool {
+        !block.are_sigs_valid() | block.are_slips_spendable()
     }
 
     // /// Return latest `Block` in blockchain

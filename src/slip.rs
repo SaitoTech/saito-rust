@@ -39,7 +39,7 @@ pub struct OutputSlip {
 
 impl SlipID {
     /// Create new `SlipID`
-    pub fn new_mock() -> Self {
+    pub fn default() -> Self {
         SlipID {
             tx_id: Signature::from_compact(&[0; 64]).unwrap(),
             slip_ordinal: 0,

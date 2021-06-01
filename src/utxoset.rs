@@ -5,6 +5,7 @@ use secp256k1::PublicKey;
 use std::collections::HashMap;
 use std::str::FromStr;
 
+#[derive(Debug, Clone)]
 enum UtxoSetValue {
     Unspent,
     Spent(u64), // block_id
@@ -25,31 +26,42 @@ impl UtxoSet {
     pub fn new() -> Self {
         UtxoSet {
             utxo_hashmap: HashMap::new(),
+            shashmap: HashMap::new()
         }
     }
-    
-    pub fn rollback_on_potential_fork(block: &Block){
+
+    pub fn roll_back_on_potential_fork(&self, block: &Block){
         // for tx in block.transactions().iter() {
         //     self.unspend_transaction(tx);
         // }
     }
-    pub fn rollforward_on_potential_fork(block: &Block){
+
+    pub fn roll_forward_on_potential_fork(&self, block: &Block){
         // for tx in transactions.iter() {
         //     self.spend_transaction(tx);
         // }
     }
-    pub fn rollback(block: &Block){
+
+    pub fn roll_back(&self, block: &Block){
+        // unspend outputs and spend the inputs
+
+        block.transactions()
+            .for_each(|tx| {
+                self.unspend_transaction(tx)
+            })
+
         // for tx in transactions.iter() {
         //     self.unspend_transaction(tx);
         // }
     }
-    pub fn rollforward(block: &Block){
+
+    pub fn roll_forward(&self, block: &Block){
         // for tx in transactions.iter() {
         //     self.spend_transaction(tx);
         // }
     }
-    
-    pub fn is_slip_spent() {
+
+    pub fn is_slip_spent(&self) {
         
     }
     /// Return the `Block` id based on `OutputSlip`
@@ -100,7 +112,17 @@ impl UtxoSet {
     /// Remove the inputs of a `Transaction` with the `Block` id
     ///
     /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
-    fn unspend_transaction(&mut self, _tx: &Transaction) {}
+    fn unspend_transaction(&mut self, tx: &Transaction) {
+        tx.core.inputs().iter()
+          .for_each(|input| {
+              self.shashmap.insert(*input, UtxoSetValue::Unspent);
+          });
+
+        tx.core.outputs().iter().enumerate()
+          .for_each(|(idx, output)| {
+              self.shashmap.remove(&SlipID { tx_id: *tx.signature(), slip_ordinal: idx as u64 });
+          });
+    }
 
 
 }

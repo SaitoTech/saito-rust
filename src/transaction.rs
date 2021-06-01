@@ -59,7 +59,7 @@ pub struct TransactionCore {
 
 impl Transaction {
     ///
-    pub fn new_mock() -> Transaction {
+    pub fn default() -> Transaction {
         Transaction::new(
             Signature::from_compact(&[0; 64]).unwrap(),
             vec![],
@@ -129,7 +129,7 @@ impl Transaction {
         // self.inputs.iter()
         // result = result && self.is_slip_spendable(slip_id);
         // result = result && self.is_slip_id_valid(slip_id, output_slip);
-        result
+        true
     }
     /// Returns true if the slip has been seen in the blockchain
     fn is_slip_spendable(&self, _slip_id: &SlipID) -> bool {
@@ -202,7 +202,7 @@ mod tests {
 
     #[test]
     fn transaction_test() {
-        let mut tx: Transaction = Transaction::new_mock();
+        let mut tx: Transaction = Transaction::default();
 
         assert_eq!(tx.core.outputs(), &vec![]);
         assert_eq!(tx.core.inputs(), &vec![]);
@@ -213,7 +213,7 @@ mod tests {
 
         let keypair = Keypair::new();
         let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 0);
-        let from_slip = SlipID::new_mock();
+        let from_slip = SlipID::default();
 
         // let hop_message_bytes = Keypair::make_message_from_string("message_string");
         // let signature = keypair.sign_message(&hop_message_bytes);
