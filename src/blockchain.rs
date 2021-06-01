@@ -120,17 +120,6 @@ impl Blockchain {
     /// These `AddBlockEvent`s will be turned into network responses so peers can figure out
     /// what's going on.
     pub fn add_block(&mut self, block: Block) -> AddBlockEvent {
-        // if(!all tx are valid)
-        //   return some AddBlockEvent
-        // else
-        //   add the block to the fork_tree
-        //   if(!if_is_new_longest_chain())
-        //
-        //     return some AddBlockEvent
-        //   else
-        //     find_common_ancestor_in_longest_chain()
-        //     rollback from latest_block to common_ancestor
-        //     rollforward to the new tip(i.e. block)
         if !self.validate_block(&block) {
             AddBlockEvent::InvalidTransaction
         } else if self.contains_block_hash(&(block.hash())) {
