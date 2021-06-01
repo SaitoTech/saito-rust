@@ -1,7 +1,16 @@
 use crate::crypto::Sha256Hash;
 
+include!(concat!(env!("OUT_DIR"), "/constants.rs"));
+
+// The epoch should be stored in a ring. The location pointer is the index of the latest block.
+// When the length of the blockchain begins to exceed 2x epoch length new blocks will begin to
+// overwrite older blocks. During a rollback those blocks which fell off won't be recovered.
+// I don't think we need to store these as Option<Sha256Hash> because the top_location + length
+// can tell us where the valid data is.
+
 // TODO put these sort of consts into a single location.
-pub const EPOCH_LENGTH: u64 = 30_000;
+//pub const EPOCH_LENGTH: u64 = 30_000;
+
 
 const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
 
@@ -101,17 +110,34 @@ impl LongestChainQueue {
     }
 }
 
-// The epoch should be stored in a ring. The location pointer is the index of the latest block.
-// When the length of the blockchain begins to exceed 2x epoch length new blocks will begin to
-// overwrite older blocks. During a rollback those blocks which fell off won't be recovered.
-// I don't think we need to store these as Option<Sha256Hash> because the top_location + length
-// can tell us where the valid data is.
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+//     use hex;
+// 
+//     #[test]
+//     fn test_make_message_from_string() {
+//         Keypair::make_message_from_string("foobarbaz");
+//         Keypair::make_message_from_string("1231231231");
+//         Keypair::make_message_from_string("");
+//     }
 
 #[cfg(test)]
 mod test {
-
+    use super::*;
+    use std::env;
+    use crate::longest_chain_queue;
     #[test]
     fn test_longest_chain_queue() {
+        let envvar = match env::var("EPOCH_LENGTH") {
+            Ok(s) => s == "yes",
+            _ => false
+        };
+        //let envvar = env::var("ENVIRONMENT_VARIABLE")?;
+        //env::set_var("ENVIRONMENT_VARIABLE", "no");
+        println!("{}", longest_chain_queue::EPOCH_LENGTH);
         assert!(true);
+        
+    
     }
 }
