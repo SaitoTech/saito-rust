@@ -4,7 +4,7 @@ include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
 // The epoch should be stored in a ring. The location pointer is the index of the latest block.
 // When the length of the blockchain begins to exceed 2x epoch length new blocks will begin to
-// overwrite older blocks. 
+// overwrite older blocks.
 // the top_location + length tells us where valid data is.
 
 const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
@@ -71,7 +71,7 @@ impl LongestChainQueue {
 
     pub fn block_hash_by_id(&self, id: u64) -> Sha256Hash {
         if id > self.longest_chain_length - 1 {
-            panic!("The block id is great than the latest block id");
+            panic!("The block id is greater than the latest block id");
         }
         if self.longest_chain_length - id > self.epoch_ring_length {
             panic!(
@@ -97,7 +97,7 @@ impl LongestChainQueue {
 
     pub fn latest_block_hash(&self) -> Option<Sha256Hash> {
         if self.longest_chain_length <= 0 {
-            return None
+            return None;
         }
         Some(self.epoch_ring_array[self.epoch_ring_top_location as usize])
     }
@@ -125,26 +125,21 @@ impl LongestChainQueue {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use crate::keypair::Keypair;
-    use crate::longest_chain_queue;
     use crate::longest_chain_queue::LongestChainQueue;
-    use sha2::{Digest, Sha256};
-    use std::env;
+
     #[test]
     fn test_longest_chain_queue() {
-        let epoch_length = match env::var("EPOCH_LENGTH") {
-            Ok(s) => s == "yes",
-            _ => false,
-        };
-        //println!("{}", longest_chain_queue::EPOCH_LENGTH);
         let mut longest_chain_queue = LongestChainQueue::new();
 
         for n in 0..100 {
             longest_chain_queue.roll_forward(Keypair::make_message_from_string(&n.to_string()));
         }
         assert_eq!(longest_chain_queue.latest_block_id(), 99);
-        assert_eq!(longest_chain_queue.latest_block_hash().unwrap(), Keypair::make_message_from_string(&99.to_string()));
+        assert_eq!(
+            longest_chain_queue.latest_block_hash().unwrap(),
+            Keypair::make_message_from_string(&99.to_string())
+        );
         assert_eq!(
             longest_chain_queue.block_hash_by_id(0),
             Keypair::make_message_from_string(&0.to_string())
@@ -153,6 +148,7 @@ mod test {
             longest_chain_queue.block_hash_by_id(99),
             Keypair::make_message_from_string(&99.to_string())
         );
+        println!("Expect to see a panic in stdout here:");
         let result = std::panic::catch_unwind(|| longest_chain_queue.block_hash_by_id(100));
         assert!(result.is_err());
         for n in 100..200 {
@@ -164,42 +160,30 @@ mod test {
         );
         longest_chain_queue.roll_forward(Keypair::make_message_from_string(&200.to_string()));
         assert_eq!(longest_chain_queue.latest_block_id(), 200);
-        assert_eq!(longest_chain_queue.latest_block_hash().unwrap(), Keypair::make_message_from_string(&200.to_string()));
-        
-        //longest_chain_queue.roll_forward(Keypair::make_message_from_string(&200.to_string()));
+        assert_eq!(
+            longest_chain_queue.latest_block_hash().unwrap(),
+            Keypair::make_message_from_string(&200.to_string())
+        );
+
+        println!("Expect to see a panic in stdout here:");
         let result = std::panic::catch_unwind(|| longest_chain_queue.block_hash_by_id(0));
-        for n in 0..101 {
+        assert!(result.is_err());
+        for _n in 0..101 {
             longest_chain_queue.roll_back();
         }
-        //println!("{}", longest_chain_queue.latest_block_id());
         assert_eq!(longest_chain_queue.latest_block_id(), 99);
-        assert_eq!(longest_chain_queue.latest_block_hash().unwrap(), Keypair::make_message_from_string(&99.to_string()));
+        assert_eq!(
+            longest_chain_queue.latest_block_hash().unwrap(),
+            Keypair::make_message_from_string(&99.to_string())
+        );
         for n in 100..201 {
             longest_chain_queue.roll_forward(Keypair::make_message_from_string(&n.to_string()));
         }
         assert_eq!(longest_chain_queue.latest_block_id(), 200);
-        assert_eq!(longest_chain_queue.latest_block_hash().unwrap(), Keypair::make_message_from_string(&200.to_string()));
+        assert_eq!(
+            longest_chain_queue.latest_block_hash().unwrap(),
+            Keypair::make_message_from_string(&200.to_string())
+        );
         // TODO test last_block_in_epoch()
-        
-        
-        // assert!(result.is_err());
-        // assert_eq!(longest_chain_queue.block_hash_by_id(1), Keypair::make_message_from_string(&1.to_string()));
-        // longest_chain_queue.roll_back();
-        // assert_eq!(longest_chain_queue.block_hash_by_id(1), Keypair::make_message_from_string(&1.to_string()));
-        // longest_chain_queue.roll_back();
-        // assert_eq!(longest_chain_queue.block_hash_by_id(1), Keypair::make_message_from_string(&1.to_string()));
-        // let result = std::panic::catch_unwind(|| longest_chain_queue.block_hash_by_id(1));
-        // assert!(result.is_err());
-        // TODO use contains_err for stronger assertion. contains_err doesn't seem to be working yet...
-        // assert!(result.contains_err(&"The block id is great than the latest block id"));
-
-        //assert_eq!(longest_chain_queue.latest_block_hash(), Keypair::make_message_from_string(&0.to_string()));
-
-        // // assert_eq!(longest_chain_queue.block_hash_by_id(100), Keypair::make_message_from_string(&100.to_string()));
-        // // assert_eq!(longest_chain_queue.block_hash_by_id(101), Keypair::make_message_from_string(&101.to_string()));
-        // assert_eq!(longest_chain_queue.block_hash_by_id(990), Keypair::make_message_from_string(&990.to_string()));
-        // assert_eq!(longest_chain_queue.block_hash_by_id(998), Keypair::make_message_from_string(&998.to_string()));
-        //assert_eq!(longest_chain_queue.block_hash_by_id(999), Keypair::make_message_from_string(&999.to_string()));
-    
     }
 }

@@ -1,5 +1,4 @@
 use crate::block::Block;
-use crate::crypto::Sha256Hash;
 use crate::slip::{OutputSlip, SlipID};
 use crate::transaction::Transaction;
 use secp256k1::PublicKey;
@@ -141,7 +140,7 @@ impl UtxoSet {
     /// Remove the inputs of a `Transaction` with the `Block` id
     ///
     /// * `tx` - `Transaction` where inputs are inserted, and outputs are removed
-    fn unspend_transaction(&mut self, tx: &Transaction, block: &Block) {
+    fn unspend_transaction(&mut self, tx: &Transaction, _block: &Block) {
         tx.core.inputs().iter().for_each(|input| {
             self.shashmap.insert(*input, UtxoSetValue::Unspent);
         });

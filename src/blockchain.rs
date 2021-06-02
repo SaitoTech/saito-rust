@@ -27,7 +27,7 @@ pub enum AddBlockEvent {
 
 pub struct ChainFork {
     // TODO -- add lifetime and reference to block
-    blocks: Vec<Block>
+    blocks: Vec<Block>,
 }
 
 /// The structure represents the state of the
@@ -55,8 +55,7 @@ impl Blockchain {
     }
 
     pub fn latest_block(&self) -> Option<&Block> {
-        match self.longest_chain_queue.latest_block_hash()
-        {
+        match self.longest_chain_queue.latest_block_hash() {
             Some(latest_block_hash) => self.fork_tree.block_by_hash(&latest_block_hash),
             None => None,
         }
@@ -71,7 +70,7 @@ impl Blockchain {
     fn contains_block_hash(&self, block_hash: &Sha256Hash) -> bool {
         self.fork_tree.contains_block_hash(block_hash)
     }
-    
+
     /// If the block is in the fork
     fn get_block_by_hash(&self, block_hash: &Sha256Hash) -> Option<&Block> {
         self.fork_tree.block_by_hash(block_hash)
@@ -85,7 +84,6 @@ impl Blockchain {
         let mut search_completed = false;
 
         while !search_completed {
-            
             if self
                 .longest_chain_queue
                 .contains_hash_by_block_id(target_block.hash(), target_block.id())
@@ -98,11 +96,10 @@ impl Blockchain {
                     .block_by_hash(target_block.previous_block_hash())
                 {
                     Some(previous_block) => target_block = previous_block,
-                    None => panic!("Target block's ancestor is not known.")
+                    None => panic!("Target block's ancestor is not known."),
                 }
             }
         }
-
 
         let ancestor_block = target_block.clone();
         let mut i = self.longest_chain_queue.latest_block_id();
@@ -115,7 +112,6 @@ impl Blockchain {
         }
 
         Some((ancestor_block, old_chain, new_chain))
-
     }
 
     /// Append `Block` to the index of `Blockchain`
@@ -123,7 +119,8 @@ impl Blockchain {
     /// what's going on.
     pub fn add_block(&mut self, block: Block) -> AddBlockEvent {
         //println!("add_block");
-        let is_first_block = (block.previous_block_hash() == &[0u8; 32] && !self.contains_block_hash(block.previous_block_hash()));
+        let is_first_block = block.previous_block_hash() == &[0u8; 32]
+            && !self.contains_block_hash(block.previous_block_hash());
         if !self.validate_block(&block) {
             AddBlockEvent::InvalidTransaction
         } else if self.contains_block_hash(&(block.hash())) {
@@ -134,11 +131,12 @@ impl Blockchain {
             self.fork_tree.insert(block.hash(), block.clone());
             let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
 
-            let is_new_lc_tip = (!latest_block_hash.is_none() && &latest_block_hash.unwrap() == block.previous_block_hash());
+            let is_new_lc_tip = !latest_block_hash.is_none()
+                && &latest_block_hash.unwrap() == block.previous_block_hash();
             //println!("is_new_lc_tip {}", is_new_lc_tip);
             //println!("previous_block_hash Some({:?})", block.previous_block_hash());
             //println!("latest_block_hash   {:?}", latest_block_hash);
-            if(is_first_block || is_new_lc_tip) {
+            if is_first_block || is_new_lc_tip {
                 // First Block or we're new tip of the longest chain
                 self.utxoset.roll_forward(&block);
                 self.longest_chain_queue.roll_forward(block.hash());
@@ -154,7 +152,7 @@ impl Blockchain {
                             self.longest_chain_queue.roll_back();
                             self.utxoset.roll_back(block);
                         });
-                        
+
                         //println!("{}", new_chain.blocks.len());
                         // Wind up the new chain
                         new_chain.blocks.iter().rev().for_each(|block| {
@@ -163,7 +161,6 @@ impl Blockchain {
                         });
 
                         AddBlockEvent::AcceptedAsNewLongestChain
-
                     } else {
                         // we're just building on a new chain. Won't take over... yet!
                         self.utxoset.roll_forward_on_potential_fork(&block);
@@ -197,90 +194,92 @@ mod tests {
     // use crate::slip::{OutputSlip, SlipID};
     // use crate::transaction::{Transaction, TransactionType};
     // use secp256k1::Signature;
-    
+
     use crate::test_utilities;
     #[test]
     fn validation_test() {
         let blockchain = Blockchain::new();
-        let block = test_utilities::make_mock_block([0;32]);
+        let block = test_utilities::make_mock_block([0; 32]);
         assert!(blockchain.validate_block(&block));
     }
     #[test]
     fn add_block_test() {
         let mut blockchain = Blockchain::new();
-        let block = test_utilities::make_mock_block([0;32]);
+        let block = test_utilities::make_mock_block([0; 32]);
         let mut prev_block_hash = block.hash().clone();
         let first_block_hash = block.hash().clone();
         let result: AddBlockEvent = blockchain.add_block(block.clone());
-        println!("{:?}", result);
-        for n in 0..5 {
+        //println!("{:?}", result);
+        assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
+        for _n in 0..5 {
             let block = test_utilities::make_mock_block(prev_block_hash);
             prev_block_hash = block.hash().clone();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
-            println!("{:?}", result);
+            //println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
         }
         // make a fork
         let block = test_utilities::make_mock_block(first_block_hash);
         let mut prev_block_hash = block.hash().clone();
         let result: AddBlockEvent = blockchain.add_block(block.clone());
-        println!("{:?}", result);
+        //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::Accepted);
-        
-        for n in 0..4 {
+
+        for _n in 0..4 {
             let block = test_utilities::make_mock_block(prev_block_hash);
             prev_block_hash = block.hash().clone();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
-            println!("{:?}", result);
+            //println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::Accepted);
         }
         // new longest chain tip on top of the fork
         let block = test_utilities::make_mock_block(prev_block_hash);
-        prev_block_hash = block.hash().clone();
         let result: AddBlockEvent = blockchain.add_block(block.clone());
-        println!("{:?}", result);
+        //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
-        
+
         // make another fork
         let block = test_utilities::make_mock_block(first_block_hash);
         let mut prev_block_hash = block.hash().clone();
         let result: AddBlockEvent = blockchain.add_block(block.clone());
-        println!("{:?}", result);
+        //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::Accepted);
-        
-        for n in 0..5 {
+
+        for _n in 0..5 {
             let block = test_utilities::make_mock_block(prev_block_hash);
             prev_block_hash = block.hash().clone();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
-            println!("{:?}", result);
+            //println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::Accepted);
         }
         // new longest chain tip on top of the fork
         let block = test_utilities::make_mock_block(prev_block_hash);
-        prev_block_hash = block.hash().clone();
         let result: AddBlockEvent = blockchain.add_block(block.clone());
-        println!("{:?}", result);
+        //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
-        
+
         // make a 3rd fork by rolling back by 3 blocks
-        prev_block_hash = blockchain.latest_block().unwrap().previous_block_hash().clone();
+        prev_block_hash = blockchain
+            .latest_block()
+            .unwrap()
+            .previous_block_hash()
+            .clone();
         let mut prev_block = blockchain.get_block_by_hash(&prev_block_hash).unwrap();
         prev_block_hash = prev_block.previous_block_hash().clone();
         prev_block = blockchain.get_block_by_hash(&prev_block_hash).unwrap();
         prev_block_hash = prev_block.previous_block_hash().clone();
-        
-        for n in 0..3 {
+
+        for _n in 0..3 {
             let block = test_utilities::make_mock_block(prev_block_hash);
             prev_block_hash = block.hash().clone();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
-            println!("{:?}", result);
+            //println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::Accepted);
         }
-        
+
         let block = test_utilities::make_mock_block(prev_block_hash);
-        prev_block_hash = block.hash().clone();
         let result: AddBlockEvent = blockchain.add_block(block.clone());
-        println!("{:?}", result);
+        //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
     }
 }

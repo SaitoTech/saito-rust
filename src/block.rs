@@ -2,15 +2,10 @@ use crate::crypto::{PublicKey, Sha256Hash};
 use crate::keypair::Keypair;
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
-use std::str::FromStr;
-use hex::ToHex;
-use sha2::Sha256;
-use secp256k1::Message;
-use serde::{Deserialize, Serialize};
-use std::mem::transmute;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
-use std::convert::{TryFrom, TryInto};
 use std::{mem, slice};
 
 /// The `Block` holds all data inside the block body,
@@ -41,14 +36,18 @@ impl Block {
         )
         .unwrap();
         let timestamp = create_timestamp();
-        let block_core = BlockCore::new(0, timestamp, previous_block_hash, public_key, 0, transactions);
+        let block_core = BlockCore::new(
+            0,
+            timestamp,
+            previous_block_hash,
+            public_key,
+            0,
+            transactions,
+        );
         Block::new(0, 0.0, block_core)
     }
     pub fn new(burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
-        let bytes = core.serialize();
-        let hash = Keypair::make_message_from_bytes(&bytes);
-        //let bytes = &core.timestamp.as_bytes();
-        let bytes: [u8; 8] = unsafe { transmute(core.timestamp.to_be()) };
+        let hash = Keypair::make_message_from_bytes(&core.serialize());
         Block {
             hash: hash,
             burnfee: burnfee,
@@ -123,7 +122,6 @@ impl Block {
         // their receiver and amount are correct
         true
     }
-
 }
 
 impl From<Vec<u8>> for Block {
@@ -187,21 +185,24 @@ impl BlockCore {
             transactions: transactions,
         }
     }
-    
+
     // pub fn deserialize(bytes: [u8; 42]) -> Slip {
     //     let public_key: PublicKey = PublicKey::from_slice(&bytes[..33]).unwrap();
     //     let broadcast_type: SlipBroadcastType = SlipBroadcastType::try_from(bytes[41]).unwrap();
     //     let amount = u64::from_be_bytes(bytes[33..41].try_into().unwrap());
     //     Slip::new(public_key, broadcast_type, amount)
     // }
-    
+
     pub fn serialize(&self) -> [u8; 44] {
         let mut ret = [0; 44];
         ret[..32].clone_from_slice(&self.previous_block_hash);
         unsafe {
-            ret[32..40].clone_from_slice(&slice::from_raw_parts((&self.timestamp as *const u64) as *const u8, mem::size_of::<u64>()));
+            ret[32..40].clone_from_slice(&slice::from_raw_parts(
+                (&self.timestamp as *const u64) as *const u8,
+                mem::size_of::<u64>(),
+            ));
         }
-        // TODO REMOVE THESE RANDOM BYTES ONCE WE ARE ACTUALLY DOING A FULL HASH, THIS IS JUST 
+        // TODO REMOVE THESE RANDOM BYTES ONCE WE ARE ACTUALLY DOING A FULL HASH, THIS IS JUST
         // FOR HASHING BECAUSE THE TIMESTAMP ISN'T PRECISE ENOUGH TO GUARANTEE UNIQUENESS
         let random_bytes = rand::thread_rng().gen::<[u8; 4]>();
         ret[40..44].clone_from_slice(&random_bytes);
@@ -213,11 +214,10 @@ impl BlockCore {
 mod test {
     use super::*;
     use crate::block::Block;
-    use crate::slip::{OutputSlip, SlipID, SlipType};
-    use crate::transaction::TransactionType;
-    use secp256k1::Signature;
+    use crate::slip::SlipType;
     use crate::test_utilities;
-    
+    use secp256k1::Signature;
+
     #[test]
     fn block_test() {
         let block = Block::default();
@@ -240,28 +240,25 @@ mod test {
             "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
         )
         .unwrap();
-        let block = test_utilities::make_mock_block([0;32]);
+        let block = test_utilities::make_mock_block([0; 32]);
         println!("txs: {:?}", block.transactions());
         assert_eq!(block.transactions().len(), 2);
         assert_eq!(
             block.transactions()[0].core.outputs()[0].address(),
             &public_key
         );
-        
+
         assert_eq!(block.transactions()[0].core.outputs()[0].amount(), 10);
         assert_eq!(
             block.transactions()[0].core.outputs()[0].broadcast_type(),
             SlipType::Normal
         );
-        
+
         assert_eq!(
             block.transactions()[0].core.inputs()[0].tx_id(),
             Signature::from_compact(&[0; 64]).unwrap()
         );
-        
-        assert_eq!(
-            block.transactions()[0].core.inputs()[0].slip_ordinal(),
-            0
-        );
+
+        assert_eq!(block.transactions()[0].core.inputs()[0].slip_ordinal(), 0);
     }
 }
