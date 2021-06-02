@@ -120,7 +120,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(idx, _input)| {
-                let slip_id = SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                let slip_id = SlipID::new(*tx.signature(), idx as u64);
                 // self.shashmap.remove(&slip_id);
                 self.shashmap
                     .insert(slip_id.clone(), UtxoSetValue::Spent(block.id()));
@@ -132,7 +132,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(idx, output)| {
-                let slip_id = SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                let slip_id = SlipID::new(*tx.signature(), idx as u64);
                 self.shashmap.insert(slip_id.clone(), UtxoSetValue::Unspent);
                 self.utxo_hashmap.insert(slip_id, *output);
             });
@@ -151,7 +151,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(idx, _output)| {
-                let slip_id = &SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                let slip_id = &SlipID::new(*tx.signature(), idx as u64);
                 self.shashmap.remove(&slip_id);
             });
     }
@@ -162,7 +162,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(idx, _input)| {
-                let slip_id = SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                let slip_id = SlipID::new(*tx.signature(), idx as u64);
                 // self.shashmap.remove(&slip_id);
                 self.shashmap.insert(
                     slip_id.clone(),
@@ -176,7 +176,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(idx, output)| {
-                let slip_id = SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                let slip_id = SlipID::new(*tx.signature(), idx as u64);
                 self.shashmap.insert(
                     slip_id.clone(),
                     UtxoSetValue::PotentialForkUnspent(block.hash()),
@@ -199,7 +199,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(idx, _output)| {
-                let slip_id = &SlipID::new(block.hash(), *tx.signature(), idx as u64);
+                let slip_id = &SlipID::new(*tx.signature(), idx as u64);
                 self.shashmap.remove(&slip_id);
             });
     }

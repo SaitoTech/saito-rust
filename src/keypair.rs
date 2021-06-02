@@ -65,8 +65,7 @@ impl Keypair {
     }
 
     /// Hash the message string with sha256 for signing by secp256k1 and return as byte array
-    /// TODO: Make sure this handles utf correctly. We probably want to ensure that the message
-    /// is actually just ascii encoded...
+    /// TODO Move this to crypto
     pub fn make_message_from_string(message_string: &str) -> Sha256Hash {
         let mut hasher = Sha256::new();
         hasher.update(message_string.as_bytes());
@@ -74,7 +73,13 @@ impl Keypair {
 
         hashvalue.as_slice().try_into().unwrap()
     }
+    pub fn make_message_from_bytes(message_bytes: &[u8]) -> Sha256Hash {
+        let mut hasher = Sha256::new();
+        hasher.update(message_bytes);
+        let hashvalue = hasher.finalize();
 
+        hashvalue.as_slice().try_into().unwrap()
+    }
     /// Hash and sign a message string
     pub fn sign_string_message(&self, message_string: &str) -> Result<String, std::fmt::Error> {
         let message_bytes = Keypair::make_message_from_string(message_string);

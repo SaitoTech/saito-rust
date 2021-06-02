@@ -1,5 +1,5 @@
 [package]
-name = "saito-rust"
+name = "saito_rust"
 version = "0.1.0"
 authors = [
     "Clayton Rabenda <clay@saito.tech>",
@@ -19,3 +19,5 @@ lazy_static = "1.4.0"
 rand = "0.8.3"
 tokio = { version = "1", features = ["full"] }
 
+[features]
+test-utilities = []

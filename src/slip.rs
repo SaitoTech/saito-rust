@@ -2,7 +2,9 @@ use secp256k1::PublicKey;
 pub use secp256k1::Signature;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
+use std::str::FromStr;
 use crate::crypto::Sha256Hash;
+
 
 /// An enumerated set of `Slip` types
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
@@ -21,8 +23,6 @@ impl Hash for SlipID {
 /// A record of owernship of funds on the network
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
 pub struct SlipID {
-    block_hash: Sha256Hash,
-    /// `Transaction` id
     tx_id: Signature,
     /// `Slip` id
     slip_ordinal: u64,
@@ -43,15 +43,13 @@ impl SlipID {
     /// Create new `SlipID`
     pub fn default() -> Self {
         SlipID {
-            block_hash: [0; 32],
             tx_id: Signature::from_compact(&[0; 64]).unwrap(),
             slip_ordinal: 0,
         }
     }
     /// Create new `SlipID`
-    pub fn new(block_hash: Sha256Hash, tx_id: Signature, slip_ordinal: u64) -> Self {
+    pub fn new(tx_id: Signature, slip_ordinal: u64) -> Self {
         SlipID {
-            block_hash,
             tx_id,
             slip_ordinal,
         }
@@ -69,6 +67,18 @@ impl SlipID {
 }
 
 impl OutputSlip {
+    /// Create new `OutputSlip`
+    pub fn default() -> OutputSlip {
+        let public_key: PublicKey = PublicKey::from_str(
+            "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
+        )
+        .unwrap();
+        OutputSlip {
+            address: public_key,
+            broadcast_type: SlipType::Normal,
+            amount: 10,
+        }
+    }
     /// Create new `OutputSlip`
     pub fn new(address: PublicKey, broadcast_type: SlipType, amount: u64) -> OutputSlip {
         OutputSlip {

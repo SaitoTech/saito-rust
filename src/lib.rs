@@ -41,6 +41,8 @@ pub mod utxoset;
 #[macro_use]
 extern crate lazy_static;
 
+
+
 /// Error returned by most functions.
 ///
 /// When writing a real application, one might want to consider a specialized
@@ -58,3 +60,43 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 ///
 /// This is defined as a convenience.
 pub type Result<T> = std::result::Result<T, Error>;
+
+
+// #[path = "./test/testutilities.rs"]
+// mod testutilities;
+
+
+#[cfg(feature = "test-utilities")]
+pub mod test_utilities {
+    use crate::transaction::{Transaction, TransactionType};
+    use crate::block::Block;
+    use crate::slip::{SlipID, OutputSlip};
+    use crate::crypto::{PublicKey, Sha256Hash};
+    use crate::time::create_timestamp;
+    use std::str::FromStr;
+    use secp256k1::Signature;
+    pub fn shared_code() {
+        println!("I'm inside the library")
+    }
+    
+    pub fn make_mock_block(previous_block_hash: Sha256Hash) -> Block{
+        let public_key: PublicKey = PublicKey::from_str(
+            "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
+        )
+        .unwrap();
+        let from_slip = SlipID::default();
+        let to_slip = OutputSlip::default();
+        let mut tx = Transaction::new(
+            Signature::from_compact(&[0; 64]).unwrap(),
+            vec![],
+            create_timestamp(),
+            vec![from_slip.clone()],
+            vec![to_slip.clone()],
+            TransactionType::Normal,
+            vec![104, 101, 108, 108, 111],
+        );
+        let mut tx2 = Transaction::default();
+
+        Block::new_mock(previous_block_hash, vec![tx.clone(), tx2.clone()])
+    }
+}

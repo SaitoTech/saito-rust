@@ -4,9 +4,8 @@ include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
 // The epoch should be stored in a ring. The location pointer is the index of the latest block.
 // When the length of the blockchain begins to exceed 2x epoch length new blocks will begin to
-// overwrite older blocks. During a rollback those blocks which fell off won't be recovered.
-// I don't think we need to store these as Option<Sha256Hash> because the top_location + length
-// can tell us where the valid data is.
+// overwrite older blocks. 
+// the top_location + length tells us where valid data is.
 
 const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
 
@@ -41,6 +40,9 @@ impl LongestChainQueue {
         if self.longest_chain_length == 0 {
             panic!("The longest chain is already 0, we cannot rollback!");
         }
+        if self.epoch_ring_length == 0 {
+            panic!("We've already rolled back, we can't roll back any farther!");
+        }
         self.longest_chain_length -= 1;
         if self.epoch_ring_top_location == 0 {
             self.epoch_ring_top_location = RING_BUFFER_LENGTH - 1;
@@ -48,16 +50,17 @@ impl LongestChainQueue {
             self.epoch_ring_top_location -= 1;
         }
         self.epoch_ring_length -= 1;
-        if self.epoch_ring_length < EPOCH_LENGTH {
-            panic!("It seems you're trying to rollback an entire epoch-length of blocks...");
-        }
-        self.latest_block_hash()
+        // We should be safe to just unwrap here instead of returning and Option because
+        // we've already done a check about to make sure the chain length is not 0
+        //println!("roll_back {:?}", self.latest_block_hash().unwrap());
+        self.latest_block_hash().unwrap()
     }
     /// Roll forward the longest chain by 1.
     /// If the length of this has exceeded RING_BUFFER_LENGTH, we simply start over again at 0.
     /// If the length epoch_ring_length exceeds RING_BUFFER_LENGTH, we are overwriting data and
     /// therefore cap epoch_ring_length at RING_BUFFER_LENGTH.
     pub fn roll_forward(&mut self, new_block_hash: Sha256Hash) {
+        //println!("roll_forward {:?}", new_block_hash);
         self.longest_chain_length += 1;
         self.epoch_ring_top_location += 1;
         self.epoch_ring_top_location = self.epoch_ring_top_location % RING_BUFFER_LENGTH;
@@ -80,14 +83,11 @@ impl LongestChainQueue {
         // We substract this from the latest_block pointer self.epoch_ring_top_location - how_far_back
         // We then might be less than 0, so we mod with RING_BUFFER_LENGTH.
         let how_far_back: i64 = self.longest_chain_length as i64 - 1 - id as i64;
-        println!("how_far_back {}", how_far_back);
-        println!("epoch_ring_top_location {}", self.epoch_ring_top_location);
         let mut index = self.epoch_ring_top_location as i64 - how_far_back;
         if index < 0 {
             // % in rust is a remainder operator, not a modulo, so we have to do this instead...
             index += RING_BUFFER_LENGTH as i64;
         }
-        println!("index {}", index);
         self.epoch_ring_array[index as usize]
     }
 
@@ -95,11 +95,11 @@ impl LongestChainQueue {
         self.longest_chain_length - 1
     }
 
-    pub fn latest_block_hash(&self) -> Sha256Hash {
+    pub fn latest_block_hash(&self) -> Option<Sha256Hash> {
         if self.longest_chain_length <= 0 {
-            panic!("There are no blocks in the longest chain");
+            return None
         }
-        self.epoch_ring_array[self.epoch_ring_top_location as usize]
+        Some(self.epoch_ring_array[self.epoch_ring_top_location as usize])
     }
 
     pub fn last_block_in_epoch(&self) -> Sha256Hash {
@@ -137,13 +137,14 @@ mod test {
             Ok(s) => s == "yes",
             _ => false,
         };
-        println!("{}", longest_chain_queue::EPOCH_LENGTH);
+        //println!("{}", longest_chain_queue::EPOCH_LENGTH);
         let mut longest_chain_queue = LongestChainQueue::new();
 
         for n in 0..100 {
             longest_chain_queue.roll_forward(Keypair::make_message_from_string(&n.to_string()));
         }
         assert_eq!(longest_chain_queue.latest_block_id(), 99);
+        assert_eq!(longest_chain_queue.latest_block_hash().unwrap(), Keypair::make_message_from_string(&99.to_string()));
         assert_eq!(
             longest_chain_queue.block_hash_by_id(0),
             Keypair::make_message_from_string(&0.to_string())
@@ -162,11 +163,25 @@ mod test {
             Keypair::make_message_from_string(&0.to_string())
         );
         longest_chain_queue.roll_forward(Keypair::make_message_from_string(&200.to_string()));
+        assert_eq!(longest_chain_queue.latest_block_id(), 200);
+        assert_eq!(longest_chain_queue.latest_block_hash().unwrap(), Keypair::make_message_from_string(&200.to_string()));
+        
         //longest_chain_queue.roll_forward(Keypair::make_message_from_string(&200.to_string()));
         let result = std::panic::catch_unwind(|| longest_chain_queue.block_hash_by_id(0));
-        for n in 0..100 {
+        for n in 0..101 {
             longest_chain_queue.roll_back();
         }
+        //println!("{}", longest_chain_queue.latest_block_id());
+        assert_eq!(longest_chain_queue.latest_block_id(), 99);
+        assert_eq!(longest_chain_queue.latest_block_hash().unwrap(), Keypair::make_message_from_string(&99.to_string()));
+        for n in 100..201 {
+            longest_chain_queue.roll_forward(Keypair::make_message_from_string(&n.to_string()));
+        }
+        assert_eq!(longest_chain_queue.latest_block_id(), 200);
+        assert_eq!(longest_chain_queue.latest_block_hash().unwrap(), Keypair::make_message_from_string(&200.to_string()));
+        // TODO test last_block_in_epoch()
+        
+        
         // assert!(result.is_err());
         // assert_eq!(longest_chain_queue.block_hash_by_id(1), Keypair::make_message_from_string(&1.to_string()));
         // longest_chain_queue.roll_back();
@@ -185,8 +200,6 @@ mod test {
         // assert_eq!(longest_chain_queue.block_hash_by_id(990), Keypair::make_message_from_string(&990.to_string()));
         // assert_eq!(longest_chain_queue.block_hash_by_id(998), Keypair::make_message_from_string(&998.to_string()));
         //assert_eq!(longest_chain_queue.block_hash_by_id(999), Keypair::make_message_from_string(&999.to_string()));
-        //latest_block_id()
-        //latest_block_hash()
-        //last_block_in_epoch()
+    
     }
 }

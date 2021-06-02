@@ -82,7 +82,6 @@ impl Transaction {
         broadcast_type: TransactionType,
         message: Vec<u8>,
     ) -> Transaction {
-        // TODO add inputs, outputs, and message here
         Transaction {
             signature: signature,
             path: path,

@@ -1,9 +1,17 @@
 use crate::crypto::{PublicKey, Sha256Hash};
+use crate::keypair::Keypair;
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 use std::str::FromStr;
-
+use hex::ToHex;
+use sha2::Sha256;
+use secp256k1::Message;
 use serde::{Deserialize, Serialize};
+use std::mem::transmute;
+use rand::Rng;
+
+use std::convert::{TryFrom, TryInto};
+use std::{mem, slice};
 
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
@@ -24,9 +32,23 @@ pub struct Block {
 
 impl Block {
     pub fn default() -> Self {
-        Block::new([0; 32], 0, 0.0, BlockCore::default())
+        Block::new(0, 0.0, BlockCore::default())
     }
-    pub fn new(hash: Sha256Hash, burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
+    /// Creates a new `BlockCore`
+    pub fn new_mock(previous_block_hash: Sha256Hash, transactions: Vec<Transaction>) -> Self {
+        let public_key: PublicKey = PublicKey::from_str(
+            "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
+        )
+        .unwrap();
+        let timestamp = create_timestamp();
+        let block_core = BlockCore::new(0, timestamp, previous_block_hash, public_key, 0, transactions);
+        Block::new(0, 0.0, block_core)
+    }
+    pub fn new(burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
+        let bytes = core.serialize();
+        let hash = Keypair::make_message_from_bytes(&bytes);
+        //let bytes = &core.timestamp.as_bytes();
+        let bytes: [u8; 8] = unsafe { transmute(core.timestamp.to_be()) };
         Block {
             hash: hash,
             burnfee: burnfee,
@@ -101,6 +123,7 @@ impl Block {
         // their receiver and amount are correct
         true
     }
+
 }
 
 impl From<Vec<u8>> for Block {
@@ -164,16 +187,40 @@ impl BlockCore {
             transactions: transactions,
         }
     }
+    
+    // pub fn deserialize(bytes: [u8; 42]) -> Slip {
+    //     let public_key: PublicKey = PublicKey::from_slice(&bytes[..33]).unwrap();
+    //     let broadcast_type: SlipBroadcastType = SlipBroadcastType::try_from(bytes[41]).unwrap();
+    //     let amount = u64::from_be_bytes(bytes[33..41].try_into().unwrap());
+    //     Slip::new(public_key, broadcast_type, amount)
+    // }
+    
+    pub fn serialize(&self) -> [u8; 44] {
+        let mut ret = [0; 44];
+        ret[..32].clone_from_slice(&self.previous_block_hash);
+        unsafe {
+            ret[32..40].clone_from_slice(&slice::from_raw_parts((&self.timestamp as *const u64) as *const u8, mem::size_of::<u64>()));
+        }
+        // TODO REMOVE THESE RANDOM BYTES ONCE WE ARE ACTUALLY DOING A FULL HASH, THIS IS JUST 
+        // FOR HASHING BECAUSE THE TIMESTAMP ISN'T PRECISE ENOUGH TO GUARANTEE UNIQUENESS
+        let random_bytes = rand::thread_rng().gen::<[u8; 4]>();
+        ret[40..44].clone_from_slice(&random_bytes);
+        ret
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-
+    use crate::block::Block;
+    use crate::slip::{OutputSlip, SlipID, SlipType};
+    use crate::transaction::TransactionType;
+    use secp256k1::Signature;
+    use crate::test_utilities;
+    
     #[test]
     fn block_test() {
         let block = Block::default();
-
         let public_key: PublicKey = PublicKey::from_str(
             "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
         )
@@ -187,47 +234,34 @@ mod test {
         assert_eq!(block.coinbase(), 0);
     }
 
-    // #[test]
-    // fn block_set_transactions_test() {
-    //     let keypair = Keypair::new();
-    //     let mut block = Block::new(*keypair.public_key(), [0; 32]);
-    //
-    //     let mut tx = Transaction::new(TransactionType::Normal);
-    //     let from_slip = SlipID::new(10, 10, 10);
-    //     let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 0);
-    //     tx.add_input(from_slip);
-    //     tx.add_output(to_slip);
-    //
-    //     let signed_transaction =
-    //         Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
-    //     block.set_transactions(&mut vec![signed_transaction.clone()]);
-    //
-    //     assert_eq!(block.transactions().len(), 1);
-    //
-    //     assert_eq!(
-    //         block.transactions()[0].body.outputs()[0].address(),
-    //         keypair.public_key()
-    //     );
-    //     assert_eq!(block.transactions()[0].body.outputs()[0].amount(), 0);
-    //     assert_eq!(
-    //         block.transactions()[0].body.outputs()[0].broadcast_type(),
-    //         SlipType::Normal
-    //     );
-    //
-    //     assert_eq!(block.transactions()[0].body.inputs()[0].slip_ordinal(), 10);
-    //     assert_eq!(block.transactions()[0].body.inputs()[0].tx_id(), 10);
-    //     assert_eq!(block.transactions()[0].body.inputs()[0].block_id(), 10);
-    // }
-    //
-    // #[test]
-    // fn block_add_transaction_test() {
-    //     let keypair = Keypair::new();
-    //     let mut block = Block::new(*keypair.public_key(), [0; 32]);
-    //     let tx = Transaction::new(TransactionType::Normal);
-    //     assert_eq!(*block.transactions(), vec![]);
-    //     let signed_transaction =
-    //         Transaction::add_signature(tx, Signature::from_compact(&[0; 64]).unwrap());
-    //     block.add_transaction(signed_transaction.clone());
-    //     assert_eq!(*block.transactions(), vec![signed_transaction.clone()]);
-    // }
+    #[test]
+    fn block_set_transactions_test() {
+        let public_key: PublicKey = PublicKey::from_str(
+            "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
+        )
+        .unwrap();
+        let block = test_utilities::make_mock_block([0;32]);
+        println!("txs: {:?}", block.transactions());
+        assert_eq!(block.transactions().len(), 2);
+        assert_eq!(
+            block.transactions()[0].core.outputs()[0].address(),
+            &public_key
+        );
+        
+        assert_eq!(block.transactions()[0].core.outputs()[0].amount(), 10);
+        assert_eq!(
+            block.transactions()[0].core.outputs()[0].broadcast_type(),
+            SlipType::Normal
+        );
+        
+        assert_eq!(
+            block.transactions()[0].core.inputs()[0].tx_id(),
+            Signature::from_compact(&[0; 64]).unwrap()
+        );
+        
+        assert_eq!(
+            block.transactions()[0].core.inputs()[0].slip_ordinal(),
+            0
+        );
+    }
 }

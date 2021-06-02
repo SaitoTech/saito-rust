@@ -479,7 +479,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "saito-rust"
+name = "saito_rust"
 version = "0.1.0"
 dependencies = [
  "base58",
