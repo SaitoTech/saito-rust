@@ -20,13 +20,15 @@ pub struct Blockchain {
 
 }
 
+// TODO - i absolutely hate calling this
+// the BlockHeader. It only exists because
+// i am having trouble putting a refernece
+// to the block inside the new_chain and 
+// old_chain vectors
 pub struct BlockHeader {
-
-    // longest-chain position
     pos: usize,
     block_id: u64,
     burnfee: u64,
-
 }
 impl BlockHeader {
     pub fn new(pos: usize, block: &Block) -> Self {
@@ -149,11 +151,90 @@ println!("Shared Ancestor at position: {}", shared_ancestor_pos);
 
 
 	// at this point we should have a shared ancestor
+	// and be able to calculate whether our new_chain
+	// constitutes the longest chain or our old chain
+	// constitutes the longest chain.
+	let am_i_the_longest_chain = self.is_new_chain_the_longest_chain(&new_chain, &old_chain);
+
+	
+	//
+	if am_i_the_longest_chain {
+
+	    let does_new_chain_validate = self.validate(new_chain, old_chain);
+	    if does_new_chain_validate {
+		self.add_block_success();
+	    } else {
+		self.add_block_failure();
+	    }
+	    println!("does the new chain validate: {}", does_new_chain_validate); 
+
+	} else {
+
+	    self.add_block_failure();
+
+	}
+
+
+    }
+
+    pub fn add_block_success(&self) {
+
+    }
+    pub fn add_block_failure(&self) {
 
     }
 
 
-	    // 
+
+
+
+
+    // TODO - return 1 for new_chain, 2 for old_chain
+    pub fn is_new_chain_the_longest_chain(&mut self, new_chain: &Vec<BlockHeader>, old_chain: &Vec<BlockHeader>) -> bool {
+	return true;
+    }
+
+    pub fn validate(&self, new_chain: Vec<BlockHeader>, old_chain: Vec<BlockHeader>) -> bool {
+        if old_chain.len() > 0 {
+	    return self.unwind_chain(&new_chain, &old_chain, old_chain.len()-1);
+	} else if new_chain.len() > 0 {
+	    return self.wind_chain(&new_chain, &old_chain, 0, false);
+	}
+        return false;
+    }
+
+    pub fn wind_chain(&self, new_chain: &Vec<BlockHeader>, old_chain: &Vec<BlockHeader>, current_wind_index: usize, wind_failure: bool) -> bool {
+
+	// validate the block
+	let block_pos = new_chain[current_wind_index].pos;
+	let block = &self.blocks[block_pos];
+	let does_block_validate = block.validate();
+
+	println!("WIND CHAIN - does block validate {}", does_block_validate);
+
+	if does_block_validate {
+	    println!("WIND CHAIN FAILURE AT POS {}", current_wind_index);
+
+	    // if this is the end of the chain, return success 1
+	    if current_wind_index == (new_chain.len()-1) {
+	        println!("WIND CHAIN SUCCESS 1 {}", current_wind_index);
+		return true;
+	    }
+	    println!("WIND CHAIN SUCCESS 2 {}", current_wind_index);
+	    return self.wind_chain(new_chain, old_chain, (current_wind_index+1), false);
+	} else {
+	    println!("WIND CHAIN FAILURE AT POS {}", current_wind_index);
+	    return false;
+	}
+
+	return false;
+    }
+
+    pub fn unwind_chain(&self, new_chain: &Vec<BlockHeader>, old_chain: &Vec<BlockHeader>, current_unwind_index: usize) -> bool {
+	println!("UNWIND CHAIN {}", current_unwind_index);
+	return true;
+    }
+
 
 }
 

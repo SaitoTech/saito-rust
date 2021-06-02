@@ -81,7 +81,9 @@ impl Block {
 	self.core.previous_block_hash = previous_block_hash;
     }
 
-
+    pub fn validate(&self) -> bool {
+	return true;
+    }
 
 
 }
