@@ -54,9 +54,25 @@ impl Blockchain {
     }
 
     /// Append `Block` to the index of `Blockchain`
-    pub fn add_block(&mut self, block: Block) {
+    pub fn add_block(&mut self, mut block: Block) {
 
-println!("Adding Block to Blockchain!");
+	//
+	// TODO
+	//
+	// data structure does not permit blocks to build
+	// off each other as mempool does not have a way
+	// to know the previous_block_hash at this point
+	// so we are manually setting this block as the
+	// predecessor to the previous block
+	//
+	if (self.blocks.len() > 0) {
+	    let previous_blocks_length = self.blocks.len();
+	    block.set_previous_block_hash(self.blocks[previous_blocks_length-1].hash());
+	    println!("previous block hash of new block now set to: {:?}", self.blocks[previous_blocks_length-1].hash());
+	}
+
+println!("Adding Block with Hash: {:?}", block.hash());
+
 	// initial sanity checks
 
 
@@ -79,6 +95,10 @@ println!("Adding Block to Blockchain!");
 
 	loop {
 
+println!("loop...");
+println!("new pos: {}", new_pos);
+println!("old pos: {}", old_pos);
+
 	    if new_pos > old_pos {
 
 		let target_hash = self.blocks[new_pos].previous_block_hash();
@@ -96,9 +116,7 @@ println!("Adding Block to Blockchain!");
 		newbh.burnfee = 1;
 	        new_chain.push(newbh);
 
-		break;
-
-	    } else if new_pos == old_pos {
+	    } else if new_pos == old_pos || new_pos == 0 || old_pos == 0 {
 
 		shared_ancestor_pos = new_pos;
 
@@ -121,10 +139,13 @@ println!("Adding Block to Blockchain!");
 		oldbh.burnfee = 1;
 	        old_chain.push(oldbh);
 
-		break;
-
 	    }
 	}
+
+println!("New Block at position: {}", self.pos);
+println!("New Chain length: {}", new_chain.len());
+println!("Old Chain length: {}", old_chain.len());
+println!("Shared Ancestor at position: {}", shared_ancestor_pos);
 
 
 	// at this point we should have a shared ancestor

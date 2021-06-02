@@ -77,8 +77,8 @@ impl Block {
     }
 
 
-    pub fn set_previous_block_hash(&mut self, previous_block: &Block) {
-	self.core.previous_block_hash = previous_block.hash();
+    pub fn set_previous_block_hash(&mut self, previous_block_hash: [u8;32]) {
+	self.core.previous_block_hash = previous_block_hash;
     }
 
 
