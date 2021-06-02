@@ -84,18 +84,22 @@ impl Consensus {
 	//
 	// Async Thread sends message triggering TryBundle every second
 	//
-	// TODO - this should be moved into a loop contained within the mempool class
+	// TODO - the mempool class should be able to independently manage the timer
+	// and we should restrict our focus to sending messages telling it to start
+	// and stop bundling.
 	//
         //tokio::spawn(async move {
         tokio::spawn(async move {
             loop {
-		println!("Sending TryBundle message!");
                 saito_message_tx
                     .send(SaitoMessage::TryBundle)
                     .expect("error: TryBundle message failed to send");
                 sleep(Duration::from_millis(1000));
             }
         });
+
+
+
 
 
 	// move ownership of Blockchain, Mempool, Network into our ASYNC loop

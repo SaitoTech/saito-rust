@@ -62,9 +62,27 @@ impl Block {
     }
 
     /// Returns the previous `Block` hash
+    pub fn burnfee(&self) -> u64 {
+        self.core.burnfee
+    }
+
+    /// Returns the previous `Block` hash
     pub fn creator(&self) -> &PublicKey {
         &self.core.creator
     }
+
+    /// Returns the previous `Block` hash
+    pub fn previous_block_hash(&self) -> [u8;32] {
+        self.core.previous_block_hash
+    }
+
+
+    pub fn set_previous_block_hash(&mut self, previous_block: &Block) {
+	self.core.previous_block_hash = previous_block.hash();
+    }
+
+
+
 
 }
 
