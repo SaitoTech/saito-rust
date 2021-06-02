@@ -75,7 +75,6 @@ mod test {
         let storage = Storage::new(Some(dir_path));
         let result = storage.write_block_to_disk(block).await;
         assert_eq!(result.unwrap(), ());
-
         // TODO -- add unwind_panic to teardown when assert failes
         teardown().expect("Teardown failed");
     }
