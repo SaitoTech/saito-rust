@@ -241,7 +241,6 @@ mod test {
         )
         .unwrap();
         let block = test_utilities::make_mock_block([0; 32]);
-        println!("txs: {:?}", block.transactions());
         assert_eq!(block.transactions().len(), 2);
         assert_eq!(
             block.transactions()[0].core.outputs()[0].address(),

@@ -118,7 +118,6 @@ impl Blockchain {
     /// These `AddBlockEvent`s will be turned into network responses so peers can figure out
     /// what's going on.
     pub fn add_block(&mut self, block: Block) -> AddBlockEvent {
-        //println!("add_block");
         let is_first_block = block.previous_block_hash() == &[0u8; 32]
             && !self.contains_block_hash(block.previous_block_hash());
         if !self.validate_block(&block) {
@@ -133,9 +132,6 @@ impl Blockchain {
 
             let is_new_lc_tip = !latest_block_hash.is_none()
                 && &latest_block_hash.unwrap() == block.previous_block_hash();
-            //println!("is_new_lc_tip {}", is_new_lc_tip);
-            //println!("previous_block_hash Some({:?})", block.previous_block_hash());
-            //println!("latest_block_hash   {:?}", latest_block_hash);
             if is_first_block || is_new_lc_tip {
                 // First Block or we're new tip of the longest chain
                 self.utxoset.roll_forward(&block);
@@ -145,21 +141,16 @@ impl Blockchain {
             } else {
                 if let Some((_ancestor_block, old_chain, new_chain)) = self.fork_chains(&block) {
                     if self.is_longer_chain(&new_chain, &old_chain) {
-                        //println!("LONGER CHAIN!!");
-                        //println!("{}", old_chain.blocks.len());
                         // Unwind the old chain
                         old_chain.blocks.iter().for_each(|block| {
                             self.longest_chain_queue.roll_back();
                             self.utxoset.roll_back(block);
                         });
-
-                        //println!("{}", new_chain.blocks.len());
                         // Wind up the new chain
                         new_chain.blocks.iter().rev().for_each(|block| {
                             self.longest_chain_queue.roll_forward(block.hash());
                             self.utxoset.roll_forward(block);
                         });
-
                         AddBlockEvent::AcceptedAsNewLongestChain
                     } else {
                         // we're just building on a new chain. Won't take over... yet!
@@ -187,13 +178,7 @@ impl Blockchain {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    // use crate::block::Block;
-    // use crate::keypair::Keypair;
-    // use crate::slip::{OutputSlip, SlipID};
-    // use crate::transaction::{Transaction, TransactionType};
-    // use secp256k1::Signature;
 
     use crate::test_utilities;
     #[test]
