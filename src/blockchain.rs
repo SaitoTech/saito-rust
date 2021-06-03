@@ -31,7 +31,7 @@ pub enum AddBlockEvent {
 
 pub struct ChainFork {
     // TODO -- add lifetime and reference to block
-    blocks: Vec<Block>,
+    blocks: Vec<Sha256Hash>,
 }
 pub type ForkTuple = (Block, ChainFork, ChainFork);
 
@@ -95,7 +95,7 @@ impl Blockchain {
             {
                 search_completed = true;
             } else {
-                new_chain.blocks.push(target_block.clone());
+                new_chain.blocks.push(target_block.hash());
                 match self
                     .fork_tree
                     .block_by_hash(target_block.previous_block_hash())
@@ -114,7 +114,7 @@ impl Blockchain {
             while i > ancestor_block.id() {
                 let hash = self.longest_chain_queue.block_hash_by_id(i as u64);
                 let block = self.fork_tree.block_by_hash(&hash).unwrap();
-                old_chain.blocks.push(block.clone());
+                old_chain.blocks.push(block.hash());
                 i = i - 1;
             }    
         }
@@ -163,15 +163,23 @@ impl Blockchain {
                     let old_chain = fork_tuple.1;
                     let new_chain = fork_tuple.2;
                     if self.is_longer_chain(&new_chain, &old_chain) {
+                        self.fork_tree.insert(block.hash(), block).unwrap();
                         // Unwind the old chain
-                        old_chain.blocks.iter().for_each(|block| {
-                            self.roll_back(&block);
+                        old_chain.blocks.iter().for_each(|block_hash| {
+                            let block = self.fork_tree.block_by_hash(block_hash).unwrap();
+                            
+                            self.longest_chain_queue.roll_back();
+                            self.utxoset.roll_back(block);
                         });
                         // Wind up the new chain
-                        new_chain.blocks.iter().rev().for_each(|block| {
-                            self.roll_forward(&block);
+                        
+                        new_chain.blocks.iter().rev().for_each(|block_hash| {
+                            println!("new chain hash: {:?}", block_hash);
+                            let block = self.fork_tree.block_by_hash(block_hash).unwrap();
+                            self.longest_chain_queue.roll_forward(block.hash());
+                            self.utxoset.roll_forward(&block);
                         });
-                        self.fork_tree.insert(block.hash(), block).unwrap();
+                        
                         AddBlockEvent::AcceptedAsNewLongestChain
                     } else {
                         // we're just building on a new chain. Won't take over... yet!
