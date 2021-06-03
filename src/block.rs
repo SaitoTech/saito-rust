@@ -1,5 +1,4 @@
-use crate::crypto::{PublicKey, Sha256Hash};
-use crate::keypair::Keypair;
+use crate::crypto::{make_message_from_bytes, PublicKey, Sha256Hash};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 use rand::Rng;
@@ -47,7 +46,7 @@ impl Block {
         Block::new(0, 0.0, block_core)
     }
     pub fn new(burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
-        let hash = Keypair::make_message_from_bytes(&core.serialize());
+        let hash = make_message_from_bytes(&core.serialize());
         Block {
             hash: hash,
             burnfee: burnfee,
@@ -73,6 +72,11 @@ impl Block {
     /// Returns the `Block` hash
     pub fn clone_hash(&self) -> Sha256Hash {
         self.hash.clone()
+    }
+
+    /// Returns the `Block` creator's `secp256k1::PublicKey`
+    pub fn timestamp(&self) -> u64 {
+        self.core.timestamp
     }
 
     /// Returns the `Block` creator's `secp256k1::PublicKey`

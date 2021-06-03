@@ -125,7 +125,8 @@ impl LongestChainQueue {
 
 #[cfg(test)]
 mod test {
-    use crate::keypair::Keypair;
+    // use crate::keypair::Keypair;
+    use crate::crypto::make_message_from_string;
     use crate::longest_chain_queue::LongestChainQueue;
 
     #[test]
@@ -133,36 +134,36 @@ mod test {
         let mut longest_chain_queue = LongestChainQueue::new();
 
         for n in 0..100 {
-            longest_chain_queue.roll_forward(Keypair::make_message_from_string(&n.to_string()));
+            longest_chain_queue.roll_forward(make_message_from_string(&n.to_string()));
         }
         assert_eq!(longest_chain_queue.latest_block_id(), 99);
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
-            Keypair::make_message_from_string(&99.to_string())
+            make_message_from_string(&99.to_string())
         );
         assert_eq!(
             longest_chain_queue.block_hash_by_id(0),
-            Keypair::make_message_from_string(&0.to_string())
+            make_message_from_string(&0.to_string())
         );
         assert_eq!(
             longest_chain_queue.block_hash_by_id(99),
-            Keypair::make_message_from_string(&99.to_string())
+            make_message_from_string(&99.to_string())
         );
         println!("Expect to see a panic in stdout here:");
         let result = std::panic::catch_unwind(|| longest_chain_queue.block_hash_by_id(100));
         assert!(result.is_err());
         for n in 100..200 {
-            longest_chain_queue.roll_forward(Keypair::make_message_from_string(&n.to_string()));
+            longest_chain_queue.roll_forward(make_message_from_string(&n.to_string()));
         }
         assert_eq!(
             longest_chain_queue.block_hash_by_id(0),
-            Keypair::make_message_from_string(&0.to_string())
+            make_message_from_string(&0.to_string())
         );
-        longest_chain_queue.roll_forward(Keypair::make_message_from_string(&200.to_string()));
+        longest_chain_queue.roll_forward(make_message_from_string(&200.to_string()));
         assert_eq!(longest_chain_queue.latest_block_id(), 200);
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
-            Keypair::make_message_from_string(&200.to_string())
+            make_message_from_string(&200.to_string())
         );
 
         println!("Expect to see a panic in stdout here:");
@@ -174,15 +175,15 @@ mod test {
         assert_eq!(longest_chain_queue.latest_block_id(), 99);
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
-            Keypair::make_message_from_string(&99.to_string())
+            make_message_from_string(&99.to_string())
         );
         for n in 100..201 {
-            longest_chain_queue.roll_forward(Keypair::make_message_from_string(&n.to_string()));
+            longest_chain_queue.roll_forward(make_message_from_string(&n.to_string()));
         }
         assert_eq!(longest_chain_queue.latest_block_id(), 200);
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
-            Keypair::make_message_from_string(&200.to_string())
+            make_message_from_string(&200.to_string())
         );
         // TODO test last_block_in_epoch()
     }

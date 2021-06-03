@@ -60,29 +60,35 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
 
 // TODO move this to another file and include!()
-#[cfg(feature = "test-utilities")]
+// #[cfg(feature = "test-utilities")]
 pub mod test_utilities {
     use crate::block::Block;
-    use crate::crypto::Sha256Hash;
+    use crate::crypto::{make_message_from_bytes, Sha256Hash};
+    use crate::keypair::Keypair;
     use crate::slip::{OutputSlip, SlipID};
     use crate::time::create_timestamp;
-    use crate::transaction::{Transaction, TransactionType};
-    use secp256k1::Signature;
+    use crate::transaction::{Transaction, TransactionCore, TransactionType};
+    // use secp256k1::Signature;
 
     pub fn make_mock_block(previous_block_hash: Sha256Hash) -> Block {
+        let keypair = Keypair::new();
         let from_slip = SlipID::default();
         let to_slip = OutputSlip::default();
-        let tx = Transaction::new(
-            Signature::from_compact(&[0; 64]).unwrap(),
-            vec![],
+        let tx_core = TransactionCore::new(
             create_timestamp(),
             vec![from_slip.clone()],
             vec![to_slip.clone()],
             TransactionType::Normal,
             vec![104, 101, 108, 108, 111],
         );
-        let tx2 = Transaction::default();
+        let message_bytes: Vec<u8> = tx_core.clone().into();
+        let message_hash = make_message_from_bytes(&message_bytes[..]);
+        let signature = keypair.sign_message(&message_hash[..]);
 
-        Block::new_mock(previous_block_hash, vec![tx.clone(), tx2.clone()])
+        let tx = Transaction::add_signature(tx_core, signature);
+        // let tx2 = Transaction::default();
+
+        // Block::new_mock(previous_block_hash, vec![tx.clone(), tx2.clone()])
+        Block::new_mock(previous_block_hash, vec![tx.clone()])
     }
 }

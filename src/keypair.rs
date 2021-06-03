@@ -1,8 +1,6 @@
-use crate::crypto::Sha256Hash;
-use base58::{FromBase58, ToBase58};
+use crate::crypto::make_message_from_string;
+use base58::ToBase58;
 use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
-use sha2::{Digest, Sha256};
-use std::convert::TryInto;
 use std::fmt;
 use std::fmt::Write;
 
@@ -64,25 +62,9 @@ impl Keypair {
         &self.secret_key
     }
 
-    /// Hash the message string with sha256 for signing by secp256k1 and return as byte array
-    /// TODO Move this to crypto
-    pub fn make_message_from_string(message_string: &str) -> Sha256Hash {
-        let mut hasher = Sha256::new();
-        hasher.update(message_string.as_bytes());
-        let hashvalue = hasher.finalize();
-
-        hashvalue.as_slice().try_into().unwrap()
-    }
-    pub fn make_message_from_bytes(message_bytes: &[u8]) -> Sha256Hash {
-        let mut hasher = Sha256::new();
-        hasher.update(message_bytes);
-        let hashvalue = hasher.finalize();
-
-        hashvalue.as_slice().try_into().unwrap()
-    }
     /// Hash and sign a message string
     pub fn sign_string_message(&self, message_string: &str) -> Result<String, std::fmt::Error> {
-        let message_bytes = Keypair::make_message_from_string(message_string);
+        let message_bytes = make_message_from_string(message_string);
         let bytes = self.sign_message(&message_bytes);
         let mut string_out = String::new();
 
@@ -98,18 +80,6 @@ impl Keypair {
         let msg = Message::from_slice(message_bytes).unwrap();
         SECP256K1.sign(&msg, &self.secret_key)
     }
-
-    /// Verify a message signed by secp256k1. Message is a plain string. Sig and pubkey should be base58 encoded.
-    pub fn verify_string_message(message: &str, sig: &str, public_key: &str) -> bool {
-        let message = Message::from_slice(&Keypair::make_message_from_string(message)).unwrap();
-        let sig = Signature::from_der(&String::from(sig).from_base58().unwrap()).unwrap();
-        let public_key =
-            PublicKey::from_slice(&String::from(public_key).from_base58().unwrap()).unwrap();
-        Keypair::verify_message(message, sig, public_key)
-    }
-    fn verify_message(msg: Message, sig: Signature, public_key: PublicKey) -> bool {
-        SECP256K1.verify(&msg, &sig, &public_key).is_ok()
-    }
 }
 
 impl fmt::Display for Keypair {
@@ -123,14 +93,8 @@ impl fmt::Display for Keypair {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::crypto::verify_string_message;
     use hex;
-
-    #[test]
-    fn test_make_message_from_string() {
-        Keypair::make_message_from_string("foobarbaz");
-        Keypair::make_message_from_string("1231231231");
-        Keypair::make_message_from_string("");
-    }
 
     #[test]
     fn test_signing() {
@@ -142,7 +106,7 @@ mod test {
         assert_eq!(sig_string2, "3045022100e45ad15a85e320d8f3c6721b50475ec9572bca4e4831c9cfd73ce8af39fd507c02202b9f0c729cb4a0030c852e836fdfce2301eccfe9a93de3c8579fd77acadc92fd");
         let mut sig_bytes = [0u8; 71];
         assert!(hex::decode_to_slice(sig_string2, &mut sig_bytes as &mut [u8]).is_ok());
-        let result = Keypair::verify_string_message(
+        let result = verify_string_message(
             "hello world",
             &sig_bytes.to_base58(),
             "e1hpHsuiRPbzXdCf7smXvAFCnqpvZXcjtxZLMxcATat1",

@@ -1,7 +1,9 @@
 use crate::block::Block;
-use crate::crypto::Sha256Hash;
+use crate::burnfee::BurnFee;
+use crate::crypto::{make_message_from_bytes, verify_hash_message, Sha256Hash};
 use crate::forktree::ForkTree;
 use crate::longest_chain_queue::LongestChainQueue;
+use crate::transaction::Transaction;
 use crate::utxoset::UtxoSet;
 
 lazy_static! {
@@ -61,6 +63,11 @@ impl Blockchain {
         }
     }
 
+    /// If the block is in the fork
+    pub fn get_block_by_hash(&self, block_hash: &Sha256Hash) -> Option<&Block> {
+        self.fork_tree.block_by_hash(block_hash)
+    }
+
     // Get the block from fork_tree and check if the hash matches the one in longest_chain_queue
     fn _contains_block_hash_in_longest_chain(&self, block_hash: &Sha256Hash) -> bool {
         self.longest_chain_queue.contains_hash(block_hash)
@@ -69,11 +76,6 @@ impl Blockchain {
     /// If the block is in the fork
     fn contains_block_hash(&self, block_hash: &Sha256Hash) -> bool {
         self.fork_tree.contains_block_hash(block_hash)
-    }
-
-    /// If the block is in the fork
-    fn get_block_by_hash(&self, block_hash: &Sha256Hash) -> Option<&Block> {
-        self.fork_tree.block_by_hash(block_hash)
     }
 
     fn fork_chains(&self, block: &Block) -> Option<(Block, ChainFork, ChainFork)> {
@@ -177,7 +179,99 @@ impl Blockchain {
     }
 
     fn validate_block(&self, block: &Block) -> bool {
-        !block.are_sigs_valid() | block.are_slips_spendable()
+        // !block.are_sigs_valid() | block.are_slips_spendable()
+
+        // how do we validate blocks?
+        // validate block here first
+
+        // If th block has an empty hash as previous_block_hash, it's valid no question
+        let previous_block_hash = block.previous_block_hash();
+        println!("{:?}", previous_block_hash);
+        if previous_block_hash == &[0; 32] {
+            return true;
+        }
+
+        // If the previous block hash doesn't exist in the ForkTree, it's rejected
+        if !self.fork_tree.contains_block_hash(previous_block_hash) {
+            println!("COULD NOT FIND PREVIOUS BLOCK!");
+            return false;
+        }
+
+        // TODO -- include checks on difficulty and paysplit here to validate
+
+        // Validate the burnfee
+        let previous_block = self.fork_tree.block_by_hash(previous_block_hash).unwrap();
+        if block.burnfee()
+            != BurnFee::burn_fee_calculation(
+                previous_block.burnfee() as f64,
+                block.timestamp(),
+                previous_block.timestamp(),
+            )
+        {
+            println!("BURNFEE IS WRONG");
+            return false;
+        }
+
+        if previous_block.timestamp() > block.timestamp() {
+            println!("INCORRECT TIMESTAMPS");
+            return false;
+        }
+
+        println!("VALIDATE TX");
+        let transactions_valid = block
+            .transactions()
+            .iter()
+            .all(|tx| self.validate_transaction(block, tx));
+
+        transactions_valid
+    }
+
+    fn validate_transaction(&self, _block: &Block, tx: &Transaction) -> bool {
+        // check that our sigs are valid
+        if let Some(output_slip) = self.utxoset.output_slip_from_slip_id(&tx.core.inputs()[0]) {
+            let hash: Vec<u8> = tx.core.clone().into();
+
+            let message = make_message_from_bytes(&hash[..]);
+            if !verify_hash_message(&message, &tx.signature(), &(output_slip.address())) {
+                println!("HASH IS NOT VALID");
+                return false;
+            };
+
+            // validate our slips
+            let inputs_are_valid = tx.core.inputs().iter().all(|input| {
+                return !self.utxoset.is_slip_spent(input);
+            });
+
+            if !inputs_are_valid {
+                println!("INPUTS ARE NOT FVALID");
+                return false;
+            }
+
+            // valuidate that inputs are unspent
+            let input_amt: u64 = tx
+                .core
+                .inputs()
+                .iter()
+                .map(|input| {
+                    self.utxoset
+                        .output_slip_from_slip_id(input)
+                        .unwrap()
+                        .amount()
+                })
+                .sum();
+
+            let output_amt: u64 = tx.core.outputs().iter().map(|output| output.amount()).sum();
+
+            if input_amt != output_amt {
+                println!("INPUTS DO NOT MATCH OUTPUTS");
+                return false;
+            }
+
+            return true;
+        } else {
+            // no input slips, thus no output slips.
+            return true;
+        }
     }
 
     fn is_longer_chain(&self, new_chain: &ChainFork, old_chain: &ChainFork) -> bool {
@@ -204,6 +298,7 @@ mod tests {
     }
     #[test]
     fn add_block_test() {
+        println!("FIRST BLOCK");
         let mut blockchain = Blockchain::new();
         let block = test_utilities::make_mock_block([0; 32]);
         let mut prev_block_hash = block.hash().clone();
@@ -212,6 +307,7 @@ mod tests {
         //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
         for _n in 0..5 {
+            println!("NEXT BLOCKK");
             let block = test_utilities::make_mock_block(prev_block_hash);
             prev_block_hash = block.hash().clone();
             let result: AddBlockEvent = blockchain.add_block(block.clone());

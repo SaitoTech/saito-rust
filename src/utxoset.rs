@@ -110,6 +110,10 @@ impl UtxoSet {
         )
     }
 
+    pub fn output_slip_from_slip_id(&self, slip_id: &SlipID) -> Option<&OutputSlip> {
+        self.utxo_hashmap.get(slip_id)
+    }
+
     /// Insert the inputs of a `Transaction` with the `Block` id
     ///
     /// * `tx` - `Transaction` which the inputs are inserted into `HashMap`
