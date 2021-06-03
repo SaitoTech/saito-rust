@@ -3,6 +3,7 @@ pub use secp256k1::Signature;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::str::FromStr;
+use crate::crypto::Sha256Hash;
 
 /// An enumerated set of `Slip` types
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
@@ -14,14 +15,14 @@ pub enum SlipType {
 impl Hash for SlipID {
     fn hash<H: Hasher>(&self, state: &mut H) {
         state.write(&self.slip_ordinal.to_ne_bytes());
-        state.write(&self.tx_id.serialize_compact())
+        state.write(&self.tx_id)
     }
 }
 
 /// A record of owernship of funds on the network
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
 pub struct SlipID {
-    tx_id: Signature,
+    tx_id: Sha256Hash,
     /// `Slip` id
     slip_ordinal: u64,
 }
@@ -41,12 +42,12 @@ impl SlipID {
     /// Create new `SlipID`
     pub fn default() -> Self {
         SlipID {
-            tx_id: Signature::from_compact(&[0; 64]).unwrap(),
+            tx_id: [0; 32],
             slip_ordinal: 0,
         }
     }
     /// Create new `SlipID`
-    pub fn new(tx_id: Signature, slip_ordinal: u64) -> Self {
+    pub fn new(tx_id: Sha256Hash, slip_ordinal: u64) -> Self {
         SlipID {
             tx_id,
             slip_ordinal,
@@ -54,7 +55,7 @@ impl SlipID {
     }
 
     /// Returns the `Transaction` id the slip originated from
-    pub fn tx_id(&self) -> Signature {
+    pub fn tx_id(&self) -> Sha256Hash {
         self.tx_id
     }
 

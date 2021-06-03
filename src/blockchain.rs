@@ -159,7 +159,7 @@ impl Blockchain {
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
                 } else {
-                    
+                    // TODO give the ForkTuple some named fields and use those instead here
                     let old_chain = fork_tuple.1;
                     let new_chain = fork_tuple.2;
                     if self.is_longer_chain(&new_chain, &old_chain) {
@@ -193,7 +193,7 @@ impl Blockchain {
         }
     }
 
-    fn validate_block(&self, block: &Block, _fork_tuple: &ForkTuple) -> bool {
+    fn validate_block(&self, block: &Block, fork_tuple: &ForkTuple) -> bool {
         // !block.are_sigs_valid() | block.are_slips_spendable()
 
         // how do we validate blocks?
@@ -236,25 +236,27 @@ impl Blockchain {
         let transactions_valid = block
             .transactions()
             .iter()
-            .all(|tx| self.validate_transaction(block, tx));
+            .all(|tx| self.validate_transaction(block, tx, fork_tuple));
 
         transactions_valid
     }
 
-    fn validate_transaction(&self, block: &Block, tx: &Transaction) -> bool {
+    fn validate_transaction(&self, block: &Block, tx: &Transaction, fork_tuple: &ForkTuple) -> bool {
         // check that our sigs are valid
         if let Some(output_slip) = self.utxoset.output_slip_from_slip_id(&tx.core.inputs()[0]) {
-            let hash: Vec<u8> = tx.core.clone().into();
-
-            let message = make_message_from_bytes(&hash[..]);
-            if !verify_message_signature(&message, &tx.signature(), &(output_slip.address())) {
+            
+            
+            // let serialized_tx: Vec<u8> = tx.core.clone().into();
+            // make_message_from_bytes(&serialized_tx[..]);
+            let hash_message = tx.core.hash();
+            if !verify_message_signature(&hash_message, &tx.signature(), &(output_slip.address())) {
                 println!("SIGNATURE IS NOT VALID");
                 return false;
             };
 
             // validate our slips
             let inputs_are_valid = tx.core.inputs().iter().all(|input| {
-                return !self.utxoset.is_slip_spent_at_block(input, block);
+                return !self.utxoset.is_slip_spent_at_block(input, block, fork_tuple);
             });
 
             if !inputs_are_valid {

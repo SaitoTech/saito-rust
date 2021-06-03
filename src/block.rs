@@ -4,7 +4,6 @@ use crate::transaction::Transaction;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-
 use std::{mem, slice};
 
 /// The `Block` holds all data inside the block body,
@@ -128,17 +127,6 @@ impl Block {
     }
 }
 
-impl From<Vec<u8>> for Block {
-    fn from(data: Vec<u8>) -> Self {
-        bincode::deserialize(&data[..]).unwrap()
-    }
-}
-
-impl Into<Vec<u8>> for Block {
-    fn into(self) -> Vec<u8> {
-        bincode::serialize(&self).unwrap()
-    }
-}
 
 /// The `BlockCore` holds the most important metadata associated with the `Block`
 /// it is essentially the critical block data needed for distribution from which
@@ -214,6 +202,29 @@ impl BlockCore {
     }
 }
 
+// impl From<Vec<u8>> for BlockCore {
+//     fn from(data: Vec<u8>) -> Self {
+//         bincode::deserialize(&data[..]).unwrap()
+//     }
+// }
+// 
+// impl Into<Vec<u8>> for BlockCore {
+//     fn into(self) -> Vec<u8> {
+//         bincode::serialize(&self).unwrap()
+//     }
+// }
+
+impl From<Vec<u8>> for Block {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for Block {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
 #[cfg(test)]
 mod test {
     use super::*;
@@ -259,7 +270,7 @@ mod test {
 
         assert_eq!(
             block.transactions()[0].core.inputs()[0].tx_id(),
-            Signature::from_compact(&[0; 64]).unwrap()
+            [0; 32]
         );
 
         assert_eq!(block.transactions()[0].core.inputs()[0].slip_ordinal(), 0);

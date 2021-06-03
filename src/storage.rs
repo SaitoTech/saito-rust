@@ -1,4 +1,4 @@
-use crate::block::Block;
+use crate::block::{Block, BlockCore};
 use crate::crypto::Sha256Hash;
 
 use tokio::fs::File;

@@ -1,6 +1,8 @@
 use crate::{
     slip::{OutputSlip, SlipID},
     time::create_timestamp,
+    crypto::{make_message_from_bytes, Sha256Hash},
+    
 };
 use secp256k1::{PublicKey, Signature};
 use serde::{Deserialize, Serialize};
@@ -56,6 +58,18 @@ pub struct TransactionCore {
     /// A byte array of miscellaneous information
     message: Vec<u8>,
 }
+
+// impl From<Vec<u8>> for TransactionCore {
+//     fn from(data: Vec<u8>) -> Self {
+//         bincode::deserialize(&data[..]).unwrap()
+//     }
+// }
+// 
+// impl Into<Vec<u8>> for TransactionCore {
+//     fn into(self) -> Vec<u8> {
+//         bincode::serialize(&self.core).unwrap()
+//     }
+// }
 
 impl Transaction {
     ///
@@ -119,6 +133,7 @@ impl Transaction {
     pub fn add_hop_to_path(&mut self, path: Hop) {
         self.path.push(path);
     }
+    
     /// validates sig
     pub fn sig_is_valid(&self) -> bool {
         // TODO check with keypair if things are valid
@@ -144,6 +159,17 @@ impl Transaction {
     //     // TODO loop through all sigs in utxo set and make sure they have to correct receiver and amount
     //     true
     // }
+}
+impl From<Vec<u8>> for TransactionCore {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for TransactionCore {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
 }
 
 impl TransactionCore {
@@ -210,13 +236,14 @@ impl TransactionCore {
     pub fn message(&self) -> &Vec<u8> {
         &self.message
     }
-}
-
-impl Into<Vec<u8>> for TransactionCore {
-    fn into(self) -> Vec<u8> {
-        bincode::serialize(&self).unwrap()
+    
+    pub fn hash(&self) -> Sha256Hash {
+        // TODO get rid of this clone
+        let serialized_tx: Vec<u8> = self.clone().into();
+        make_message_from_bytes(&serialized_tx[..])
     }
 }
+
 
 #[cfg(test)]
 mod tests {
