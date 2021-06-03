@@ -59,17 +59,17 @@ impl UtxoSet {
             .iter()
             .for_each(|tx| self.spend_transaction(tx, block));
     }
-
-    pub fn is_slip_spent(&self, slip_id: &SlipID) -> bool {
-        match self.shashmap.get(slip_id) {
-            Some(value) => match value {
-                UtxoSetValue::Spent(_) => true,
-                UtxoSetValue::PotentialForkSpent(_) => true,
-                _ => false,
-            },
-            None => true,
-        }
-    }
+    // 
+    // pub fn is_slip_spent(&self, slip_id: &SlipID) -> bool {
+    //     match self.shashmap.get(slip_id) {
+    //         Some(value) => match value {
+    //             UtxoSetValue::Spent(_) => true,
+    //             UtxoSetValue::PotentialForkSpent(_) => true,
+    //             _ => false,
+    //         },
+    //         None => true,
+    //     }
+    // }
     /// Return the `Block` id based on `OutputSlip`
     ///
     /// * `slip` - `&OutputSlip` as key
@@ -78,7 +78,15 @@ impl UtxoSet {
     // }
 
     /// Returns true if the slip has been seen in the blockchain
-    pub fn is_slip_spendable_at_block(&self, _block: &Block, _slip_id: &SlipID) -> bool {
+    pub fn is_slip_spent_at_block(&self, slip_id: &SlipID, _block: &Block) -> bool {
+        match self.shashmap.get(slip_id) {
+            Some(value) => match value {
+                UtxoSetValue::Spent(_) => true,
+                UtxoSetValue::PotentialForkSpent(_) => true,
+                _ => false,
+            },
+            None => true,
+        };
         // if Slip is Unspent, return true
         // else if Slip is PotentialForkUnspent, find common ancestor and check if the hash in
         // shashmap PotentialForkUnspent is in any of the ancestors before common_ancestor
@@ -92,7 +100,7 @@ impl UtxoSet {
         //     }
         //     next_block = block.previous_block_hash();
         // }
-        true
+        false
     }
 
     /// Returns true if the SlipOutput found in the utxoset matches the SlipOutput

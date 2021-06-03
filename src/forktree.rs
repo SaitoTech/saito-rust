@@ -15,8 +15,9 @@ impl ForkTree {
         }
     }
 
-    pub fn insert(&mut self, block_hash: Sha256Hash, block: Block) {
+    pub fn insert(&mut self, block_hash: Sha256Hash, block: Block) -> Option<&Block> {
         self.fork_tree.insert(block_hash, block);
+        self.fork_tree.get(&block_hash)
     }
 
     pub fn remove(&mut self, block_hash: &Sha256Hash) {
