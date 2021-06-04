@@ -28,14 +28,18 @@ impl Block {
         Block::new(0, 0.0, BlockCore::default())
     }
     /// Creates a new `BlockCore`
-    pub fn new_mock(previous_block_hash: Sha256Hash, transactions: Vec<Transaction>) -> Self {
+    pub fn new_mock(
+        previous_block_hash: Sha256Hash,
+        transactions: Vec<Transaction>,
+        block_id: u64,
+    ) -> Self {
         let public_key: PublicKey = PublicKey::from_str(
             "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
         )
         .unwrap();
         let timestamp = create_timestamp();
         let block_core = BlockCore::new(
-            0,
+            block_id,
             timestamp,
             previous_block_hash,
             public_key,
@@ -253,7 +257,7 @@ mod test {
             "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
         )
         .unwrap();
-        let block = test_utilities::make_mock_block([0; 32]);
+        let block = test_utilities::make_mock_block([0; 32], 0);
         assert_eq!(block.transactions().len(), 1);
         assert_eq!(
             block.transactions()[0].core.outputs()[0].address(),
