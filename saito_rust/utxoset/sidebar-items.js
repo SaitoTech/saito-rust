@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["UtxoSet","A hashmap storing Slips TODO fix this documentation once we’ve settled on what data structures actually belong here."]]});
