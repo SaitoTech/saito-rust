@@ -210,7 +210,7 @@
         });
 
         <span class="kw">loop</span> {
-            <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">saito_message_rx</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
+            <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">_message</span>) <span class="op">=</span> <span class="ident">saito_message_rx</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
                 <span class="comment">//</span>
                 <span class="comment">// TODO - &quot;process&quot; what? descriptive function name -- should fetch latest block not block index</span>
                 <span class="comment">//</span>
