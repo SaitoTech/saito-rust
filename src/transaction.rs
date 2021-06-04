@@ -1,4 +1,5 @@
 use crate::{
+    crypto::{make_message_from_bytes, Sha256Hash},
     slip::{OutputSlip, SlipID},
     time::create_timestamp,
 };
@@ -25,7 +26,7 @@ impl Hop {
 }
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum TransactionType {
     Normal,
 }
@@ -57,9 +58,21 @@ pub struct TransactionCore {
     message: Vec<u8>,
 }
 
+// impl From<Vec<u8>> for TransactionCore {
+//     fn from(data: Vec<u8>) -> Self {
+//         bincode::deserialize(&data[..]).unwrap()
+//     }
+// }
+//
+// impl Into<Vec<u8>> for TransactionCore {
+//     fn into(self) -> Vec<u8> {
+//         bincode::serialize(&self.core).unwrap()
+//     }
+// }
+
 impl Transaction {
     ///
-    pub fn new_mock() -> Transaction {
+    pub fn default() -> Transaction {
         Transaction::new(
             Signature::from_compact(&[0; 64]).unwrap(),
             vec![],
@@ -70,6 +83,7 @@ impl Transaction {
             vec![],
         )
     }
+
     /// Creates new `Transaction`
     ///
     /// * `broadcast_type` - `TransactionType` of the new `Transaction`
@@ -82,7 +96,6 @@ impl Transaction {
         broadcast_type: TransactionType,
         message: Vec<u8>,
     ) -> Transaction {
-        // TODO add inputs, outputs, and message here
         Transaction {
             signature: signature,
             path: path,
@@ -119,9 +132,65 @@ impl Transaction {
     pub fn add_hop_to_path(&mut self, path: Hop) {
         self.path.push(path);
     }
+
+    /// validates sig
+    pub fn sig_is_valid(&self) -> bool {
+        // TODO check with keypair if things are valid
+        true
+    }
+    /// validates slip against utxoset
+    pub fn are_slips_valid(&self) -> bool {
+        // self.inputs.iter()
+        // result = result && self.is_slip_spendable(slip_id);
+        // result = result && self.is_slip_id_valid(slip_id, output_slip);
+        // true
+        // self.inputs().iter().all(|slip_id| self.is_slip_spendable(slip_id))
+        true
+    }
+
+    // Returns true if the slip has been seen in the blockchain
+    // fn is_slip_spendable(&self, _slip_id: &SlipID) -> bool {
+    //     // TODO check with utxoset to see if slip is spendable
+    //     true
+    // }
+    // // Returns true if the OutputSlip found in the utxoset matches the OutputSlip
+    // fn is_slip_id_valid(&self, _slip_id: &SlipID, _slip_as_output: &OutputSlip) -> bool {
+    //     // TODO loop through all sigs in utxo set and make sure they have to correct receiver and amount
+    //     true
+    // }
+}
+impl From<Vec<u8>> for TransactionCore {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for TransactionCore {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
 }
 
 impl TransactionCore {
+    /// Creates new `Transaction`
+    ///
+    /// * `broadcast_type` - `TransactionType` of the new `Transaction`
+    pub fn new(
+        timestamp: u64,
+        inputs: Vec<SlipID>,
+        outputs: Vec<OutputSlip>,
+        broadcast_type: TransactionType,
+        message: Vec<u8>,
+    ) -> Self {
+        TransactionCore {
+            timestamp: timestamp,
+            inputs: inputs,
+            outputs: outputs,
+            broadcast_type: broadcast_type,
+            message: message,
+        }
+    }
+
     /// Returns a timestamp when `Transaction` was created
     pub fn timestamp(&self) -> u64 {
         self.timestamp
@@ -166,6 +235,12 @@ impl TransactionCore {
     pub fn message(&self) -> &Vec<u8> {
         &self.message
     }
+
+    pub fn hash(&self) -> Sha256Hash {
+        // TODO get rid of this clone
+        let serialized_tx: Vec<u8> = self.clone().into();
+        make_message_from_bytes(&serialized_tx[..])
+    }
 }
 
 #[cfg(test)]
@@ -173,12 +248,12 @@ mod tests {
     use super::*;
     use crate::{
         keypair::Keypair,
-        slip::{OutputSlip, SlipBroadcastType, SlipID},
+        slip::{OutputSlip, SlipID, SlipType},
     };
 
     #[test]
     fn transaction_test() {
-        let mut tx: Transaction = Transaction::new_mock();
+        let mut tx: Transaction = Transaction::default();
 
         assert_eq!(tx.core.outputs(), &vec![]);
         assert_eq!(tx.core.inputs(), &vec![]);
@@ -188,8 +263,8 @@ mod tests {
         assert_eq!(tx.core.message(), &vec![]);
 
         let keypair = Keypair::new();
-        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipBroadcastType::Normal, 0);
-        let from_slip = SlipID::new(10, 10, 10);
+        let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 0);
+        let from_slip = SlipID::default();
 
         // let hop_message_bytes = Keypair::make_message_from_string("message_string");
         // let signature = keypair.sign_message(&hop_message_bytes);

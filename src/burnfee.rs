@@ -69,6 +69,18 @@ impl BurnFee {
     ) {
         self.start = self.burn_fee_adjustment(current_block_timestamp, previous_block_timestamp);
     }
+
+    pub fn burn_fee_calculation(
+        start: f64,
+        current_block_timestamp: u64,
+        previous_block_timestamp: u64,
+    ) -> u64 {
+        let timestamp_difference = match current_block_timestamp - previous_block_timestamp {
+            0 => 1,
+            diff => diff,
+        };
+        return (start * ((HEARTBEAT) as f64 / (timestamp_difference) as f64).sqrt()) as u64;
+    }
 }
 
 #[cfg(test)]
