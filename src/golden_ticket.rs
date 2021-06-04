@@ -1,8 +1,8 @@
 use crate::{
     block::Block,
-    crypto::PublicKey,
+    crypto::{PublicKey, Sha256Hash},
     keypair::Keypair,
-    slip::{OutputSlip, SlipBroadcastType},
+    slip::{OutputSlip, SlipType},
     transaction::Transaction,
 };
 
@@ -11,16 +11,16 @@ use crate::{
 #[derive(Debug, Clone, Copy)]
 pub struct GoldenTicket {
     // the target `Block` hash to solve for
-    target: [u8; 32],
+    target: Sha256Hash,
     // the random solution that matches the target hash to some arbitrary level of difficulty
-    solution: [u8; 32],
+    solution: Sha256Hash,
     // `secp256k1::PublicKey` of the node that found the solution
     publickey: PublicKey,
 }
 
 impl GoldenTicket {
     /// Create new `GoldenTicket`
-    pub fn new(target: [u8; 32], solution: [u8; 32], publickey: PublicKey) -> Self {
+    pub fn new(target: Sha256Hash, solution: Sha256Hash, publickey: PublicKey) -> Self {
         GoldenTicket {
             target,
             solution,
@@ -35,7 +35,7 @@ impl GoldenTicket {
 /// * `previous_block` - previous `Block` reference
 /// * `keypair` - `Keypair`
 pub fn generate_golden_ticket_transaction(
-    solution: [u8; 32],
+    solution: Sha256Hash,
     previous_block: &Block,
     keypair: &Keypair,
 ) -> Transaction {
@@ -54,14 +54,14 @@ pub fn generate_golden_ticket_transaction(
     // TODO -- calculate captured fees in blocks based on transaction fees
     // for now, we just split the coinbase between the miners and the routers
 
-    let mut golden_tx = Transaction::new_mock();
+    let mut golden_tx = Transaction::default();
 
     let total_fees_for_miners_and_nodes = &previous_block.coinbase();
 
     let miner_share = (*total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
-    let miner_slip = OutputSlip::new(*publickey, SlipBroadcastType::Normal, miner_share);
-    let node_slip = OutputSlip::new(winning_address, SlipBroadcastType::Normal, node_share);
+    let miner_slip = OutputSlip::new(*publickey, SlipType::Normal, miner_share);
+    let node_slip = OutputSlip::new(winning_address, SlipType::Normal, node_share);
 
     golden_tx.core.add_output(miner_slip);
     golden_tx.core.add_output(node_slip);
@@ -73,7 +73,7 @@ pub fn generate_golden_ticket_transaction(
 ///
 /// * `solution` - `Hash` of solution we created in golden ticket game
 /// * `previous_block` - Previous `Block`
-fn find_winner(_solution: &[u8; 32], previous_block: &Block) -> PublicKey {
+fn find_winner(_solution: &Sha256Hash, previous_block: &Block) -> PublicKey {
     // TODO -- use fees paid in the block to determine the block winner with routing algorithm
     // for now, we just use the block creator to determine who the winner is
     // TODO - don't die here
