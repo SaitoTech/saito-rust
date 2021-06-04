@@ -44,7 +44,7 @@ cargo test
 cargo fmt
 ```
 
-Format code according to the [Rust style Guide](https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/guide.md). cargo fmt make this easy.
+Format code according to the [Rust style Guide](https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/guide.md).
 
 ### Benchmarks
 
