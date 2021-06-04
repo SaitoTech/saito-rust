@@ -10,7 +10,7 @@ use std::str::FromStr;
 #[derive(Debug, Clone)]
 enum LongestChainSpentStatus {
     Unspent(u64), // block id
-    Spent(u64), // block id
+    Spent(u64),   // block id
 }
 
 /// TODO document this
@@ -29,14 +29,17 @@ struct SlipSpentStatus {
 }
 
 impl SlipSpentStatus {
-    pub fn new_on_longest_chain(output_slip: OutputSlip, longest_chain_status: LongestChainSpentStatus) -> Self {
+    pub fn new_on_longest_chain(
+        output_slip: OutputSlip,
+        longest_chain_status: LongestChainSpentStatus,
+    ) -> Self {
         SlipSpentStatus {
             output_slip: output_slip,
             longest_chain_status: Some(longest_chain_status),
             fork_status: vec![],
         }
     }
-    
+
     pub fn new_on_fork(output_slip: OutputSlip, fork_status: ForkSpentStatus) -> Self {
         SlipSpentStatus {
             output_slip: output_slip,
@@ -45,7 +48,6 @@ impl SlipSpentStatus {
         }
     }
 }
-
 
 /// A hashmap storing Slips TODO fix this documentation once we've settled on what
 /// data structures actually belong here.
@@ -96,7 +98,12 @@ impl UtxoSet {
     /// block). The ForkTuple allows us to check for Unspent/Spent status along the fork's
     /// potential new chain more quickly. This can be further optimized in the future.
     /// TODO Maybe change this to is_slip_spendable_at_block and revere the logic?
-    pub fn is_slip_spent_at_block(&self, _slip_id: &SlipID, _block: &Block, _fork_tuple: &ForkTuple) -> bool {
+    pub fn is_slip_spent_at_block(
+        &self,
+        _slip_id: &SlipID,
+        _block: &Block,
+        _fork_tuple: &ForkTuple,
+    ) -> bool {
         // if the block is on the longest chain
         //   if the Slip is marked Unspent, return false(unspent)
         //   else return true(Slip is considered Spent if it is marked Spent(...) or if it's not in the set)
@@ -129,25 +136,21 @@ impl UtxoSet {
     /// This is used to get the Output(`OutputSlip`) which corresponds to a given Input(`SlipID`)
     pub fn output_slip_from_slip_id(&self, slip_id: &SlipID) -> Option<&OutputSlip> {
         match self.shashmap.get(slip_id) {
-             Some(slip_output) => Some(&slip_output.output_slip),
-             None => None,
-        } 
+            Some(slip_output) => Some(&slip_output.output_slip),
+            None => None,
+        }
     }
-    
+
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Inputs should be marked back to Unspent, Outputs should have all status set to None. We
     /// do not delete Outputs from the hashmap because they will soon be "unspent" again when
     /// the transaction is rolled forward in another block.
-    fn roll_back_transaction(&mut self, _tx: &Transaction, _block: &Block) {
-        
-    }
+    fn roll_back_transaction(&mut self, _tx: &Transaction, _block: &Block) {}
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Inputs can just be removed(delete the appropriate ForkSpent from the vector, the
     /// ForkUnspent is still in the vector). Outputs should also have their ForkSpent removed from
     /// the vector.
-    fn roll_back_transaction_on_fork(&mut self, _tx: &Transaction, _block: &Block) {
-        
-    }
+    fn roll_back_transaction_on_fork(&mut self, _tx: &Transaction, _block: &Block) {}
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Outputs should be added or marked Unspent, Inputs should be marked Spent. This method
     /// Can be called during a normal new block or during a reorg, so Unspent Outputs may already
@@ -155,21 +158,32 @@ impl UtxoSet {
     fn roll_forward_transaction(&mut self, tx: &Transaction, block: &Block) {
         // loop through outputs and mark as unspent. Add them if they aren't already in the
         // hashmap, otherwise update them appropriately
-        tx.core.outputs().iter().enumerate().for_each(|(index, output)| {
-            let slip_id = SlipID::new(tx.core.hash(), index as u64);
-            self.shashmap.entry(slip_id)
-               .and_modify(|slip_spent_status| {
-                   slip_spent_status.longest_chain_status = Some(LongestChainSpentStatus::Unspent(block.id()));
-                })
-               .or_insert(SlipSpentStatus::new_on_longest_chain(output.clone(), LongestChainSpentStatus::Unspent(block.id())));
-        });
+        tx.core
+            .outputs()
+            .iter()
+            .enumerate()
+            .for_each(|(index, output)| {
+                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                self.shashmap
+                    .entry(slip_id)
+                    .and_modify(|slip_spent_status| {
+                        slip_spent_status.longest_chain_status =
+                            Some(LongestChainSpentStatus::Unspent(block.id()));
+                    })
+                    .or_insert(SlipSpentStatus::new_on_longest_chain(
+                        output.clone(),
+                        LongestChainSpentStatus::Unspent(block.id()),
+                    ));
+            });
         // loop through inputs and mark them as Spent, if they're not in the hashmap something is
         // horribly wrong
         tx.core.inputs().iter().for_each(|slip_id| {
-            self.shashmap.entry(*slip_id)
-               .and_modify(|slip_spent_status: &mut SlipSpentStatus | {
-                   slip_spent_status.longest_chain_status = Some(LongestChainSpentStatus::Spent(block.id()));
-               });
+            self.shashmap
+                .entry(*slip_id)
+                .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
+                    slip_spent_status.longest_chain_status =
+                        Some(LongestChainSpentStatus::Spent(block.id()));
+                });
         });
     }
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
@@ -177,20 +191,33 @@ impl UtxoSet {
     /// This method be called when the block is first seen but should never need to be called
     /// during a reorg.
     fn roll_forward_transaction_on_fork(&mut self, tx: &Transaction, block: &Block) {
-        tx.core.outputs().iter().enumerate().for_each(|(index, output)| {
-            let slip_id = SlipID::new(tx.core.hash(), index as u64);
-            self.shashmap.entry(slip_id)
-               .and_modify(|slip_spent_status: &mut SlipSpentStatus | {
-                   slip_spent_status.fork_status.push(ForkSpentStatus::ForkUnspent(block.hash().clone()));
-                })
-               .or_insert(SlipSpentStatus::new_on_fork(output.clone(), ForkSpentStatus::ForkUnspent(block.hash().clone())));
-        });
+        tx.core
+            .outputs()
+            .iter()
+            .enumerate()
+            .for_each(|(index, output)| {
+                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                self.shashmap
+                    .entry(slip_id)
+                    .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
+                        slip_spent_status
+                            .fork_status
+                            .push(ForkSpentStatus::ForkUnspent(block.hash().clone()));
+                    })
+                    .or_insert(SlipSpentStatus::new_on_fork(
+                        output.clone(),
+                        ForkSpentStatus::ForkUnspent(block.hash().clone()),
+                    ));
+            });
         // loop through inputs and mark them as ForkSpent
         tx.core.inputs().iter().for_each(|slip_id| {
-            self.shashmap.entry(*slip_id)
-               .and_modify(|slip_spent_status: &mut SlipSpentStatus | {
-                   slip_spent_status.fork_status.push(ForkSpentStatus::ForkSpent(block.hash().clone()));
-               });
+            self.shashmap
+                .entry(*slip_id)
+                .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
+                    slip_spent_status
+                        .fork_status
+                        .push(ForkSpentStatus::ForkSpent(block.hash().clone()));
+                });
         });
     }
 }

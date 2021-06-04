@@ -1,9 +1,9 @@
+use crate::crypto::Sha256Hash;
 use secp256k1::PublicKey;
 pub use secp256k1::Signature;
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};
 use std::str::FromStr;
-use crate::crypto::Sha256Hash;
 
 /// An enumerated set of `Slip` types
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
