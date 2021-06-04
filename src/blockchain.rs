@@ -1,6 +1,6 @@
 use crate::block::Block;
 use crate::burnfee::BurnFee;
-use crate::crypto::{make_message_from_bytes, verify_message_signature, Sha256Hash};
+use crate::crypto::{verify_message_signature, Sha256Hash};
 use crate::forktree::ForkTree;
 use crate::longest_chain_queue::LongestChainQueue;
 use crate::transaction::Transaction;
@@ -107,9 +107,9 @@ impl Blockchain {
         }
 
         let ancestor_block = target_block.clone();
-        let mut i: Option<u64> = self.longest_chain_queue.latest_block_id();
+        let i: Option<u64> = self.longest_chain_queue.latest_block_id();
         // TODO do this in a more rusty way
-        if(!i.is_none()) {
+        if !i.is_none() {
             let mut i = i.unwrap();
             while i > ancestor_block.id() {
                 let hash = self.longest_chain_queue.block_hash_by_id(i as u64);
@@ -121,16 +121,18 @@ impl Blockchain {
 
         (ancestor_block, old_chain, new_chain)
     }
-    fn roll_forward(&mut self, block: &Block) {
-        // self.utxoset.roll_forward(&block);
-        // self.longest_chain_queue.roll_forward(block.hash().clone());
-        self.longest_chain_queue.roll_forward(block.hash());
-        self.utxoset.roll_forward(&block);
-    }
-    fn roll_back(&mut self, block: &Block) {
-        self.longest_chain_queue.roll_back();
-        self.utxoset.roll_back(block);
-    }
+    // TODO we'd like to use these functions to simply the code but there is some borrowing
+    // problem with self
+    // fn roll_forward(&mut self, block: &Block) {
+    //     // self.utxoset.roll_forward(&block);
+    //     // self.longest_chain_queue.roll_forward(block.hash().clone());
+    //     self.longest_chain_queue.roll_forward(block.hash());
+    //     self.utxoset.roll_forward(&block);
+    // }
+    // fn roll_back(&mut self, block: &Block) {
+    //     self.longest_chain_queue.roll_back();
+    //     self.utxoset.roll_back(block);
+    // }
     /// Append `Block` to the index of `Blockchain`
     /// These `AddBlockEvent`s will be turned into network responses so peers can figure out
     /// what's going on.
@@ -154,7 +156,8 @@ impl Blockchain {
                     && &latest_block_hash.unwrap() == block.previous_block_hash();
                 if is_first_block || is_new_lc_tip {
                     // First Block or we're new tip of the longest chain
-                    self.roll_forward(&block);
+                    self.longest_chain_queue.roll_forward(block.hash());
+                    self.utxoset.roll_forward(&block);
                     self.fork_tree.insert(block.hash(), block).unwrap();
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
@@ -166,8 +169,7 @@ impl Blockchain {
                         self.fork_tree.insert(block.hash(), block).unwrap();
                         // Unwind the old chain
                         old_chain.blocks.iter().for_each(|block_hash| {
-                            let block = self.fork_tree.block_by_hash(block_hash).unwrap();
-                            
+                            let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
                             self.longest_chain_queue.roll_back();
                             self.utxoset.roll_back(block);
                         });

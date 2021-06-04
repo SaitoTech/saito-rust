@@ -92,7 +92,7 @@ impl LongestChainQueue {
     }
 
     pub fn latest_block_id(&self) -> Option<u64> {
-        if( self.longest_chain_length == 0) {
+        if self.longest_chain_length == 0 {
             None
         } else {
             Some(self.longest_chain_length - 1)    

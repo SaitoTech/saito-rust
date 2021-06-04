@@ -9,8 +9,8 @@ use std::str::FromStr;
 /// TODO document this
 #[derive(Debug, Clone)]
 enum LongestChainSpentStatus {
-    Unspent,
-    Spent(u64),
+    Unspent(u64), // block id
+    Spent(u64), // block id
 }
 
 /// TODO document this
@@ -95,7 +95,8 @@ impl UtxoSet {
     /// Returns true if the slip is Unspent(present in the hashmap and marked Unspent before the
     /// block). The ForkTuple allows us to check for Unspent/Spent status along the fork's
     /// potential new chain more quickly. This can be further optimized in the future.
-    pub fn is_slip_spent_at_block(&self, slip_id: &SlipID, _block: &Block, fork_tuple: &ForkTuple) -> bool {
+    /// TODO Maybe change this to is_slip_spendable_at_block and revere the logic?
+    pub fn is_slip_spent_at_block(&self, _slip_id: &SlipID, _block: &Block, _fork_tuple: &ForkTuple) -> bool {
         // if the block is on the longest chain
         //   if the Slip is marked Unspent, return false(unspent)
         //   else return true(Slip is considered Spent if it is marked Spent(...) or if it's not in the set)
@@ -137,14 +138,14 @@ impl UtxoSet {
     /// Inputs should be marked back to Unspent, Outputs should have all status set to None. We
     /// do not delete Outputs from the hashmap because they will soon be "unspent" again when
     /// the transaction is rolled forward in another block.
-    fn roll_back_transaction(&mut self, tx: &Transaction, block: &Block) {
+    fn roll_back_transaction(&mut self, _tx: &Transaction, _block: &Block) {
         
     }
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Inputs can just be removed(delete the appropriate ForkSpent from the vector, the
     /// ForkUnspent is still in the vector). Outputs should also have their ForkSpent removed from
     /// the vector.
-    fn roll_back_transaction_on_fork(&mut self, tx: &Transaction, block: &Block) {
+    fn roll_back_transaction_on_fork(&mut self, _tx: &Transaction, _block: &Block) {
         
     }
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
@@ -158,13 +159,13 @@ impl UtxoSet {
             let slip_id = SlipID::new(tx.core.hash(), index as u64);
             self.shashmap.entry(slip_id)
                .and_modify(|slip_spent_status| {
-                   slip_spent_status.longest_chain_status = Some(LongestChainSpentStatus::Unspent);
+                   slip_spent_status.longest_chain_status = Some(LongestChainSpentStatus::Unspent(block.id()));
                 })
-               .or_insert(SlipSpentStatus::new_on_longest_chain(output.clone(), LongestChainSpentStatus::Unspent));
+               .or_insert(SlipSpentStatus::new_on_longest_chain(output.clone(), LongestChainSpentStatus::Unspent(block.id())));
         });
         // loop through inputs and mark them as Spent, if they're not in the hashmap something is
         // horribly wrong
-        tx.core.inputs().iter().enumerate().for_each(|(index, slip_id)| {
+        tx.core.inputs().iter().for_each(|slip_id| {
             self.shashmap.entry(*slip_id)
                .and_modify(|slip_spent_status: &mut SlipSpentStatus | {
                    slip_spent_status.longest_chain_status = Some(LongestChainSpentStatus::Spent(block.id()));
