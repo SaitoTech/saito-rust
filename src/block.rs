@@ -230,7 +230,6 @@ mod test {
     use crate::block::Block;
     use crate::slip::SlipType;
     use crate::test_utilities;
-    use secp256k1::Signature;
 
     #[test]
     fn block_test() {
