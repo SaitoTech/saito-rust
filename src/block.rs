@@ -127,7 +127,6 @@ impl Block {
     }
 }
 
-
 /// The `BlockCore` holds the most important metadata associated with the `Block`
 /// it is essentially the critical block data needed for distribution from which
 /// nodes can derive the block and transaction and slip data.
@@ -207,7 +206,7 @@ impl BlockCore {
 //         bincode::deserialize(&data[..]).unwrap()
 //     }
 // }
-// 
+//
 // impl Into<Vec<u8>> for BlockCore {
 //     fn into(self) -> Vec<u8> {
 //         bincode::serialize(&self).unwrap()
@@ -268,10 +267,7 @@ mod test {
             SlipType::Normal
         );
 
-        assert_eq!(
-            block.transactions()[0].core.inputs()[0].tx_id(),
-            [0; 32]
-        );
+        assert_eq!(block.transactions()[0].core.inputs()[0].tx_id(), [0; 32]);
 
         assert_eq!(block.transactions()[0].core.inputs()[0].slip_ordinal(), 0);
     }

@@ -95,7 +95,7 @@ impl LongestChainQueue {
         if self.longest_chain_length == 0 {
             None
         } else {
-            Some(self.longest_chain_length - 1)    
+            Some(self.longest_chain_length - 1)
         }
     }
 
@@ -136,7 +136,7 @@ mod test {
     // #[test]
     // fn test_longest_chain_queue() {
     //     let mut longest_chain_queue = LongestChainQueue::new();
-    // 
+    //
     //     for n in 0..100 {
     //         longest_chain_queue.roll_forward(make_message_from_string(&n.to_string()));
     //     }
@@ -169,7 +169,7 @@ mod test {
     //         longest_chain_queue.latest_block_hash().unwrap(),
     //         make_message_from_string(&200.to_string())
     //     );
-    // 
+    //
     //     println!("Expect to see a panic in stdout here:");
     //     let result = std::panic::catch_unwind(|| longest_chain_queue.block_hash_by_id(0));
     //     assert!(result.is_err());
