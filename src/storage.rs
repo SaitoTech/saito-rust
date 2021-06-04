@@ -1,4 +1,5 @@
 use crate::block::Block;
+use crate::crypto::Sha256Hash;
 
 use tokio::fs::File;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
@@ -34,7 +35,7 @@ impl Storage {
         Ok(())
     }
 
-    pub async fn read_block_from_disk(&self, block_hash: [u8; 32]) -> io::Result<Block> {
+    pub async fn read_block_from_disk(&self, block_hash: Sha256Hash) -> io::Result<Block> {
         let mut filename = String::from(BLOCKS_DIR);
 
         filename.push_str(&hex::encode(block_hash));
@@ -70,7 +71,7 @@ mod test {
     #[tokio::test]
     async fn storage_write_block_to_disk() {
         let dir_path = String::from("./src/data/blocks/");
-        let block = Block::new_mock();
+        let block = Block::default();
         let storage = Storage::new(Some(dir_path));
         let result = storage.write_block_to_disk(block).await;
         assert_eq!(result.unwrap(), ());
@@ -83,7 +84,7 @@ mod test {
     async fn storage_read_block_to_disk() {
         let dir_path = String::from("./src/data/blocks/");
         let storage = Storage::new(Some(dir_path));
-        let block = Block::new_mock();
+        let block = Block::default();
         let block_hash = block.hash();
         storage.write_block_to_disk(block).await.unwrap();
         match storage.read_block_from_disk(block_hash).await {

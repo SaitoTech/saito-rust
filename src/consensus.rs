@@ -95,7 +95,7 @@ impl Consensus {
         });
 
         loop {
-            while let Ok(message) = saito_message_rx.recv().await {
+            while let Ok(_message) = saito_message_rx.recv().await {
                 //
                 // TODO - "process" what? descriptive function name -- should fetch latest block not block index
                 //
