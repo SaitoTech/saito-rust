@@ -67,15 +67,16 @@ impl Consensus {
 	let mut miner = Miner::new(keypair.read().unwrap().publickey().clone());
 	let mut mempool = Mempool::new();
 
-        
+        mempool.start_bundling();
+
 	// inter-module channels
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
-	let blockchain_channel_sender    = saito_message_tx.clone();
-	let mut blockchain_channel_receiver  = saito_message_tx.subscribe();
-	let miner_channel_sender         = saito_message_tx.clone();
-	let mut miner_channel_receiver       = saito_message_tx.subscribe();
+	//let blockchain_channel_sender    = saito_message_tx.clone();
+	//let mut blockchain_channel_receiver  = saito_message_tx.subscribe();
+	//let miner_channel_sender         = saito_message_tx.clone();
+	//let mut miner_channel_receiver       = saito_message_tx.subscribe();
 	let mempool_channel_sender       = saito_message_tx.clone();
-	let mut mempool_channel_receiver     = saito_message_tx.subscribe();
+	//let mut mempool_channel_receiver     = saito_message_tx.subscribe();
 
 
         let miner_tx = saito_message_tx.clone();
@@ -88,7 +89,8 @@ impl Consensus {
 	// and we should restrict our focus to sending messages telling it to start
 	// and stop bundling.
 	//
-        //tokio::spawn(async move {
+
+
         tokio::spawn(async move {
             loop {
                 saito_message_tx
@@ -101,38 +103,8 @@ impl Consensus {
 
 
 
-
-	// move ownership of Blockchain, Mempool, Network into our ASYNC loop
-/***
-        tokio::spawn(async move {
-        //tokio::spawn(async {
-        //    loop {
-                while let Ok(message) = saito_message_rx.recv().await {
-println!("MSG: {:?}", message); 
-                    match message {
-		        SaitoMessage::TryBundle { } => {
-println!("We have picked up our broadcast message in our receiver in a separate async loop");
-                  	    mempool.processSaitoMessage(message, &mempool_channel_sender);
-println!("done with process Saito Message");
-		        }
-                        SaitoMessage::Block { payload } => {
-			    // transfer ownership of that block to me
-                            let block = mempool.get_block(payload);
-			    if block.is_none() {
-				// bad block
-			    } else {
-				// send it to the blockchain
-			    	blockchain.add_block(block.unwrap());
-                            }
-                        }
-                        _ => {}
-                   }
-                }
-        //    }
-        });
-***/
-
 	// does this just prevent the main loop closing?
+
 	loop {
                 while let Ok(message) = saito_message_rx.recv().await {
                     match message {

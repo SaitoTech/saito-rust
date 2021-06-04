@@ -1,5 +1,6 @@
 use crate::block::Block;
 use crate::shashmap::Shashmap;
+//use crate::storage::Storage;
 
 /// The structure represents the state of the
 /// blockchain itself, including the blocks that are on the
@@ -13,6 +14,7 @@ pub struct Blockchain {
 
     /// Hashmap of slips used by the network
     shashmap: Shashmap,
+//    storage: Storage,
 
     // longest-chain position
     pos: usize,
@@ -48,6 +50,7 @@ impl Blockchain {
 
             blocks: vec![],
             shashmap: Shashmap::new(),
+            //storage: Storage::new(),
 
 	    pos: 0,
 	    last_pos: 0,
@@ -177,10 +180,16 @@ println!("Shared Ancestor at position: {}", shared_ancestor_pos);
 
     }
 
-    pub fn add_block_success(&self) {
+    pub fn add_block_success(&mut self) {
+
+	// save
+	//self.storage.write_block_to_disk(&self.blocks[self.pos]);
 
     }
-    pub fn add_block_failure(&self) {
+    pub fn add_block_failure(&mut self) {
+
+	// revert
+	self.pos = self.last_pos;
 
     }
 
@@ -210,20 +219,12 @@ println!("Shared Ancestor at position: {}", shared_ancestor_pos);
 	let block = &self.blocks[block_pos];
 	let does_block_validate = block.validate();
 
-	println!("WIND CHAIN - does block validate {}", does_block_validate);
-
 	if does_block_validate {
-	    println!("WIND CHAIN FAILURE AT POS {}", current_wind_index);
-
-	    // if this is the end of the chain, return success 1
 	    if current_wind_index == (new_chain.len()-1) {
-	        println!("WIND CHAIN SUCCESS 1 {}", current_wind_index);
 		return true;
 	    }
-	    println!("WIND CHAIN SUCCESS 2 {}", current_wind_index);
 	    return self.wind_chain(new_chain, old_chain, (current_wind_index+1), false);
 	} else {
-	    println!("WIND CHAIN FAILURE AT POS {}", current_wind_index);
 	    return false;
 	}
 
