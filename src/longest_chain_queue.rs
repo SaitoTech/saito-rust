@@ -130,6 +130,8 @@ impl LongestChainQueue {
 #[cfg(test)]
 mod test {
     // use crate::keypair::Keypair;
+    use crate::crypto::make_message_from_string;
+    use crate::longest_chain_queue::LongestChainQueue;
 
     // #[test]
     // fn test_longest_chain_queue() {
