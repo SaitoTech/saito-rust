@@ -38,9 +38,6 @@ pub mod transaction;
 pub mod types;
 pub mod utxoset;
 
-#[macro_use]
-extern crate lazy_static;
-
 /// Error returned by most functions.
 ///
 /// When writing a real application, one might want to consider a specialized
@@ -60,7 +57,9 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
 
 // TODO move this to another file and include!()
-// #[cfg(feature = "test-utilities")]
+// TODO put test_utilities behind a feature flag so it's not built into non-test builds
+//   i.e. uncomment this line:
+// [cfg(feature = "test-utilities")]
 pub mod test_utilities {
     use crate::block::Block;
     use crate::crypto::{make_message_from_bytes, Sha256Hash};
@@ -70,7 +69,7 @@ pub mod test_utilities {
     use crate::transaction::{Transaction, TransactionCore, TransactionType};
     // use secp256k1::Signature;
 
-    pub fn make_mock_block(previous_block_hash: Sha256Hash) -> Block {
+    pub fn make_mock_block(previous_block_hash: Sha256Hash, block_id: u64) -> Block {
         let keypair = Keypair::new();
         let from_slip = SlipID::default();
         let to_slip = OutputSlip::default();
@@ -89,6 +88,6 @@ pub mod test_utilities {
         // let tx2 = Transaction::default();
 
         // Block::new_mock(previous_block_hash, vec![tx.clone(), tx2.clone()])
-        Block::new_mock(previous_block_hash, vec![tx.clone()])
+        Block::new_mock(previous_block_hash, vec![tx.clone()], block_id)
     }
 }
