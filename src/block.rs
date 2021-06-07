@@ -6,16 +6,14 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::{mem, slice};
 
+pub const TREASURY: u64 = 286_810_000_000_000_000;
+
 /// The `Block` holds all data inside the block body,
 /// and additional metadata not to be serialized
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
     /// Memoized hash of the block
     hash: Sha256Hash,
-    /// `BurnFee` containing the fees paid to produce the block
-    burnfee: u64,
-    /// Block difficulty required to win the `LotteryGame` in golden ticket generation
-    difficulty: f32,
     /// BlockCore contains consensus data like id, creator,  etc.
     /// when we receive blocks over the network, we are receiving
     /// this data. The remaining data associated with this Block
@@ -25,12 +23,12 @@ pub struct Block {
 
 impl Block {
     pub fn default() -> Self {
-        Block::new(0, 0.0, BlockCore::default())
+        Block::new(BlockCore::default())
     }
     /// Creates a new `BlockCore`
     pub fn new_mock(
         previous_block_hash: Sha256Hash,
-        transactions: Vec<Transaction>,
+        transactions: &mut Vec<Transaction>,
         block_id: u64,
     ) -> Self {
         let public_key: PublicKey = PublicKey::from_str(
@@ -44,28 +42,27 @@ impl Block {
             previous_block_hash,
             public_key,
             0,
+            TREASURY,
+            0.0,
+            0,
+            0.0,
             transactions,
         );
-        Block::new(0, 0.0, block_core)
+        Block::new(block_core)
     }
-    pub fn new(burnfee: u64, difficulty: f32, core: BlockCore) -> Block {
+    pub fn new(core: BlockCore) -> Block {
         let hash = make_message_from_bytes(&core.serialize());
-        Block {
-            hash: hash,
-            burnfee: burnfee,
-            difficulty: difficulty,
-            core: core,
-        }
+        Block { hash, core }
     }
 
     /// Returns the `Block` difficulty
     pub fn difficulty(&self) -> f32 {
-        self.difficulty
+        self.core.difficulty
     }
 
     /// Returns the `Block` burnfee
     pub fn burnfee(&self) -> u64 {
-        self.burnfee
+        self.core.burnfee
     }
     /// Returns the `BlockCore` of `Block`
     pub fn core(&self) -> &BlockCore {
@@ -87,9 +84,19 @@ impl Block {
         self.core.creator
     }
 
+    /// Returns the `Block` treasury
+    pub fn treasury(&self) -> u64 {
+        self.core.treasury
+    }
+
     /// Returns the `Block` coinbase
     pub fn coinbase(&self) -> u64 {
         self.core.coinbase
+    }
+
+    /// Returns the `Block` coinbase
+    pub fn start_burnfee(&self) -> f64 {
+        self.core.start_burnfee
     }
 
     /// Returns the `Block`'s `Transaction`s
@@ -146,6 +153,14 @@ pub struct BlockCore {
     creator: PublicKey,
     /// Total block reward being released in the block
     coinbase: u64,
+    /// Amount of SAITO left in reserve on the network
+    treasury: u64,
+    /// Start value in the `Burnfee` algorithm
+    start_burnfee: f64,
+    /// `BurnFee` containing the fees paid to produce the block
+    burnfee: u64,
+    /// Block difficulty required to win the `LotteryGame` in golden ticket generation
+    difficulty: f32,
     /// simplified transaction cores
     transactions: Vec<Transaction>,
 }
@@ -160,8 +175,20 @@ impl BlockCore {
             "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
         )
         .unwrap();
-        BlockCore::new(0, create_timestamp(), [0; 32], public_key, 0, vec![])
+        BlockCore::new(
+            0,
+            create_timestamp(),
+            [0; 32],
+            public_key,
+            0,
+            TREASURY,
+            0.0,
+            0,
+            0.0,
+            &mut vec![],
+        )
     }
+
     /// Creates a new `BlockCore`
     pub fn new(
         id: u64,
@@ -169,15 +196,23 @@ impl BlockCore {
         previous_block_hash: Sha256Hash,
         creator: PublicKey,
         coinbase: u64,
-        transactions: Vec<Transaction>,
+        treasury: u64,
+        start_burnfee: f64,
+        burnfee: u64,
+        difficulty: f32,
+        transactions: &mut Vec<Transaction>,
     ) -> Self {
         BlockCore {
-            id: id,
-            timestamp: timestamp,
-            previous_block_hash: previous_block_hash,
-            creator: creator,
-            coinbase: coinbase,
-            transactions: transactions,
+            id,
+            timestamp,
+            previous_block_hash,
+            creator,
+            coinbase,
+            treasury,
+            start_burnfee,
+            burnfee,
+            difficulty,
+            transactions: transactions.to_vec(),
         }
     }
 
@@ -205,17 +240,17 @@ impl BlockCore {
     }
 }
 
-// impl From<Vec<u8>> for BlockCore {
-//     fn from(data: Vec<u8>) -> Self {
-//         bincode::deserialize(&data[..]).unwrap()
-//     }
-// }
-//
-// impl Into<Vec<u8>> for BlockCore {
-//     fn into(self) -> Vec<u8> {
-//         bincode::serialize(&self).unwrap()
-//     }
-// }
+impl From<Vec<u8>> for BlockCore {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for BlockCore {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
 
 impl From<Vec<u8>> for Block {
     fn from(data: Vec<u8>) -> Self {
@@ -228,6 +263,7 @@ impl Into<Vec<u8>> for Block {
         bincode::serialize(&self).unwrap()
     }
 }
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -249,6 +285,7 @@ mod test {
         assert_eq!(block.burnfee(), 0);
         assert_eq!(block.difficulty(), 0.0);
         assert_eq!(block.coinbase(), 0);
+        assert_eq!(block.start_burnfee(), 0.0);
     }
 
     #[test]

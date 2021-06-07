@@ -94,53 +94,6 @@ impl UtxoSet {
             .for_each(|tx| self.roll_forward_transaction(tx, block));
     }
 
-    /// Returns true if the slip is Unspent(present in the hashmap and marked Unspent before the
-    /// block). The ForkTuple allows us to check for Unspent/Spent status along the fork's
-    /// potential new chain more quickly. This can be further optimized in the future.
-    /// TODO Maybe change this to is_slip_spendable_at_block and revere the logic?
-    pub fn is_slip_spent_at_block(
-        &self,
-        _slip_id: &SlipID,
-        _block: &Block,
-        _fork_tuple: &ForkTuple,
-    ) -> bool {
-        // if the block is on the longest chain
-        //   if the Slip is marked Unspent, return false(unspent)
-        //   else return true(Slip is considered Spent if it is marked Spent(...) or if it's not in the set)
-        // else(the block is in a fork)
-        //   if the Slip is marked Unspent
-        //      loop through the fork_tuple's new_chain and loop through the forkspentstatus to make sure it wasn't marked as spent somewhere in this fork, return the answer
-        //   else if the Slip is marked Spent, but the block_id where it was spend is < the ancestor in the fork
-        //      loop through the fork_tuple's new_chain and loop through the forkspentstatus to make sure it wasn't also marked as spent somewhere in this fork, return the answer
-        false
-    }
-
-    /// Loops through all the SlipIDs(inputs) and return the amount. This is used to validate
-    /// that a transaction is balanced.
-    pub fn get_total_for_slips(&self, _slip_ids: Vec<SlipID>) -> u64 {
-        100
-    }
-
-    /// This verifies that the corresponding outputs for the given inputs were all received by
-    /// a single address, and, if so, returns that address, otherwise returns None. This is used
-    /// to validate that the signer of a transaction is the receiver of all the outputs which
-    /// he/she is trying to spend as inputs in a transaction.
-    pub fn get_receiver_for_slips(&self, _slip_ids: Vec<SlipID>) -> Option<PublicKey> {
-        Some(
-            PublicKey::from_str(
-                "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
-            )
-            .unwrap(),
-        )
-    }
-    /// This is used to get the Output(`OutputSlip`) which corresponds to a given Input(`SlipID`)
-    pub fn output_slip_from_slip_id(&self, slip_id: &SlipID) -> Option<&OutputSlip> {
-        match self.shashmap.get(slip_id) {
-            Some(slip_output) => Some(&slip_output.output_slip),
-            None => None,
-        }
-    }
-
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Inputs should be marked back to Unspent, Outputs should have all status set to None. We
     /// do not delete Outputs from the hashmap because they will soon be "unspent" again when
@@ -219,6 +172,72 @@ impl UtxoSet {
                         .push(ForkSpentStatus::ForkSpent(block.hash().clone()));
                 });
         });
+    }
+
+    /// Returns true if the slip is Unspent(present in the hashmap and marked Unspent before the
+    /// block). The ForkTuple allows us to check for Unspent/Spent status along the fork's
+    /// potential new chain more quickly. This can be further optimized in the future.
+    pub fn is_slip_spent_at_block(
+        &self,
+        _slip_id: &SlipID,
+        _block: &Block,
+        _fork_tuple: &ForkTuple,
+    ) -> bool {
+        // if the block is on the longest chain
+        //   if the Slip is marked Unspent, return false(unspent)
+        //   else return true(Slip is considered Spent if it is marked Spent(...) or if it's not in the set)
+        // else(the block is in a fork)
+        //   if the Slip is marked Unspent
+        //      loop through the fork_tuple's new_chain and loop through the forkspentstatus to make sure it wasn't marked as spent somewhere in this fork, return the answer
+        //   else if the Slip is marked Spent, but the block_id where it was spend is < the ancestor in the fork
+        //      loop through the fork_tuple's new_chain and loop through the forkspentstatus to make sure it wasn't also marked as spent somewhere in this fork, return the answer
+        false
+    }
+
+    /// Loops through all the SlipIDs(inputs) and return the amount. This is used to validate
+    /// that a transaction is balanced.
+    pub fn get_total_for_slips(&self, _slip_ids: Vec<SlipID>) -> u64 {
+        100
+    }
+
+    /// This verifies that the corresponding outputs for the given inputs were all received by
+    /// a single address, and, if so, returns that address, otherwise returns None. This is used
+    /// to validate that the signer of a transaction is the receiver of all the outputs which
+    /// he/she is trying to spend as inputs in a transaction.
+    pub fn get_receiver_for_slips(&self, _slip_ids: Vec<SlipID>) -> Option<PublicKey> {
+        Some(
+            PublicKey::from_str(
+                "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
+            )
+            .unwrap(),
+        )
+    }
+    /// This is used to get the Output(`OutputSlip`) which corresponds to a given Input(`SlipID`)
+    pub fn output_slip_from_slip_id(&self, slip_id: &SlipID) -> Option<&OutputSlip> {
+        match self.shashmap.get(slip_id) {
+            Some(slip_output) => Some(&slip_output.output_slip),
+            None => None,
+        }
+    }
+
+    pub fn fees_in_transactions(&self, transactions: &Vec<Transaction>) -> u64 {
+        let mut input_amt = 0;
+        let mut output_amt = 0;
+
+        transactions.iter().for_each(|tx| {
+            let input_tot: u64 = tx
+                .core
+                .inputs()
+                .iter()
+                .map(|input| self.output_slip_from_slip_id(input).unwrap().amount())
+                .sum();
+            input_amt = input_amt + input_tot;
+
+            let output_tot: u64 = tx.core.outputs().iter().map(|output| output.amount()).sum();
+            output_amt = output_amt + output_tot;
+        });
+
+        input_amt - output_amt
     }
 }
 

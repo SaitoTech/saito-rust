@@ -2,8 +2,9 @@ use crate::block::Block;
 use crate::burnfee::BurnFee;
 use crate::crypto::{verify_message_signature, Sha256Hash};
 use crate::forktree::ForkTree;
+use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
-use crate::transaction::Transaction;
+use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
 
 // lazy_static! {
@@ -12,7 +13,7 @@ use crate::utxoset::UtxoSet;
 //     // other objects into global statics when needed. This is just a temporary solution to get
 //     // things working before we optimize.
 //     // To use: add crate::blockchain::BLOCKCHAIN and add getters to Blockchain if needed
-//     pub static ref BLOCKCHAIN: Blockchain = Blockchain::new().clone();
+//     pub static ref BLOCKCHAIN: Blockchain = Blockchain::new();
 // }
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
@@ -207,6 +208,7 @@ impl Blockchain {
 
         // If the previous block hash doesn't exist in the ForkTree, it's rejected
         if !self.fork_tree.contains_block_hash(previous_block_hash) {
+            println!("BLOCK ALREADY IN FORK TREE");
             return false;
         }
         if self
@@ -217,6 +219,7 @@ impl Blockchain {
             + 1
             != block.id()
         {
+            println!("ID NOT INCREMENTED PROPERLY");
             return false;
         }
 
@@ -224,79 +227,123 @@ impl Blockchain {
 
         // Validate the burnfee
         let previous_block = self.fork_tree.block_by_hash(previous_block_hash).unwrap();
-        if block.burnfee()
-            != BurnFee::burn_fee_calculation(
-                previous_block.burnfee() as f64,
+        if block.start_burnfee()
+            != BurnFee::burn_fee_adjustment_calculation(
+                previous_block.start_burnfee() as f64,
                 block.timestamp(),
                 previous_block.timestamp(),
-            )
+            ) as f64
         {
+            println!("BURNFEE IS WRONG");
             return false;
         }
 
         // TODO: This should probably be >= but currently we are producing mock blocks very
         // quickly and this won't pass.
         if previous_block.timestamp() > block.timestamp() {
+            println!("INCORRECT TIMESTAMPS");
+            return false;
+        }
+
+        let golden_ticket_count = block.transactions().iter().fold(0, |acc, tx| {
+            if tx.core.broadcast_type() == &TransactionType::GoldenTicket {
+                acc + 1
+            } else {
+                acc
+            }
+        });
+        if golden_ticket_count > 1 {
+            println!("TOO MANY GOLDEN TICKETS");
             return false;
         }
 
         let transactions_valid = block
             .transactions()
             .iter()
-            .all(|tx| self.validate_transaction(block, tx, fork_tuple));
+            .all(|tx| self.validate_transaction(previous_block, block, tx, fork_tuple));
 
         transactions_valid
     }
 
     fn validate_transaction(
         &self,
+        previous_block: &Block,
         block: &Block,
         tx: &Transaction,
         fork_tuple: &ForkTuple,
     ) -> bool {
-        // check that our sigs are valid
-        if let Some(output_slip) = self.utxoset.output_slip_from_slip_id(&tx.core.inputs()[0]) {
-            // let serialized_tx: Vec<u8> = tx.core.clone().into();
-            // make_message_from_bytes(&serialized_tx[..]);
-            let hash_message = tx.core.hash();
-            if !verify_message_signature(&hash_message, &tx.signature(), &(output_slip.address())) {
-                return false;
-            };
+        match tx.core.broadcast_type() {
+            TransactionType::Normal => {
+                if tx.core.inputs().len() == 0 && tx.core.outputs().len() == 0 {
+                    return true;
+                }
 
-            // validate our slips
-            let inputs_are_valid = tx.core.inputs().iter().all(|input| {
-                return !self
-                    .utxoset
-                    .is_slip_spent_at_block(input, block, fork_tuple);
-            });
+                if let Some(output_slip) =
+                    self.utxoset.output_slip_from_slip_id(&tx.core.inputs()[0])
+                {
+                    let hash_message = tx.core.hash();
+                    if !verify_message_signature(
+                        &hash_message,
+                        &tx.signature(),
+                        &(output_slip.address()),
+                    ) {
+                        println!("SIGNATURE IS NOT VALID");
+                        return false;
+                    };
 
-            if !inputs_are_valid {
-                return false;
+                    // validate our slips
+                    let inputs_are_valid = tx.core.inputs().iter().all(|input| {
+                        return !self
+                            .utxoset
+                            .is_slip_spent_at_block(input, block, fork_tuple);
+                    });
+
+                    if !inputs_are_valid {
+                        println!("INPUTS ARE NOT FVALID");
+                        return false;
+                    }
+
+                    // valuidate that inputs are unspent
+                    let input_amt: u64 = tx
+                        .core
+                        .inputs()
+                        .iter()
+                        .map(|input| {
+                            self.utxoset
+                                .output_slip_from_slip_id(input)
+                                .unwrap()
+                                .amount()
+                        })
+                        .sum();
+
+                    let output_amt: u64 =
+                        tx.core.outputs().iter().map(|output| output.amount()).sum();
+
+                    if input_amt != output_amt {
+                        println!("INPUTS DO NOT MATCH OUTPUTS");
+                        return false;
+                    }
+
+                    return true;
+                } else {
+                    // no input slips, thus no output slips.
+                    return true;
+                }
             }
+            TransactionType::GoldenTicket => {
+                // need to validate the golden ticket correctly
+                let golden_ticket = GoldenTicket::from(tx.core.message().clone());
 
-            // valuidate that inputs are unspent
-            let input_amt: u64 = tx
-                .core
-                .inputs()
-                .iter()
-                .map(|input| {
-                    self.utxoset
-                        .output_slip_from_slip_id(input)
-                        .unwrap()
-                        .amount()
-                })
-                .sum();
+                println!("TARGET: {:?}", golden_ticket.target);
+                println!("PREVIOUS BLOCK: {:?}", previous_block.hash());
 
-            let output_amt: u64 = tx.core.outputs().iter().map(|output| output.amount()).sum();
+                if golden_ticket.target != previous_block.hash() {
+                    println!("INVALID TARGET");
+                    return false;
+                }
 
-            if input_amt != output_amt {
-                return false;
+                return true;
             }
-
-            return true;
-        } else {
-            // no input slips, thus no output slips.
-            return true;
         }
     }
 

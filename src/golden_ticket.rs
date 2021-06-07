@@ -3,19 +3,20 @@ use crate::{
     crypto::{PublicKey, Sha256Hash},
     keypair::Keypair,
     slip::{OutputSlip, SlipType},
-    transaction::Transaction,
+    transaction::{Transaction, TransactionCore, TransactionType},
 };
+use serde::{Deserialize, Serialize};
 
 /// The golden ticket is a data structure containing instructions for picking
 /// a winner for paysplit in saito consensus.
-#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct GoldenTicket {
     // the target `Block` hash to solve for
-    target: Sha256Hash,
+    pub target: Sha256Hash,
     // the random solution that matches the target hash to some arbitrary level of difficulty
-    solution: Sha256Hash,
+    pub solution: Sha256Hash,
     // `secp256k1::PublicKey` of the node that found the solution
-    publickey: PublicKey,
+    pub publickey: PublicKey,
 }
 
 impl GoldenTicket {
@@ -26,6 +27,18 @@ impl GoldenTicket {
             solution,
             publickey,
         }
+    }
+}
+
+impl From<Vec<u8>> for GoldenTicket {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for GoldenTicket {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
     }
 }
 
@@ -54,7 +67,8 @@ pub fn generate_golden_ticket_transaction(
     // TODO -- calculate captured fees in blocks based on transaction fees
     // for now, we just split the coinbase between the miners and the routers
 
-    let mut golden_tx = Transaction::default();
+    let mut golden_tx_core = TransactionCore::default();
+    golden_tx_core.set_type(TransactionType::GoldenTicket);
 
     let total_fees_for_miners_and_nodes = &previous_block.coinbase();
 
@@ -63,8 +77,12 @@ pub fn generate_golden_ticket_transaction(
     let miner_slip = OutputSlip::new(*publickey, SlipType::Normal, miner_share);
     let node_slip = OutputSlip::new(winning_address, SlipType::Normal, node_share);
 
-    golden_tx.core.add_output(miner_slip);
-    golden_tx.core.add_output(node_slip);
+    golden_tx_core.add_output(miner_slip);
+    golden_tx_core.add_output(node_slip);
+
+    golden_tx_core.set_message(_gt_solution.into());
+
+    let golden_tx = Transaction::create_signature(golden_tx_core, keypair);
 
     golden_tx
 }
