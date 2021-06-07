@@ -4,6 +4,11 @@
 - PRs should be made against the `main` branch in the [saito-rust project](https://github.com/SaitoTech/saito-rust)
 - PRs must pass [rust fmt (via Github Actions)](README.md#github-actions) check and should have full test coverage
 
+## Tools
+
+- [Convo](https://convco.github.io/check/)  
+  To check your commits according to the format it can be [installed locally](https://convco.github.io/#installation)
+
 ### Commit format
 
 We use [Conventional Commits](https://www.conventionalcommits.org) for commit messages.
