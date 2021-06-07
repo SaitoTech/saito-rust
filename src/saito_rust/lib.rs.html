@@ -94,7 +94,6 @@
 <span id="91">91</span>
 <span id="92">92</span>
 <span id="93">93</span>
-<span id="94">94</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">/*!
 # Welcome to Saito
@@ -136,9 +135,6 @@ dev@saito.tech
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">types</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">utxoset</span>;
 
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">lazy_static</span>;
-
 <span class="doccomment">/// Error returned by most functions.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// When writing a real application, one might want to consider a specialized</span>
@@ -158,7 +154,9 @@ dev@saito.tech
 <span class="kw">pub</span> <span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">result</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">Error</span><span class="op">&gt;</span>;
 
 <span class="comment">// TODO move this to another file and include!()</span>
-<span class="comment">// #[cfg(feature = &quot;test-utilities&quot;)]</span>
+<span class="comment">// TODO put test_utilities behind a feature flag so it&#39;s not built into non-test builds</span>
+<span class="comment">//   i.e. uncomment this line:</span>
+<span class="comment">// [cfg(feature = &quot;test-utilities&quot;)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_utilities</span> {
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">make_message_from_bytes</span>, <span class="ident">Sha256Hash</span>};
@@ -168,7 +166,7 @@ dev@saito.tech
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionCore</span>, <span class="ident">TransactionType</span>};
     <span class="comment">// use secp256k1::Signature;</span>
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_mock_block</span>(<span class="ident">previous_block_hash</span>: <span class="ident">Sha256Hash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_mock_block</span>(<span class="ident">previous_block_hash</span>: <span class="ident">Sha256Hash</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="ident">from_slip</span> <span class="op">=</span> <span class="ident">SlipID</span>::<span class="ident">default</span>();
         <span class="kw">let</span> <span class="ident">to_slip</span> <span class="op">=</span> <span class="ident">OutputSlip</span>::<span class="ident">default</span>();
@@ -187,7 +185,7 @@ dev@saito.tech
         <span class="comment">// let tx2 = Transaction::default();</span>
 
         <span class="comment">// Block::new_mock(previous_block_hash, vec![tx.clone(), tx2.clone()])</span>
-        <span class="ident">Block</span>::<span class="ident">new_mock</span>(<span class="ident">previous_block_hash</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">tx</span>.<span class="ident">clone</span>()])
+        <span class="ident">Block</span>::<span class="ident">new_mock</span>(<span class="ident">previous_block_hash</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">tx</span>.<span class="ident">clone</span>()], <span class="ident">block_id</span>)
     }
 }
 </pre></div>

@@ -275,6 +275,9 @@
 <span id="272">272</span>
 <span id="273">273</span>
 <span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">make_message_from_bytes</span>, <span class="ident">PublicKey</span>, <span class="ident">Sha256Hash</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">time</span>::<span class="ident">create_timestamp</span>;
@@ -306,14 +309,18 @@
         <span class="ident">Block</span>::<span class="ident">new</span>(<span class="number">0</span>, <span class="number">0.0</span>, <span class="ident">BlockCore</span>::<span class="ident">default</span>())
     }
     <span class="doccomment">/// Creates a new `BlockCore`</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_mock</span>(<span class="ident">previous_block_hash</span>: <span class="ident">Sha256Hash</span>, <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_mock</span>(
+        <span class="ident">previous_block_hash</span>: <span class="ident">Sha256Hash</span>,
+        <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
+        <span class="ident">block_id</span>: <span class="ident">u64</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">public_key</span>: <span class="ident">PublicKey</span> <span class="op">=</span> <span class="ident">PublicKey</span>::<span class="ident">from_str</span>(
             <span class="string">&quot;0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072&quot;</span>,
         )
         .<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
         <span class="kw">let</span> <span class="ident">block_core</span> <span class="op">=</span> <span class="ident">BlockCore</span>::<span class="ident">new</span>(
-            <span class="number">0</span>,
+            <span class="ident">block_id</span>,
             <span class="ident">timestamp</span>,
             <span class="ident">previous_block_hash</span>,
             <span class="ident">public_key</span>,
@@ -508,7 +515,6 @@
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">slip</span>::<span class="ident">SlipType</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">test_utilities</span>;
-    <span class="kw">use</span> <span class="ident">secp256k1</span>::<span class="ident">Signature</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">block_test</span>() {
@@ -532,7 +538,7 @@
             <span class="string">&quot;0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072&quot;</span>,
         )
         .<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>([<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>([<span class="number">0</span>; <span class="number">32</span>], <span class="number">0</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">transactions</span>().<span class="ident">len</span>(), <span class="number">1</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(
             <span class="ident">block</span>.<span class="ident">transactions</span>()[<span class="number">0</span>].<span class="ident">core</span>.<span class="ident">outputs</span>()[<span class="number">0</span>].<span class="ident">address</span>(),
