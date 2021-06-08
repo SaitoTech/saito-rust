@@ -6,16 +6,20 @@ use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-
-lazy_static! {
-    // This allows us to get a reference to blockchain, utxoset, longest_chain_queue, or fork_tree
-    // from anywhere in the codebase. In the future we can also use message passing or put
-    // other objects into global statics when needed. This is just a temporary solution to get
-    // things working before we optimize.
-    // To use: add crate::blockchain::BLOCKCHAIN and add getters to Blockchain if needed
-    pub static ref BLOCKCHAIN: Rc<Blockchain> = Blockchain::new();
-}
+// thread_local! {
+// //lazy_static! {
+//     // This allows us to get a reference to blockchain, utxoset, longest_chain_queue, or fork_tree
+//     // from anywhere in the codebase. In the future we can also use message passing or put
+//     // other objects into global statics when needed. This is just a temporary solution to get
+//     // things working before we optimize.
+//     // To use: add crate::blockchain::BLOCKCHAIN and add getters to Blockchain if needed
+//     //pub static ref BLOCKCHAIN: Blockchain = ;
+//     pub static BLOCKCHAIN: RefCell<Blockchain> = RefCell::new(Blockchain::new());
+// }
+thread_local!(pub static BLOCKCHAIN: Rc<RefCell<Blockchain>> = Rc::new(RefCell::new(Blockchain::new())));
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
