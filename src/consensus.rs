@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::{AddBlockEvent, Blockchain, BLOCKCHAIN},
+    blockchain::{AddBlockEvent, Blockchain},
     crypto::hash,
     golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
     keypair::Keypair,
@@ -71,7 +71,6 @@ impl Consensus {
         let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
 
         let mut blockchain = Blockchain::new();
-        //BLOCKCHAIN
         let mut mempool = Mempool::new(keypair.clone(), utxoset);
 
         tokio::spawn(async move {
@@ -105,8 +104,8 @@ impl Consensus {
 
                     // }
                     SaitoMessage::TryBundle => {
-                        if let Some(block) = mempool.process(message, BLOCKCHAIN.latest_block()) {
-                            match BLOCKCHAIN.add_block(block.clone()) {
+                        if let Some(block) = mempool.process(message, blockchain.latest_block()) {
+                            match blockchain.add_block(block.clone()) {
                                 AddBlockEvent::AcceptedAsLongestChain => {
                                     println!("AcceptedAsLongestChain");
                                     block_tx
