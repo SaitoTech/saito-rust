@@ -53,12 +53,10 @@ pub fn generate_golden_ticket_transaction(
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
     println!("prevoius block hash {:?}", previous_block_hash);
     BLOCKCHAIN.with(|blockchain_rc| {
-        let blockchain_rc_clone = Rc::clone(blockchain_rc);
-        let blockchain: &mut Blockchain = &mut *blockchain_rc_clone.borrow_mut();
+        //let blockchain_rc_clone = Rc::clone(blockchain_rc);
+        let blockchain: &mut Blockchain = &mut *blockchain_rc.borrow_mut();
         let previous_block = blockchain.get_block_by_hash(&previous_block_hash).unwrap().clone();    
-        let previous_block_hash = previous_block.clone_hash();
-
-
+        
         let previous_block_hash = previous_block.clone_hash();
         //let previous_block_hash = previous_block.hash;
 

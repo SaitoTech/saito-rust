@@ -98,12 +98,16 @@ impl UtxoSet {
     /// Inputs should be marked back to Unspent, Outputs should have all status set to None. We
     /// do not delete Outputs from the hashmap because they will soon be "unspent" again when
     /// the transaction is rolled forward in another block.
-    fn roll_back_transaction(&mut self, _tx: &Transaction, _block: &Block) {}
+    fn roll_back_transaction(&mut self, _tx: &Transaction, _block: &Block) {
+        
+    }
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Inputs can just be removed(delete the appropriate ForkSpent from the vector, the
     /// ForkUnspent is still in the vector). Outputs should also have their ForkSpent removed from
     /// the vector.
-    fn roll_back_transaction_on_fork(&mut self, _tx: &Transaction, _block: &Block) {}
+    fn roll_back_transaction_on_fork(&mut self, _tx: &Transaction, _block: &Block) {
+
+    }
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Outputs should be added or marked Unspent, Inputs should be marked Spent. This method
     /// Can be called during a normal new block or during a reorg, so Unspent Outputs may already

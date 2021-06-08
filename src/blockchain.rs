@@ -19,7 +19,8 @@ use std::rc::Rc;
 //     //pub static ref BLOCKCHAIN: Blockchain = ;
 //     pub static BLOCKCHAIN: RefCell<Blockchain> = RefCell::new(Blockchain::new());
 // }
-thread_local!(pub static BLOCKCHAIN: Rc<RefCell<Blockchain>> = Rc::new(RefCell::new(Blockchain::new())));
+//thread_local!(pub static BLOCKCHAIN: Rc<RefCell<Blockchain>> = Rc::new(RefCell::new(Blockchain::new())));
+thread_local!(pub static BLOCKCHAIN: RefCell<Blockchain> = RefCell::new(Blockchain::new()));
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
