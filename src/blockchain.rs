@@ -278,15 +278,9 @@ impl Blockchain {
                     return true;
                 }
 
-                if let Some(output_slip) =
-                    self.utxoset.output_slip_from_slip_id(&tx.core.inputs()[0])
-                {
+                if let Some(address) = self.utxoset.get_receiver_for_slips(tx.core.inputs()) {
                     let hash_message = tx.core.hash();
-                    if !verify_message_signature(
-                        &hash_message,
-                        &tx.signature(),
-                        &(output_slip.address()),
-                    ) {
+                    if !verify_message_signature(&hash_message, &tx.signature(), address) {
                         println!("SIGNATURE IS NOT VALID");
                         return false;
                     };

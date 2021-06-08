@@ -204,14 +204,30 @@ impl UtxoSet {
     /// a single address, and, if so, returns that address, otherwise returns None. This is used
     /// to validate that the signer of a transaction is the receiver of all the outputs which
     /// he/she is trying to spend as inputs in a transaction.
-    pub fn get_receiver_for_slips(&self, _slip_ids: Vec<SlipID>) -> Option<PublicKey> {
-        Some(
-            PublicKey::from_str(
-                "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
-            )
-            .unwrap(),
-        )
+    pub fn get_receiver_for_slips(&self, slip_ids: &Vec<SlipID>) -> Option<&PublicKey> {
+        if slip_ids.is_empty() {
+            None
+        } else {
+            if let Some(outputs) = slip_ids
+                .iter()
+                .map(|input| self.output_slip_from_slip_id(input))
+                .collect::<Option<Vec<&OutputSlip>>>()
+            {
+                let first = outputs[0];
+                if outputs
+                    .iter()
+                    .all(|&output| output.address() == first.address())
+                {
+                    Some(first.address())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
     }
+
     /// This is used to get the Output(`OutputSlip`) which corresponds to a given Input(`SlipID`)
     pub fn output_slip_from_slip_id(&self, slip_id: &SlipID) -> Option<&OutputSlip> {
         match self.shashmap.get(slip_id) {
