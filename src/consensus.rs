@@ -70,8 +70,6 @@ impl Consensus {
         let keypair = Arc::new(RwLock::new(Keypair::new()));
         let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
 
-        //let mut blockchain = Blockchain::new();
-
         let mut mempool = Mempool::new(keypair.clone(), utxoset);
 
         tokio::spawn(async move {
@@ -87,7 +85,6 @@ impl Consensus {
             while let Ok(message) = saito_message_rx.recv().await {
                 //
                 // TODO - "process" what? descriptive function name -- should fetch latest block not block index
-                //
                 match message {
                     SaitoMessage::NewBlock { payload } => {
                         let golden_tx = generate_golden_ticket_transaction(
@@ -103,35 +100,19 @@ impl Consensus {
                     SaitoMessage::TryBundle => {
                         BLOCKCHAIN.with(|blockchain_rc| {
                             let blockchain: &mut Blockchain = &mut *blockchain_rc.borrow_mut();
-                            // if let Some(block) = mempool.process(message, blockchain.latest_block())
-                            // {
-                            //     match blockchain.add_block(block) {
-                            //         AddBlockEvent::AcceptedAsLongestChain => {
-                            //             println!("AcceptedAsLongestChain");
-                            //             block_tx
-                            //                 .send(SaitoMessage::NewBlock {
-                            //                     payload: block.hash().clone(),
-                            //                 })
-                            //                 .unwrap();
-                            //         }
-                            //         fail_message => {
-                            //             println!("WE MISSED LONGEST CHAIN, WHAT HAPPENED?");
-                            //             println!("{:?}", fail_message)
-                            //         }
-                            //     }
-                            // }
-                            let block = mempool.process(message, blockchain.latest_block()).unwrap();
-                            let block_hash = block.hash().clone();
-                            match blockchain.add_block(block) {
-                                AddBlockEvent::AcceptedAsLongestChain => {
-                                    println!("AcceptedAsLongestChain");
-                                    block_tx
-                                        .send(SaitoMessage::NewBlock { payload: block_hash })
-                                        .unwrap();
-                                }
-                                fail_message => {
-                                    println!("WE MISSED LONGEST CHAIN, WHAT HAPPENED?");
-                                    println!("{:?}", fail_message)
+                            if let Some(block) = mempool.process(message, blockchain.latest_block()) {
+                                let block_hash = block.hash().clone();
+                                match blockchain.add_block(block) {
+                                    AddBlockEvent::AcceptedAsLongestChain => {
+                                        println!("AcceptedAsLongestChain");
+                                        block_tx
+                                            .send(SaitoMessage::NewBlock { payload: block_hash })
+                                            .unwrap();
+                                    }
+                                    fail_message => {
+                                        println!("WE MISSED LONGEST CHAIN, WHAT HAPPENED?");
+                                        println!("{:?}", fail_message)
+                                    }
                                 }
                             }
                         })
