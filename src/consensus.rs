@@ -71,7 +71,7 @@ impl Consensus {
         let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
 
         //let mut blockchain = Blockchain::new();
-            
+
         let mut mempool = Mempool::new(keypair.clone(), utxoset);
 
         tokio::spawn(async move {
@@ -85,7 +85,6 @@ impl Consensus {
 
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
-                println!("got message... {:?}", message);
                 //
                 // TODO - "process" what? descriptive function name -- should fetch latest block not block index
                 //
@@ -102,16 +101,17 @@ impl Consensus {
                             .unwrap();
                     }
                     SaitoMessage::TryBundle => {
-
                         BLOCKCHAIN.with(|blockchain_rc| {
-                            //let blockchain_rc_clone = Rc::clone(blockchain_rc);
                             let blockchain: &mut Blockchain = &mut *blockchain_rc.borrow_mut();
-                            if let Some(block) = mempool.process(message, blockchain.latest_block()) {
+                            if let Some(block) = mempool.process(message, blockchain.latest_block())
+                            {
                                 match blockchain.add_block(block.clone()) {
                                     AddBlockEvent::AcceptedAsLongestChain => {
                                         println!("AcceptedAsLongestChain");
                                         block_tx
-                                            .send(SaitoMessage::NewBlock { payload: block.hash().clone() })
+                                            .send(SaitoMessage::NewBlock {
+                                                payload: block.hash().clone(),
+                                            })
                                             .unwrap();
                                     }
                                     fail_message => {
@@ -139,6 +139,5 @@ impl Consensus {
                 }
             }
         }
-
     }
 }
