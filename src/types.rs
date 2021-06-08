@@ -1,5 +1,5 @@
-use crate::{transaction::Transaction};
 use crate::crypto::Sha256Hash;
+use crate::transaction::Transaction;
 
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {

@@ -1,6 +1,12 @@
-use crate::{block::Block, blockchain::{BLOCKCHAIN, Blockchain}, crypto::{PublicKey, Sha256Hash}, keypair::Keypair, slip::{OutputSlip, SlipType}, transaction::{Transaction, TransactionCore, TransactionType}};
+use crate::{
+    block::Block,
+    blockchain::{Blockchain, BLOCKCHAIN},
+    crypto::{PublicKey, Sha256Hash},
+    keypair::Keypair,
+    slip::{OutputSlip, SlipType},
+    transaction::{Transaction, TransactionCore, TransactionType},
+};
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
 
 /// The golden ticket is a data structure containing instructions for picking
 /// a winner for paysplit in saito consensus.
@@ -51,14 +57,14 @@ pub fn generate_golden_ticket_transaction(
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
-    println!("prevoius block hash {:?}", previous_block_hash);
     BLOCKCHAIN.with(|blockchain_rc| {
-        //let blockchain_rc_clone = Rc::clone(blockchain_rc);
         let blockchain: &mut Blockchain = &mut *blockchain_rc.borrow_mut();
-        let previous_block = blockchain.get_block_by_hash(&previous_block_hash).unwrap().clone();    
-        
+        let previous_block = blockchain
+            .get_block_by_hash(&previous_block_hash)
+            .unwrap()
+            .clone();
+
         let previous_block_hash = previous_block.clone_hash();
-        //let previous_block_hash = previous_block.hash;
 
         let _gt_solution = GoldenTicket::new(previous_block_hash, solution, publickey.clone());
 
@@ -75,17 +81,16 @@ pub fn generate_golden_ticket_transaction(
         let node_share = total_fees_for_miners_and_nodes - miner_share;
         let miner_slip = OutputSlip::new(*publickey, SlipType::Normal, miner_share);
         let node_slip = OutputSlip::new(winning_address, SlipType::Normal, node_share);
-    
+
         golden_tx_core.add_output(miner_slip);
         golden_tx_core.add_output(node_slip);
-    
+
         golden_tx_core.set_message(_gt_solution.into());
-    
+
         let golden_tx = Transaction::create_signature(golden_tx_core, keypair);
-    
+
         golden_tx
     })
-
 }
 
 /// Find the winner of the golden ticket game

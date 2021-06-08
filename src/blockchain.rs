@@ -7,19 +7,7 @@ use crate::longest_chain_queue::LongestChainQueue;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
 use std::cell::RefCell;
-use std::rc::Rc;
 
-// thread_local! {
-// //lazy_static! {
-//     // This allows us to get a reference to blockchain, utxoset, longest_chain_queue, or fork_tree
-//     // from anywhere in the codebase. In the future we can also use message passing or put
-//     // other objects into global statics when needed. This is just a temporary solution to get
-//     // things working before we optimize.
-//     // To use: add crate::blockchain::BLOCKCHAIN and add getters to Blockchain if needed
-//     //pub static ref BLOCKCHAIN: Blockchain = ;
-//     pub static BLOCKCHAIN: RefCell<Blockchain> = RefCell::new(Blockchain::new());
-// }
-//thread_local!(pub static BLOCKCHAIN: Rc<RefCell<Blockchain>> = Rc::new(RefCell::new(Blockchain::new())));
 thread_local!(pub static BLOCKCHAIN: RefCell<Blockchain> = RefCell::new(Blockchain::new()));
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
@@ -145,7 +133,6 @@ impl Blockchain {
     /// These `AddBlockEvent`s will be turned into network responses so peers can figure out
     /// what's going on.
     pub fn add_block(&mut self, block: Block) -> AddBlockEvent {
-        println!("add block {:?}", block.hash());
         // TODO: Should we pass a serialized block [u8] to add_block instead of a Block?
         let is_first_block = block.previous_block_hash() == &[0u8; 32]
             && !self.contains_block_hash(block.previous_block_hash());
@@ -162,17 +149,10 @@ impl Blockchain {
                 let is_new_lc_tip = !latest_block_hash.is_none()
                     && &latest_block_hash.unwrap() == block.previous_block_hash();
                 if is_first_block || is_new_lc_tip {
-                    println!("is_first_block {:?}", block.hash());
                     // First Block or we're new tip of the longest chain
                     self.longest_chain_queue.roll_forward(block.hash());
                     self.utxoset.roll_forward(&block);
-                    let block_hash = block.hash();
                     self.fork_tree.insert(block.hash(), block).unwrap();
-                    println!("INSERTED {:?}", block_hash);
-                    let foo = self.fork_tree.block_by_hash(&block_hash).unwrap();
-                    let bar = self.get_block_by_hash(&block_hash).unwrap();
-                    println!("foo {:?}", foo.hash());
-                    println!("bar {:?}", bar.hash());
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
                 } else {
@@ -180,7 +160,6 @@ impl Blockchain {
                     let old_chain = fork_tuple.1;
                     let new_chain = fork_tuple.2;
                     if self.is_longer_chain(&new_chain, &old_chain) {
-                        println!("fork tree insert {:?}", block.hash());
                         self.fork_tree.insert(block.hash(), block).unwrap();
                         // Unwind the old chain
                         old_chain.blocks.iter().for_each(|block_hash| {
