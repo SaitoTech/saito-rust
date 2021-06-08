@@ -1,5 +1,6 @@
 use crate::{
     block::Block,
+    blockchain::BLOCKCHAIN,
     crypto::{PublicKey, Sha256Hash},
     keypair::Keypair,
     slip::{OutputSlip, SlipType},
@@ -49,15 +50,17 @@ impl Into<Vec<u8>> for GoldenTicket {
 /// * `keypair` - `Keypair`
 pub fn generate_golden_ticket_transaction(
     solution: Sha256Hash,
-    previous_block: &Block,
+    previous_block_hash: Sha256Hash,
     keypair: &Keypair,
 ) -> Transaction {
     let publickey = keypair.public_key();
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
+    println!("prevoius block hash {:?}", previous_block_hash);
+    let previous_block: &Block = &BLOCKCHAIN.get_block_by_hash(&previous_block_hash).unwrap();
 
-    let previous_block_hash = previous_block.clone_hash();
+    //let previous_block_hash = previous_block.clone_hash();
     //let previous_block_hash = previous_block.hash;
 
     let _gt_solution = GoldenTicket::new(previous_block_hash, solution, publickey.clone());
