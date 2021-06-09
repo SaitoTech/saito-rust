@@ -6,15 +6,9 @@ use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
+use std::cell::RefCell;
 
-// lazy_static! {
-//     // This allows us to get a reference to blockchain, utxoset, longest_chain_queue, or fork_tree
-//     // from anywhere in the codebase. In the future we can also use message passing or put
-//     // other objects into global statics when needed. This is just a temporary solution to get
-//     // things working before we optimize.
-//     // To use: add crate::blockchain::BLOCKCHAIN and add getters to Blockchain if needed
-//     pub static ref BLOCKCHAIN: Blockchain = Blockchain::new();
-// }
+thread_local!(pub static BLOCKCHAIN: RefCell<Blockchain> = RefCell::new(Blockchain::new()));
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]
@@ -142,7 +136,6 @@ impl Blockchain {
         // TODO: Should we pass a serialized block [u8] to add_block instead of a Block?
         let is_first_block = block.previous_block_hash() == &[0u8; 32]
             && !self.contains_block_hash(block.previous_block_hash());
-
         if self.contains_block_hash(&(block.hash())) {
             AddBlockEvent::AlreadyKnown
         } else if !is_first_block && !self.contains_block_hash(block.previous_block_hash()) {
