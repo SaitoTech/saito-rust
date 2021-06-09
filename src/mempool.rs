@@ -4,7 +4,7 @@ use crate::{
     block::{Block, BlockCore, TREASURY},
     burnfee::BurnFee,
     keypair::Keypair,
-    time::create_timestamp,
+    time::{create_timestamp, format_timestamp},
     transaction::Transaction,
     types::SaitoMessage,
     utxoset::UtxoSet,
@@ -72,32 +72,31 @@ impl Mempool {
     ///
     /// * `previous_block` - `Option` of previous `Block`
     fn can_bundle_block(&self, previous_block_option: Option<&Block>) -> bool {
-        true
-        // match previous_block_option {
-        //     Some(previous_block) => {
-        //         let current_timestamp = create_timestamp();
-        //         let work_needed = BurnFee::return_work_needed(
-        //             previous_block.start_burnfee(),
-        //             current_timestamp,
-        //             previous_block.timestamp(),
-        //         );
+        match previous_block_option {
+            Some(previous_block) => {
+                let current_timestamp = create_timestamp();
+                let work_needed = BurnFee::return_work_needed(
+                    previous_block.start_burnfee(),
+                    current_timestamp,
+                    previous_block.timestamp(),
+                );
 
-        //         // TODO: re-add utxoset when it's decided on how we want to share mutable references
-        //         let work_available = 0;
+                // TODO: re-add utxoset when it's decided on how we want to share mutable references
+                let work_available = 0;
 
-        //         println!(
-        //             "TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}",
-        //             format_timestamp(current_timestamp),
-        //             work_needed,
-        //             work_available,
-        //             self.transactions.len(),
-        //         );
+                println!(
+                    "TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}",
+                    format_timestamp(current_timestamp),
+                    work_needed,
+                    work_available,
+                    self.transactions.len(),
+                );
 
-        //         // TODO -- add check for transactions in Mempool
-        //         work_available >= work_needed
-        //     }
-        //     None => true,
-        // }
+                // TODO -- add check for transactions in Mempool
+                work_available >= work_needed
+            }
+            None => true,
+        }
     }
 
     /// Clear the transactions from the `Mempool`

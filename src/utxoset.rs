@@ -4,7 +4,6 @@ use crate::slip::{OutputSlip, SlipID};
 use crate::transaction::Transaction;
 use secp256k1::PublicKey;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 /// TODO document this
 #[derive(Debug, Clone)]
