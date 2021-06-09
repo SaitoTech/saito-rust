@@ -7,15 +7,7 @@ Saito-Rust is an implementation of Saito Consensus written in Rust for use by hi
 
 If you need to get in touch with us, please reach out anytime.
 
-# Usage
-
-TODO
-
-# How to contribute
-
-TODO
-
-# Contact
+See [readme for more details](https://github.com/SaitoTech/saito-rust/blob/main/README.md)
 
 The Saito Team
 dev@saito.tech

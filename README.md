@@ -18,7 +18,6 @@ https://trello.com/b/gWPiQFZ1/saito-rust-project-management
 ## Documentation
 
 - https://saitotech.github.io/saito-rust/saito_rust/index.html
-- [Architecture doc](ARCHITECTURE.md)
 
 ### Deps
 
@@ -35,7 +34,11 @@ cargo run
 ### Tests
 
 ```
-cargo test
+scripts/test.sh
+```
+or 
+```
+cargo test --features=test-utilities
 ```
 
 ### Code formatting
