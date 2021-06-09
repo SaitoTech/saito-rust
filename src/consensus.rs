@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::{AddBlockEvent, Blockchain, BLOCKCHAIN},
+    blockchain::{AddBlockEvent, BLOCKCHAIN_GLOBAL},
     crypto::hash,
     golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
     keypair::Keypair,
@@ -97,8 +97,9 @@ impl Consensus {
                             .send(SaitoMessage::Transaction { payload: golden_tx })
                             .unwrap();
                     }
-                    SaitoMessage::TryBundle => BLOCKCHAIN.with(|blockchain_rc| {
-                        let blockchain: &mut Blockchain = &mut *blockchain_rc.borrow_mut();
+                    SaitoMessage::TryBundle => {
+                        let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
+                        let mut blockchain = blockchain_mutex.lock().unwrap();
                         if let Some(block) = mempool.process(message, blockchain.latest_block()) {
                             let block_hash = block.hash().clone();
                             match blockchain.add_block(block) {
@@ -116,7 +117,7 @@ impl Consensus {
                                 }
                             }
                         }
-                    }),
+                    }
                     _ => {}
                 }
             }

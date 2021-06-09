@@ -6,9 +6,29 @@ use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
-use std::cell::RefCell;
+use std::sync::Arc;
+use std::sync::Mutex;
 
-thread_local!(pub static BLOCKCHAIN: RefCell<Blockchain> = RefCell::new(Blockchain::new()));
+// A lazy-loaded global static reference to Blockchain. For now, we will simply treat
+// everything(utxoset, mempool, etc) as a single shared resource which is managed by blockchain.
+// In the future we may want to create separate globals for some of the resources being held
+// by blockchain by giving them a similar lazy_static Arc<Mutex> treatment, but we will wait
+// to see the performance of this simple state management scheme before we try to optimize.
+lazy_static! {
+    // We use Arc for thread-safe reference counting and Mutex for thread-safe mutabilitity
+    pub static ref BLOCKCHAIN_GLOBAL: Arc<Mutex<Blockchain>> = Arc::new(Mutex::new(Blockchain::new()));
+}
+
+// TODO It might be more performant to keep everything in a single thread and use a
+// RefCell instead of an Arc<Mutex>. However, thread_local requiers a closure(or FnOnce)
+// to get a reference to BLOCKCHAIN_THREAD_LOCAL. Rust support of async closures is unstable,
+// so getting this to work has proved to be more tricky than simply using an Arc<Mutex>. In
+// the interest of not doing premature optimization, we will use an Arc<Mutex> and let tokio
+// do whatever it wants are far as using threads or not. This may turn out to be more performany anyway
+// even though we are paying the cost of atomic reference counting. However, it may be worth the effort to
+// try to configure tokio to run on a single thread and use a thread_local global instead sometime in
+// the future.
+// thread_local!(pub static BLOCKCHAIN_THREAD_LOCAL: RefCell<Blockchain> = RefCell::new(Blockchain::new()));
 
 /// Enumerated types of `Transaction`s to be handlded by consensus
 #[derive(Debug, PartialEq, Clone)]

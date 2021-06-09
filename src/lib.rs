@@ -30,6 +30,9 @@ pub mod transaction;
 pub mod types;
 pub mod utxoset;
 
+#[macro_use]
+extern crate lazy_static;
+
 /// Error returned by most functions.
 ///
 /// When writing a real application, one might want to consider a specialized
