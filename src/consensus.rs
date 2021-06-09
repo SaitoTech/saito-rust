@@ -97,26 +97,26 @@ impl Consensus {
                             .send(SaitoMessage::Transaction { payload: golden_tx })
                             .unwrap();
                     }
-                    SaitoMessage::TryBundle => {
-                        BLOCKCHAIN.with(|blockchain_rc| {
-                            let blockchain: &mut Blockchain = &mut *blockchain_rc.borrow_mut();
-                            if let Some(block) = mempool.process(message, blockchain.latest_block()) {
-                                let block_hash = block.hash().clone();
-                                match blockchain.add_block(block) {
-                                    AddBlockEvent::AcceptedAsLongestChain => {
-                                        println!("AcceptedAsLongestChain");
-                                        block_tx
-                                            .send(SaitoMessage::NewBlock { payload: block_hash })
-                                            .unwrap();
-                                    }
-                                    fail_message => {
-                                        println!("WE MISSED LONGEST CHAIN, WHAT HAPPENED?");
-                                        println!("{:?}", fail_message)
-                                    }
+                    SaitoMessage::TryBundle => BLOCKCHAIN.with(|blockchain_rc| {
+                        let blockchain: &mut Blockchain = &mut *blockchain_rc.borrow_mut();
+                        if let Some(block) = mempool.process(message, blockchain.latest_block()) {
+                            let block_hash = block.hash().clone();
+                            match blockchain.add_block(block) {
+                                AddBlockEvent::AcceptedAsLongestChain => {
+                                    println!("AcceptedAsLongestChain");
+                                    block_tx
+                                        .send(SaitoMessage::NewBlock {
+                                            payload: block_hash,
+                                        })
+                                        .unwrap();
+                                }
+                                fail_message => {
+                                    println!("WE MISSED LONGEST CHAIN, WHAT HAPPENED?");
+                                    println!("{:?}", fail_message)
                                 }
                             }
-                        })
-                    }
+                        }
+                    }),
                     _ => {}
                 }
             }
