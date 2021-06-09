@@ -138,11 +138,11 @@ impl Mempool {
                         timestamp,
                         previous_block.timestamp(),
                     ),
-                    BurnFee::return_work_needed(
-                        previous_block.start_burnfee(),
-                        timestamp,
-                        previous_block.timestamp(),
-                    ),
+                    // BurnFee::return_work_needed(
+                    //     previous_block.start_burnfee(),
+                    //     timestamp,
+                    //     previous_block.timestamp(),
+                    // ),
                     0.0,
                     &mut self.transactions,
                 );
@@ -160,7 +160,7 @@ impl Mempool {
                     0,
                     TREASURY,
                     10.0,
-                    0,
+                    // 0,
                     0.0,
                     &mut vec![],
                 );

@@ -44,7 +44,6 @@ impl Block {
             0,
             TREASURY,
             0.0,
-            0,
             0.0,
             transactions,
         );
@@ -60,10 +59,6 @@ impl Block {
         self.core.difficulty
     }
 
-    /// Returns the `Block` burnfee
-    pub fn burnfee(&self) -> u64 {
-        self.core.burnfee
-    }
     /// Returns the `BlockCore` of `Block`
     pub fn core(&self) -> &BlockCore {
         &self.core
@@ -157,8 +152,6 @@ pub struct BlockCore {
     treasury: u64,
     /// Start value in the `Burnfee` algorithm
     start_burnfee: f64,
-    /// `BurnFee` containing the fees paid to produce the block
-    burnfee: u64,
     /// Block difficulty required to win the `LotteryGame` in golden ticket generation
     difficulty: f32,
     /// simplified transaction cores
@@ -183,7 +176,6 @@ impl BlockCore {
             0,
             TREASURY,
             0.0,
-            0,
             0.0,
             &mut vec![],
         )
@@ -198,7 +190,6 @@ impl BlockCore {
         coinbase: u64,
         treasury: u64,
         start_burnfee: f64,
-        burnfee: u64,
         difficulty: f32,
         transactions: &mut Vec<Transaction>,
     ) -> Self {
@@ -210,7 +201,6 @@ impl BlockCore {
             coinbase,
             treasury,
             start_burnfee,
-            burnfee,
             difficulty,
             transactions: transactions.to_vec(),
         }
@@ -282,7 +272,6 @@ mod test {
         assert_eq!(block.previous_block_hash(), &[0; 32]);
         assert_eq!(block.creator(), public_key);
         assert_eq!(*block.transactions(), vec![]);
-        assert_eq!(block.burnfee(), 0);
         assert_eq!(block.difficulty(), 0.0);
         assert_eq!(block.coinbase(), 0);
         assert_eq!(block.start_burnfee(), 0.0);

@@ -59,9 +59,7 @@ pub fn generate_golden_ticket_transaction(
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
     BLOCKCHAIN.with(|blockchain_rc| {
         let blockchain: &mut Blockchain = &mut *blockchain_rc.borrow_mut();
-        let previous_block = blockchain
-            .get_block_by_hash(&previous_block_hash)
-            .unwrap();
+        let previous_block = blockchain.get_block_by_hash(&previous_block_hash).unwrap();
 
         let previous_block_hash = previous_block.clone_hash();
 
