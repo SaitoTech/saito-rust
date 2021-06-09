@@ -62,7 +62,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 // [cfg(feature = "test-utilities")]
 pub mod test_utilities {
     use crate::block::Block;
-    use crate::crypto::{make_message_from_bytes, Sha256Hash};
+    use crate::crypto::Sha256Hash;
     use crate::keypair::Keypair;
     use crate::slip::{OutputSlip, SlipID};
     use crate::time::create_timestamp;
@@ -80,14 +80,9 @@ pub mod test_utilities {
             TransactionType::Normal,
             vec![104, 101, 108, 108, 111],
         );
-        let message_bytes: Vec<u8> = tx_core.clone().into();
-        let message_hash = make_message_from_bytes(&message_bytes[..]);
-        let signature = keypair.sign_message(&message_hash[..]);
 
-        let tx = Transaction::add_signature(tx_core, signature);
-        // let tx2 = Transaction::default();
+        let tx = Transaction::create_signature(tx_core, &keypair);
 
-        // Block::new_mock(previous_block_hash, vec![tx.clone(), tx2.clone()])
-        Block::new_mock(previous_block_hash, vec![tx.clone()], block_id)
+        Block::new_mock(previous_block_hash, &mut vec![tx.clone()], block_id)
     }
 }
