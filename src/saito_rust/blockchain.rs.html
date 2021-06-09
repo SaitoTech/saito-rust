@@ -431,23 +431,52 @@
 <span id="428">428</span>
 <span id="429">429</span>
 <span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">burnfee</span>::<span class="ident">BurnFee</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">verify_message_signature</span>, <span class="ident">Sha256Hash</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">forktree</span>::<span class="ident">ForkTree</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">golden_ticket</span>::<span class="ident">GoldenTicket</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">longest_chain_queue</span>::<span class="ident">LongestChainQueue</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">transaction</span>::<span class="ident">Transaction</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utxoset</span>::<span class="ident">UtxoSet</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
 
-<span class="comment">// lazy_static! {</span>
-<span class="comment">//     // This allows us to get a reference to blockchain, utxoset, longest_chain_queue, or fork_tree</span>
-<span class="comment">//     // from anywhere in the codebase. In the future we can also use message passing or put</span>
-<span class="comment">//     // other objects into global statics when needed. This is just a temporary solution to get</span>
-<span class="comment">//     // things working before we optimize.</span>
-<span class="comment">//     // To use: add crate::blockchain::BLOCKCHAIN and add getters to Blockchain if needed</span>
-<span class="comment">//     pub static ref BLOCKCHAIN: Blockchain = Blockchain::new().clone();</span>
-<span class="comment">// }</span>
+<span class="macro">thread_local</span><span class="macro">!</span>(<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">BLOCKCHAIN</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">Blockchain</span>::<span class="ident">new</span>()));
 
 <span class="doccomment">/// Enumerated types of `Transaction`s to be handlded by consensus</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
@@ -575,7 +604,6 @@
         <span class="comment">// TODO: Should we pass a serialized block [u8] to add_block instead of a Block?</span>
         <span class="kw">let</span> <span class="ident">is_first_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">previous_block_hash</span>() <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">32</span>]
             <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">contains_block_hash</span>(<span class="ident">block</span>.<span class="ident">previous_block_hash</span>());
-
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains_block_hash</span>(<span class="kw-2">&amp;</span>(<span class="ident">block</span>.<span class="ident">hash</span>())) {
             <span class="ident">AddBlockEvent</span>::<span class="ident">AlreadyKnown</span>
         } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">is_first_block</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">contains_block_hash</span>(<span class="ident">block</span>.<span class="ident">previous_block_hash</span>()) {
@@ -641,6 +669,7 @@
 
         <span class="comment">// If the previous block hash doesn&#39;t exist in the ForkTree, it&#39;s rejected</span>
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">fork_tree</span>.<span class="ident">contains_block_hash</span>(<span class="ident">previous_block_hash</span>) {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;BLOCK ALREADY IN FORK TREE&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
         <span class="kw">if</span> <span class="self">self</span>
@@ -651,6 +680,7 @@
             <span class="op">+</span> <span class="number">1</span>
             <span class="op">!</span><span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>()
         {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ID NOT INCREMENTED PROPERLY&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
@@ -658,79 +688,117 @@
 
         <span class="comment">// Validate the burnfee</span>
         <span class="kw">let</span> <span class="ident">previous_block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fork_tree</span>.<span class="ident">block_by_hash</span>(<span class="ident">previous_block_hash</span>).<span class="ident">unwrap</span>();
-        <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">burnfee</span>()
-            <span class="op">!</span><span class="op">=</span> <span class="ident">BurnFee</span>::<span class="ident">burn_fee_calculation</span>(
-                <span class="ident">previous_block</span>.<span class="ident">burnfee</span>() <span class="kw">as</span> <span class="ident">f64</span>,
+        <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">start_burnfee</span>()
+            <span class="op">!</span><span class="op">=</span> <span class="ident">BurnFee</span>::<span class="ident">burn_fee_adjustment_calculation</span>(
+                <span class="ident">previous_block</span>.<span class="ident">start_burnfee</span>() <span class="kw">as</span> <span class="ident">f64</span>,
                 <span class="ident">block</span>.<span class="ident">timestamp</span>(),
                 <span class="ident">previous_block</span>.<span class="ident">timestamp</span>(),
-            )
+            ) <span class="kw">as</span> <span class="ident">f64</span>
         {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;BURNFEE IS WRONG&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
         <span class="comment">// TODO: This should probably be &gt;= but currently we are producing mock blocks very</span>
         <span class="comment">// quickly and this won&#39;t pass.</span>
         <span class="kw">if</span> <span class="ident">previous_block</span>.<span class="ident">timestamp</span>() <span class="op">&gt;</span> <span class="ident">block</span>.<span class="ident">timestamp</span>() {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;INCORRECT TIMESTAMPS&quot;</span>);
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+
+        <span class="kw">let</span> <span class="ident">golden_ticket_count</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">transactions</span>().<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">tx</span><span class="op">|</span> {
+            <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">broadcast_type</span>() <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">TransactionType</span>::<span class="ident">GoldenTicket</span> {
+                <span class="ident">acc</span> <span class="op">+</span> <span class="number">1</span>
+            } <span class="kw">else</span> {
+                <span class="ident">acc</span>
+            }
+        });
+        <span class="kw">if</span> <span class="ident">golden_ticket_count</span> <span class="op">&gt;</span> <span class="number">1</span> {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;TOO MANY GOLDEN TICKETS&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
         <span class="kw">let</span> <span class="ident">transactions_valid</span> <span class="op">=</span> <span class="ident">block</span>
             .<span class="ident">transactions</span>()
             .<span class="ident">iter</span>()
-            .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">validate_transaction</span>(<span class="ident">block</span>, <span class="ident">tx</span>, <span class="ident">fork_tuple</span>));
+            .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">validate_transaction</span>(<span class="ident">previous_block</span>, <span class="ident">block</span>, <span class="ident">tx</span>, <span class="ident">fork_tuple</span>));
 
         <span class="ident">transactions_valid</span>
     }
 
     <span class="kw">fn</span> <span class="ident">validate_transaction</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">previous_block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>,
         <span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>,
         <span class="ident">tx</span>: <span class="kw-2">&amp;</span><span class="ident">Transaction</span>,
         <span class="ident">fork_tuple</span>: <span class="kw-2">&amp;</span><span class="ident">ForkTuple</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="comment">// check that our sigs are valid</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">output_slip</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">utxoset</span>.<span class="ident">output_slip_from_slip_id</span>(<span class="kw-2">&amp;</span><span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">inputs</span>()[<span class="number">0</span>]) {
-            <span class="comment">// let serialized_tx: Vec&lt;u8&gt; = tx.core.clone().into();</span>
-            <span class="comment">// make_message_from_bytes(&amp;serialized_tx[..]);</span>
-            <span class="kw">let</span> <span class="ident">hash_message</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">hash</span>();
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">verify_message_signature</span>(<span class="kw-2">&amp;</span><span class="ident">hash_message</span>, <span class="kw-2">&amp;</span><span class="ident">tx</span>.<span class="ident">signature</span>(), <span class="kw-2">&amp;</span>(<span class="ident">output_slip</span>.<span class="ident">address</span>())) {
-                <span class="kw">return</span> <span class="bool-val">false</span>;
-            };
+        <span class="kw">match</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">broadcast_type</span>() {
+            <span class="ident">TransactionType</span>::<span class="ident">Normal</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">inputs</span>().<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">outputs</span>().<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                    <span class="kw">return</span> <span class="bool-val">true</span>;
+                }
 
-            <span class="comment">// validate our slips</span>
-            <span class="kw">let</span> <span class="ident">inputs_are_valid</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">inputs</span>().<span class="ident">iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                <span class="kw">return</span> <span class="op">!</span><span class="self">self</span>
-                    .<span class="ident">utxoset</span>
-                    .<span class="ident">is_slip_spent_at_block</span>(<span class="ident">input</span>, <span class="ident">block</span>, <span class="ident">fork_tuple</span>);
-            });
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">address</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">utxoset</span>.<span class="ident">get_receiver_for_slips</span>(<span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">inputs</span>()) {
+                    <span class="kw">let</span> <span class="ident">hash_message</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">hash</span>();
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">verify_message_signature</span>(<span class="kw-2">&amp;</span><span class="ident">hash_message</span>, <span class="kw-2">&amp;</span><span class="ident">tx</span>.<span class="ident">signature</span>(), <span class="ident">address</span>) {
+                        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;SIGNATURE IS NOT VALID&quot;</span>);
+                        <span class="kw">return</span> <span class="bool-val">false</span>;
+                    };
 
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">inputs_are_valid</span> {
-                <span class="kw">return</span> <span class="bool-val">false</span>;
+                    <span class="comment">// validate our slips</span>
+                    <span class="kw">let</span> <span class="ident">inputs_are_valid</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">inputs</span>().<span class="ident">iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                        <span class="kw">return</span> <span class="op">!</span><span class="self">self</span>
+                            .<span class="ident">utxoset</span>
+                            .<span class="ident">is_slip_spent_at_block</span>(<span class="ident">input</span>, <span class="ident">block</span>, <span class="ident">fork_tuple</span>);
+                    });
+
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">inputs_are_valid</span> {
+                        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;INPUTS ARE NOT FVALID&quot;</span>);
+                        <span class="kw">return</span> <span class="bool-val">false</span>;
+                    }
+
+                    <span class="comment">// valuidate that inputs are unspent</span>
+                    <span class="kw">let</span> <span class="ident">input_amt</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">tx</span>
+                        .<span class="ident">core</span>
+                        .<span class="ident">inputs</span>()
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+                            <span class="self">self</span>.<span class="ident">utxoset</span>
+                                .<span class="ident">output_slip_from_slip_id</span>(<span class="ident">input</span>)
+                                .<span class="ident">unwrap</span>()
+                                .<span class="ident">amount</span>()
+                        })
+                        .<span class="ident">sum</span>();
+
+                    <span class="kw">let</span> <span class="ident">output_amt</span>: <span class="ident">u64</span> <span class="op">=</span>
+                        <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">outputs</span>().<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">output</span><span class="op">|</span> <span class="ident">output</span>.<span class="ident">amount</span>()).<span class="ident">sum</span>();
+
+                    <span class="kw">if</span> <span class="ident">input_amt</span> <span class="op">!</span><span class="op">=</span> <span class="ident">output_amt</span> {
+                        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;INPUTS DO NOT MATCH OUTPUTS&quot;</span>);
+                        <span class="kw">return</span> <span class="bool-val">false</span>;
+                    }
+
+                    <span class="kw">return</span> <span class="bool-val">true</span>;
+                } <span class="kw">else</span> {
+                    <span class="comment">// no input slips, thus no output slips.</span>
+                    <span class="kw">return</span> <span class="bool-val">true</span>;
+                }
             }
+            <span class="ident">TransactionType</span>::<span class="ident">GoldenTicket</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="comment">// need to validate the golden ticket correctly</span>
+                <span class="kw">let</span> <span class="ident">golden_ticket</span> <span class="op">=</span> <span class="ident">GoldenTicket</span>::<span class="ident">from</span>(<span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">message</span>().<span class="ident">clone</span>());
 
-            <span class="comment">// valuidate that inputs are unspent</span>
-            <span class="kw">let</span> <span class="ident">input_amt</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">tx</span>
-                .<span class="ident">core</span>
-                .<span class="ident">inputs</span>()
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                    <span class="self">self</span>.<span class="ident">utxoset</span>
-                        .<span class="ident">output_slip_from_slip_id</span>(<span class="ident">input</span>)
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">amount</span>()
-                })
-                .<span class="ident">sum</span>();
+                <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;TARGET: {:?}&quot;</span>, <span class="ident">golden_ticket</span>.<span class="ident">target</span>);
+                <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;PREVIOUS BLOCK: {:?}&quot;</span>, <span class="ident">previous_block</span>.<span class="ident">hash</span>());
 
-            <span class="kw">let</span> <span class="ident">output_amt</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">outputs</span>().<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">output</span><span class="op">|</span> <span class="ident">output</span>.<span class="ident">amount</span>()).<span class="ident">sum</span>();
+                <span class="kw">if</span> <span class="ident">golden_ticket</span>.<span class="ident">target</span> <span class="op">!</span><span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">hash</span>() {
+                    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;INVALID TARGET&quot;</span>);
+                    <span class="kw">return</span> <span class="bool-val">false</span>;
+                }
 
-            <span class="kw">if</span> <span class="ident">input_amt</span> <span class="op">!</span><span class="op">=</span> <span class="ident">output_amt</span> {
-                <span class="kw">return</span> <span class="bool-val">false</span>;
+                <span class="kw">return</span> <span class="bool-val">true</span>;
             }
-
-            <span class="kw">return</span> <span class="bool-val">true</span>;
-        } <span class="kw">else</span> {
-            <span class="comment">// no input slips, thus no output slips.</span>
-            <span class="kw">return</span> <span class="bool-val">true</span>;
         }
     }
 
