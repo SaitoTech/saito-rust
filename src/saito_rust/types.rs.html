@@ -9,15 +9,13 @@
 <span id="6">6</span>
 <span id="7">7</span>
 <span id="8">8</span>
-<span id="9">9</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">Sha256Hash</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">transaction</span>::<span class="ident">Transaction</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">block</span>::<span class="ident">Block</span>, <span class="ident">transaction</span>::<span class="ident">Transaction</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SaitoMessage</span> {
     <span class="ident">Transaction</span> { <span class="ident">payload</span>: <span class="ident">Transaction</span> },
-    <span class="ident">NewBlock</span> { <span class="ident">payload</span>: <span class="ident">Sha256Hash</span> },
+    <span class="ident">Block</span> { <span class="ident">payload</span>: <span class="ident">Block</span> },
     <span class="ident">TryBundle</span>,
 }
 </pre></div>

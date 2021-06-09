@@ -101,9 +101,6 @@
 <span id="98"> 98</span>
 <span id="99"> 99</span>
 <span id="100">100</span>
-<span id="101">101</span>
-<span id="102">102</span>
-<span id="103">103</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">Sha256Hash</span>;
@@ -193,19 +190,16 @@
         <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage</span>::<span class="ident">new</span>(<span class="prelude-val">Some</span>(<span class="ident">dir_path</span>));
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">default</span>();
         <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>();
-        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">block_hash</span>);
         <span class="ident">storage</span>.<span class="ident">write_block_to_disk</span>(<span class="ident">block</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
         <span class="kw">match</span> <span class="ident">storage</span>.<span class="ident">read_block_from_disk</span>(<span class="ident">block_hash</span>).<span class="kw">await</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">_block</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="macro">assert</span><span class="macro">!</span>(<span class="bool-val">true</span>);
-                <span class="ident">teardown</span>().<span class="ident">expect</span>(<span class="string">&quot;Teardown failed&quot;</span>);
             }
-            <span class="prelude-val">Err</span>(<span class="ident">_err</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">teardown</span>().<span class="ident">expect</span>(<span class="string">&quot;Teardown failed&quot;</span>);
-            }
+            <span class="prelude-val">Err</span>(<span class="ident">_err</span>) <span class="op">=</span><span class="op">&gt;</span> {}
         }
 
         <span class="comment">// TODO -- add unwind_panic to teardown when assert failes</span>
+        <span class="ident">teardown</span>().<span class="ident">expect</span>(<span class="string">&quot;Teardown failed&quot;</span>);
     }
 }
 </pre></div>
