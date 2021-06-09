@@ -193,6 +193,7 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
+<span id="193">193</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">Sha256Hash</span>;
 
@@ -325,66 +326,67 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test</span> {
-    <span class="comment">// use crate::keypair::Keypair;</span>
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">make_message_from_string</span>;
 
-    <span class="comment">// #[test]</span>
-    <span class="comment">// fn test_longest_chain_queue() {</span>
-    <span class="comment">//     let mut longest_chain_queue = LongestChainQueue::new();</span>
-    <span class="comment">//</span>
-    <span class="comment">//     for n in 0..100 {</span>
-    <span class="comment">//         longest_chain_queue.roll_forward(make_message_from_string(&amp;n.to_string()));</span>
-    <span class="comment">//     }</span>
-    <span class="comment">//     assert_eq!(longest_chain_queue.latest_block_id(), 99);</span>
-    <span class="comment">//     assert_eq!(</span>
-    <span class="comment">//         longest_chain_queue.latest_block_hash().unwrap(),</span>
-    <span class="comment">//         make_message_from_string(&amp;99.to_string())</span>
-    <span class="comment">//     );</span>
-    <span class="comment">//     assert_eq!(</span>
-    <span class="comment">//         longest_chain_queue.block_hash_by_id(0),</span>
-    <span class="comment">//         make_message_from_string(&amp;0.to_string())</span>
-    <span class="comment">//     );</span>
-    <span class="comment">//     assert_eq!(</span>
-    <span class="comment">//         longest_chain_queue.block_hash_by_id(99),</span>
-    <span class="comment">//         make_message_from_string(&amp;99.to_string())</span>
-    <span class="comment">//     );</span>
-    <span class="comment">//     println!(&quot;Expect to see a panic in stdout here:&quot;);</span>
-    <span class="comment">//     let result = std::panic::catch_unwind(|| longest_chain_queue.block_hash_by_id(100));</span>
-    <span class="comment">//     assert!(result.is_err());</span>
-    <span class="comment">//     for n in 100..200 {</span>
-    <span class="comment">//         longest_chain_queue.roll_forward(make_message_from_string(&amp;n.to_string()));</span>
-    <span class="comment">//     }</span>
-    <span class="comment">//     assert_eq!(</span>
-    <span class="comment">//         longest_chain_queue.block_hash_by_id(0),</span>
-    <span class="comment">//         make_message_from_string(&amp;0.to_string())</span>
-    <span class="comment">//     );</span>
-    <span class="comment">//     longest_chain_queue.roll_forward(make_message_from_string(&amp;200.to_string()));</span>
-    <span class="comment">//     assert_eq!(longest_chain_queue.latest_block_id(), 200);</span>
-    <span class="comment">//     assert_eq!(</span>
-    <span class="comment">//         longest_chain_queue.latest_block_hash().unwrap(),</span>
-    <span class="comment">//         make_message_from_string(&amp;200.to_string())</span>
-    <span class="comment">//     );</span>
-    <span class="comment">//</span>
-    <span class="comment">//     println!(&quot;Expect to see a panic in stdout here:&quot;);</span>
-    <span class="comment">//     let result = std::panic::catch_unwind(|| longest_chain_queue.block_hash_by_id(0));</span>
-    <span class="comment">//     assert!(result.is_err());</span>
-    <span class="comment">//     for _n in 0..101 {</span>
-    <span class="comment">//         longest_chain_queue.roll_back();</span>
-    <span class="comment">//     }</span>
-    <span class="comment">//     assert_eq!(longest_chain_queue.latest_block_id(), 99);</span>
-    <span class="comment">//     assert_eq!(</span>
-    <span class="comment">//         longest_chain_queue.latest_block_hash().unwrap(),</span>
-    <span class="comment">//         make_message_from_string(&amp;99.to_string())</span>
-    <span class="comment">//     );</span>
-    <span class="comment">//     for n in 100..201 {</span>
-    <span class="comment">//         longest_chain_queue.roll_forward(make_message_from_string(&amp;n.to_string()));</span>
-    <span class="comment">//     }</span>
-    <span class="comment">//     assert_eq!(longest_chain_queue.latest_block_id(), 200);</span>
-    <span class="comment">//     assert_eq!(</span>
-    <span class="comment">//         longest_chain_queue.latest_block_hash().unwrap(),</span>
-    <span class="comment">//         make_message_from_string(&amp;200.to_string())</span>
-    <span class="comment">//     );</span>
-    <span class="comment">//    // TODO test last_block_in_epoch()</span>
-    <span class="comment">// }</span>
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">test_longest_chain_queue</span>() {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">longest_chain_queue</span> <span class="op">=</span> <span class="ident">LongestChainQueue</span>::<span class="ident">new</span>();
+
+        <span class="kw">for</span> <span class="ident">n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">100</span> {
+            <span class="ident">longest_chain_queue</span>.<span class="ident">roll_forward</span>(<span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="ident">n</span>.<span class="ident">to_string</span>()));
+        }
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">longest_chain_queue</span>.<span class="ident">latest_block_id</span>().<span class="ident">unwrap</span>(), <span class="number">99</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(
+            <span class="ident">longest_chain_queue</span>.<span class="ident">latest_block_hash</span>().<span class="ident">unwrap</span>(),
+            <span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="number">99</span>.<span class="ident">to_string</span>())
+        );
+        <span class="macro">assert_eq</span><span class="macro">!</span>(
+            <span class="ident">longest_chain_queue</span>.<span class="ident">block_hash_by_id</span>(<span class="number">0</span>),
+            <span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="number">0</span>.<span class="ident">to_string</span>())
+        );
+        <span class="macro">assert_eq</span><span class="macro">!</span>(
+            <span class="ident">longest_chain_queue</span>.<span class="ident">block_hash_by_id</span>(<span class="number">99</span>),
+            <span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="number">99</span>.<span class="ident">to_string</span>())
+        );
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Expect to see a panic in stdout here:&quot;</span>);
+        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">panic</span>::<span class="ident">catch_unwind</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">longest_chain_queue</span>.<span class="ident">block_hash_by_id</span>(<span class="number">100</span>));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">result</span>.<span class="ident">is_err</span>());
+        <span class="kw">for</span> <span class="ident">n</span> <span class="kw">in</span> <span class="number">100</span>..<span class="number">200</span> {
+            <span class="ident">longest_chain_queue</span>.<span class="ident">roll_forward</span>(<span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="ident">n</span>.<span class="ident">to_string</span>()));
+        }
+        <span class="macro">assert_eq</span><span class="macro">!</span>(
+            <span class="ident">longest_chain_queue</span>.<span class="ident">block_hash_by_id</span>(<span class="number">0</span>),
+            <span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="number">0</span>.<span class="ident">to_string</span>())
+        );
+        <span class="ident">longest_chain_queue</span>.<span class="ident">roll_forward</span>(<span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="number">200</span>.<span class="ident">to_string</span>()));
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">longest_chain_queue</span>.<span class="ident">latest_block_id</span>().<span class="ident">unwrap</span>(), <span class="number">200</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(
+            <span class="ident">longest_chain_queue</span>.<span class="ident">latest_block_hash</span>().<span class="ident">unwrap</span>(),
+            <span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="number">200</span>.<span class="ident">to_string</span>())
+        );
+
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Expect to see a panic in stdout here:&quot;</span>);
+        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">panic</span>::<span class="ident">catch_unwind</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">longest_chain_queue</span>.<span class="ident">block_hash_by_id</span>(<span class="number">0</span>));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">result</span>.<span class="ident">is_err</span>());
+        <span class="kw">for</span> <span class="ident">_n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">101</span> {
+            <span class="ident">longest_chain_queue</span>.<span class="ident">roll_back</span>();
+        }
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">longest_chain_queue</span>.<span class="ident">latest_block_id</span>().<span class="ident">unwrap</span>(), <span class="number">99</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(
+            <span class="ident">longest_chain_queue</span>.<span class="ident">latest_block_hash</span>().<span class="ident">unwrap</span>(),
+            <span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="number">99</span>.<span class="ident">to_string</span>())
+        );
+        <span class="kw">for</span> <span class="ident">n</span> <span class="kw">in</span> <span class="number">100</span>..<span class="number">201</span> {
+            <span class="ident">longest_chain_queue</span>.<span class="ident">roll_forward</span>(<span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="ident">n</span>.<span class="ident">to_string</span>()));
+        }
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">longest_chain_queue</span>.<span class="ident">latest_block_id</span>().<span class="ident">unwrap</span>(), <span class="number">200</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(
+            <span class="ident">longest_chain_queue</span>.<span class="ident">latest_block_hash</span>().<span class="ident">unwrap</span>(),
+            <span class="ident">make_message_from_string</span>(<span class="kw-2">&amp;</span><span class="number">200</span>.<span class="ident">to_string</span>())
+        );
+        <span class="comment">// TODO test last_block_in_epoch()</span>
+    }
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-js="../../search-index.js"></div>
