@@ -172,7 +172,82 @@
 <span id="169">169</span>
 <span id="170">170</span>
 <span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="ident">secp256k1</span>::<span class="ident">PublicKey</span>;
+
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">block</span>::{<span class="ident">Block</span>, <span class="ident">BlockCore</span>, <span class="ident">TREASURY</span>},
+    <span class="ident">burnfee</span>::<span class="ident">BurnFee</span>,
+    <span class="ident">keypair</span>::<span class="ident">Keypair</span>,
+    <span class="ident">time</span>::{<span class="ident">create_timestamp</span>, <span class="ident">format_timestamp</span>},
+    <span class="ident">transaction</span>::<span class="ident">Transaction</span>,
+    <span class="ident">types</span>::<span class="ident">SaitoMessage</span>,
+    <span class="ident">utxoset</span>::<span class="ident">UtxoSet</span>,
+};
+
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>, <span class="ident">RwLock</span>};
+
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">21500</span>;
 
 <span class="doccomment">/// The `Mempool` is the structure that collects blocks and transactions</span>
@@ -181,168 +256,215 @@
 <span class="doccomment">/// New `Block`s coming in over the network will hit the `Mempool` before being added to</span>
 <span class="doccomment">/// the `Blockchain`</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Mempool</span> {
-    <span class="comment">// /// A list of `Transaction`s to be bundled into `Block`s</span>
-<span class="comment">// transactions: Vec&lt;Transaction&gt;,</span>
+    <span class="doccomment">/// Keypair</span>
+    <span class="ident">keypair</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Keypair</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// RefCell UTXoSet</span>
+    <span class="ident">_utxoset</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">UtxoSet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// A list of `Transaction`s to be bundled into `Block`s</span>
+    <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Mempool</span> {
-    <span class="comment">// /// Creates new `Memppol`</span>
-    <span class="comment">// pub fn new(keypair: Arc&lt;RwLock&lt;Keypair&gt;&gt;) -&gt; Self {</span>
-    <span class="comment">//     Mempool {</span>
-    <span class="comment">//         transactions: vec![],</span>
-    <span class="comment">//     }</span>
-    <span class="comment">// }</span>
+    <span class="doccomment">/// Creates new `Memppol`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">keypair</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Keypair</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">utxoset</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">UtxoSet</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">Mempool</span> {
+            <span class="ident">_utxoset</span>: <span class="ident">utxoset</span>,
+            <span class="ident">keypair</span>,
+            <span class="ident">transactions</span>: <span class="macro">vec</span><span class="macro">!</span>[],
+        }
+    }
 
-    <span class="comment">// /// Processes `SaitoMessage` and attempts to return `Block`</span>
-    <span class="comment">// ///</span>
-    <span class="comment">// /// * `message` - `SaitoMessage` enum commanding `Mempool` operation</span>
-    <span class="comment">// /// * `previous_block` - `Block` at longest chain position in `Blockchain`</span>
-    <span class="comment">// pub fn process(</span>
-    <span class="comment">//     &amp;mut self,</span>
-    <span class="comment">//     message: SaitoMessage,</span>
-    <span class="comment">//     previous_block: &amp;Block,</span>
-    <span class="comment">// ) -&gt; Option&lt;Block&gt; {</span>
-    <span class="comment">//     match message {</span>
-    <span class="comment">//         SaitoMessage::Transaction { payload } =&gt; {</span>
-    <span class="comment">//             self.transactions.push(payload);</span>
-    <span class="comment">//             self.try_bundle(previous_block)</span>
-    <span class="comment">//         }</span>
-    <span class="comment">//         SaitoMessage::TryBundle =&gt; self.try_bundle(previous_block),</span>
-    <span class="comment">//         _ =&gt; None,</span>
-    <span class="comment">//     }</span>
-    <span class="comment">// }</span>
+    <span class="doccomment">/// Processes `SaitoMessage` and attempts to return `Block`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// * `message` - `SaitoMessage` enum commanding `Mempool` operation</span>
+    <span class="doccomment">/// * `previous_block` - `Block` at longest chain position in `Blockchain`</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">message</span>: <span class="ident">SaitoMessage</span>,
+        <span class="ident">previous_block</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Block</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="ident">message</span> {
+            <span class="ident">SaitoMessage</span>::<span class="ident">Transaction</span> { <span class="ident">payload</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">payload</span>);
+                <span class="self">self</span>.<span class="ident">try_bundle</span>(<span class="ident">previous_block</span>)
+            }
+            <span class="ident">SaitoMessage</span>::<span class="ident">TryBundle</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">try_bundle</span>(<span class="ident">previous_block</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+        }
+    }
 
-    <span class="comment">// /// Attempt to create a new `Block`</span>
-    <span class="comment">// ///</span>
-    <span class="comment">// /// * `previous_block` - `Option` of previous `Block`</span>
-    <span class="comment">// fn try_bundle(&amp;mut self, previous_block: &amp;Block) -&gt; Option&lt;Block&gt; {</span>
-    <span class="comment">//     if self.can_bundle_block(previous_block) {</span>
-    <span class="comment">//         Some(self.bundle_block(previous_block))</span>
-    <span class="comment">//     } else {</span>
-    <span class="comment">//         None</span>
-    <span class="comment">//     }</span>
-    <span class="comment">//     None</span>
-    <span class="comment">// }</span>
+    <span class="doccomment">/// Attempt to create a new `Block`</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// * `previous_block` - `Option` of previous `Block`</span>
+    <span class="kw">fn</span> <span class="ident">try_bundle</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">previous_block</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Block</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">can_bundle_block</span>(<span class="ident">previous_block</span>) {
+            <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">bundle_block</span>(<span class="ident">previous_block</span>))
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        }
+    }
 
-    <span class="comment">// /// Check to see if the `Mempool` has enough work to bundle a block</span>
-    <span class="comment">// ///</span>
-    <span class="comment">// /// * `previous_block` - `Option` of previous `Block`</span>
-    <span class="comment">// fn can_bundle_block(&amp;self, previous_block: &amp;Block) -&gt; bool {</span>
-    <span class="comment">//     match previous_block {</span>
-    <span class="comment">//         Some((block_header, _)) =&gt; {</span>
-    <span class="comment">//             let current_timestamp = create_timestamp();</span>
-    <span class="comment">//             let work_needed = self</span>
-    <span class="comment">//                 ._burnfee</span>
-    <span class="comment">//                 .return_work_needed(current_timestamp, block_header.timestamp());</span>
-    <span class="comment">//</span>
-    <span class="comment">//             println!(</span>
-    <span class="comment">//                 &quot;TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}&quot;,</span>
-    <span class="comment">//                 format_timestamp(current_timestamp),</span>
-    <span class="comment">//                 work_needed,</span>
-    <span class="comment">//                 self.work_available,</span>
-    <span class="comment">//                 self.transactions.len(),</span>
-    <span class="comment">//             );</span>
-    <span class="comment">//</span>
-    <span class="comment">//             // TODO -- add check for transactions in Mempool</span>
-    <span class="comment">//             self.work_available &gt;= work_needed</span>
-    <span class="comment">//         }</span>
-    <span class="comment">//         None =&gt; true,</span>
-    <span class="comment">//         }</span>
-    <span class="comment">//     false</span>
-    <span class="comment">// }</span>
+    <span class="doccomment">/// Check to see if the `Mempool` has enough work to bundle a block</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// * `previous_block` - `Option` of previous `Block`</span>
+    <span class="kw">fn</span> <span class="ident">can_bundle_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">previous_block_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Block</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">match</span> <span class="ident">previous_block_option</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">previous_block</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="ident">current_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
+                <span class="kw">let</span> <span class="ident">work_needed</span> <span class="op">=</span> <span class="ident">BurnFee</span>::<span class="ident">return_work_needed</span>(
+                    <span class="ident">previous_block</span>.<span class="ident">start_burnfee</span>(),
+                    <span class="ident">current_timestamp</span>,
+                    <span class="ident">previous_block</span>.<span class="ident">timestamp</span>(),
+                );
 
-    <span class="comment">// /// Create a new `Block` from the `Mempool`&#39;s list of `Transaction`s</span>
-    <span class="comment">// ///</span>
-    <span class="comment">// /// * `previous_block` - `Option` of the previous block on the longest chain</span>
-    <span class="comment">//     fn bundle_block(&amp;mut self, previous_block: &amp;Block) -&gt; Block {</span>
-    <span class="comment">//</span>
-    <span class="comment">//         let keypair = self._keypair.read().unwrap();</span>
-    <span class="comment">//         let publickey = keypair.public_key();</span>
-    <span class="comment">//         let block: Block;</span>
-    <span class="comment">// /****</span>
-    <span class="comment">//         match previous_block_index {</span>
-    <span class="comment">//             Some((previous_block_header, previous_block_hash)) =&gt; {</span>
-    <span class="comment">//</span>
-    <span class="comment">//                 block = Block::new();</span>
-    <span class="comment">// 		//block.set_creator();</span>
-    <span class="comment">// 		//block.set_previous_block_hash();</span>
-    <span class="comment">//</span>
-    <span class="comment">//                 // TODO -- include reclaimed fees here</span>
-    <span class="comment">//                 //let treasury = previous_block_header.treasury();</span>
-    <span class="comment">//                 //let coinbase = (treasury as f64 / GENESIS_PERIOD as f64).round() as u64;</span>
-    <span class="comment">//</span>
-    <span class="comment">//                 block.set_id(previous_block_header.id() + 1);</span>
-    <span class="comment">//                 block.set_coinbase(coinbase);</span>
-    <span class="comment">//                 block.set_treasury(treasury - coinbase);</span>
-    <span class="comment">//                 block.set_previous_block_hash(previous_block_hash.clone());</span>
-    <span class="comment">//                 block.set_difficulty(previous_block_header.difficulty());</span>
-    <span class="comment">//</span>
-    <span class="comment">//                 self._burnfee</span>
-    <span class="comment">//                     .adjust_work_needed(block.timestamp(), previous_block_header.timestamp());</span>
-    <span class="comment">//                 block.set_burnfee(</span>
-    <span class="comment">//                     self._burnfee</span>
-    <span class="comment">//                         .return_work_needed(block.timestamp(), previous_block_header.timestamp()),</span>
-    <span class="comment">//                 );</span>
-    <span class="comment">//             }</span>
-    <span class="comment">//             None =&gt; {</span>
-    <span class="comment">//                 block = Block::new(publickey.clone(), [0; 32]);</span>
-    <span class="comment">//             }</span>
-    <span class="comment">//         }</span>
-    <span class="comment">//         block.set_transactions(&amp;mut self.transactions);</span>
-    <span class="comment">// ****/</span>
-    <span class="comment">//</span>
-    <span class="comment">//         return block;</span>
-    <span class="comment">//         // TODO -- calculate difficulty and paysplit changes</span>
-    <span class="comment">//         // https://github.com/orgs/SaitoTech/projects/5#card-61347666</span>
-    <span class="comment">//     }</span>
+                <span class="comment">// TODO: re-add utxoset when it&#39;s decided on how we want to share mutable references</span>
+                <span class="kw">let</span> <span class="ident">work_available</span> <span class="op">=</span> <span class="number">0</span>;
+
+                <span class="macro">println</span><span class="macro">!</span>(
+                    <span class="string">&quot;TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}&quot;</span>,
+                    <span class="ident">format_timestamp</span>(<span class="ident">current_timestamp</span>),
+                    <span class="ident">work_needed</span>,
+                    <span class="ident">work_available</span>,
+                    <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">len</span>(),
+                );
+
+                <span class="comment">// TODO -- add check for transactions in Mempool</span>
+                <span class="ident">work_available</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">work_needed</span>
+            }
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
+        }
+    }
+
+    <span class="doccomment">/// Clear the transactions from the `Mempool`</span>
+    <span class="kw">fn</span> <span class="ident">clear_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+        <span class="self">self</span>.<span class="ident">transactions</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
+    }
+
+    <span class="doccomment">/// Create a new `Block` from the `Mempool`&#39;s list of `Transaction`s</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// * `previous_block` - `Option` of the previous block on the longest chain</span>
+    <span class="kw">fn</span> <span class="ident">bundle_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">previous_block_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Block</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+        <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">PublicKey</span>;
+
+        {
+            <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">keypair</span>.<span class="ident">read</span>().<span class="ident">unwrap</span>();
+            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>();
+        }
+
+        <span class="kw">let</span> <span class="ident">block</span>: <span class="ident">Block</span>;
+        <span class="kw">let</span> <span class="ident">block_core</span>: <span class="ident">BlockCore</span>;
+
+        <span class="kw">match</span> <span class="ident">previous_block_option</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">previous_block</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
+
+                <span class="kw">let</span> <span class="ident">treasury</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">treasury</span>();
+                <span class="kw">let</span> <span class="ident">coinbase</span> <span class="op">=</span> (<span class="ident">treasury</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="ident">GENESIS_PERIOD</span> <span class="kw">as</span> <span class="ident">f64</span>).<span class="ident">round</span>() <span class="kw">as</span> <span class="ident">u64</span>;
+
+                <span class="ident">block_core</span> <span class="op">=</span> <span class="ident">BlockCore</span>::<span class="ident">new</span>(
+                    <span class="ident">previous_block</span>.<span class="ident">id</span>() <span class="op">+</span> <span class="number">1</span>,
+                    <span class="ident">timestamp</span>,
+                    <span class="ident">previous_block</span>.<span class="ident">hash</span>(),
+                    <span class="ident">publickey</span>,
+                    <span class="ident">coinbase</span>,
+                    <span class="ident">treasury</span> <span class="op">-</span> <span class="ident">coinbase</span>,
+                    <span class="ident">BurnFee</span>::<span class="ident">burn_fee_adjustment_calculation</span>(
+                        <span class="ident">previous_block</span>.<span class="ident">start_burnfee</span>(),
+                        <span class="ident">timestamp</span>,
+                        <span class="ident">previous_block</span>.<span class="ident">timestamp</span>(),
+                    ),
+                    <span class="comment">// BurnFee::return_work_needed(</span>
+                    <span class="comment">//     previous_block.start_burnfee(),</span>
+                    <span class="comment">//     timestamp,</span>
+                    <span class="comment">//     previous_block.timestamp(),</span>
+                    <span class="comment">// ),</span>
+                    <span class="number">0.0</span>,
+                    <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">transactions</span>,
+                );
+
+                <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">new</span>(<span class="ident">block_core</span>);
+
+                <span class="comment">// TODO -- include reclaimed fees here</span>
+            }
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">block_core</span> <span class="op">=</span> <span class="ident">BlockCore</span>::<span class="ident">new</span>(
+                    <span class="number">0</span>,
+                    <span class="ident">create_timestamp</span>(),
+                    [<span class="number">0</span>; <span class="number">32</span>],
+                    <span class="ident">publickey</span>.<span class="ident">clone</span>(),
+                    <span class="number">0</span>,
+                    <span class="ident">TREASURY</span>,
+                    <span class="number">10.0</span>,
+                    <span class="comment">// 0,</span>
+                    <span class="number">0.0</span>,
+                    <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec</span><span class="macro">!</span>[],
+                );
+
+                <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">new</span>(<span class="ident">block_core</span>);
+            }
+        }
+        <span class="comment">// TODO -- calculate difficulty and paysplit changes</span>
+        <span class="comment">// https://github.com/orgs/SaitoTech/projects/5#card-61347666</span>
+
+        <span class="self">self</span>.<span class="ident">clear_transactions</span>();
+
+        <span class="ident">block</span>
+    }
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="comment">//</span>
-    <span class="comment">// use super::*;</span>
-    <span class="comment">// use crate::keypair::Keypair;</span>
-    <span class="comment">// use std::sync::{Arc, RwLock};</span>
-    <span class="comment">//</span>
-    <span class="comment">// #[test]</span>
-    <span class="comment">// fn mempool_test() {</span>
-    <span class="comment">//     assert_eq!(true, true);</span>
-    <span class="comment">//     let keypair = Arc::new(RwLock::new(Keypair::new()));</span>
-    <span class="comment">//     let mempool = Mempool::new(keypair);</span>
-    <span class="comment">//</span>
-    <span class="comment">//     assert_eq!(mempool.work_available, 0);</span>
-    <span class="comment">// }</span>
-    <span class="comment">// #[test]</span>
-    <span class="comment">// fn mempool_try_bundle_none_test() {</span>
-    <span class="comment">//     let keypair = Arc::new(RwLock::new(Keypair::new()));</span>
-    <span class="comment">//     let mut mempool = Mempool::new(keypair);</span>
-    <span class="comment">//</span>
-    <span class="comment">//     let new_block = mempool.try_bundle(None);</span>
-    <span class="comment">//</span>
-    <span class="comment">//     match new_block {</span>
-    <span class="comment">//         Some(block) =&gt; {</span>
-    <span class="comment">//             assert_eq!(block.id(), 0);</span>
-    <span class="comment">//             assert_eq!(*block.previous_block_hash(), [0; 32]);</span>
-    <span class="comment">//         }</span>
-    <span class="comment">//         None =&gt; {}</span>
-    <span class="comment">//     }</span>
-    <span class="comment">// }</span>
-    <span class="comment">// #[test]</span>
-    <span class="comment">// fn mempool_try_bundle_some_test() {</span>
-    <span class="comment">//     let keypair = Arc::new(RwLock::new(Keypair::new()));</span>
-    <span class="comment">//     let mut mempool = Mempool::new(keypair);</span>
-    <span class="comment">//</span>
-    <span class="comment">//     let prev_block = Block::new(Keypair::new().public_key().clone(), [0; 32]);</span>
-    <span class="comment">//     let prev_block_index = &amp;(prev_block.header().clone(), prev_block.hash());</span>
-    <span class="comment">//     let new_block = mempool.try_bundle(Some(prev_block_index));</span>
-    <span class="comment">//</span>
-    <span class="comment">//     match new_block {</span>
-    <span class="comment">//         Some(_) =&gt; {}</span>
-    <span class="comment">//         None =&gt; {</span>
-    <span class="comment">//             assert_eq!(true, true)</span>
-    <span class="comment">//         }</span>
-    <span class="comment">//     }</span>
-    <span class="comment">// }</span>
+
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">keypair</span>::<span class="ident">Keypair</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utxoset</span>::<span class="ident">UtxoSet</span>;
+    <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">mempool_test</span>() {
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="bool-val">true</span>, <span class="bool-val">true</span>);
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Keypair</span>::<span class="ident">new</span>()));
+        <span class="kw">let</span> <span class="ident">utxoset</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">UtxoSet</span>::<span class="ident">new</span>()));
+        <span class="kw">let</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool</span>::<span class="ident">new</span>(<span class="ident">keypair</span>, <span class="ident">utxoset</span>);
+
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">mempool</span>.<span class="ident">transactions</span>, <span class="macro">vec</span><span class="macro">!</span>[]);
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">mempool_try_bundle_none_test</span>() {
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Keypair</span>::<span class="ident">new</span>()));
+        <span class="kw">let</span> <span class="ident">utxoset</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">UtxoSet</span>::<span class="ident">new</span>()));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool</span>::<span class="ident">new</span>(<span class="ident">keypair</span>, <span class="ident">utxoset</span>);
+
+        <span class="kw">let</span> <span class="ident">new_block</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">try_bundle</span>(<span class="prelude-val">None</span>);
+
+        <span class="kw">match</span> <span class="ident">new_block</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">block</span>.<span class="ident">id</span>(), <span class="number">0</span>);
+                <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="kw-2">*</span><span class="ident">block</span>.<span class="ident">previous_block_hash</span>(), [<span class="number">0</span>; <span class="number">32</span>]);
+            }
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {}
+        }
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">mempool_try_bundle_some_test</span>() {
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Keypair</span>::<span class="ident">new</span>()));
+        <span class="kw">let</span> <span class="ident">utxoset</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">UtxoSet</span>::<span class="ident">new</span>()));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool</span>::<span class="ident">new</span>(<span class="ident">keypair</span>, <span class="ident">utxoset</span>);
+
+        <span class="kw">let</span> <span class="ident">core</span> <span class="op">=</span> <span class="ident">BlockCore</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="ident">prev_block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">new</span>(<span class="ident">core</span>);
+
+        <span class="kw">let</span> <span class="ident">new_block</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">try_bundle</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">prev_block</span>));
+
+        <span class="kw">match</span> <span class="ident">new_block</span> {
+            <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="bool-val">true</span>, <span class="bool-val">true</span>)
+            }
+        }
+    }
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-js="../../search-index.js"></div>
