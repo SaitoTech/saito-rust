@@ -465,13 +465,6 @@
 <span id="462">462</span>
 <span id="463">463</span>
 <span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">burnfee</span>::<span class="ident">BurnFee</span>;
@@ -481,15 +474,9 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">longest_chain_queue</span>::<span class="ident">LongestChainQueue</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utxoset</span>::<span class="ident">UtxoSet</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
 
-<span class="comment">// lazy_static! {</span>
-<span class="comment">//     // This allows us to get a reference to blockchain, utxoset, longest_chain_queue, or fork_tree</span>
-<span class="comment">//     // from anywhere in the codebase. In the future we can also use message passing or put</span>
-<span class="comment">//     // other objects into global statics when needed. This is just a temporary solution to get</span>
-<span class="comment">//     // things working before we optimize.</span>
-<span class="comment">//     // To use: add crate::blockchain::BLOCKCHAIN and add getters to Blockchain if needed</span>
-<span class="comment">//     pub static ref BLOCKCHAIN: Blockchain = Blockchain::new();</span>
-<span class="comment">// }</span>
+<span class="macro">thread_local</span><span class="macro">!</span>(<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">BLOCKCHAIN</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">Blockchain</span>::<span class="ident">new</span>()));
 
 <span class="doccomment">/// Enumerated types of `Transaction`s to be handlded by consensus</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
@@ -617,7 +604,6 @@
         <span class="comment">// TODO: Should we pass a serialized block [u8] to add_block instead of a Block?</span>
         <span class="kw">let</span> <span class="ident">is_first_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">previous_block_hash</span>() <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">32</span>]
             <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">contains_block_hash</span>(<span class="ident">block</span>.<span class="ident">previous_block_hash</span>());
-
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">contains_block_hash</span>(<span class="kw-2">&amp;</span>(<span class="ident">block</span>.<span class="ident">hash</span>())) {
             <span class="ident">AddBlockEvent</span>::<span class="ident">AlreadyKnown</span>
         } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">is_first_block</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">contains_block_hash</span>(<span class="ident">block</span>.<span class="ident">previous_block_hash</span>()) {
