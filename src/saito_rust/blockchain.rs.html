@@ -465,6 +465,26 @@
 <span id="462">462</span>
 <span id="463">463</span>
 <span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">burnfee</span>::<span class="ident">BurnFee</span>;
@@ -474,9 +494,29 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">longest_chain_queue</span>::<span class="ident">LongestChainQueue</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">utxoset</span>::<span class="ident">UtxoSet</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Mutex</span>;
 
-<span class="macro">thread_local</span><span class="macro">!</span>(<span class="kw">pub</span> <span class="kw">static</span> <span class="ident">BLOCKCHAIN</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">Blockchain</span>::<span class="ident">new</span>()));
+<span class="comment">// A lazy-loaded global static reference to Blockchain. For now, we will simply treat</span>
+<span class="comment">// everything(utxoset, mempool, etc) as a single shared resource which is managed by blockchain.</span>
+<span class="comment">// In the future we may want to create separate globals for some of the resources being held</span>
+<span class="comment">// by blockchain by giving them a similar lazy_static Arc&lt;Mutex&gt; treatment, but we will wait</span>
+<span class="comment">// to see the performance of this simple state management scheme before we try to optimize.</span>
+<span class="macro">lazy_static</span><span class="macro">!</span> {
+    <span class="comment">// We use Arc for thread-safe reference counting and Mutex for thread-safe mutabilitity</span>
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">BLOCKCHAIN_GLOBAL</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">Blockchain</span>::<span class="ident">new</span>()));
+}
+
+<span class="comment">// TODO It might be more performant to keep everything in a single thread and use a</span>
+<span class="comment">// RefCell instead of an Arc&lt;Mutex&gt;. However, thread_local requiers a closure(or FnOnce)</span>
+<span class="comment">// to get a reference to BLOCKCHAIN_THREAD_LOCAL. Rust support of async closures is unstable,</span>
+<span class="comment">// so getting this to work has proved to be more tricky than simply using an Arc&lt;Mutex&gt;. In</span>
+<span class="comment">// the interest of not doing premature optimization, we will use an Arc&lt;Mutex&gt; and let tokio</span>
+<span class="comment">// do whatever it wants are far as using threads or not. This may turn out to be more performany anyway</span>
+<span class="comment">// even though we are paying the cost of atomic reference counting. However, it may be worth the effort to</span>
+<span class="comment">// try to configure tokio to run on a single thread and use a thread_local global instead sometime in</span>
+<span class="comment">// the future.</span>
+<span class="comment">// thread_local!(pub static BLOCKCHAIN_THREAD_LOCAL: RefCell&lt;Blockchain&gt; = RefCell::new(Blockchain::new()));</span>
 
 <span class="doccomment">/// Enumerated types of `Transaction`s to be handlded by consensus</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
