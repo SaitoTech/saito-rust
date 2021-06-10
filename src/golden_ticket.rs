@@ -1,6 +1,8 @@
+use std::sync::Arc;
+
 use crate::{
     block::Block,
-    blockchain::{Blockchain, BLOCKCHAIN},
+    blockchain::BLOCKCHAIN_GLOBAL,
     crypto::{PublicKey, Sha256Hash},
     keypair::Keypair,
     slip::{OutputSlip, SlipType},
@@ -57,37 +59,37 @@ pub fn generate_golden_ticket_transaction(
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
-    BLOCKCHAIN.with(|blockchain_rc| {
-        let blockchain: &mut Blockchain = &mut *blockchain_rc.borrow_mut();
-        let previous_block = blockchain.get_block_by_hash(&previous_block_hash).unwrap();
+    let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
+    let blockchain = blockchain_mutex.lock().unwrap();
 
-        let previous_block_hash = previous_block.clone_hash();
+    let previous_block = blockchain.get_block_by_hash(&previous_block_hash).unwrap();
 
-        let _gt_solution = GoldenTicket::new(previous_block_hash, solution, publickey.clone());
+    let previous_block_hash = previous_block.clone_hash();
 
-        let winning_address = find_winner(&solution, &previous_block);
+    let _gt_solution = GoldenTicket::new(previous_block_hash, solution, publickey.clone());
 
-        // TODO -- calculate captured fees in blocks based on transaction fees
-        // for now, we just split the coinbase between the miners and the routers
+    let winning_address = find_winner(&solution, &previous_block);
 
-        let mut golden_tx_core = TransactionCore::default();
-        golden_tx_core.set_type(TransactionType::GoldenTicket);
+    // TODO -- calculate captured fees in blocks based on transaction fees
+    // for now, we just split the coinbase between the miners and the routers
 
-        let total_fees_for_miners_and_nodes = &previous_block.coinbase();
-        let miner_share = (*total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
-        let node_share = total_fees_for_miners_and_nodes - miner_share;
-        let miner_slip = OutputSlip::new(*publickey, SlipType::Normal, miner_share);
-        let node_slip = OutputSlip::new(winning_address, SlipType::Normal, node_share);
+    let mut golden_tx_core = TransactionCore::default();
+    golden_tx_core.set_type(TransactionType::GoldenTicket);
 
-        golden_tx_core.add_output(miner_slip);
-        golden_tx_core.add_output(node_slip);
+    let total_fees_for_miners_and_nodes = &previous_block.coinbase();
+    let miner_share = (*total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
+    let node_share = total_fees_for_miners_and_nodes - miner_share;
+    let miner_slip = OutputSlip::new(*publickey, SlipType::Normal, miner_share);
+    let node_slip = OutputSlip::new(winning_address, SlipType::Normal, node_share);
 
-        golden_tx_core.set_message(_gt_solution.into());
+    golden_tx_core.add_output(miner_slip);
+    golden_tx_core.add_output(node_slip);
 
-        let golden_tx = Transaction::create_signature(golden_tx_core, keypair);
+    golden_tx_core.set_message(_gt_solution.into());
 
-        golden_tx
-    })
+    let golden_tx = Transaction::create_signature(golden_tx_core, keypair);
+
+    golden_tx
 }
 
 /// Find the winner of the golden ticket game
