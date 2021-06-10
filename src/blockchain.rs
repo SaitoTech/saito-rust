@@ -35,7 +35,7 @@ pub type ForkTuple = (Block, ChainFork, ChainFork);
 #[derive(Debug, Clone)]
 pub struct Blockchain {
     /// Hashmap of slips used by the network
-    utxoset: UtxoSet,
+    pub utxoset: UtxoSet,
     // A queue-like structure that holds the longest chain
     longest_chain_queue: LongestChainQueue,
     // hashmap back tree to track blocks and potential forks
@@ -306,23 +306,24 @@ impl Blockchain {
                     let output_amt: u64 =
                         tx.core.outputs().iter().map(|output| output.amount()).sum();
 
-                    if input_amt != output_amt {
+                    if input_amt < output_amt {
                         println!("INPUTS DO NOT MATCH OUTPUTS");
                         return false;
                     }
 
                     return true;
                 } else {
+                    println!("SLIPS ARE NOT FROM SAME RECEIVER");
                     // no input slips, thus no output slips.
-                    return true;
+                    return false;
                 }
             }
             TransactionType::GoldenTicket => {
                 // need to validate the golden ticket correctly
                 let golden_ticket = GoldenTicket::from(tx.core.message().clone());
 
-                println!("TARGET: {:?}", golden_ticket.target);
-                println!("PREVIOUS BLOCK: {:?}", previous_block.hash());
+                // println!("TARGET: {:?}", golden_ticket.target);
+                // println!("PREVIOUS BLOCK: {:?}", previous_block.hash());
 
                 if golden_ticket.target != previous_block.hash() {
                     println!("INVALID TARGET");
@@ -342,12 +343,18 @@ impl Blockchain {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::keypair::Keypair;
     use crate::test_utilities;
 
     #[test]
     fn add_block_test() {
-        let mut blockchain = Blockchain::new();
-        let block = test_utilities::make_mock_block([0; 32], 0);
+        let keypair = Keypair::new();
+        let (mut blockchain, mut slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 1200);
+
+        println!("BLOCKCHAIN CREATED");
+
+        let block = test_utilities::make_mock_block(&keypair, [0; 32], 0, slips.pop().unwrap().0);
         let mut prev_block_hash = block.hash().clone();
         let mut prev_block_id = block.id();
         let first_block_hash = block.hash().clone();
@@ -355,7 +362,12 @@ mod tests {
         //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
         for _n in 0..5 {
-            let block = test_utilities::make_mock_block(prev_block_hash, prev_block_id + 1);
+            let block = test_utilities::make_mock_block(
+                &keypair,
+                prev_block_hash,
+                prev_block_id + 1,
+                slips.pop().unwrap().0,
+            );
             prev_block_hash = block.hash().clone();
             prev_block_id = block.id();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
@@ -363,7 +375,8 @@ mod tests {
             assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
         }
         // make a fork
-        let block = test_utilities::make_mock_block(first_block_hash, 1);
+        let block =
+            test_utilities::make_mock_block(&keypair, first_block_hash, 1, slips.pop().unwrap().0);
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         prev_block_hash = block.hash().clone();
         prev_block_id = block.id();
@@ -371,7 +384,12 @@ mod tests {
         assert_eq!(result, AddBlockEvent::Accepted);
 
         for _n in 0..4 {
-            let block = test_utilities::make_mock_block(prev_block_hash, prev_block_id + 1);
+            let block = test_utilities::make_mock_block(
+                &keypair,
+                prev_block_hash,
+                prev_block_id + 1,
+                slips.pop().unwrap().0,
+            );
             prev_block_hash = block.hash().clone();
             prev_block_id = block.id();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
@@ -379,13 +397,19 @@ mod tests {
             assert_eq!(result, AddBlockEvent::Accepted);
         }
         // new longest chain tip on top of the fork
-        let block = test_utilities::make_mock_block(prev_block_hash, prev_block_id + 1);
+        let block = test_utilities::make_mock_block(
+            &keypair,
+            prev_block_hash,
+            prev_block_id + 1,
+            slips.pop().unwrap().0,
+        );
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
 
         // make another fork
-        let block = test_utilities::make_mock_block(first_block_hash, 1);
+        let block =
+            test_utilities::make_mock_block(&keypair, first_block_hash, 1, slips.pop().unwrap().0);
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         prev_block_hash = block.hash().clone();
         prev_block_id = block.id();
@@ -393,7 +417,12 @@ mod tests {
         assert_eq!(result, AddBlockEvent::Accepted);
 
         for _n in 0..5 {
-            let block = test_utilities::make_mock_block(prev_block_hash, prev_block_id + 1);
+            let block = test_utilities::make_mock_block(
+                &keypair,
+                prev_block_hash,
+                prev_block_id + 1,
+                slips.pop().unwrap().0,
+            );
             prev_block_hash = block.hash().clone();
             prev_block_id = block.id();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
@@ -401,7 +430,12 @@ mod tests {
             assert_eq!(result, AddBlockEvent::Accepted);
         }
         // new longest chain tip on top of the fork
-        let block = test_utilities::make_mock_block(prev_block_hash, prev_block_id + 1);
+        let block = test_utilities::make_mock_block(
+            &keypair,
+            prev_block_hash,
+            prev_block_id + 1,
+            slips.pop().unwrap().0,
+        );
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
@@ -419,7 +453,12 @@ mod tests {
         prev_block_id = prev_block.id();
 
         for _n in 0..2 {
-            let block = test_utilities::make_mock_block(prev_block_hash, prev_block_id + 1);
+            let block = test_utilities::make_mock_block(
+                &keypair,
+                prev_block_hash,
+                prev_block_id + 1,
+                slips.pop().unwrap().0,
+            );
             prev_block_hash = block.hash().clone();
             prev_block_id = block.id();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
@@ -427,22 +466,35 @@ mod tests {
             assert_eq!(result, AddBlockEvent::Accepted);
         }
 
-        let block = test_utilities::make_mock_block(prev_block_hash, prev_block_id + 1);
+        let block = test_utilities::make_mock_block(
+            &keypair,
+            prev_block_hash,
+            prev_block_id + 1,
+            slips.pop().unwrap().0,
+        );
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
 
         // make another fork
-        let block = test_utilities::make_mock_block(first_block_hash, 1);
+        let block =
+            test_utilities::make_mock_block(&keypair, first_block_hash, 1, slips.pop().unwrap().0);
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         prev_block_hash = block.hash().clone();
         prev_block_id = block.id();
         //println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::Accepted);
 
+        println!("RUNNING EPOCH");
         // run 1000 blocks to test the epoch a bit
         for _n in 0..1000 {
-            let block = test_utilities::make_mock_block(prev_block_hash, prev_block_id + 1);
+            println!("{}", _n);
+            let block = test_utilities::make_mock_block(
+                &keypair,
+                prev_block_hash,
+                prev_block_id + 1,
+                slips.pop().unwrap().0,
+            );
             prev_block_hash = block.hash().clone();
             prev_block_id = block.id();
             blockchain.add_block(block.clone());

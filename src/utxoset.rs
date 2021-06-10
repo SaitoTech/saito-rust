@@ -205,6 +205,7 @@ impl UtxoSet {
     /// he/she is trying to spend as inputs in a transaction.
     pub fn get_receiver_for_slips(&self, slip_ids: &Vec<SlipID>) -> Option<&PublicKey> {
         if slip_ids.is_empty() {
+            println!("SLIP IDS ARE EMPTY");
             None
         } else {
             if let Some(outputs) = slip_ids
@@ -222,6 +223,7 @@ impl UtxoSet {
                     None
                 }
             } else {
+                println!("COULDN'T FIND INPUTS");
                 None
             }
         }
