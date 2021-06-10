@@ -258,7 +258,8 @@ impl Into<Vec<u8>> for Block {
 mod test {
     use super::*;
     use crate::block::Block;
-    use crate::slip::SlipType;
+    use crate::keypair::Keypair;
+    use crate::slip::{SlipID, SlipType};
     use crate::test_utilities;
 
     #[test]
@@ -279,15 +280,14 @@ mod test {
 
     #[test]
     fn block_set_transactions_test() {
-        let public_key: PublicKey = PublicKey::from_str(
-            "0225ee90fc71570613b42e29912a760bb0b2da9182b2a4271af9541b7c5e278072",
-        )
-        .unwrap();
-        let block = test_utilities::make_mock_block([0; 32], 0);
+        let keypair = Keypair::new();
+        let public_key = keypair.public_key();
+
+        let block = test_utilities::make_mock_block(&keypair, [0; 32], 0, SlipID::new([0; 32], 0));
         assert_eq!(block.transactions().len(), 1);
         assert_eq!(
             block.transactions()[0].core.outputs()[0].address(),
-            &public_key
+            public_key
         );
 
         assert_eq!(block.transactions()[0].core.outputs()[0].amount(), 10);
