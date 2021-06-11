@@ -7,15 +7,7 @@ Saito-Rust is an implementation of Saito Consensus written in Rust for use by hi
 
 If you need to get in touch with us, please reach out anytime.
 
-# Usage
-
-TODO
-
-# How to contribute
-
-TODO
-
-# Contact
+See [readme for more details](https://github.com/SaitoTech/saito-rust/blob/main/README.md)
 
 The Saito Team
 dev@saito.tech
@@ -38,6 +30,15 @@ pub mod transaction;
 pub mod types;
 pub mod utxoset;
 
+#[macro_use]
+extern crate lazy_static;
+
+// TODO move this to another file and include!()
+// TODO put test_utilities behind a feature flag so it's not built into non-test builds
+//   i.e. uncomment this line:
+// [cfg(feature = "test-utilities")]
+pub mod test_utilities;
+
 /// Error returned by most functions.
 ///
 /// When writing a real application, one might want to consider a specialized
@@ -55,39 +56,3 @@ pub type Error = Box<dyn std::error::Error + Send + Sync>;
 ///
 /// This is defined as a convenience.
 pub type Result<T> = std::result::Result<T, Error>;
-
-// TODO move this to another file and include!()
-// TODO put test_utilities behind a feature flag so it's not built into non-test builds
-//   i.e. uncomment this line:
-// [cfg(feature = "test-utilities")]
-pub mod test_utilities {
-    use crate::block::Block;
-    use crate::crypto::{make_message_from_bytes, Sha256Hash};
-    use crate::keypair::Keypair;
-    use crate::slip::{OutputSlip, SlipID};
-    use crate::time::create_timestamp;
-    use crate::transaction::{Transaction, TransactionCore, TransactionType};
-    // use secp256k1::Signature;
-
-    pub fn make_mock_block(previous_block_hash: Sha256Hash, block_id: u64) -> Block {
-        let keypair = Keypair::new();
-        let from_slip = SlipID::default();
-        let to_slip = OutputSlip::default();
-        let tx_core = TransactionCore::new(
-            create_timestamp(),
-            vec![from_slip.clone()],
-            vec![to_slip.clone()],
-            TransactionType::Normal,
-            vec![104, 101, 108, 108, 111],
-        );
-        let message_bytes: Vec<u8> = tx_core.clone().into();
-        let message_hash = make_message_from_bytes(&message_bytes[..]);
-        let signature = keypair.sign_message(&message_hash[..]);
-
-        let tx = Transaction::add_signature(tx_core, signature);
-        // let tx2 = Transaction::default();
-
-        // Block::new_mock(previous_block_hash, vec![tx.clone(), tx2.clone()])
-        Block::new_mock(previous_block_hash, vec![tx.clone()], block_id)
-    }
-}

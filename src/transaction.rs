@@ -1,5 +1,6 @@
 use crate::{
-    crypto::{make_message_from_bytes, Sha256Hash},
+    crypto::{hash, make_message_from_bytes, Sha256Hash},
+    keypair::Keypair,
     slip::{OutputSlip, SlipID},
     time::create_timestamp,
 };
@@ -29,6 +30,7 @@ impl Hop {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum TransactionType {
     Normal,
+    GoldenTicket,
 }
 
 /// A record containging data of funds between transfered between public addresses. It
@@ -57,18 +59,6 @@ pub struct TransactionCore {
     /// A byte array of miscellaneous information
     message: Vec<u8>,
 }
-
-// impl From<Vec<u8>> for TransactionCore {
-//     fn from(data: Vec<u8>) -> Self {
-//         bincode::deserialize(&data[..]).unwrap()
-//     }
-// }
-//
-// impl Into<Vec<u8>> for TransactionCore {
-//     fn into(self) -> Vec<u8> {
-//         bincode::serialize(&self.core).unwrap()
-//     }
-// }
 
 impl Transaction {
     ///
@@ -109,6 +99,7 @@ impl Transaction {
         }
     }
 
+    /// Sign
     pub fn sign(core: TransactionCore) -> Transaction {
         Transaction {
             signature: Signature::from_compact(&[0; 64]).unwrap(),
@@ -116,6 +107,8 @@ impl Transaction {
             core: core,
         }
     }
+
+    /// Add a `Signature` to `Transaction`
     pub fn add_signature(core: TransactionCore, signature: Signature) -> Transaction {
         Transaction {
             signature: signature,
@@ -123,9 +116,23 @@ impl Transaction {
             core: core,
         }
     }
+
+    /// Create signature and new `Transaction`
+    pub fn create_signature(core: TransactionCore, keypair: &Keypair) -> Transaction {
+        let message_bytes: Vec<u8> = core.clone().into();
+        let message_hash = make_message_from_bytes(&message_bytes[..]);
+        let signature = keypair.sign_message(&message_hash[..]);
+        Transaction::add_signature(core, signature)
+    }
+
     /// Returns `secp256k1::Signature` verifying the validity of data on a transaction
     pub fn signature(&self) -> &Signature {
         &self.signature
+    }
+
+    pub fn hash(&self) -> Sha256Hash {
+        let data: Vec<u8> = self.core.clone().into();
+        hash(&data)
     }
 
     /// Add a new `Hop` to the list of `Hop`s
@@ -159,6 +166,7 @@ impl Transaction {
     //     true
     // }
 }
+
 impl From<Vec<u8>> for TransactionCore {
     fn from(data: Vec<u8>) -> Self {
         bincode::deserialize(&data[..]).unwrap()
@@ -172,6 +180,17 @@ impl Into<Vec<u8>> for TransactionCore {
 }
 
 impl TransactionCore {
+    /// Default `TransactionCore` creation
+    pub fn default() -> Self {
+        TransactionCore {
+            timestamp: create_timestamp(),
+            inputs: vec![],
+            outputs: vec![],
+            broadcast_type: TransactionType::Normal,
+            message: vec![],
+        }
+    }
+
     /// Creates new `Transaction`
     ///
     /// * `broadcast_type` - `TransactionType` of the new `Transaction`
@@ -240,6 +259,14 @@ impl TransactionCore {
         // TODO get rid of this clone
         let serialized_tx: Vec<u8> = self.clone().into();
         make_message_from_bytes(&serialized_tx[..])
+    }
+
+    pub fn set_type(&mut self, tx_type: TransactionType) {
+        self.broadcast_type = tx_type;
+    }
+
+    pub fn set_message(&mut self, message: Vec<u8>) {
+        self.message = message;
     }
 }
 

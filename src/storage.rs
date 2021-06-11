@@ -86,15 +86,18 @@ mod test {
         let storage = Storage::new(Some(dir_path));
         let block = Block::default();
         let block_hash = block.hash();
+        println!("{:?}", block_hash);
         storage.write_block_to_disk(block).await.unwrap();
         match storage.read_block_from_disk(block_hash).await {
             Ok(_block) => {
                 assert!(true);
+                teardown().expect("Teardown failed");
             }
-            Err(_err) => {}
+            Err(_err) => {
+                teardown().expect("Teardown failed");
+            }
         }
 
         // TODO -- add unwind_panic to teardown when assert failes
-        teardown().expect("Teardown failed");
     }
 }

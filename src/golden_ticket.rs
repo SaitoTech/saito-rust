@@ -1,21 +1,25 @@
+use std::sync::Arc;
+
 use crate::{
     block::Block,
+    blockchain::BLOCKCHAIN_GLOBAL,
     crypto::{PublicKey, Sha256Hash},
     keypair::Keypair,
     slip::{OutputSlip, SlipType},
-    transaction::Transaction,
+    transaction::{Transaction, TransactionCore, TransactionType},
 };
+use serde::{Deserialize, Serialize};
 
 /// The golden ticket is a data structure containing instructions for picking
 /// a winner for paysplit in saito consensus.
-#[derive(Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct GoldenTicket {
     // the target `Block` hash to solve for
-    target: Sha256Hash,
+    pub target: Sha256Hash,
     // the random solution that matches the target hash to some arbitrary level of difficulty
-    solution: Sha256Hash,
+    pub solution: Sha256Hash,
     // `secp256k1::PublicKey` of the node that found the solution
-    publickey: PublicKey,
+    pub publickey: PublicKey,
 }
 
 impl GoldenTicket {
@@ -29,6 +33,18 @@ impl GoldenTicket {
     }
 }
 
+impl From<Vec<u8>> for GoldenTicket {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for GoldenTicket {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
+
 /// Create a new `GoldenTicket` `Transaction`
 ///
 /// * `solution` - `Hash` of solution we created in golden ticket game
@@ -36,35 +52,42 @@ impl GoldenTicket {
 /// * `keypair` - `Keypair`
 pub fn generate_golden_ticket_transaction(
     solution: Sha256Hash,
-    previous_block: &Block,
+    previous_block_hash: Sha256Hash,
     keypair: &Keypair,
 ) -> Transaction {
     let publickey = keypair.public_key();
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
+    let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
+    let blockchain = blockchain_mutex.lock().unwrap();
+
+    let previous_block = blockchain.get_block_by_hash(&previous_block_hash).unwrap();
 
     let previous_block_hash = previous_block.clone_hash();
-    //let previous_block_hash = previous_block.hash;
 
     let _gt_solution = GoldenTicket::new(previous_block_hash, solution, publickey.clone());
 
-    let winning_address = find_winner(&solution, previous_block);
+    let winning_address = find_winner(&solution, &previous_block);
 
     // TODO -- calculate captured fees in blocks based on transaction fees
     // for now, we just split the coinbase between the miners and the routers
 
-    let mut golden_tx = Transaction::default();
+    let mut golden_tx_core = TransactionCore::default();
+    golden_tx_core.set_type(TransactionType::GoldenTicket);
 
     let total_fees_for_miners_and_nodes = &previous_block.coinbase();
-
     let miner_share = (*total_fees_for_miners_and_nodes as f64 * 0.5).round() as u64;
     let node_share = total_fees_for_miners_and_nodes - miner_share;
     let miner_slip = OutputSlip::new(*publickey, SlipType::Normal, miner_share);
     let node_slip = OutputSlip::new(winning_address, SlipType::Normal, node_share);
 
-    golden_tx.core.add_output(miner_slip);
-    golden_tx.core.add_output(node_slip);
+    golden_tx_core.add_output(miner_slip);
+    golden_tx_core.add_output(node_slip);
+
+    golden_tx_core.set_message(_gt_solution.into());
+
+    let golden_tx = Transaction::create_signature(golden_tx_core, keypair);
 
     golden_tx
 }
