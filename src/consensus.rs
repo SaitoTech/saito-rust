@@ -4,6 +4,7 @@ use crate::{
     golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
     keypair::Keypair,
     mempool::Mempool,
+    network::Network,
     types::SaitoMessage,
     utxoset::UtxoSet,
 };
@@ -43,12 +44,19 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
         _shutdown_complete_rx: shutdown_complete_rx,
     };
 
+    let network = Network {};
+
     tokio::select! {
         res = consensus._run() => {
             if let Err(err) = res {
                 // TODO -- implement logging/tracing
                 // https://github.com/orgs/SaitoTech/projects/5#card-61344938
-                println!("{:?}", err);
+                eprintln!("{:?}", err);
+            }
+        },
+        res2 = network.start() => {
+            if let Err(err) = res2 {
+                eprintln!("server error: {}", err);
             }
         },
         _ = shutdown => {

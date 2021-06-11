@@ -286,7 +286,8 @@ mod tests {
         assert_eq!(tx.core.outputs(), &vec![]);
         assert_eq!(tx.core.inputs(), &vec![]);
         assert_eq!(tx.core.broadcast_type(), &TransactionType::Normal);
-        assert_eq!(tx.core.message(), &vec![]);
+        let message: Vec<u8> = vec![];
+        assert_eq!(tx.core.message(), &message);
 
         let keypair = Keypair::new();
         let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 0);

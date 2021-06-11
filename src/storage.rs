@@ -4,8 +4,9 @@ use crate::crypto::Sha256Hash;
 use tokio::fs::File;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 
-pub const BLOCKS_DIR: &str = "./data/blocks/";
-// pub const BLOCKS_DIR: &str = "./";
+use std::io::prelude::*;
+
+pub const BLOCKS_DIR: &str = "./src/data/blocks/";
 
 pub struct Storage {
     blocks_dir_path: Option<String>,
@@ -18,7 +19,7 @@ impl Storage {
         }
     }
 
-    pub async fn write_block_to_disk(&self, block: Block) -> io::Result<()> {
+    pub async fn write_block_to_disk_async(&self, block: Block) -> io::Result<()> {
         let mut filename = match self.blocks_dir_path.clone() {
             Some(dir) => dir,
             None => String::from(BLOCKS_DIR),
@@ -35,8 +36,11 @@ impl Storage {
         Ok(())
     }
 
-    pub async fn read_block_from_disk(&self, block_hash: Sha256Hash) -> io::Result<Block> {
-        let mut filename = String::from(BLOCKS_DIR);
+    pub async fn read_block_from_disk_async(&self, block_hash: Sha256Hash) -> io::Result<Block> {
+        let mut filename = match self.blocks_dir_path.clone() {
+            Some(dir) => dir,
+            None => String::from(BLOCKS_DIR),
+        };
 
         filename.push_str(&hex::encode(block_hash));
         filename.push_str(&".sai");
@@ -44,6 +48,55 @@ impl Storage {
         let mut f = File::open(filename).await?;
         let mut encoded = Vec::<u8>::new();
         f.read_to_end(&mut encoded).await?;
+
+        Ok(Block::from(encoded))
+    }
+
+    pub async fn stream_block_from_disk(&self, block_hash: Sha256Hash) -> io::Result<Vec<u8>> {
+        let mut filename = match self.blocks_dir_path.clone() {
+            Some(dir) => dir,
+            None => String::from(BLOCKS_DIR),
+        };
+
+        filename.push_str(&hex::encode(block_hash));
+        filename.push_str(&".sai");
+
+        let mut f = File::open(filename).await?;
+        let mut encoded = Vec::<u8>::new();
+        f.read_to_end(&mut encoded).await?;
+
+        Ok(encoded)
+    }
+
+    pub fn write_block_to_disk(&self, block: Block) -> io::Result<()> {
+        let mut filename = match self.blocks_dir_path.clone() {
+            Some(dir) => dir,
+            None => String::from(BLOCKS_DIR),
+        };
+
+        filename.push_str(&block.hash_as_hex());
+        filename.push_str(&".sai");
+
+        let mut buffer = std::fs::File::create(filename)?;
+
+        let byte_array: Vec<u8> = block.into();
+        buffer.write_all(&byte_array[..])?;
+
+        Ok(())
+    }
+
+    pub fn read_block_from_disk(&self, block_hash: Sha256Hash) -> io::Result<Block> {
+        let mut filename = match self.blocks_dir_path.clone() {
+            Some(dir) => dir,
+            None => String::from(BLOCKS_DIR),
+        };
+
+        filename.push_str(&hex::encode(block_hash));
+        filename.push_str(&".sai");
+
+        let mut f = std::fs::File::open(filename)?;
+        let mut encoded = Vec::<u8>::new();
+        f.read_to_end(&mut encoded)?;
 
         Ok(Block::from(encoded))
     }
@@ -69,11 +122,11 @@ mod test {
     }
 
     #[tokio::test]
-    async fn storage_write_block_to_disk() {
+    async fn storage_write_block_to_disk_async() {
         let dir_path = String::from("./src/data/blocks/");
         let block = Block::default();
         let storage = Storage::new(Some(dir_path));
-        let result = storage.write_block_to_disk(block).await;
+        let result = storage.write_block_to_disk_async(block).await;
         assert_eq!(result.unwrap(), ());
 
         // TODO -- add unwind_panic to teardown when assert failes
@@ -81,14 +134,14 @@ mod test {
     }
 
     #[tokio::test]
-    async fn storage_read_block_to_disk() {
+    async fn storage_read_block_to_disk_async() {
         let dir_path = String::from("./src/data/blocks/");
         let storage = Storage::new(Some(dir_path));
         let block = Block::default();
         let block_hash = block.hash();
-        println!("{:?}", block_hash);
-        storage.write_block_to_disk(block).await.unwrap();
-        match storage.read_block_from_disk(block_hash).await {
+
+        storage.write_block_to_disk_async(block).await.unwrap();
+        match storage.read_block_from_disk_async(block_hash).await {
             Ok(_block) => {
                 assert!(true);
                 teardown().expect("Teardown failed");
