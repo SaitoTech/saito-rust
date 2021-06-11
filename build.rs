@@ -3,7 +3,7 @@ use std::{env, fs::File, io::Write, path::Path};
 // Please do not change this value, it will cause tests to run very long
 // If we are doing a production build, this value can be set via environmental variable
 // as described below
-const EPOCH_LENGTH: i64 = 100;
+const EPOCH_LENGTH: i64 = 1000;
 
 fn main() {
     write_epoch_length_to_constants();

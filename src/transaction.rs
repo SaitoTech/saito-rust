@@ -1,5 +1,5 @@
 use crate::{
-    crypto::{make_message_from_bytes, Sha256Hash},
+    crypto::{hash, make_message_from_bytes, Sha256Hash},
     keypair::Keypair,
     slip::{OutputSlip, SlipID},
     time::create_timestamp,
@@ -130,6 +130,11 @@ impl Transaction {
         &self.signature
     }
 
+    pub fn hash(&self) -> Sha256Hash {
+        let data: Vec<u8> = self.core.clone().into();
+        hash(&data)
+    }
+
     /// Add a new `Hop` to the list of `Hop`s
     pub fn add_hop_to_path(&mut self, path: Hop) {
         self.path.push(path);
@@ -161,6 +166,7 @@ impl Transaction {
     //     true
     // }
 }
+
 impl From<Vec<u8>> for TransactionCore {
     fn from(data: Vec<u8>) -> Self {
         bincode::deserialize(&data[..]).unwrap()

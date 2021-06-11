@@ -19,5 +19,12 @@ lazy_static = "1.4.0"
 rand = "0.8.3"
 tokio = { version = "1", features = ["full"] }
 
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "add_block_benchmark"
+harness = false
+
 [features]
 test-utilities = []
