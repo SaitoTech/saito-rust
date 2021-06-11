@@ -360,14 +360,14 @@ impl Blockchain {
     }
 }
 
-#[ignore]
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::keypair::Keypair;
     use crate::test_utilities;
-
+    
     #[test]
+    #[ignore]
     fn add_block_test() {
         let keypair = Keypair::new();
         let (mut blockchain, mut slips) =
