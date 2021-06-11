@@ -136,7 +136,7 @@ mod test {
     fn test_longest_chain_queue() {
         // TODO: paramterize the contructor of longest chain with EPOCH_LENGTH rather than reading it from
         // the global so that the length of these tests runs doesn't have to be dependant on EPOCH_LENGTH
-        let RING_BUFFER_LENGTH_TEST: u64 = 2 * EPOCH_LENGTH;
+        let ring_buffer_length_test: u64 = 2 * EPOCH_LENGTH;
 
         let mut longest_chain_queue = LongestChainQueue::new();
 
@@ -159,7 +159,7 @@ mod test {
         println!("Expect to see a panic in stdout here:");
         let result = std::panic::catch_unwind(|| longest_chain_queue.block_hash_by_id(100));
         assert!(result.is_err());
-        for n in 100..RING_BUFFER_LENGTH_TEST {
+        for n in 100..ring_buffer_length_test {
             longest_chain_queue.roll_forward(make_message_from_string(&n.to_string()));
         }
         assert_eq!(
@@ -167,15 +167,15 @@ mod test {
             make_message_from_string(&0.to_string())
         );
         longest_chain_queue.roll_forward(make_message_from_string(
-            &RING_BUFFER_LENGTH_TEST.to_string(),
+            &ring_buffer_length_test.to_string(),
         ));
         assert_eq!(
             longest_chain_queue.latest_block_id().unwrap(),
-            RING_BUFFER_LENGTH_TEST
+            ring_buffer_length_test
         );
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
-            make_message_from_string(&RING_BUFFER_LENGTH_TEST.to_string())
+            make_message_from_string(&ring_buffer_length_test.to_string())
         );
 
         println!("Expect to see a panic in stdout here:");
@@ -186,24 +186,24 @@ mod test {
         }
         assert_eq!(
             longest_chain_queue.latest_block_id().unwrap(),
-            RING_BUFFER_LENGTH_TEST - 101
+            ring_buffer_length_test - 101
         );
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
-            make_message_from_string(&(RING_BUFFER_LENGTH_TEST - 101).to_string())
+            make_message_from_string(&(ring_buffer_length_test - 101).to_string())
         );
         for n in 100..201 {
             longest_chain_queue.roll_forward(make_message_from_string(
-                &(RING_BUFFER_LENGTH_TEST - 200 + n).to_string(),
+                &(ring_buffer_length_test - 200 + n).to_string(),
             ));
         }
         assert_eq!(
             longest_chain_queue.latest_block_id().unwrap(),
-            RING_BUFFER_LENGTH_TEST
+            ring_buffer_length_test
         );
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
-            make_message_from_string(&RING_BUFFER_LENGTH_TEST.to_string())
+            make_message_from_string(&ring_buffer_length_test.to_string())
         );
         // TODO test last_block_in_epoch()
     }
