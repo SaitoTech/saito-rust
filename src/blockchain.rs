@@ -42,12 +42,6 @@ pub enum AddBlockEvent {
     InvalidBlock,
 }
 
-// pub struct ChainFork {
-//     // TODO -- add lifetime and reference to block
-//     blocks: Vec<Sha256Hash>,
-// }
-// pub type ForkTuple = (Block, ChainFork, ChainFork);
-
 pub struct ForkChains {
     pub ancestor_block: Block,
     pub new_chain: Vec<Sha256Hash>,
@@ -267,10 +261,8 @@ impl Blockchain {
                 }
 
                 if let Some(address) = self.utxoset.get_receiver_for_inputs(tx.core.inputs()) {
-                    let serialize_tx: Vec<u8> = tx.core.clone().into();
-                    if !verify_bytes_message(&serialize_tx[..], &tx.signature(), address) {
+                    if !verify_bytes_message(&tx.hash(), &tx.signature(), address) {
                         println!("SIGNATURE IS NOT VALID");
-
                         return false;
                     };
 
@@ -339,8 +331,9 @@ mod tests {
     use crate::keypair::Keypair;
     use crate::test_utilities;
     include!(concat!(env!("OUT_DIR"), "/constants.rs"));
+
+    // #[ignore]
     #[test]
-    #[ignore]
     fn add_block_test() {
         let keypair = Keypair::new();
         let (mut blockchain, mut slips) =

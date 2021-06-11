@@ -274,6 +274,7 @@ impl TransactionCore {
 mod tests {
     use super::*;
     use crate::{
+        crypto::{hash, verify_bytes_message},
         keypair::Keypair,
         slip::{OutputSlip, SlipID, SlipType},
     };
@@ -284,27 +285,35 @@ mod tests {
 
         assert_eq!(tx.core.outputs(), &vec![]);
         assert_eq!(tx.core.inputs(), &vec![]);
-        //assert_eq!(tx.signature(), &Signature::from_compact(&[0; 64]).unwrap());
         assert_eq!(tx.core.broadcast_type(), &TransactionType::Normal);
-        //assert_eq!(tx.path(), &vec![]);
         assert_eq!(tx.core.message(), &vec![]);
 
         let keypair = Keypair::new();
         let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 0);
         let from_slip = SlipID::default();
 
-        // let hop_message_bytes = Keypair::make_message_from_string("message_string");
-        // let signature = keypair.sign_message(&hop_message_bytes);
-        // let hop = Hop::new(keypair.public_key().clone(), signature);
-
         tx.core.add_output(to_slip);
         tx.core.add_input(from_slip);
 
         assert_eq!(tx.core.outputs(), &vec![to_slip]);
         assert_eq!(tx.core.inputs(), &vec![from_slip]);
-        // assert_eq!(tx.path(), &vec![hop]);
+    }
 
-        // let message_bytes: Vec<u8> = (0..32).map(|_| rand::random::<u8>()).collect();
-        // assert_eq!(tx.message(), &message_bytes);
+    #[test]
+    fn transaction_signature_test() {
+        let keypair = Keypair::new();
+
+        let mut tx_core = TransactionCore::default();
+        tx_core.set_message(vec![255, 255, 255, 255, 255, 255, 255]);
+
+        let tx = Transaction::create_signature(tx_core, &keypair);
+        let serialize_tx: Vec<u8> = tx.core.clone().into();
+        let hash = hash(&serialize_tx);
+
+        assert!(verify_bytes_message(
+            &hash,
+            &tx.signature(),
+            keypair.public_key()
+        ));
     }
 }
