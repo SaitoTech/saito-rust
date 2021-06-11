@@ -33,7 +33,6 @@ pub mod utxoset;
 #[macro_use]
 extern crate lazy_static;
 
-// TODO move this to another file and include!()
 // TODO put test_utilities behind a feature flag so it's not built into non-test builds
 //   i.e. uncomment this line:
 // [cfg(feature = "test-utilities")]

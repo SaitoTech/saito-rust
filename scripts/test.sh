@@ -1,2 +1,2 @@
 #!/bin/bash
-EPOCH_LENGTH=100 cargo test $1 --features=test-utilities -- --nocapture
+RUST_BACKTRACE=1 EPOCH_LENGTH=200 cargo test $1 --features=test-utilities
