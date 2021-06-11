@@ -1,3 +1,5 @@
+use secp256k1::{PublicKey, Signature};
+
 use crate::block::{Block, BlockCore, TREASURY};
 use crate::blockchain::Blockchain;
 use crate::crypto::Sha256Hash;
@@ -54,6 +56,10 @@ pub fn make_mock_blockchain_and_slips(
     (blockchain, slips)
 }
 
+pub fn make_mock_block_empty(previous_block_hash: Sha256Hash, block_id: u64) -> Block {
+    Block::new_mock(previous_block_hash, &mut vec![], block_id)
+}
+
 pub fn make_mock_block(
     keypair: &Keypair,
     previous_block_hash: Sha256Hash,
@@ -72,4 +78,24 @@ pub fn make_mock_block(
     let tx = Transaction::create_signature(tx_core, keypair);
 
     Block::new_mock(previous_block_hash, &mut vec![tx.clone()], block_id)
+}
+
+pub fn make_mock_block_with_tx(
+    previous_block_hash: Sha256Hash,
+    block_id: u64,
+    tx: Transaction,
+) -> Block {
+    Block::new_mock(previous_block_hash, &mut vec![tx.clone()], block_id)
+}
+pub fn make_mock_tx(input: SlipID, amount: u64, to: PublicKey) -> Transaction {
+    let to_slip = OutputSlip::new(to, SlipType::Normal, amount);
+    Transaction::new(
+        Signature::from_compact(&[0; 64]).unwrap(),
+        vec![],
+        create_timestamp(),
+        vec![input.clone()],
+        vec![to_slip.clone()],
+        TransactionType::Normal,
+        vec![104, 101, 108, 108, 111],
+    )
 }
