@@ -166,8 +166,13 @@ mod test {
             longest_chain_queue.block_hash_by_id(0),
             make_message_from_string(&0.to_string())
         );
-        longest_chain_queue.roll_forward(make_message_from_string(&RING_BUFFER_LENGTH_TEST.to_string()));
-        assert_eq!(longest_chain_queue.latest_block_id().unwrap(),RING_BUFFER_LENGTH_TEST);
+        longest_chain_queue.roll_forward(make_message_from_string(
+            &RING_BUFFER_LENGTH_TEST.to_string(),
+        ));
+        assert_eq!(
+            longest_chain_queue.latest_block_id().unwrap(),
+            RING_BUFFER_LENGTH_TEST
+        );
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
             make_message_from_string(&RING_BUFFER_LENGTH_TEST.to_string())
@@ -179,15 +184,23 @@ mod test {
         for _n in 0..101 {
             longest_chain_queue.roll_back();
         }
-        assert_eq!(longest_chain_queue.latest_block_id().unwrap(), RING_BUFFER_LENGTH_TEST - 101);
+        assert_eq!(
+            longest_chain_queue.latest_block_id().unwrap(),
+            RING_BUFFER_LENGTH_TEST - 101
+        );
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
             make_message_from_string(&(RING_BUFFER_LENGTH_TEST - 101).to_string())
         );
         for n in 100..201 {
-            longest_chain_queue.roll_forward(make_message_from_string(&(RING_BUFFER_LENGTH_TEST - 200 + n).to_string()));
+            longest_chain_queue.roll_forward(make_message_from_string(
+                &(RING_BUFFER_LENGTH_TEST - 200 + n).to_string(),
+            ));
         }
-        assert_eq!(longest_chain_queue.latest_block_id().unwrap(), RING_BUFFER_LENGTH_TEST);
+        assert_eq!(
+            longest_chain_queue.latest_block_id().unwrap(),
+            RING_BUFFER_LENGTH_TEST
+        );
         assert_eq!(
             longest_chain_queue.latest_block_hash().unwrap(),
             make_message_from_string(&RING_BUFFER_LENGTH_TEST.to_string())

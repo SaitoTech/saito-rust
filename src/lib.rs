@@ -30,7 +30,6 @@ pub mod transaction;
 pub mod types;
 pub mod utxoset;
 
-
 #[macro_use]
 extern crate lazy_static;
 
