@@ -50,7 +50,20 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_make_message_from_string() {
+    fn hash_test() {
+        let vec: Vec<u8> = vec![0; 32];
+        let hash = hash(&vec);
+        assert_eq!(
+            hash,
+            [
+                102, 104, 122, 173, 248, 98, 189, 119, 108, 143, 193, 139, 142, 159, 142, 32, 8,
+                151, 20, 133, 110, 226, 51, 179, 144, 42, 89, 29, 13, 95, 41, 37
+            ]
+        );
+    }
+
+    #[test]
+    fn make_message_from_string_test() {
         make_message_from_string("foobarbaz");
         make_message_from_string("1231231231");
         make_message_from_string("");

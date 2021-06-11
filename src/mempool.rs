@@ -195,7 +195,7 @@ mod tests {
     }
 
     #[test]
-    fn mempool_try_bundle_none_test() {
+    fn mempool_try_bundle_some_test() {
         let keypair = Arc::new(RwLock::new(Keypair::new()));
         let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
         let mut mempool = Mempool::new(keypair, utxoset);
@@ -206,13 +206,14 @@ mod tests {
             Some(block) => {
                 assert_eq!(block.id(), 0);
                 assert_eq!(*block.previous_block_hash(), [0; 32]);
+                assert_eq!(mempool.transactions, vec![]);
             }
             None => {}
         }
     }
 
     #[test]
-    fn mempool_try_bundle_some_test() {
+    fn mempool_try_bundle_none_test() {
         let keypair = Arc::new(RwLock::new(Keypair::new()));
         let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
         let mut mempool = Mempool::new(keypair, utxoset);
