@@ -36,20 +36,13 @@ pub fn verify_string_message(message: &str, sig: &str, public_key: &str) -> bool
     let sig = Signature::from_der(&String::from(sig).from_base58().unwrap()).unwrap();
     let public_key =
         PublicKey::from_slice(&String::from(public_key).from_base58().unwrap()).unwrap();
-    verify_message(message, sig, public_key)
+    SECP256K1.verify(&message, &sig, &public_key).is_ok()
 }
 
-pub fn verify_message_signature(
-    hash: &Sha256Hash,
-    sig: &Signature,
-    public_key: &PublicKey,
-) -> bool {
-    let msg = Message::from_slice(hash).unwrap();
-    SECP256K1.verify(&msg, sig, public_key).is_ok()
-}
-
-pub fn verify_message(msg: Message, sig: Signature, public_key: PublicKey) -> bool {
-    SECP256K1.verify(&msg, &sig, &public_key).is_ok()
+/// Verify a message signed by secp256k1. Message is a byte array. Sig and pubkey should be base58 encoded.
+pub fn verify_bytes_message(message: &[u8], sig: &Signature, public_key: &PublicKey) -> bool {
+    let message = Message::from_slice(message).unwrap();
+    SECP256K1.verify(&message, &sig, &public_key).is_ok()
 }
 
 #[cfg(test)]

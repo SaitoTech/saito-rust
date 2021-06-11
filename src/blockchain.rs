@@ -1,6 +1,6 @@
 use crate::block::Block;
 use crate::burnfee::BurnFee;
-use crate::crypto::{verify_message_signature, Sha256Hash};
+use crate::crypto::{verify_bytes_message, Sha256Hash};
 use crate::forktree::ForkTree;
 use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
@@ -292,8 +292,8 @@ impl Blockchain {
                 }
 
                 if let Some(address) = self.utxoset.get_receiver_for_slips(tx.core.inputs()) {
-                    let hash_message = tx.core.hash();
-                    if !verify_message_signature(&hash_message, &tx.signature(), address) {
+                    let serialize_tx: Vec<u8> = tx.core.clone().into();
+                    if !verify_bytes_message(&serialize_tx[..], &tx.signature(), address) {
                         println!("SIGNATURE IS NOT VALID");
                         return false;
                     };
