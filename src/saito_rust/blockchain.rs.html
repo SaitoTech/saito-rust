@@ -485,6 +485,58 @@
 <span id="482">482</span>
 <span id="483">483</span>
 <span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">burnfee</span>::<span class="ident">BurnFee</span>;
@@ -543,7 +595,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Blockchain</span> {
     <span class="doccomment">/// Hashmap of slips used by the network</span>
-    <span class="ident">utxoset</span>: <span class="ident">UtxoSet</span>,
+    <span class="kw">pub</span> <span class="ident">utxoset</span>: <span class="ident">UtxoSet</span>,
     <span class="comment">// A queue-like structure that holds the longest chain</span>
     <span class="ident">longest_chain_queue</span>: <span class="ident">LongestChainQueue</span>,
     <span class="comment">// hashmap back tree to track blocks and potential forks</span>
@@ -814,23 +866,24 @@
                     <span class="kw">let</span> <span class="ident">output_amt</span>: <span class="ident">u64</span> <span class="op">=</span>
                         <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">outputs</span>().<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">output</span><span class="op">|</span> <span class="ident">output</span>.<span class="ident">amount</span>()).<span class="ident">sum</span>();
 
-                    <span class="kw">if</span> <span class="ident">input_amt</span> <span class="op">!</span><span class="op">=</span> <span class="ident">output_amt</span> {
+                    <span class="kw">if</span> <span class="ident">input_amt</span> <span class="op">&lt;</span> <span class="ident">output_amt</span> {
                         <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;INPUTS DO NOT MATCH OUTPUTS&quot;</span>);
                         <span class="kw">return</span> <span class="bool-val">false</span>;
                     }
 
                     <span class="kw">return</span> <span class="bool-val">true</span>;
                 } <span class="kw">else</span> {
+                    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;SLIPS ARE NOT FROM SAME RECEIVER&quot;</span>);
                     <span class="comment">// no input slips, thus no output slips.</span>
-                    <span class="kw">return</span> <span class="bool-val">true</span>;
+                    <span class="kw">return</span> <span class="bool-val">false</span>;
                 }
             }
             <span class="ident">TransactionType</span>::<span class="ident">GoldenTicket</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="comment">// need to validate the golden ticket correctly</span>
                 <span class="kw">let</span> <span class="ident">golden_ticket</span> <span class="op">=</span> <span class="ident">GoldenTicket</span>::<span class="ident">from</span>(<span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">message</span>().<span class="ident">clone</span>());
 
-                <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;TARGET: {:?}&quot;</span>, <span class="ident">golden_ticket</span>.<span class="ident">target</span>);
-                <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;PREVIOUS BLOCK: {:?}&quot;</span>, <span class="ident">previous_block</span>.<span class="ident">hash</span>());
+                <span class="comment">// println!(&quot;TARGET: {:?}&quot;, golden_ticket.target);</span>
+                <span class="comment">// println!(&quot;PREVIOUS BLOCK: {:?}&quot;, previous_block.hash());</span>
 
                 <span class="kw">if</span> <span class="ident">golden_ticket</span>.<span class="ident">target</span> <span class="op">!</span><span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">hash</span>() {
                     <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;INVALID TARGET&quot;</span>);
@@ -850,12 +903,18 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">keypair</span>::<span class="ident">Keypair</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">test_utilities</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">add_block_test</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">Blockchain</span>::<span class="ident">new</span>();
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>([<span class="number">0</span>; <span class="number">32</span>], <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">blockchain</span>, <span class="kw-2">mut</span> <span class="ident">slips</span>) <span class="op">=</span>
+            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">1200</span>);
+
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;BLOCKCHAIN CREATED&quot;</span>);
+
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="number">0</span>, <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>();
         <span class="kw">let</span> <span class="ident">first_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
@@ -863,7 +922,12 @@
         <span class="comment">//println!(&quot;{:?}&quot;, result);</span>
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">AcceptedAsLongestChain</span>);
         <span class="kw">for</span> <span class="ident">_n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">5</span> {
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">prev_block_hash</span>, <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>);
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(
+                <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+                <span class="ident">prev_block_hash</span>,
+                <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>,
+                <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>,
+            );
             <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
             <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>();
             <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
@@ -871,7 +935,8 @@
             <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">AcceptedAsLongestChain</span>);
         }
         <span class="comment">// make a fork</span>
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">first_block_hash</span>, <span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span>
+            <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="ident">first_block_hash</span>, <span class="number">1</span>, <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
         <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
         <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>();
@@ -879,7 +944,12 @@
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">Accepted</span>);
 
         <span class="kw">for</span> <span class="ident">_n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">4</span> {
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">prev_block_hash</span>, <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>);
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(
+                <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+                <span class="ident">prev_block_hash</span>,
+                <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>,
+                <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>,
+            );
             <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
             <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>();
             <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
@@ -887,13 +957,19 @@
             <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">Accepted</span>);
         }
         <span class="comment">// new longest chain tip on top of the fork</span>
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">prev_block_hash</span>, <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(
+            <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+            <span class="ident">prev_block_hash</span>,
+            <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>,
+            <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>,
+        );
         <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
         <span class="comment">//println!(&quot;{:?}&quot;, result);</span>
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">AcceptedAsNewLongestChain</span>);
 
         <span class="comment">// make another fork</span>
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">first_block_hash</span>, <span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span>
+            <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="ident">first_block_hash</span>, <span class="number">1</span>, <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
         <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
         <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>();
@@ -901,7 +977,12 @@
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">Accepted</span>);
 
         <span class="kw">for</span> <span class="ident">_n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">5</span> {
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">prev_block_hash</span>, <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>);
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(
+                <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+                <span class="ident">prev_block_hash</span>,
+                <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>,
+                <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>,
+            );
             <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
             <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>();
             <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
@@ -909,7 +990,12 @@
             <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">Accepted</span>);
         }
         <span class="comment">// new longest chain tip on top of the fork</span>
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">prev_block_hash</span>, <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(
+            <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+            <span class="ident">prev_block_hash</span>,
+            <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>,
+            <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>,
+        );
         <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
         <span class="comment">// println!(&quot;{:?}&quot;, result);</span>
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">AcceptedAsNewLongestChain</span>);
@@ -927,7 +1013,12 @@
         <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">prev_block</span>.<span class="ident">id</span>();
 
         <span class="kw">for</span> <span class="ident">_n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">2</span> {
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">prev_block_hash</span>, <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>);
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(
+                <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+                <span class="ident">prev_block_hash</span>,
+                <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>,
+                <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>,
+            );
             <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
             <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>();
             <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
@@ -935,22 +1026,35 @@
             <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">Accepted</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">prev_block_hash</span>, <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(
+            <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+            <span class="ident">prev_block_hash</span>,
+            <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>,
+            <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>,
+        );
         <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
         <span class="comment">//println!(&quot;{:?}&quot;, result);</span>
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">AcceptedAsNewLongestChain</span>);
 
         <span class="comment">// make another fork</span>
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">first_block_hash</span>, <span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span>
+            <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="ident">first_block_hash</span>, <span class="number">1</span>, <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>);
         <span class="kw">let</span> <span class="ident">result</span>: <span class="ident">AddBlockEvent</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
         <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
         <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>();
         <span class="comment">//println!(&quot;{:?}&quot;, result);</span>
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">result</span>, <span class="ident">AddBlockEvent</span>::<span class="ident">Accepted</span>);
 
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;RUNNING EPOCH&quot;</span>);
         <span class="comment">// run 1000 blocks to test the epoch a bit</span>
         <span class="kw">for</span> <span class="ident">_n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">1000</span> {
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="ident">prev_block_hash</span>, <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>);
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">_n</span>);
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(
+                <span class="kw-2">&amp;</span><span class="ident">keypair</span>,
+                <span class="ident">prev_block_hash</span>,
+                <span class="ident">prev_block_id</span> <span class="op">+</span> <span class="number">1</span>,
+                <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>().<span class="number">0</span>,
+            );
             <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
             <span class="ident">prev_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">id</span>();
             <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
