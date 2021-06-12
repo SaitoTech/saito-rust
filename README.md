@@ -21,7 +21,8 @@ https://trello.com/b/gWPiQFZ1/saito-rust-project-management
 
 ### Deps
 
-[Install Rust](https://www.rust-lang.org/tools/install)
+- (If on OSX: `xcode-select --install`)
+- [Install Rust](https://www.rust-lang.org/tools/install)
 
 ```
 rustup component add rustfmt
