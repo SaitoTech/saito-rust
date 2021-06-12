@@ -6,6 +6,7 @@ use crate::constants;
 use crate::crypto::{verify_bytes_message, Sha256Hash};
 use crate::forktree::ForkTree;
 use crate::golden_ticket::GoldenTicket;
+use crate::keypairstore::KeyPairStore;
 use crate::longest_chain_queue::LongestChainQueue;
 use crate::storage::Storage;
 use crate::time::TracingTimer;
@@ -69,6 +70,7 @@ pub struct Blockchain {
     fork_tree: ForkTree,
     // storage
     pub storage: Storage,
+    keypairstore: KeyPairStore,
 }
 
 impl Blockchain {
@@ -79,6 +81,7 @@ impl Blockchain {
             longest_chain_queue: LongestChainQueue::new(),
             fork_tree: ForkTree::new(),
             storage: Storage::new(String::from(constants::BLOCKS_DIR)),
+            keypairstore: KeyPairStore::new(),
         }
     }
     pub fn new_mock(blocks_dir: String) -> Self {
@@ -87,6 +90,7 @@ impl Blockchain {
             longest_chain_queue: LongestChainQueue::new(),
             fork_tree: ForkTree::new(),
             storage: Storage::new(blocks_dir),
+            keypairstore: KeyPairStore::new(),
         }
     }
     pub fn latest_block(&self) -> Option<&Block> {

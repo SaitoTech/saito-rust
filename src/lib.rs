@@ -30,6 +30,7 @@ pub mod crypto;
 pub mod forktree;
 pub mod golden_ticket;
 pub mod keypair;
+pub mod keypairstore;
 pub mod longest_chain_queue;
 pub mod mempool;
 pub mod network;
