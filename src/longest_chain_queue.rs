@@ -70,7 +70,7 @@ impl LongestChainQueue {
     }
 
     pub fn block_hash_by_id(&self, id: u64) -> Sha256Hash {
-        if id > self.longest_chain_length - 1 {
+        if id + 1 > self.longest_chain_length {
             panic!("The block id is greater than the latest block id");
         }
         if self.longest_chain_length - id > self.epoch_ring_length {
@@ -116,14 +116,12 @@ impl LongestChainQueue {
         }
     }
 
-    pub fn contains_hash(&self, block_hash: &Sha256Hash) -> bool {
-        self.epoch_ring_array
-            .iter()
-            .any(|&hash| &hash == block_hash)
-    }
-
     pub fn contains_hash_by_block_id(&self, hash: Sha256Hash, block_id: u64) -> bool {
-        self.epoch_ring_array[(block_id % RING_BUFFER_LENGTH) as usize] == hash
+        if block_id + 1 > self.longest_chain_length {
+            false
+        } else {
+            self.block_hash_by_id(block_id) == hash
+        }
     }
 }
 
@@ -142,6 +140,8 @@ mod test {
 
         for n in 0..100 {
             longest_chain_queue.roll_forward(make_message_from_string(&n.to_string()));
+            assert!(longest_chain_queue
+                .contains_hash_by_block_id(make_message_from_string(&n.to_string()), n));
         }
         assert_eq!(longest_chain_queue.latest_block_id().unwrap(), 99);
         assert_eq!(
