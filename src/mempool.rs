@@ -3,10 +3,12 @@ use crate::{
     transaction::Transaction,
     types::SaitoMessage,
 };
+use crate::time::create_timestamp;
 use std::{
     time::Duration,
 };
 use tokio::time;
+
 
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
@@ -43,7 +45,9 @@ impl Mempool {
     }
 
     pub fn get_block(&mut self, hash: [u8;32]) -> Option<Block> {
-	let block = Block::new();
+	let mut block = Block::new();
+	block.set_timestamp(create_timestamp());
+	block.set_hash();
 	Some(block)
     }
 
@@ -66,7 +70,7 @@ impl Mempool {
     //
     pub async fn start_bundling(&self, mempool_lock: Arc<RwLock<Mempool>>) {
 
-	let mut already_bundling = 0;
+	let mut already_bundling;
 	let mut count = 5;
 
 	//
@@ -123,43 +127,13 @@ impl Mempool {
     }
 
     pub fn bundle_block(&self) {
-
 	if !self.broadcast_channel_sender.is_none() {
 	   self.broadcast_channel_sender.as_ref().unwrap() 
 			.send(SaitoMessage::Block { payload: [0;32] })
                         .expect("error: Mempool TryBundle Block message failed to send");
 	}
-
     }
-
-
-
-/***
-    pub fn processSaitoMessage(
-         &mut self,
-         message: SaitoMessage,
-         mempool_sender_channel: &broadcast::Sender<(SaitoMessage)>,
-    ) {
-
-         match message {
-             SaitoMessage::TryBundle => {
-		 if self.bundler_count == 0 {
-		     self.bundler_count = 10;
-		     mempool_sender_channel
-			.send(SaitoMessage::Block { payload: [0;32] })
-                        .expect("error: Mempool TryBundle Block message failed to send");
-		 }
-		 self.bundler_count -= 1;
-                 println!("This is a line printing in TryBundle 123");
-	     }
-             _ => (),
-	}
-    }
-***/
-
-
 
 }
-
 
 

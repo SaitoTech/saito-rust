@@ -1,9 +1,11 @@
+use secp256k1::PublicKey;
+
 use crate::{
     blockchain::Blockchain,
     crypto::hash,
+    keypair::Keypair,
     mempool::Mempool,
     miner::{Miner},
-    keypair::Keypair,
     types::SaitoMessage,
 };
 use std::{
@@ -63,6 +65,13 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
 impl Consensus {
 
     async fn _run(&mut self) -> crate::Result<()> {
+
+	//
+	// PublicKey
+	//
+        //let keypair = Keypair::new();
+        //println!("Public Key: {:?}", keypair.publickey());
+
 
 	//
 	// inter-module broadcast channels

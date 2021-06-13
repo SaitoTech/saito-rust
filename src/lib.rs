@@ -26,6 +26,7 @@ pub mod blockchain;
 pub mod burnfee;
 pub mod consensus;
 pub mod crypto;
+pub mod forktree;
 pub mod keypair;
 pub mod mempool;
 pub mod miner;

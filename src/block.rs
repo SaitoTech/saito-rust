@@ -1,5 +1,6 @@
 use crate::{
   transaction::Transaction,
+  crypto::{hash, PublicKey},
 };
 
 #[derive(PartialEq, Debug, Clone)]
@@ -56,6 +57,34 @@ impl Block {
     pub fn get_hash(&self) -> [u8; 32] {
 	return self.hash;
     }
+
+
+
+    pub fn set_timestamp(&mut self, ts: u64) {
+      self.timestamp = ts;
+    }
+
+    /// generates the block hash gives its current datae
+    pub fn set_hash(&mut self) -> [u8; 32] {
+
+      if self.hash == [0;32] {
+
+        let mut data: Vec<u8> = vec![];
+
+        let id_bytes: [u8; 8] = self.id.to_be_bytes();
+        let ts_bytes: [u8; 8] = self.timestamp.to_be_bytes();
+
+        data.extend(&id_bytes);
+        data.extend(&ts_bytes);
+
+        self.hash = hash(&data);
+
+      }
+
+      self.hash
+
+    }
+
 
     pub fn validate(&self) -> bool {
 	return true;
