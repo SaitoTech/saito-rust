@@ -6,6 +6,7 @@ authors = [
     "Stephen Peterkins <stephen@saito.tech>"
 ]
 edition = "2018"
+default-run = "saito_rust"
 
 [[bin]]
 name = "saito-spammer"

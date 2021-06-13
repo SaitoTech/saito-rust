@@ -1,4 +1,5 @@
 use clap::Clap;
+use std::fs;
 // use std::env;
 // use structopt::StructOpt;
 
@@ -12,16 +13,25 @@ use clap::Clap;
 //     path: std::path::PathBuf,
 // }
 
+// cargo run -- --path boom
+
 #[derive(Clap, Debug)]
-#[clap(name = "saito")]
+#[clap(name = "saito_rust")]
 struct PwFile {
     /// Path to pw-file
-    #[clap(short, long, default_value = "/spme/default/pw/path")]
+    #[clap(short, long, default_value = "./passwd")]
     path: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct KeyPairStore {}
+
+// clippy says:
+// impl Default for keypairstore::KeyPairStore {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
 
 impl KeyPairStore {
     /// Create new `KeyPairStore`
@@ -32,7 +42,28 @@ impl KeyPairStore {
 
         let pw_file = PwFile::parse();
 
-        println!("PwFile {}!", pw_file.path);
+        println!("PwFile path: {}", pw_file.path);
+
+        // let password_path = if pw_file.path.is_empty() {
+        //     println!("did not got pw-file path?");
+        //     "./passwd"
+        // } else {
+        //     println!("got pw-file path?");
+        //     &pw_file.path
+        // }
+        // .to_string();
+
+        // let data = || -> Result<(), MyError> {
+        //     fs::read_to_string(pw_file.path).expect("Unable to read password file")?;
+        //     Ok(())
+        // };
+        // if let Err(_err) = data() {
+        //     println!("Failed to perform necessary steps");
+        // }
+
+        let data = fs::read_to_string(pw_file.path).expect("Unable to read password file");
+
+        println!("PW File content: {}", data);
 
         // println!("arguments: {}", args.len());
 
