@@ -4,5 +4,6 @@ use crate::{block::Block, transaction::Transaction};
 pub enum SaitoMessage {
     Transaction { payload: [u8;32] },
     Block { payload: [u8;32] },
-    TryBundle,
+    StartBundling,
+    StopBundling,
 }

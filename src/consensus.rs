@@ -64,158 +64,118 @@ impl Consensus {
 
     async fn _run(&mut self) -> crate::Result<()> {
 
-
-
-/***
-        let mut interval = time::interval(Duration::from_millis(1000));
-        interval.tick().await;
-println!("1");
-        interval.tick().await;
-println!("2");
-        interval.tick().await;
-println!("3");
-
-
-
-
-	// initialize
-	//let mut blockchain = Arc::new(RwLock::new(Blockchain::new()));
-	//let rob1 = blockchain.clone();
-	//let rob2 = blockchain.clone();
-	//let mut mempool = Mempool::new();
-
-	let blockchain = Arc::new(RwLock::new(Blockchain::new()));
-	let mempool = Arc::new(RwLock::new(Mempool::new()));
-
-
-
-/***
-
-	mempool.start_bundling(&mempool).await;
-println!("We have finished starting bundling...");
-
-
-        let mut interval = time::interval(Duration::from_millis(3000));
-        interval.tick().await;
-println!("A");
-        interval.tick().await;
-println!("B");
-        interval.tick().await;
-println!("C");
-
-	mempool.stop_bundling(&mempool).await;
-println!("We have stopped bundling...");
-
-
-
-	let lock = Arc::new(RwLock::new(Blockchain::new()));
-	let lock_c = lock.clone();
-	let lock_d = lock.clone();
-
-	// first tokio thread
-        tokio::spawn(async move {
-            loop {
-              //println!("loop 1 pre");
-	      let mut lock_c_write = lock_c.write().await;
-	      lock_c_write.updatestuff();
-	      //lock_c_write.printstuff();
-	      //let lock_c_write2 = lock_c_write.unwrap();
-	      //lock_c.write.unwrap().printstuff();
-              //println!("loop 1 post");
-            }
-        });
-
-	// second tokio thread 
-        tokio::spawn(async move {
-            loop {
-                //println!("loop 2 pre");
-	        //let lock_d_read = lock_d.read().await;
-	        //lock_d_read.printstuff();
-                //println!("loop 2 post");
-            }
-        });
-
-***/
-/***
-        let mut keypair = Arc::new(RwLock::new(Keypair::new()));
-	let mut miner = Miner::new(keypair.read().unwrap().publickey().clone());
-	let b1 = blockchain.read().unwrap();
-
-	mempool.set_blockchain(b1);
-        mempool.start_bundling();
-
-	// inter-module channels
-        let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
+	//
+	// inter-module broadcast channels
+        //
+	let (broadcast_channel_sender, mut broadcast_channel_receiver) = broadcast::channel(32);
 	//let blockchain_channel_sender    = saito_message_tx.clone();
 	//let mut blockchain_channel_receiver  = saito_message_tx.subscribe();
 	//let miner_channel_sender         = saito_message_tx.clone();
 	//let mut miner_channel_receiver       = saito_message_tx.subscribe();
-	let mempool_channel_sender       = saito_message_tx.clone();
+	//let mempool_channel_sender       = saito_message_tx.clone();
 	//let mut mempool_channel_receiver     = saito_message_tx.subscribe();
+        //let miner_tx = saito_message_tx.clone();
+        //let mut miner_rx = saito_message_tx.subscribe();
 
-
-        let miner_tx = saito_message_tx.clone();
-        let mut miner_rx = saito_message_tx.subscribe();
 
 	//
-	// Async Thread sends message triggering TryBundle every second
 	//
-	// TODO - the mempool class should be able to independently manage the timer
-	// and we should restrict our focus to sending messages telling it to start
-	// and stop bundling.
+	// all objects requiring multithread read / write access are
+	// wrapped in Tokio::RwLock for read().await / write().await
+	// access. This requires cloning the lock and that clone 
+	// being sent into the async threads rather than the original
 	//
-****/
+	let blockchain_lock = Arc::new(RwLock::new(Blockchain::new()));
+	let mempool_lock = Arc::new(RwLock::new(Mempool::new()));
 
-        tokio::spawn(async move {
-            loop {
-		//b1.unwrap().printstuff();
-/***
-                saito_message_tx
-                    .send(SaitoMessage::TryBundle)
-                    .expect("error: TryBundle message failed to send");
-***/
-                //sleep(Duration::from_millis(1000));
-            }
-        });
 
-/**
-	let b2 = blockchain.write().unwrap();
-        tokio::spawn(async move {
+	//
+	// manually initialize components. we will flesh out the constructors
+	// to avoid this once we have a better sense of what data is needed
+	// universally in object creation.
+	//
+	{
+	    let mut blockchain = blockchain_lock.write().await;
+	    let mut mempool = mempool_lock.write().await;
 
-            loop {
-	      b2.printstuff();
-	      b2.updatestuff();
-              sleep(Duration::from_millis(3000));
-	    }
-        });
-***/
+	    let mempool_channel_sender = broadcast_channel_sender.clone();
+	    mempool.set_broadcast_channel_sender(mempool_channel_sender);
+
+	    let blockchain_channel_sender = broadcast_channel_sender.clone();
+	    blockchain.set_broadcast_channel_sender(blockchain_channel_sender);
+
+	}
 
 
 
-	// does this just prevent the main loop closing?
+	//
+	// start mempool bundling activity
+	//
+	{
 
+           broadcast_channel_sender
+                        .send(SaitoMessage::StartBundling)
+                        .expect("error: Consensus StartBundling message failed to send");
+
+	   //let mut mempool = mempool_lock.write().await;
+	   //let mempool_lock_clone = mempool_lock.clone();
+	   //mempool.start_bundling(mempool_lock_clone).await;
+	}
+
+	
+
+
+	//
+	// SaitoMessage processing
+	//
+	// one of the main mechanisms for cross-channel communications
+	// are the broadcasting of SaitoMessage indicators across
+	// blockchain components. This message processing happens in the
+	// main thread.
+	//
 	loop {
-/***
-                while let Ok(message) = saito_message_rx.recv().await {
-                    match message {
-		        SaitoMessage::TryBundle { } => {
-                  	    mempool.processSaitoMessage(message, &mempool_channel_sender);
-		        }
-                        SaitoMessage::Block { payload } => {
-			    // transfer ownership of that block to me
-                            let block = mempool.get_block(payload);
-			    if block.is_none() {
-				// bad block
-			    } else {
-				// send it to the blockchain
-			    	blockchain.add_block(block.unwrap());
-                            }
+            while let Ok(message) = broadcast_channel_receiver.recv().await {
+                match message {
+
+                    SaitoMessage::StartBundling => {
+
+			// should be write
+	   		let mempool = mempool_lock.write().await;
+	                let mempool_lock_clone = mempool_lock.clone();
+                        mempool.start_bundling(mempool_lock_clone).await;
+
+                    }
+
+                    SaitoMessage::StopBundling => {
+
+			// can be read
+	   		let mempool = mempool_lock.read().await;
+                        mempool.stop_bundling();
+
+                    }
+
+                    SaitoMessage::Block { payload } => {
+
+			//
+			// get write access to necessary components
+			//
+	   		let mut mempool = mempool_lock.write().await;
+	   		let mut blockchain = blockchain_lock.write().await;
+
+		        // transfer ownership of that block to me
+                        let block = mempool.get_block(payload);
+			if block.is_none() {
+			    // bad block
+			} else {
+			    // send it to the blockchain
+			    blockchain.add_block(block.unwrap());
                         }
-                        _ => {}
-                   }
+                    }
+                    _ => {}
                 }
-***/
+            }
         }
     }
+}	
 
-}
+

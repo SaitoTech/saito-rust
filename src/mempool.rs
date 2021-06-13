@@ -23,6 +23,7 @@ pub struct Mempool {
 
     transactions: Vec<Transaction>,
     blocks: Vec<Block>,
+    broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
 
 }
 
@@ -30,10 +31,11 @@ pub struct Mempool {
 impl Mempool {
 
     pub fn new() -> Self {
-         Mempool {
-             blocks: vec![],
-             transactions: vec![],
-         }
+        Mempool {
+            blocks: vec![],
+            transactions: vec![],
+	    broadcast_channel_sender: None,
+        }
      }
 
     pub fn add_block(&mut self, block: Block) {
@@ -50,10 +52,22 @@ impl Mempool {
 	Some(transaction)
     }
 
-    pub async fn start_bundling(&self, mempool: &Mempool) {
+    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<(SaitoMessage)>) {
+        self.broadcast_channel_sender = Some(bcs);
+    }
+
+    //
+    // the functions start_bundling() and stop_bundling() control whether the
+    // mempool attempts to create blocks.
+    //
+    // a static RwLock permits multiple threads to change the bundling status of
+    // the mempool while minimizing memory leaks in the event of software shutdown
+    // or restart.
+    //
+    pub async fn start_bundling(&self, mempool_lock: Arc<RwLock<Mempool>>) {
 
 	let mut already_bundling = 0;
-	let mut count = 10;
+	let mut count = 5;
 
 	//
 	// write-access contained in closure to close 
@@ -85,12 +99,13 @@ impl Mempool {
                 interval.tick().await;
 		if already_bundling > 0 {
 		    count -= 1;
-	            println!("Tick... {:?}", already_bundling);
+	            println!("Tick... {:?}", count);
                     interval.tick().await;
 
 		    if count == 0 {
-			mempool.stop_bundling(mempool);		
-			//self.bundle_block();		
+			let mut mempool = mempool_lock.write().await;
+			mempool.stop_bundling().await;
+			mempool.bundle_block();		
 		    }
 		    {
 	                let mut r = BUNDLER_ACTIVE.read().await;
@@ -102,22 +117,24 @@ impl Mempool {
 
     }
 
-    pub async fn stop_bundling(&self, mempool: &Mempool) {
+    pub async fn stop_bundling(&self) {
 	let mut w = BUNDLER_ACTIVE.write().await;
 	*w = 0;
-	println!("We have set bundler active as inactive!");
     }
 
     pub fn bundle_block(&self) {
 
-println!("Bundling Block");
+	if !self.broadcast_channel_sender.is_none() {
+	   self.broadcast_channel_sender.as_ref().unwrap() 
+			.send(SaitoMessage::Block { payload: [0;32] })
+                        .expect("error: Mempool TryBundle Block message failed to send");
+	}
 
     }
 
 
 
-
-
+/***
     pub fn processSaitoMessage(
          &mut self,
          message: SaitoMessage,
@@ -126,7 +143,6 @@ println!("Bundling Block");
 
          match message {
              SaitoMessage::TryBundle => {
-/***
 		 if self.bundler_count == 0 {
 		     self.bundler_count = 10;
 		     mempool_sender_channel
@@ -134,12 +150,14 @@ println!("Bundling Block");
                         .expect("error: Mempool TryBundle Block message failed to send");
 		 }
 		 self.bundler_count -= 1;
-***/
                  println!("This is a line printing in TryBundle 123");
 	     }
              _ => (),
 	}
     }
+***/
+
+
 
 }
 

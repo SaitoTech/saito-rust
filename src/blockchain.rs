@@ -1,6 +1,11 @@
-//use crate::block::Block;
+use crate::{
+  block::Block,
+  types::SaitoMessage,
+};
 //use crate::shashmap::Shashmap;
 //use crate::storage::Storage;
+
+use tokio::sync::{broadcast};
 
 /// The structure represents the state of the
 /// blockchain itself, including the blocks that are on the
@@ -10,17 +15,11 @@
 pub struct Blockchain {
 
     /// Vector of blocks
-//    blocks: Vec<Block>,
-
-    /// Hashmap of slips used by the network
-//    shashmap: Shashmap,
-//    storage: Storage,
-
-    // longest-chain position
-    pos: usize,
-    last_pos: usize,
+    blocks: Vec<Block>,
+    broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
 
 }
+
 
 // the BlockHeader. It only exists because
 // i am having trouble putting a refernece
@@ -47,32 +46,44 @@ impl Blockchain {
     pub fn new() -> Self {
         Blockchain {
 
-            //blocks: vec![],
+            blocks: vec![],
+            broadcast_channel_sender: None,
+
             //shashmap: Shashmap::new(),
             //storage: Storage::new(),
-
-	    pos: 0,
-	    last_pos: 0,
+	    //pos: 0,
+	    //last_pos: 0,
 
         }
     }
 
-    pub fn printstuff(&self) {
-        println!("printing to console log in blockchain...: {:?}", self.pos);
+
+    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<(SaitoMessage)>) {
+        self.broadcast_channel_sender = Some(bcs);
     }
 
-    pub fn updatestuff(&mut self) {
-	self.pos += 1;
+    /// Append `Block` to the index of `Blockchain`
+    pub fn add_block(&mut self, mut block: Block) {
+        println!("Adding Block");
+
+
+
+	//
+	// notify mempool it can start bundling again
+	//
+	// TODO remove payload
+	//
+        if !self.broadcast_channel_sender.is_none() {
+           self.broadcast_channel_sender.as_ref().unwrap()
+                        .send(SaitoMessage::StartBundling)
+                        .expect("error: Mempool TryBundle Block message failed to send");
+        }
+
+
     }
-
-
-
 
 
 /****
-    /// Append `Block` to the index of `Blockchain`
-    pub fn add_block(&mut self, mut block: Block) {
-
 	//
 	// TODO
 	//
