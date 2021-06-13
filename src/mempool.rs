@@ -1,45 +1,44 @@
 use crate::{
     block::Block,
-    blockchain::Blockchain,
-    burnfee::BurnFee,
-    keypair::Keypair,
-    time::{create_timestamp, format_timestamp},
     transaction::Transaction,
     types::SaitoMessage,
 };
+use std::{
+    time::Duration,
+};
+use tokio::time;
 
+use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc};
 use std::thread;
 
-/// TODO -- 
-pub const GENESIS_PERIOD: u64 = 21500;
+lazy_static! {
+    // use RwLock for timer 
+    pub static ref BUNDLER_ACTIVE: RwLock<u64> = RwLock::new(0);
+}
 
-/// The `Mempool` is the structure that collects blocks and transactions
-/// and is control of discerning whether the node is allowed to create a block.
-/// It bundles the block, the sends it to `Blockchain` to be added to the longest chain.
-/// New `Block`s coming in over the network will hit the `Mempool` before being added to
-/// the `Blockchain`
+
 pub struct Mempool {
 
     transactions: Vec<Transaction>,
     blocks: Vec<Block>,
-    bundler_active: u64,
-    bundler_count: u8,
 
 }
 
+
 impl Mempool {
 
-    /// Creates new `Memppol`
     pub fn new() -> Self {
          Mempool {
              blocks: vec![],
              transactions: vec![],
-	     bundler_active: 1,
-	     bundler_count: 10,
          }
      }
+
+    pub fn add_block(&mut self, block: Block) {
+
+    }
 
     pub fn get_block(&mut self, hash: [u8;32]) -> Option<Block> {
 	let block = Block::new();
@@ -51,13 +50,73 @@ impl Mempool {
 	Some(transaction)
     }
 
-    pub fn start_bundling(&mut self) {
-	self.bundler_active = 1;
+    pub async fn start_bundling(&self, mempool: &Mempool) {
+
+	let mut already_bundling = 0;
+	let mut count = 10;
+
+	//
+	// write-access contained in closure to close 
+	// access to it once finished, permitting 
+	// stop_bundling to access it quickly if requested
+	//
+	{
+	  let mut w = BUNDLER_ACTIVE.write().await;	
+	  already_bundling = *w;
+	  *w = 1;
+	}
+
+	if already_bundling > 0 {
+	    println!("Mempool is already attempting to bundle blocks");
+	    return;
+	}
+
+	{
+	    let mut r = BUNDLER_ACTIVE.read().await;
+	    already_bundling = *r;
+	}
+
+	//
+        // spawn async thread to bundle
+	//
+        tokio::spawn(async move {
+            let mut interval = time::interval(Duration::from_millis(500));
+	    while already_bundling > 0 {
+                interval.tick().await;
+		if already_bundling > 0 {
+		    count -= 1;
+	            println!("Tick... {:?}", already_bundling);
+                    interval.tick().await;
+
+		    if count == 0 {
+			mempool.stop_bundling(mempool);		
+			//self.bundle_block();		
+		    }
+		    {
+	                let mut r = BUNDLER_ACTIVE.read().await;
+	                already_bundling = *r;
+		    }
+	        }
+	    }
+        });
+
     }
 
-    pub fn stop_bundling(&mut self) {
-	self.bundler_active = 0;
+    pub async fn stop_bundling(&self, mempool: &Mempool) {
+	let mut w = BUNDLER_ACTIVE.write().await;
+	*w = 0;
+	println!("We have set bundler active as inactive!");
     }
+
+    pub fn bundle_block(&self) {
+
+println!("Bundling Block");
+
+    }
+
+
+
+
 
     pub fn processSaitoMessage(
          &mut self,
@@ -67,6 +126,7 @@ impl Mempool {
 
          match message {
              SaitoMessage::TryBundle => {
+/***
 		 if self.bundler_count == 0 {
 		     self.bundler_count = 10;
 		     mempool_sender_channel
@@ -74,7 +134,8 @@ impl Mempool {
                         .expect("error: Mempool TryBundle Block message failed to send");
 		 }
 		 self.bundler_count -= 1;
-                 println!("This is a line printing in TryBundle: {}", self.bundler_count);
+***/
+                 println!("This is a line printing in TryBundle 123");
 	     }
              _ => (),
 	}
@@ -82,50 +143,5 @@ impl Mempool {
 
 }
 
-#[cfg(test)]
-mod tests {
-    // 
-    // use super::*;
-    // use crate::keypair::Keypair;
-    // use std::sync::{Arc, RwLock};
-    //
-    // #[test]
-    // fn mempool_test() {
-    //     assert_eq!(true, true);
-    //     let keypair = Arc::new(RwLock::new(Keypair::new()));
-    //     let mempool = Mempool::new(keypair);
-    // 
-    //     assert_eq!(mempool.work_available, 0);
-    // }
-    // #[test]
-    // fn mempool_try_bundle_none_test() {
-    //     let keypair = Arc::new(RwLock::new(Keypair::new()));
-    //     let mut mempool = Mempool::new(keypair);
-    // 
-    //     let new_block = mempool.try_bundle(None);
-    // 
-    //     match new_block {
-    //         Some(block) => {
-    //             assert_eq!(block.id(), 0);
-    //             assert_eq!(*block.previous_block_hash(), [0; 32]);
-    //         }
-    //         None => {}
-    //     }
-    // }
-    // #[test]
-    // fn mempool_try_bundle_some_test() {
-    //     let keypair = Arc::new(RwLock::new(Keypair::new()));
-    //     let mut mempool = Mempool::new(keypair);
-    // 
-    //     let prev_block = Block::new(Keypair::new().publickey().clone(), [0; 32]);
-    //     let prev_block_index = &(prev_block.header().clone(), prev_block.hash());
-    //     let new_block = mempool.try_bundle(Some(prev_block_index));
-    // 
-    //     match new_block {
-    //         Some(_) => {}
-    //         None => {
-    //             assert_eq!(true, true)
-    //         }
-    //     }
-    // }
-}
+
+

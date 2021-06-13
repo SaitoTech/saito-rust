@@ -8,11 +8,14 @@ use crate::{
 };
 use std::{
     future::Future,
-    sync::{Arc, RwLock},
+    sync::{Arc},
     thread::sleep,
-    time::Duration,
 };
+    //time::Duration,
+use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
+use tokio::time::{self, Interval, Duration};
+
 
 /// The consensus state which exposes a run method
 /// initializes Saito state
@@ -61,12 +64,84 @@ impl Consensus {
 
     async fn _run(&mut self) -> crate::Result<()> {
 
-	// initialize modules
-	let mut blockchain = Blockchain::new();
+
+
+/***
+        let mut interval = time::interval(Duration::from_millis(1000));
+        interval.tick().await;
+println!("1");
+        interval.tick().await;
+println!("2");
+        interval.tick().await;
+println!("3");
+
+
+
+
+	// initialize
+	//let mut blockchain = Arc::new(RwLock::new(Blockchain::new()));
+	//let rob1 = blockchain.clone();
+	//let rob2 = blockchain.clone();
+	//let mut mempool = Mempool::new();
+
+	let blockchain = Arc::new(RwLock::new(Blockchain::new()));
+	let mempool = Arc::new(RwLock::new(Mempool::new()));
+
+
+
+/***
+
+	mempool.start_bundling(&mempool).await;
+println!("We have finished starting bundling...");
+
+
+        let mut interval = time::interval(Duration::from_millis(3000));
+        interval.tick().await;
+println!("A");
+        interval.tick().await;
+println!("B");
+        interval.tick().await;
+println!("C");
+
+	mempool.stop_bundling(&mempool).await;
+println!("We have stopped bundling...");
+
+
+
+	let lock = Arc::new(RwLock::new(Blockchain::new()));
+	let lock_c = lock.clone();
+	let lock_d = lock.clone();
+
+	// first tokio thread
+        tokio::spawn(async move {
+            loop {
+              //println!("loop 1 pre");
+	      let mut lock_c_write = lock_c.write().await;
+	      lock_c_write.updatestuff();
+	      //lock_c_write.printstuff();
+	      //let lock_c_write2 = lock_c_write.unwrap();
+	      //lock_c.write.unwrap().printstuff();
+              //println!("loop 1 post");
+            }
+        });
+
+	// second tokio thread 
+        tokio::spawn(async move {
+            loop {
+                //println!("loop 2 pre");
+	        //let lock_d_read = lock_d.read().await;
+	        //lock_d_read.printstuff();
+                //println!("loop 2 post");
+            }
+        });
+
+***/
+/***
         let mut keypair = Arc::new(RwLock::new(Keypair::new()));
 	let mut miner = Miner::new(keypair.read().unwrap().publickey().clone());
-	let mut mempool = Mempool::new();
+	let b1 = blockchain.read().unwrap();
 
+	mempool.set_blockchain(b1);
         mempool.start_bundling();
 
 	// inter-module channels
@@ -89,23 +164,38 @@ impl Consensus {
 	// and we should restrict our focus to sending messages telling it to start
 	// and stop bundling.
 	//
-
+****/
 
         tokio::spawn(async move {
             loop {
+		//b1.unwrap().printstuff();
+/***
                 saito_message_tx
                     .send(SaitoMessage::TryBundle)
                     .expect("error: TryBundle message failed to send");
-                sleep(Duration::from_millis(1000));
+***/
+                //sleep(Duration::from_millis(1000));
             }
         });
 
+/**
+	let b2 = blockchain.write().unwrap();
+        tokio::spawn(async move {
+
+            loop {
+	      b2.printstuff();
+	      b2.updatestuff();
+              sleep(Duration::from_millis(3000));
+	    }
+        });
+***/
 
 
 
 	// does this just prevent the main loop closing?
 
 	loop {
+/***
                 while let Ok(message) = saito_message_rx.recv().await {
                     match message {
 		        SaitoMessage::TryBundle { } => {
@@ -124,6 +214,7 @@ impl Consensus {
                         _ => {}
                    }
                 }
+***/
         }
     }
 

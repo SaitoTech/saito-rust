@@ -1,19 +1,19 @@
-use crate::block::Block;
-use crate::shashmap::Shashmap;
+//use crate::block::Block;
+//use crate::shashmap::Shashmap;
 //use crate::storage::Storage;
 
 /// The structure represents the state of the
 /// blockchain itself, including the blocks that are on the
 /// longest-chain as well as the material that is sitting off
 /// the longest-chain but capable of being switched over.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Blockchain {
 
     /// Vector of blocks
-    blocks: Vec<Block>,
+//    blocks: Vec<Block>,
 
     /// Hashmap of slips used by the network
-    shashmap: Shashmap,
+//    shashmap: Shashmap,
 //    storage: Storage,
 
     // longest-chain position
@@ -22,22 +22,21 @@ pub struct Blockchain {
 
 }
 
-// TODO - i absolutely hate calling this
 // the BlockHeader. It only exists because
 // i am having trouble putting a refernece
 // to the block inside the new_chain and 
 // old_chain vectors
 pub struct BlockHeader {
-    pos: usize,
-    block_id: u64,
-    burnfee: u64,
+//    pos: usize,
+//    block_id: u64,
+//    burnfee: u64,
 }
 impl BlockHeader {
-    pub fn new(pos: usize, block: &Block) -> Self {
+    pub fn new() -> Self {
         BlockHeader {
-	    pos: pos,
-	    block_id: block.block_id(),
-	    burnfee: block.burnfee(),
+//	    pos: pos,
+//	    block_id: block.block_id(),
+//	    burnfee: block.burnfee(),
 	}
     }
 }
@@ -48,8 +47,8 @@ impl Blockchain {
     pub fn new() -> Self {
         Blockchain {
 
-            blocks: vec![],
-            shashmap: Shashmap::new(),
+            //blocks: vec![],
+            //shashmap: Shashmap::new(),
             //storage: Storage::new(),
 
 	    pos: 0,
@@ -58,6 +57,19 @@ impl Blockchain {
         }
     }
 
+    pub fn printstuff(&self) {
+        println!("printing to console log in blockchain...: {:?}", self.pos);
+    }
+
+    pub fn updatestuff(&mut self) {
+	self.pos += 1;
+    }
+
+
+
+
+
+/****
     /// Append `Block` to the index of `Blockchain`
     pub fn add_block(&mut self, mut block: Block) {
 
@@ -177,8 +189,8 @@ println!("Shared Ancestor at position: {}", shared_ancestor_pos);
 
 	}
 
-
     }
+***/
 
     pub fn add_block_success(&mut self) {
 
@@ -189,14 +201,14 @@ println!("Shared Ancestor at position: {}", shared_ancestor_pos);
     pub fn add_block_failure(&mut self) {
 
 	// revert
-	self.pos = self.last_pos;
+	//self.pos = self.last_pos;
 
     }
 
 
 
 
-
+/****
 
     // TODO - return 1 for new_chain, 2 for old_chain
     pub fn is_new_chain_the_longest_chain(&mut self, new_chain: &Vec<BlockHeader>, old_chain: &Vec<BlockHeader>) -> bool {
@@ -236,6 +248,7 @@ println!("Shared Ancestor at position: {}", shared_ancestor_pos);
 	return true;
     }
 
+****/
 
 }
 
