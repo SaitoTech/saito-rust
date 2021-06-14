@@ -120,6 +120,13 @@
 <span id="117">117</span>
 <span id="118">118</span>
 <span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">Sha256Hash</span>;
 <span class="kw">use</span> <span class="ident">secp256k1</span>::<span class="ident">PublicKey</span>;
@@ -231,13 +238,20 @@
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">keypair</span>::<span class="ident">Keypair</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">slip_test</span>() {
+    <span class="kw">fn</span> <span class="ident">output_slip_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="ident">slip</span> <span class="op">=</span> <span class="ident">OutputSlip</span>::<span class="ident">new</span>(<span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(), <span class="ident">SlipType</span>::<span class="ident">Normal</span>, <span class="number">10_000_000</span>);
 
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">slip</span>.<span class="ident">address</span>(), <span class="ident">keypair</span>.<span class="ident">public_key</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">slip</span>.<span class="ident">broadcast_type</span>(), <span class="ident">SlipType</span>::<span class="ident">Normal</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">slip</span>.<span class="ident">amount</span>(), <span class="number">10_000_000</span>);
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">input_slip_test</span>() {
+        <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">SlipID</span>::<span class="ident">new</span>([<span class="number">0</span>; <span class="number">32</span>], <span class="number">0</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">input</span>.<span class="ident">tx_id</span>(), [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">input</span>.<span class="ident">slip_ordinal</span>(), <span class="number">0</span>);
     }
 }
 </pre></div>

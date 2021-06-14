@@ -241,7 +241,7 @@
     <span class="kw">use</span> <span class="ident">hex</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_signing</span>() {
+    <span class="kw">fn</span> <span class="ident">keypair_signing_test</span>() {
         <span class="kw">let</span> <span class="ident">mock_secret_key</span> <span class="op">=</span> <span class="string">&quot;da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16&quot;</span>;
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">from_secret_hex</span>(<span class="ident">mock_secret_key</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">sig_string2</span> <span class="op">=</span> <span class="ident">keypair</span>
@@ -259,7 +259,7 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_new_from_secret_key</span>() {
+    <span class="kw">fn</span> <span class="ident">keypair_new_from_secret_key_test</span>() {
         <span class="kw">let</span> <span class="ident">mock_secret_key</span> <span class="op">=</span> <span class="string">&quot;da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16&quot;</span>;
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">from_secret_hex</span>(<span class="ident">mock_secret_key</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pubkey_string</span> <span class="op">=</span> <span class="ident">String</span>::<span class="ident">new</span>();
@@ -276,7 +276,7 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_new</span>() {
+    <span class="kw">fn</span> <span class="ident">keypair_new_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">keypair</span>.<span class="ident">address</span>().<span class="ident">len</span>(), <span class="number">44</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">keypair</span>.<span class="ident">secret_key</span>().<span class="ident">to_string</span>().<span class="ident">len</span>(), <span class="number">64</span>);

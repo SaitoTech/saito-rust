@@ -345,7 +345,7 @@
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">make_message_from_string</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_longest_chain_queue</span>() {
+    <span class="kw">fn</span> <span class="ident">longest_chain_queue_test</span>() {
         <span class="comment">// TODO: paramterize the contructor of longest chain with EPOCH_LENGTH rather than reading it from</span>
         <span class="comment">// the global so that the length of these tests runs doesn&#39;t have to be dependant on EPOCH_LENGTH</span>
         <span class="kw">let</span> <span class="ident">ring_buffer_length_test</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">EPOCH_LENGTH</span>;

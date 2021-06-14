@@ -245,14 +245,14 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">hash</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">hash_bytes</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">keypair</span>::<span class="ident">Keypair</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">golden_ticket_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">public_key</span>();
-        <span class="kw">let</span> <span class="ident">random_hash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">generate_random_data</span>());
+        <span class="kw">let</span> <span class="ident">random_hash</span> <span class="op">=</span> <span class="ident">hash_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">generate_random_data</span>());
         <span class="kw">let</span> <span class="ident">golden_ticket</span> <span class="op">=</span> <span class="ident">GoldenTicket</span>::<span class="ident">new</span>(<span class="ident">random_hash</span>, <span class="ident">random_hash</span>, <span class="kw-2">*</span><span class="ident">publickey</span>);
 
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">golden_ticket</span>.<span class="ident">publickey</span>, <span class="ident">publickey</span>.<span class="ident">clone</span>());

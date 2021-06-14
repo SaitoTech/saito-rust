@@ -285,33 +285,12 @@
 <span id="282">282</span>
 <span id="283">283</span>
 <span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">make_message_from_bytes</span>, <span class="ident">PublicKey</span>, <span class="ident">Sha256Hash</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">hash_bytes</span>, <span class="ident">PublicKey</span>, <span class="ident">Sha256Hash</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">time</span>::<span class="ident">create_timestamp</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">transaction</span>::<span class="ident">Transaction</span>;
-<span class="kw">use</span> <span class="ident">rand</span>::<span class="ident">Rng</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">str</span>::<span class="ident">FromStr</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">mem</span>, <span class="ident">slice</span>};
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TREASURY</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">286_810_000_000_000_000</span>;
 
@@ -357,8 +336,11 @@
         <span class="ident">Block</span>::<span class="ident">new</span>(<span class="ident">block_core</span>)
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">core</span>: <span class="ident">BlockCore</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">make_message_from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">core</span>.<span class="ident">serialize</span>());
-        <span class="ident">Block</span> { <span class="ident">hash</span>, <span class="ident">core</span> }
+        <span class="kw">let</span> <span class="ident">core_bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">core</span>.<span class="ident">clone</span>().<span class="ident">into</span>();
+        <span class="ident">Block</span> {
+            <span class="ident">hash</span>: <span class="ident">hash_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">core_bytes</span>),
+            <span class="ident">core</span>,
+        }
     }
 
     <span class="doccomment">/// Returns the `Block` difficulty</span>
@@ -424,19 +406,6 @@
     <span class="doccomment">/// Converts our blockhash from a byte array into a hex string</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">hash_as_hex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
         <span class="ident">hex</span>::<span class="ident">encode</span>(<span class="self">self</span>.<span class="ident">hash</span>)
-    }
-
-    <span class="doccomment">/// Loops through all tx and</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">are_sigs_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="comment">// loops through all tx and do tx.sig_is_valid()</span>
-        <span class="bool-val">true</span>
-    }
-
-    <span class="doccomment">/// Loops through all tx and</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">are_slips_spendable</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="comment">// loops through all tx and check with utxoset that all inputs are spendable</span>
-        <span class="comment">// their receiver and amount are correct</span>
-        <span class="bool-val">true</span>
     }
 }
 
@@ -513,28 +482,21 @@
         }
     }
 
-    <span class="comment">// pub fn deserialize(bytes: [u8; 42]) -&gt; Slip {</span>
-    <span class="comment">//     let public_key: PublicKey = PublicKey::from_slice(&amp;bytes[..33]).unwrap();</span>
-    <span class="comment">//     let broadcast_type: SlipBroadcastType = SlipBroadcastType::try_from(bytes[41]).unwrap();</span>
-    <span class="comment">//     let amount = u64::from_be_bytes(bytes[33..41].try_into().unwrap());</span>
-    <span class="comment">//     Slip::new(public_key, broadcast_type, amount)</span>
+    <span class="comment">// pub fn serialize(&amp;self) -&gt; [u8; 44] {</span>
+    <span class="comment">//     let mut ret = [0; 44];</span>
+    <span class="comment">//     ret[..32].clone_from_slice(&amp;self.previous_block_hash);</span>
+    <span class="comment">//     unsafe {</span>
+    <span class="comment">//         ret[32..40].clone_from_slice(&amp;slice::from_raw_parts(</span>
+    <span class="comment">//             (&amp;self.timestamp as *const u64) as *const u8,</span>
+    <span class="comment">//             mem::size_of::&lt;u64&gt;(),</span>
+    <span class="comment">//         ));</span>
+    <span class="comment">//     }</span>
+    <span class="comment">//     // TODO REMOVE THESE RANDOM BYTES ONCE WE ARE ACTUALLY DOING A FULL HASH, THIS IS JUST</span>
+    <span class="comment">//     // FOR HASHING BECAUSE THE TIMESTAMP ISN&#39;T PRECISE ENOUGH TO GUARANTEE UNIQUENESS</span>
+    <span class="comment">//     let random_bytes = rand::thread_rng().gen::&lt;[u8; 4]&gt;();</span>
+    <span class="comment">//     ret[40..44].clone_from_slice(&amp;random_bytes);</span>
+    <span class="comment">//     ret</span>
     <span class="comment">// }</span>
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="number">44</span>] {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">44</span>];
-        <span class="ident">ret</span>[..<span class="number">32</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">previous_block_hash</span>);
-        <span class="kw">unsafe</span> {
-            <span class="ident">ret</span>[<span class="number">32</span>..<span class="number">40</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">slice</span>::<span class="ident">from_raw_parts</span>(
-                (<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">timestamp</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">u64</span>) <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">u8</span>,
-                <span class="ident">mem</span>::<span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>(),
-            ));
-        }
-        <span class="comment">// TODO REMOVE THESE RANDOM BYTES ONCE WE ARE ACTUALLY DOING A FULL HASH, THIS IS JUST</span>
-        <span class="comment">// FOR HASHING BECAUSE THE TIMESTAMP ISN&#39;T PRECISE ENOUGH TO GUARANTEE UNIQUENESS</span>
-        <span class="kw">let</span> <span class="ident">random_bytes</span> <span class="op">=</span> <span class="ident">rand</span>::<span class="ident">thread_rng</span>().<span class="ident">gen</span>::<span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span>();
-        <span class="ident">ret</span>[<span class="number">40</span>..<span class="number">44</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">random_bytes</span>);
-        <span class="ident">ret</span>
-    }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BlockCore</span> {
