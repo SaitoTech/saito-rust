@@ -4,6 +4,7 @@ use crate::crypto::{verify_bytes_message, Sha256Hash};
 use crate::forktree::ForkTree;
 use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
+use crate::storage::Storage;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
 use std::sync::Arc;
@@ -157,7 +158,11 @@ impl Blockchain {
                     // First Block or we're new tip of the longest chain
                     self.longest_chain_queue.roll_forward(block.hash());
                     self.utxoset.roll_forward(&block);
-                    self.fork_tree.insert(block.hash(), block).unwrap();
+                    self.fork_tree.insert(block.hash(), block.clone()).unwrap();
+
+                    let storage = Storage::new(None);
+                    storage.write_block_to_disk(block).unwrap();
+
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
                 } else {
@@ -332,6 +337,20 @@ mod tests {
     use crate::test_utilities;
     include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
+    fn teardown() -> std::io::Result<()> {
+        let dir_path = String::from("./src/data/blocks/");
+        for entry in std::fs::read_dir(dir_path)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() {
+                std::fs::remove_file(path)?;
+            }
+        }
+        std::fs::File::create("./src/data/blocks/empty")?;
+
+        Ok(())
+    }
+
     // #[ignore]
     #[test]
     fn add_block_test() {
@@ -501,5 +520,7 @@ mod tests {
                     || result == AddBlockEvent::AcceptedAsNewLongestChain
             );
         }
+
+        teardown().expect("Teardown failed");
     }
 }

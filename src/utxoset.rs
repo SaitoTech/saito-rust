@@ -391,7 +391,6 @@ impl UtxoSet {
             }
         }
     }
-
     /// This is used to get the Output(`OutputSlip`) which corresponds to a given Input(`SlipID`)
     pub fn output_slip_from_slip_id(&self, slip_id: &SlipID) -> Option<&OutputSlip> {
         match self.shashmap.get(slip_id) {

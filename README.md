@@ -18,6 +18,7 @@ https://trello.com/b/gWPiQFZ1/saito-rust-project-management
 ## Documentation
 
 - https://saitotech.github.io/saito-rust/saito_rust/index.html
+- [Architecture doc](ARCHITECTURE.md)
 
 ### Deps
 
