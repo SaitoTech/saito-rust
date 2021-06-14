@@ -52,10 +52,12 @@ impl Storage {
         f.read_to_end(&mut data)?;
         Ok(data)
     }
+
     /// list all the files in the blocks directory
     pub fn list_files_in_blocks_dir(&self) -> ReadDir {
         fs::read_dir(self.blocks_dir_path.clone()).unwrap()
     }
+
     pub fn roll_forward(&self, block: &Block) {
         let mut filename = self.blocks_dir_path.clone();
         filename.push_str(&block.hash_as_hex());
@@ -74,6 +76,7 @@ impl Storage {
             }
         }
     }
+
     pub fn roll_back(&self, block: &Block) {
         let mut filename = self.blocks_dir_path.clone();
         filename.push_str(&hex::encode(block.id().to_be_bytes()));
@@ -86,6 +89,30 @@ impl Storage {
         new_filename.push_str(&".sai");
         rename(filename, new_filename).unwrap();
     }
+
+    pub async fn roll_forward_async(&self, block: &Block) {
+        let mut filename = self.blocks_dir_path.clone();
+        filename.push_str(&block.hash_as_hex());
+        filename.push_str(&".sai");
+        println!("rollforward! {}", filename);
+        match Path::new(&filename[..]).exists() {
+            true => {
+                println!("FOUND");
+                let mut new_filename = self.blocks_dir_path.clone();
+                new_filename.push_str(&hex::encode(block.id().to_be_bytes()));
+                new_filename.push_str(&String::from("-"));
+                new_filename.push_str(&block.hash_as_hex().clone());
+                new_filename.push_str(&".sai");
+                println!("new filename {}", new_filename);
+                rename(filename, new_filename).unwrap();
+            }
+            false => {
+                println!("NOT FOUND");
+                self.write_block_to_disk_async(block, true).await.unwrap();
+            } // move file
+        }
+    }
+
     pub async fn write_block_to_disk_async(
         &self,
         block: &Block,
@@ -189,6 +216,7 @@ mod test {
         teardown(dir_path).expect("Teardown failed");
     }
 
+    #[ignore]
     #[tokio::test]
     async fn storage_read_block_to_disk_async() {
         let dir_path = String::from("./data/test/blocks/");

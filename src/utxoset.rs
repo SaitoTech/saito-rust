@@ -197,10 +197,7 @@ impl UtxoSet {
                     .and_modify(|slip_spent_status| {
                         slip_spent_status.longest_chain_spent_block_id = Some(block.id());
                     })
-                    .or_insert(SlipSpentStatus::new_on_longest_chain(
-                        *output,
-                        block.id(),
-                    ));
+                    .or_insert(SlipSpentStatus::new_on_longest_chain(*output, block.id()));
             });
     }
 

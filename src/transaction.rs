@@ -59,7 +59,20 @@ pub struct TransactionCore {
     /// A enum brodcast type determining how to process `Transaction` in consensus
     broadcast_type: TransactionType,
     /// A byte array of miscellaneous information
+    #[serde(with = "serde_bytes")]
     message: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct TransactionSignatureCore {
+    /// UNIX timestamp when the `Transaction` was created
+    timestamp: u64,
+    /// A list of `SlipID` inputs
+    inputs: Vec<SlipID>,
+    /// A list of `OutputSlip` outputs
+    outputs: Vec<OutputSlip>,
+    /// A enum brodcast type determining how to process `Transaction` in consensus
+    broadcast_type: TransactionType,
 }
 
 impl Transaction {
@@ -105,7 +118,7 @@ impl Transaction {
                 message: message,
             },
         };
-        tx.set_hash(hash_bytes(&tx.core().into()));
+        tx.set_hash(hash_bytes(&tx.core().sig_core().into()));
         tx
     }
 
@@ -114,10 +127,10 @@ impl Transaction {
         let mut tx = Transaction {
             signature: Signature::from_compact(&[0; 64]).unwrap(),
             path: vec![],
-            hash: [0;32],
+            hash: [0; 32],
             core: core,
         };
-        tx.set_hash(hash_bytes(&tx.core().into()));
+        tx.set_hash(hash_bytes(&tx.core().sig_core().into()));
         tx
     }
 
@@ -126,21 +139,21 @@ impl Transaction {
         let mut tx = Transaction {
             signature: signature,
             path: vec![],
-            hash: [0;32],
+            hash: [0; 32],
             core: core,
         };
-        tx.set_hash(hash_bytes(&tx.core().into()));
+        tx.set_hash(hash_bytes(&tx.core().sig_core().into()));
         tx
     }
 
     /// Create signature and new `Transaction`
     pub fn create_signature(core: TransactionCore, keypair: &Keypair) -> Transaction {
-        let message_bytes: Vec<u8> = core.clone().into();
+        let message_bytes: Vec<u8> = core.sig_core().into();
         let message_hash = hash_bytes(&message_bytes);
         let signature = keypair.sign_message(&message_hash[..]);
         Transaction::add_signature(core, signature)
     }
-    /// 
+    ///
     pub fn core(&self) -> &TransactionCore {
         &self.core
     }
@@ -166,20 +179,20 @@ impl Transaction {
         self.path.push(path);
     }
 
-    /// validates sig
-    pub fn sig_is_valid(&self) -> bool {
-        // TODO check with keypair if things are valid
-        true
-    }
-    /// validates slip against utxoset
-    pub fn are_slips_valid(&self) -> bool {
-        // self.inputs.iter()
-        // result = result && self.is_slip_spendable(slip_id);
-        // result = result && self.is_slip_id_valid(slip_id, output_slip);
-        // true
-        // self.inputs().iter().all(|slip_id| self.is_slip_spendable(slip_id))
-        true
-    }
+    // /// validates sig
+    // pub fn sig_is_valid(&self) -> bool {
+    //     // TODO check with keypair if things are valid
+    //     true
+    // }
+    // /// validates slip against utxoset
+    // pub fn are_slips_valid(&self) -> bool {
+    //     // self.inputs.iter()
+    //     // result = result && self.is_slip_spendable(slip_id);
+    //     // result = result && self.is_slip_id_valid(slip_id, output_slip);
+    //     // true
+    //     // self.inputs().iter().all(|slip_id| self.is_slip_spendable(slip_id))
+    //     true
+    // }
 }
 
 impl From<Vec<u8>> for TransactionCore {
@@ -195,6 +208,12 @@ impl Into<Vec<u8>> for TransactionCore {
 }
 
 impl Into<Vec<u8>> for &TransactionCore {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for TransactionSignatureCore {
     fn into(self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
     }
@@ -276,6 +295,15 @@ impl TransactionCore {
         &self.message
     }
 
+    pub fn sig_core(&self) -> TransactionSignatureCore {
+        TransactionSignatureCore {
+            timestamp: self.timestamp(),
+            inputs: self.inputs().clone(),
+            outputs: self.outputs().clone(),
+            broadcast_type: self.broadcast_type().clone(),
+        }
+    }
+
     pub fn set_type(&mut self, tx_type: TransactionType) {
         self.broadcast_type = tx_type;
     }
@@ -315,6 +343,7 @@ mod tests {
         assert_eq!(tx.core.inputs(), &vec![from_slip]);
     }
 
+    #[ignore]
     #[test]
     fn transaction_signature_test() {
         let keypair = Keypair::new();

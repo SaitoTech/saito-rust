@@ -7,11 +7,10 @@ use crate::{
     mempool::Mempool,
     network::Network,
     types::SaitoMessage,
-    utxoset::UtxoSet,
 };
 use std::{
     future::Future,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
     thread::sleep,
     time::Duration,
 };
@@ -72,6 +71,7 @@ impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         {
+            println!("LOCK load blocks from disk");
             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
             let mut blockchain = blockchain_mutex.lock().unwrap();
 
@@ -107,12 +107,12 @@ impl Consensus {
         let miner_tx = saito_message_tx.clone();
 
         let keypair = Arc::new(RwLock::new(Keypair::new()));
-        let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
 
-        let mut mempool = Mempool::new(keypair.clone(), utxoset);
-        
+        let mut mempool = Mempool::new(keypair.clone());
+
         tokio::spawn(async move {
             loop {
+                println!("TryBundle...");
                 saito_message_tx
                     .send(SaitoMessage::TryBundle)
                     .expect("error: TryBundle message failed to send");
@@ -139,7 +139,7 @@ impl Consensus {
                             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
                             let mut blockchain = blockchain_mutex.lock().unwrap();
                             let block_hash = block.hash().clone();
-                            
+
                             match blockchain.add_block(block) {
                                 AddBlockEvent::AcceptedAsLongestChain
                                 | AddBlockEvent::AcceptedAsNewLongestChain => {

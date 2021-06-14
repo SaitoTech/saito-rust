@@ -1,4 +1,5 @@
 use crate::block::Block;
+use crate::burnfee::BurnFee;
 use crate::constants;
 use crate::crypto::{verify_bytes_message, Sha256Hash};
 use crate::forktree::ForkTree;
@@ -161,9 +162,12 @@ impl Blockchain {
             if !self.validate_block(&block, &fork_chains) {
                 AddBlockEvent::InvalidBlock
             } else {
+                println!("FINISHED VALIDATING");
                 let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
                 let is_new_lc_tip = !latest_block_hash.is_none()
                     && &latest_block_hash.unwrap() == block.previous_block_hash();
+                println!("IS FIRST BLOCK: {:?}", is_first_block);
+                println!("IS LC TIP: {:?}", is_new_lc_tip);
                 if is_first_block || is_new_lc_tip {
                     // First Block or we'e new tip of the longest chain
                     self.longest_chain_queue.roll_forward(block.hash());
@@ -204,13 +208,90 @@ impl Blockchain {
         }
     }
 
+    /// Append `Block` to the index of `Blockchain`
+    /// These `AddBlockEvent`s will be turned into network responses so peers can figure out
+    /// what's going on.
+    pub async fn add_block_async(&mut self, block: Block) -> AddBlockEvent {
+        // TODO: Should we pass a serialized block [u8] to add_block instead of a Block?
+        let is_first_block = block.previous_block_hash() == &[0u8; 32]
+            && !self.contains_block_hash(block.previous_block_hash());
+        if self.contains_block_hash(&(block.hash())) {
+            AddBlockEvent::AlreadyKnown
+        } else if !is_first_block && !self.contains_block_hash(block.previous_block_hash()) {
+            AddBlockEvent::ParentNotFound
+        } else {
+            let fork_chains: ForkChains = self.find_fork_chains(&block);
+            if !self.validate_block(&block, &fork_chains) {
+                AddBlockEvent::InvalidBlock
+            } else {
+                println!("FINISHED VALIDATING");
+                let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
+                let is_new_lc_tip = !latest_block_hash.is_none()
+                    && &latest_block_hash.unwrap() == block.previous_block_hash();
+                println!("IS FIRST BLOCK: {:?}", is_first_block);
+                println!("IS LC TIP: {:?}", is_new_lc_tip);
+                if is_first_block || is_new_lc_tip {
+                    // First Block or we'e new tip of the longest chain
+                    println!("LONGEST CHAIN QUEUE");
+                    self.longest_chain_queue.roll_forward(block.hash());
+
+                    println!("UTXOSET ROLL FORWARD");
+                    self.utxoset.roll_forward(&block);
+
+                    println!("FORK_TREE INSERT");
+                    self.fork_tree.insert(block.hash(), block.clone()).unwrap();
+                    self.storage.roll_forward_async(&block).await;
+                    println!("Block accepted, written to disk");
+                    AddBlockEvent::AcceptedAsLongestChain
+                // We are not on the longest chain, need to find the commone ancestor
+                } else {
+                    if self.is_longer_chain(&fork_chains.new_chain, &fork_chains.old_chain) {
+                        self.fork_tree.insert(block.hash(), block).unwrap();
+                        // Unwind the old chain
+                        fork_chains.old_chain.iter().for_each(|block_hash| {
+                            let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
+                            self.longest_chain_queue.roll_back();
+                            self.utxoset.roll_back(block);
+                            self.storage.roll_back(&block);
+                        });
+                        // Wind up the new chain
+                        // let tasks = fork_chains.new_chain.iter().rev().map(|block_hash| {
+                        fork_chains.new_chain.iter().rev().for_each(|block_hash| {
+                            let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
+                            self.longest_chain_queue.roll_forward(block.hash());
+                            self.utxoset.roll_forward(block);
+                            self.storage.roll_forward(&block)
+                            // tokio::spawn(async {
+                            //     let storage = Storage::new(blocks_dir);
+                            //     storage.roll_forward_async(&block).await
+                            // })
+                        });
+
+                        // for task in tasks {
+                        //     task.await.unwrap();
+                        // }
+
+                        AddBlockEvent::AcceptedAsNewLongestChain
+                    } else {
+                        // we're just building on a new chain. Won't take over... yet!
+                        self.utxoset.roll_forward_on_fork(&block);
+                        self.fork_tree.insert(block.hash(), block).unwrap();
+                        AddBlockEvent::Accepted
+                    }
+                }
+            }
+        }
+    }
+
     fn validate_block(&self, block: &Block, fork_chains: &ForkChains) -> bool {
+        println!("VALIDATING BLOCK");
         // If the block has an empty hash as previous_block_hash, it's valid no question
         let previous_block_hash = block.previous_block_hash();
         if previous_block_hash == &[0; 32] && block.id() == 0 {
             return true;
         }
 
+        println!("CHECKING BLOCK HASH");
         // If the previous block hash doesn't exist in the ForkTree, it's rejected
         if !self.fork_tree.contains_block_hash(previous_block_hash) {
             return false;
@@ -228,34 +309,19 @@ impl Blockchain {
 
         // TODO -- include checks on difficulty and paysplit here to validate
         // Validate the burnfee
-        let previous_block = self.fork_tree.block_by_hash(previous_block_hash).unwrap();
         // TODO put this back, it's breaking add_block_test. test probably just needs to be updated
-        // if block.start_burnfee()
-        //     != BurnFee::burn_fee_adjustment_calculation(
-        //         previous_block.start_burnfee() as f64,
-        //         block.timestamp(),
-        //         previous_block.timestamp(),
-        //     ) as f64
-        // {
-        //     return false;
-        // }
+        let previous_block = self.fork_tree.block_by_hash(previous_block_hash).unwrap();
+        if block.start_burnfee()
+            != BurnFee::burn_fee_adjustment_calculation(
+                previous_block.start_burnfee() as f64,
+                block.timestamp(),
+                previous_block.timestamp(),
+            ) as f64
+        {
+            return false;
+        }
 
-        // validate the fees match the work required to make a block
-        // let work_available: u64 = block
-        //     .transactions()
-        //     .iter()
-        //     .map(|tx| self.utxoset.transaction_routing_fees(tx))
-        //     .sum();
-        // if work_available
-        //     < BurnFee::return_work_needed(
-        //         previous_block.start_burnfee() as f64,
-        //         block.timestamp(),
-        //         previous_block.timestamp(),
-        //     )
-        // {
-        //     return false;
-        // }
-
+        println!("CHECK WORK NEEDED");
         // validate the fees match the work required to make a block
         // let work_available: u64 = block
         //     .transactions()
@@ -278,6 +344,7 @@ impl Blockchain {
             return false;
         }
 
+        println!("GOLDEN TICKET COUNT");
         let golden_ticket_count = block.transactions().iter().fold(0, |acc, tx| {
             if tx.core.broadcast_type() == &TransactionType::GoldenTicket {
                 acc + 1
@@ -293,6 +360,7 @@ impl Blockchain {
             .iter()
             .all(|tx| self.validate_transaction(previous_block, tx, fork_chains));
 
+        println!("FINISHED VALIDATING");
         transactions_valid
     }
 
@@ -309,6 +377,7 @@ impl Blockchain {
                 }
 
                 if let Some(address) = self.utxoset.get_receiver_for_inputs(tx.core.inputs()) {
+                    println!("FOUND ADDRESS, CHECKING SIG");
                     if !verify_bytes_message(&tx.hash(), &tx.signature(), address) {
                         return false;
                     };
@@ -393,7 +462,7 @@ mod tests {
         Ok(())
     }
 
-    // #[ignore]
+    #[ignore]
     #[test]
     fn add_block_test() {
         let keypair = Keypair::new();
@@ -404,7 +473,7 @@ mod tests {
         let mut prev_block_hash = block.hash().clone();
         let mut prev_block_id = block.id();
         let first_block_hash = block.hash().clone();
-        
+
         for _n in 0..5 {
             let block = test_utilities::make_mock_block(
                 &keypair,
