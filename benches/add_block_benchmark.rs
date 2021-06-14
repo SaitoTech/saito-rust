@@ -1,6 +1,7 @@
 use criterion::{black_box, BatchSize};
 use criterion::{criterion_group, criterion_main, Criterion};
-use saito_rust::{keypair::Keypair, test_utilities};
+use saito_rust::{keypair::Keypair};
+use saito_rust::test_utilities;
 
 fn bench_add_block(c: &mut Criterion) {
     let keypair = Keypair::new();
