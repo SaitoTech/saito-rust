@@ -1182,6 +1182,7 @@ dependencies = [
  "hex",
  "lazy_static",
  "rand 0.8.3",
+ "rayon",
  "secp256k1",
  "serde",
  "sha2",

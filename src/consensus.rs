@@ -112,7 +112,6 @@ impl Consensus {
                             let block_hash = block.hash().clone();
                             match blockchain.add_block(block) {
                                 AddBlockEvent::AcceptedAsLongestChain => {
-                                    println!("AcceptedAsLongestChain");
                                     block_tx
                                         .send(SaitoMessage::NewBlock {
                                             payload: block_hash,

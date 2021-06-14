@@ -14,7 +14,6 @@ pub fn make_mock_blockchain_and_slips(
 ) -> (Blockchain, Vec<(SlipID, OutputSlip)>) {
     let mut blockchain = Blockchain::new();
     let mut slips = vec![];
-    // seed some inputs and first block here
 
     let mut golden_tx_core = TransactionCore::default();
     golden_tx_core.set_type(TransactionType::GoldenTicket);
@@ -29,7 +28,7 @@ pub fn make_mock_blockchain_and_slips(
 
     let golden_tx = Transaction::create_signature(golden_tx_core, keypair);
 
-    let tx_hash = golden_tx.core.hash();
+    let tx_hash = golden_tx.hash();
     golden_tx
         .core
         .outputs()
@@ -51,7 +50,8 @@ pub fn make_mock_blockchain_and_slips(
 
     let block = Block::new(block_core);
 
-    blockchain.add_block(block);
+    let _result = blockchain.add_block(block);
+    // TODO assert something about this result
 
     (blockchain, slips)
 }
@@ -87,6 +87,7 @@ pub fn make_mock_block_with_tx(
 ) -> Block {
     Block::new_mock(previous_block_hash, &mut vec![tx.clone()], block_id)
 }
+
 pub fn make_mock_tx(input: SlipID, amount: u64, to: PublicKey) -> Transaction {
     let to_slip = OutputSlip::new(to, SlipType::Normal, amount);
     Transaction::new(
@@ -98,4 +99,22 @@ pub fn make_mock_tx(input: SlipID, amount: u64, to: PublicKey) -> Transaction {
         TransactionType::Normal,
         vec![104, 101, 108, 108, 111],
     )
+}
+
+pub fn make_mock_sig_tx(
+    keypair: &Keypair,
+    input: SlipID,
+    amount: u64,
+    to: PublicKey,
+    msg_bytes: u64,
+) -> Transaction {
+    let to_slip = OutputSlip::new(to, SlipType::Normal, amount);
+    let tx_core = TransactionCore::new(
+        create_timestamp(),
+        vec![input.clone()],
+        vec![to_slip.clone()],
+        TransactionType::Normal,
+        (0..msg_bytes).map(|_| rand::random::<u8>()).collect(),
+    );
+    Transaction::create_signature(tx_core, keypair)
 }

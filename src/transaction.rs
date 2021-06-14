@@ -41,6 +41,8 @@ pub struct Transaction {
     signature: Signature,
     /// A list of `Hop` stipulating the history of `Transaction` routing
     path: Vec<Hop>,
+    /// hash of the tx
+    hash: Sha256Hash,
     /// All data which is serialized and signed
     pub core: TransactionCore,
 }
@@ -86,9 +88,15 @@ impl Transaction {
         broadcast_type: TransactionType,
         message: Vec<u8>,
     ) -> Transaction {
-        Transaction {
+        // For the constructors of Transaction, Rust tries to be helpful and disallows
+        // us from createing a core and then getting a hash from it using a shared borrow and
+        // then moving it to the Transaction. To circumvent this, we instead let the tx own
+        // the core and then get a shared borrow of it through the core() getter and use that
+        // to generate and assign the hash.
+        let mut tx = Transaction {
             signature: signature,
             path: path,
+            hash: [0; 32],
             core: TransactionCore {
                 timestamp: timestamp,
                 inputs: inputs,
@@ -96,25 +104,33 @@ impl Transaction {
                 broadcast_type: broadcast_type,
                 message: message,
             },
-        }
+        };
+        tx.set_hash(hash_bytes(&tx.core().into()));
+        tx
     }
 
-    /// Sign
+    /// Construct a new tx from the Transaction Core and sign it
     pub fn sign(core: TransactionCore) -> Transaction {
-        Transaction {
+        let mut tx = Transaction {
             signature: Signature::from_compact(&[0; 64]).unwrap(),
             path: vec![],
+            hash: [0;32],
             core: core,
-        }
+        };
+        tx.set_hash(hash_bytes(&tx.core().into()));
+        tx
     }
 
-    /// Add a `Signature` to `Transaction`
+    /// Construct a new tx with signature from the Transaction Core
     pub fn add_signature(core: TransactionCore, signature: Signature) -> Transaction {
-        Transaction {
+        let mut tx = Transaction {
             signature: signature,
             path: vec![],
+            hash: [0;32],
             core: core,
-        }
+        };
+        tx.set_hash(hash_bytes(&tx.core().into()));
+        tx
     }
 
     /// Create signature and new `Transaction`
@@ -124,15 +140,21 @@ impl Transaction {
         let signature = keypair.sign_message(&message_hash[..]);
         Transaction::add_signature(core, signature)
     }
-
+    /// 
+    pub fn core(&self) -> &TransactionCore {
+        &self.core
+    }
     /// Returns `secp256k1::Signature` verifying the validity of data on a transaction
     pub fn signature(&self) -> &Signature {
         &self.signature
     }
 
     pub fn hash(&self) -> Sha256Hash {
-        let data: Vec<u8> = self.core.clone().into();
-        hash_bytes(&data)
+        self.hash
+    }
+
+    fn set_hash(&mut self, hash: Sha256Hash) {
+        self.hash = hash;
     }
 
     pub fn path(&self) -> &Vec<Hop> {
@@ -167,6 +189,12 @@ impl From<Vec<u8>> for TransactionCore {
 }
 
 impl Into<Vec<u8>> for TransactionCore {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for &TransactionCore {
     fn into(self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
     }
@@ -246,12 +274,6 @@ impl TransactionCore {
     /// Returns the message of the `Transaction`
     pub fn message(&self) -> &Vec<u8> {
         &self.message
-    }
-
-    pub fn hash(&self) -> Sha256Hash {
-        // TODO get rid of this clone
-        let serialized_tx: Vec<u8> = self.clone().into();
-        hash_bytes(&serialized_tx)
     }
 
     pub fn set_type(&mut self, tx_type: TransactionType) {

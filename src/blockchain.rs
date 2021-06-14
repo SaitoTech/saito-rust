@@ -4,7 +4,6 @@ use crate::crypto::{verify_bytes_message, Sha256Hash};
 use crate::forktree::ForkTree;
 use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
-use crate::storage::Storage;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
 use std::sync::Arc;
@@ -155,14 +154,10 @@ impl Blockchain {
                 let is_new_lc_tip = !latest_block_hash.is_none()
                     && &latest_block_hash.unwrap() == block.previous_block_hash();
                 if is_first_block || is_new_lc_tip {
-                    // First Block or we're new tip of the longest chain
+                    // First Block or we'e new tip of the longest chain
                     self.longest_chain_queue.roll_forward(block.hash());
                     self.utxoset.roll_forward(&block);
                     self.fork_tree.insert(block.hash(), block.clone()).unwrap();
-
-                    let storage = Storage::new(None);
-                    storage.write_block_to_disk(block).unwrap();
-
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
                 } else {
@@ -216,7 +211,6 @@ impl Blockchain {
         }
 
         // TODO -- include checks on difficulty and paysplit here to validate
-
         // Validate the burnfee
         let previous_block = self.fork_tree.block_by_hash(previous_block_hash).unwrap();
         if block.start_burnfee()
@@ -283,7 +277,6 @@ impl Blockchain {
 
                 if let Some(address) = self.utxoset.get_receiver_for_inputs(tx.core.inputs()) {
                     if !verify_bytes_message(&tx.hash(), &tx.signature(), address) {
-                        println!("SIGNATURE IS NOT VALID");
                         return false;
                     };
 
@@ -303,7 +296,6 @@ impl Blockchain {
                     if !inputs_are_valid {
                         return false;
                     }
-
                     // valuidate that inputs are unspent
                     let input_amt: u64 = tx
                         .core
@@ -334,6 +326,7 @@ impl Blockchain {
                 // need to validate the golden ticket correctly
                 let golden_ticket = GoldenTicket::from(tx.core.message().clone());
                 if golden_ticket.target != previous_block.hash() {
+                    println!("DOESN'T MATCH");
                     return false;
                 }
                 return true;
