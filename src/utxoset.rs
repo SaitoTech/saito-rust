@@ -177,7 +177,6 @@ impl UtxoSet {
         // loop through inputs and mark them as Spent, if they're not in the hashmap something is
         // horribly wrong
         tx.core.inputs().iter().for_each(|slip_id| {
-            // println!("SLIPS");
             self.shashmap
                 .entry(*slip_id)
                 .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
@@ -391,7 +390,6 @@ impl UtxoSet {
                     None
                 }
             } else {
-                println!("COULDN'T FIND INPUTS");
                 None
             }
         }

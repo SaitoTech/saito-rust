@@ -10,7 +10,6 @@ pub async fn main() -> saito_rust::Result<()> {
 	let (mut blockchain, mut slips) =
         test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 10000);
 	let prev_block = blockchain.latest_block().unwrap();
-	//println!("PREVIOUS BLOCK: {:?}", prev_block);
     let block = test_utilities::make_mock_block(&keypair, prev_block.hash(), prev_block.id() + 1, slips.pop().unwrap().0);
 
     let mut prev_block_hash = block.hash().clone();

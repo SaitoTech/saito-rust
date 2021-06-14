@@ -193,22 +193,6 @@ impl BlockCore {
             transactions: transactions.to_vec(),
         }
     }
-
-    // pub fn serialize(&self) -> [u8; 44] {
-    //     let mut ret = [0; 44];
-    //     ret[..32].clone_from_slice(&self.previous_block_hash);
-    //     unsafe {
-    //         ret[32..40].clone_from_slice(&slice::from_raw_parts(
-    //             (&self.timestamp as *const u64) as *const u8,
-    //             mem::size_of::<u64>(),
-    //         ));
-    //     }
-    //     // TODO REMOVE THESE RANDOM BYTES ONCE WE ARE ACTUALLY DOING A FULL HASH, THIS IS JUST
-    //     // FOR HASHING BECAUSE THE TIMESTAMP ISN'T PRECISE ENOUGH TO GUARANTEE UNIQUENESS
-    //     let random_bytes = rand::thread_rng().gen::<[u8; 4]>();
-    //     ret[40..44].clone_from_slice(&random_bytes);
-    //     ret
-    // }
 }
 
 impl From<Vec<u8>> for BlockCore {
@@ -230,6 +214,12 @@ impl From<Vec<u8>> for Block {
 }
 
 impl Into<Vec<u8>> for Block {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for &Block {
     fn into(self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
     }

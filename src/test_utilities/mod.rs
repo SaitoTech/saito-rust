@@ -15,17 +15,20 @@ pub fn make_mock_blockchain_and_slips(
     let mut blockchain = Blockchain::new();
     let mut slips = vec![];
 
+    println!("CREATING GOLDEN TRANSACTION");
     let mut golden_tx_core = TransactionCore::default();
     golden_tx_core.set_type(TransactionType::GoldenTicket);
 
     let coinbase = 50_000_0000_0000;
 
+    println!("CREAITNG SLIPS");
     for _i in 0..slip_count {
         let slip_share = (coinbase as f64 / slip_count as f64).round() as u64;
         let output = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, slip_share);
         golden_tx_core.add_output(output);
     }
 
+    println!("SIGNING TX");
     let golden_tx = Transaction::create_signature(golden_tx_core, keypair);
 
     let tx_hash = golden_tx.hash();
@@ -36,6 +39,7 @@ pub fn make_mock_blockchain_and_slips(
         .enumerate()
         .for_each(|(idx, output)| slips.push((SlipID::new(tx_hash, idx as u64), output.clone())));
 
+    println!("CREATING BLOCK");
     let block_core = BlockCore::new(
         0,
         create_timestamp(),
