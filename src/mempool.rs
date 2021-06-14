@@ -1,8 +1,11 @@
 use crate::{
+    blockchain::Blockchain,
     block::Block,
+    crypto::Sha256Hash,
     transaction::Transaction,
     types::SaitoMessage,
 };
+use std::collections::HashMap;
 use crate::time::create_timestamp;
 use std::{
     time::Duration,
@@ -24,7 +27,7 @@ lazy_static! {
 pub struct Mempool {
 
     transactions: Vec<Transaction>,
-    blocks: Vec<Block>,
+    blocks: HashMap<Sha256Hash, Block>,
     broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
 
 }
@@ -34,21 +37,33 @@ impl Mempool {
 
     pub fn new() -> Self {
         Mempool {
-            blocks: vec![],
+            blocks: HashMap::new(),
             transactions: vec![],
 	    broadcast_channel_sender: None,
         }
      }
 
     pub fn add_block(&mut self, block: Block) {
-
+	if !self.blocks.contains_key(&block.get_hash()) {
+println!("Inserting block: {:?}", block);
+	    self.blocks.insert(block.get_hash(), block);
+	} else {
+	    println!("Mempool already contains block: {:?}", block.get_hash());
+	}
     }
 
     pub fn get_block(&mut self, hash: [u8;32]) -> Option<Block> {
-	let mut block = Block::new();
-	block.set_timestamp(create_timestamp());
-	block.set_hash();
-	Some(block)
+
+        let block = self.blocks.remove(&hash);
+	match block {
+	    Some(block) => {
+		return Some(block);
+	    }
+	    None => {
+		return None;
+	    }
+	}
+
     }
 
     pub fn get_transaction(&mut self, hash: [u8;32]) -> Option<Transaction> {
@@ -68,7 +83,7 @@ impl Mempool {
     // the mempool while minimizing memory leaks in the event of software shutdown
     // or restart.
     //
-    pub async fn start_bundling(&self, mempool_lock: Arc<RwLock<Mempool>>) {
+    pub async fn start_bundling(&self, mempool_lock: Arc<RwLock<Mempool>>, blockchain_lock: Arc<RwLock<Blockchain>>) {
 
 	let mut already_bundling;
 	let mut count = 5;
@@ -108,10 +123,12 @@ impl Mempool {
 
 		    if count == 0 {
 			let mut mempool = mempool_lock.write().await;
+			let blockchain_lock_clone = blockchain_lock.clone();
 			mempool.stop_bundling().await;
-			mempool.bundle_block();		
+			mempool.bundle_block(blockchain_lock_clone).await;
 		    }
 		    {
+			// update external reference
 	                let mut r = BUNDLER_ACTIVE.read().await;
 	                already_bundling = *r;
 		    }
@@ -126,13 +143,44 @@ impl Mempool {
 	*w = 0;
     }
 
-    pub fn bundle_block(&self) {
+    pub async fn bundle_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) {
+
+	//
+	// create the block and add it to our blocks vector
+	//
+	let blockchain = blockchain_lock.read().await;
+	let previous_block_hash = blockchain.get_latest_block_hash();
+	let previous_block_id = blockchain.get_latest_block_id();
+
+	let mut block = self.generate_mempool_block(previous_block_id, previous_block_hash);
+
+	block.set_hash();
+
+	let block_hash = block.get_hash();
+
+	self.add_block(block);
+
 	if !self.broadcast_channel_sender.is_none() {
 	   self.broadcast_channel_sender.as_ref().unwrap() 
-			.send(SaitoMessage::Block { payload: [0;32] })
+			.send(SaitoMessage::Block { payload: block_hash })
                         .expect("error: Mempool TryBundle Block message failed to send");
 	}
     }
+
+
+
+    pub fn generate_mempool_block(&self, previous_block_id: u64, previous_block_hash: [u8;32]) -> Block {
+
+        let mut block = Block::new();
+	block.set_id(previous_block_id);
+	block.set_timestamp(create_timestamp());
+	block.set_previous_block_hash(previous_block_hash);
+	block.set_hash();
+
+	return block;
+
+    }
+
 
 }
 

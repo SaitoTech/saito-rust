@@ -27,7 +27,7 @@ pub struct Block {
     // Emergent Consensus Variables
     //
     hash: [u8; 32],
-
+    lc: bool,
 
 
 }
@@ -49,7 +49,7 @@ impl Block {
 	    transactions: vec![],
 
             hash: [0;32],
-
+	    lc: false,
 
         }
     }
@@ -58,7 +58,30 @@ impl Block {
 	return self.hash;
     }
 
+    pub fn get_previous_block_hash(&self) -> [u8; 32] {
+	return self.previous_block_hash;
+    }
 
+    pub fn get_id(&self) -> u64 {
+	return self.id;
+    }
+
+    pub fn get_lc(&self) -> bool {
+	return self.lc;
+    }
+
+
+    pub fn set_id(&mut self, id: u64) {
+      self.id = id;
+    }
+
+    pub fn set_lc(&mut self, lc: bool) {
+      self.lc = lc;
+    }
+
+    pub fn set_previous_block_hash(&mut self, previous_block_hash: [u8;32]) {
+      self.previous_block_hash = previous_block_hash;
+    }
 
     pub fn set_timestamp(&mut self, ts: u64) {
       self.timestamp = ts;

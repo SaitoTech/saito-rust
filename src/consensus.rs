@@ -77,14 +77,6 @@ impl Consensus {
 	// inter-module broadcast channels
         //
 	let (broadcast_channel_sender, mut broadcast_channel_receiver) = broadcast::channel(32);
-	//let blockchain_channel_sender    = saito_message_tx.clone();
-	//let mut blockchain_channel_receiver  = saito_message_tx.subscribe();
-	//let miner_channel_sender         = saito_message_tx.clone();
-	//let mut miner_channel_receiver       = saito_message_tx.subscribe();
-	//let mempool_channel_sender       = saito_message_tx.clone();
-	//let mut mempool_channel_receiver     = saito_message_tx.subscribe();
-        //let miner_tx = saito_message_tx.clone();
-        //let mut miner_rx = saito_message_tx.subscribe();
 
 
 	//
@@ -120,16 +112,9 @@ impl Consensus {
 	//
 	// start mempool bundling activity
 	//
-	{
-
-           broadcast_channel_sender
-                        .send(SaitoMessage::StartBundling)
-                        .expect("error: Consensus StartBundling message failed to send");
-
-	   //let mut mempool = mempool_lock.write().await;
-	   //let mempool_lock_clone = mempool_lock.clone();
-	   //mempool.start_bundling(mempool_lock_clone).await;
-	}
+        broadcast_channel_sender
+            .send(SaitoMessage::StartBundling)
+            .expect("error: Consensus StartBundling message failed to send");
 
 	
 
@@ -148,10 +133,12 @@ impl Consensus {
 
                     SaitoMessage::StartBundling => {
 
+	                let blockchain_lock_clone = blockchain_lock.clone();
+
 			// should be write
 	   		let mempool = mempool_lock.write().await;
 	                let mempool_lock_clone = mempool_lock.clone();
-                        mempool.start_bundling(mempool_lock_clone).await;
+                        mempool.start_bundling(mempool_lock_clone, blockchain_lock_clone).await;
 
                     }
 

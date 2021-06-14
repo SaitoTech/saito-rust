@@ -29,7 +29,7 @@ impl ForkTree {
     }
 
     pub fn parent_by_hash(&self, block_hash: &Sha256Hash) -> Option<&Block> {
-        self.fork_tree.get(block_hash)
+        self.fork_tree.get(block_hash);
     }
 
     pub fn contains_block_hash(&self, block_hash: &Sha256Hash) -> bool {

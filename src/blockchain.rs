@@ -1,16 +1,32 @@
 use crate::{
   block::Block,
   types::SaitoMessage,
-  forktree::ForkTree,
+  crypto::Sha256Hash,
 };
-
+use std::collections::HashMap;
 use tokio::sync::{broadcast};
+
+
+#[derive(Debug)]
+pub struct BlockIndex {
+    id: u64,
+    hashes: Vec<[u8;32]>,
+}
+impl BlockIndex {
+    pub fn new() -> Self {
+        BlockIndex {
+	    id: 0,
+    	    hashes: vec![],
+        }
+    }
+}
 
 
 #[derive(Debug)]
 pub struct Blockchain {
 
-    blocks: ForkTree,
+    blocks: HashMap<Sha256Hash, Block>,
+    index: HashMap<u64, BlockIndex>,
     broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
 
     lc_hash: [u8; 32],
@@ -18,15 +34,15 @@ pub struct Blockchain {
 
 }
 
-
 impl Blockchain {
 
     pub fn new() -> Self {
         Blockchain {
             broadcast_channel_sender: None,
-	    blocks: ForkTree::new(),
     	    lc_hash: [0;32],
     	    previous_lc_hash: [0;32],
+            blocks: HashMap::new(),
+            index: HashMap::new(),
         }
     }
 
@@ -40,42 +56,149 @@ impl Blockchain {
     pub fn add_block(&mut self, block: Block) {
 
 	//
-	// Sanity Checks
+	// start by extracting some variables that we will need
+	// to use repeatedly in order to avoid the need to access
+	// them from within our hashmap / index after we have 
+	// transferred ownership of the block to that structure.
 	//
-println!("Block Hash: {:?}", block.get_hash());
+	let block_hash = block.get_hash();
+	let block_id = block.get_id();
+
 
 	//
-	// Add to Blockchain
+	// sanity checks
 	//
-	// We assume here that this block will form the end of the longest
-	// chain. If this is not the case we will reset lc_hash to its 
-	// original value before this function ends.
+	//println!("Block Hash: {:?}", block.get_hash());
+
+
+	//
+	// prepare to Add Block to Blockchain
+	//
+	// assume that this block will form the longest-chain and update
+	// our lc_hash and previous_lc_hash variables to reflect this. If 
+	// validation or update fails, we will revert to the previous tip
+	// of the longest-chain.
 	//
 	self.previous_lc_hash = self.lc_hash;
 	self.lc_hash = block.get_hash();
-        self.blocks.insert(block.get_hash(), block);
 
 
 	//
-	// Find Shared Ancestor
+	// insert block into index/hashmap
+	//
+	if !self.blocks.contains_key(&block_hash) {
+	    self.blocks.insert(block_hash, block);
+	}
+	if self.index.contains_key(&block_id) {
+	    if self.index.get(&block_id).unwrap().hashes.contains(&block_hash) {
+	    } else {
+		//
+	        // mutable update is hell -- we can do this but have to have 
+	        // manually checked that the entry exists in order to pull 
+	        // this trick.
+		//
+	        self.index.get_mut(&block_id).unwrap().hashes.push(block_hash);
+	    }
+        } else {
+	    //
+	    // create a new BlockIndex which will store the hash along with
+	    // the block_id. this permits O(1) lookup of all of the blocks
+	    // at any block depth.
+	    //
+	    let mut new_block_index = BlockIndex::new();
+	    new_block_index.id = block_id;
+	    new_block_index.hashes.push(block_hash);
+	    self.index.insert(block_id, new_block_index);
+	}
+
+
+	//
+	// now we find the shared ancestor
 	//
         let mut new_chain: Vec<[u8;32]> = Vec::new();
         let mut old_chain: Vec<[u8;32]> = Vec::new();
-	let mut shared_ancestor_found = 0;
 
-	while shared_ancestor_found == 0 {
-	    shared_ancestor_found = 1;
+	let mut shared_ancestor_found = false;
+	let mut shared_ancestor_hash = [0;32];
+	let mut new_chain_hash = block_hash;
+	let mut old_chain_hash = self.previous_lc_hash;
+
+println!("Looking for chain of new hashes 1: {:?}", new_chain);
+
+	//
+	// track new chain down to last lc=true ancestor
+	//
+	while !shared_ancestor_found {
+
+	    if self.blocks.contains_key(&new_chain_hash) {
+		new_chain.push(new_chain_hash);
+		new_chain_hash = self.blocks.get(&new_chain_hash).unwrap().get_previous_block_hash();
+		if new_chain_hash == [0;32] {
+		    break;
+		}
+		if self.blocks.get(&new_chain_hash).unwrap().get_lc() {
+		    shared_ancestor_found = true;
+		    shared_ancestor_hash = self.blocks.get(&new_chain_hash).unwrap().get_hash();
+		}
+	    } else {
+		break;
+	    }
+
+	}
+println!("Looking for chain of new hashes 2: {:?}", new_chain);
+
+	//
+	// track old chain down to entry_point
+	//
+	if shared_ancestor_found {
+	    loop {
+	    
+		if (new_chain_hash == old_chain_hash) {
+		    break;
+		}
+	        if self.blocks.contains_key(&old_chain_hash) {
+		    old_chain.push(old_chain_hash);
+		    old_chain_hash = self.blocks.get(&old_chain_hash).unwrap().get_previous_block_hash();
+		    if old_chain_hash == [0;32] {
+		        break;
+		    }
+		    if (new_chain_hash == old_chain_hash) {
+			break;
+		    }
+	        }
+
+	    }
 	}
 
-println!("Shared Ancestor Found!");
+println!("Looking for chain of old hashes 2: {:?}", old_chain);
 
+	//
+        // at this point we should have a shared ancestor
+	//
+        let am_i_the_longest_chain = self.is_new_chain_the_longest_chain(&new_chain, &old_chain);
 
 
 	//
-	//
-	//
+	// validate
+        //
+        if am_i_the_longest_chain {
 
+        //    let does_new_chain_validate = self.validate(new_chain, old_chain);
+        //    if does_new_chain_validate {
+println!("SUCCESS");
+                self.add_block_success();
+        //    } else {
+        //        self.add_block_failure();
+        //    }
+        //    println!("does the new chain validate: {}", does_new_chain_validate);
 
+        } else {
+
+println!("FAILURE");
+            self.add_block_failure();
+
+        }
+   
 
 	//
 	// Resume Bundling
@@ -86,6 +209,94 @@ println!("Shared Ancestor Found!");
                         .expect("error: Mempool TryBundle Block message failed to send");
         }
     }
+
+
+    pub fn add_block_success(&mut self) {
+
+        // save
+        //self.storage.write_block_to_disk(&self.blocks[self.pos]);
+
+	//
+	// block is longest-chain
+	//
+	// mutable update is hell -- we can do this but have to have 
+	// manually checked that the entry exists in order to pull 
+	// this trick. we did this check before validating.
+	//
+	self.blocks.get_mut(&self.lc_hash).unwrap().set_lc(true);
+
+    }
+    pub fn add_block_failure(&mut self) {
+
+        // revert
+        self.lc_hash = self.previous_lc_hash;
+
+    }
+
+
+    //
+    // return latest block, or disconnected head, inserting
+    // if needed. TODO - some design questions around return
+    // of read-only references to blocks if they do not 
+    // necessarily exist.
+    //
+    pub fn get_latest_block_hash(&self) -> [u8;32] {
+        if self.blocks.contains_key(&self.lc_hash) {
+            return self.blocks.get(&self.lc_hash).unwrap().get_hash();
+        } else {
+	    return [0;32];
+	}
+    }
+    pub fn get_latest_block_id(&self) -> u64 {
+        if self.blocks.contains_key(&self.lc_hash) {
+            return self.blocks.get(&self.lc_hash).unwrap().get_id();
+        } else {
+	    return 0;
+	}
+    }
+
+
+    //
+    // TODO - return 1 for new_chain, 2 for old_chain
+    //
+    pub fn is_new_chain_the_longest_chain(&mut self, new_chain: &Vec<[u8;32]>, old_chain: &Vec<[u8;32]>) -> bool {
+        return true;
+    }
+
+/***
+    pub fn validate(&self, new_chain: Vec<BlockHeader>, old_chain: Vec<BlockHeader>) -> bool {
+        if old_chain.len() > 0 {
+            return self.unwind_chain(&new_chain, &old_chain, old_chain.len()-1);
+        } else if new_chain.len() > 0 {
+            return self.wind_chain(&new_chain, &old_chain, 0, false);
+        }
+        return false;
+    }
+
+    pub fn wind_chain(&self, new_chain: &Vec<BlockHeader>, old_chain: &Vec<BlockHeader>, current_wind_index: usize, wind_failure: bool) -> bool {
+
+        // validate the block
+        let block_pos = new_chain[current_wind_index].pos;
+        let block = &self.blocks[block_pos];
+        let does_block_validate = block.validate();
+
+        if does_block_validate {
+            if current_wind_index == (new_chain.len()-1) {
+                return true;
+            }
+            return self.wind_chain(new_chain, old_chain, (current_wind_index+1), false);
+        } else {
+            return false;
+        }
+
+        return false;
+    }
+
+    pub fn unwind_chain(&self, new_chain: &Vec<BlockHeader>, old_chain: &Vec<BlockHeader>, current_unwind_index: usize) -> bool {
+        println!("UNWIND CHAIN {}", current_unwind_index);
+        return true;
+    }
+***/
 
 }
 
