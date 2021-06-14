@@ -135,6 +135,10 @@ impl Transaction {
         hash_bytes(&data)
     }
 
+    pub fn path(&self) -> &Vec<Hop> {
+        &self.path
+    }
+
     /// Add a new `Hop` to the list of `Hop`s
     pub fn add_hop_to_path(&mut self, path: Hop) {
         self.path.push(path);
@@ -154,17 +158,6 @@ impl Transaction {
         // self.inputs().iter().all(|slip_id| self.is_slip_spendable(slip_id))
         true
     }
-
-    // Returns true if the slip has been seen in the blockchain
-    // fn is_slip_spendable(&self, _slip_id: &SlipID) -> bool {
-    //     // TODO check with utxoset to see if slip is spendable
-    //     true
-    // }
-    // // Returns true if the OutputSlip found in the utxoset matches the OutputSlip
-    // fn is_slip_id_valid(&self, _slip_id: &SlipID, _slip_as_output: &OutputSlip) -> bool {
-    //     // TODO loop through all sigs in utxo set and make sure they have to correct receiver and amount
-    //     true
-    // }
 }
 
 impl From<Vec<u8>> for TransactionCore {
