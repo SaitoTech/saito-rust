@@ -21,6 +21,9 @@ https://trello.com/b/gWPiQFZ1/saito-rust-project-management
 
 ### Deps
 
+- (If on OSX: `xcode-select --install`)
+- [Install Rust](https://www.rust-lang.org/tools/install)
+
 ```
 rustup component add rustfmt
 ```
@@ -36,7 +39,9 @@ cargo run
 ```
 scripts/test.sh
 ```
-or 
+
+or
+
 ```
 cargo test --features=test-utilities
 ```
