@@ -1,5 +1,5 @@
 use crate::{
-    crypto::{hash, make_message_from_bytes, Sha256Hash},
+    crypto::{hash_bytes, Sha256Hash},
     keypair::Keypair,
     slip::{OutputSlip, SlipID},
     time::create_timestamp,
@@ -120,7 +120,7 @@ impl Transaction {
     /// Create signature and new `Transaction`
     pub fn create_signature(core: TransactionCore, keypair: &Keypair) -> Transaction {
         let message_bytes: Vec<u8> = core.clone().into();
-        let message_hash = make_message_from_bytes(&message_bytes[..]);
+        let message_hash = hash_bytes(&message_bytes);
         let signature = keypair.sign_message(&message_hash[..]);
         Transaction::add_signature(core, signature)
     }
@@ -132,7 +132,7 @@ impl Transaction {
 
     pub fn hash(&self) -> Sha256Hash {
         let data: Vec<u8> = self.core.clone().into();
-        hash(&data)
+        hash_bytes(&data)
     }
 
     /// Add a new `Hop` to the list of `Hop`s
@@ -258,7 +258,7 @@ impl TransactionCore {
     pub fn hash(&self) -> Sha256Hash {
         // TODO get rid of this clone
         let serialized_tx: Vec<u8> = self.clone().into();
-        make_message_from_bytes(&serialized_tx[..])
+        hash_bytes(&serialized_tx)
     }
 
     pub fn set_type(&mut self, tx_type: TransactionType) {
@@ -274,7 +274,7 @@ impl TransactionCore {
 mod tests {
     use super::*;
     use crate::{
-        crypto::{hash, verify_bytes_message},
+        crypto::{hash_bytes, verify_bytes_message},
         keypair::Keypair,
         slip::{OutputSlip, SlipID, SlipType},
     };
@@ -309,7 +309,7 @@ mod tests {
 
         let tx = Transaction::create_signature(tx_core, &keypair);
         let serialize_tx: Vec<u8> = tx.core.clone().into();
-        let hash = hash(&serialize_tx);
+        let hash = hash_bytes(&serialize_tx);
 
         assert!(verify_bytes_message(
             &hash,

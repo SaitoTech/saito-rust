@@ -108,12 +108,19 @@ mod tests {
     use crate::keypair::Keypair;
 
     #[test]
-    fn slip_test() {
+    fn output_slip_test() {
         let keypair = Keypair::new();
         let slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 10_000_000);
 
         assert_eq!(slip.address(), keypair.public_key());
         assert_eq!(slip.broadcast_type(), SlipType::Normal);
         assert_eq!(slip.amount(), 10_000_000);
+    }
+
+    #[test]
+    fn input_slip_test() {
+        let input = SlipID::new([0; 32], 0);
+        assert_eq!(input.tx_id(), [0; 32]);
+        assert_eq!(input.slip_ordinal(), 0);
     }
 }

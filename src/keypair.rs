@@ -97,7 +97,7 @@ mod test {
     use hex;
 
     #[test]
-    fn test_signing() {
+    fn keypair_signing_test() {
         let mock_secret_key = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
         let keypair = Keypair::from_secret_hex(mock_secret_key).unwrap();
         let sig_string2 = keypair
@@ -115,7 +115,7 @@ mod test {
     }
 
     #[test]
-    fn test_new_from_secret_key() {
+    fn keypair_new_from_secret_key_test() {
         let mock_secret_key = "da79fe6d86347e8f8dc71eb3dbab9ba5623eaaed6c5dd0bb257c0d631faaff16";
         let keypair = Keypair::from_secret_hex(mock_secret_key).unwrap();
         let mut pubkey_string = String::new();
@@ -132,7 +132,7 @@ mod test {
     }
 
     #[test]
-    fn test_new() {
+    fn keypair_new_test() {
         let keypair = Keypair::new();
         assert_eq!(keypair.address().len(), 44);
         assert_eq!(keypair.secret_key().to_string().len(), 64);
