@@ -1,4 +1,4 @@
-use crate::crypto::{hash, PublicKey, Sha256Hash};
+use crate::crypto::{hash_bytes, PublicKey, Sha256Hash};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 use serde::{Deserialize, Serialize};
@@ -50,7 +50,7 @@ impl Block {
     pub fn new(core: BlockCore) -> Block {
         let core_bytes: Vec<u8> = core.clone().into();
         Block {
-            hash: hash(&core_bytes),
+            hash: hash_bytes(&core_bytes),
             core,
         }
     }
