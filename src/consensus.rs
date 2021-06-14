@@ -93,8 +93,7 @@ impl Consensus {
                 match blockchain.add_block(block) {
                     AddBlockEvent::AcceptedAsLongestChain
                     | AddBlockEvent::AcceptedAsNewLongestChain => {
-                        let new_block = blockchain.get_block_by_hash(&block_hash).unwrap();
-                        println!("Loaded block from disk: {}", new_block.id());
+                        blockchain.get_block_by_hash(&block_hash).unwrap();
                     }
                     fail_message => {
                         println!("{:?}", fail_message)
@@ -102,7 +101,6 @@ impl Consensus {
                 }
             }
         }
-
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
 
         let block_tx = saito_message_tx.clone();
@@ -112,7 +110,7 @@ impl Consensus {
         let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
 
         let mut mempool = Mempool::new(keypair.clone(), utxoset);
-
+        
         tokio::spawn(async move {
             loop {
                 saito_message_tx
@@ -124,8 +122,6 @@ impl Consensus {
 
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
-                //
-                // TODO - "process" what? descriptive function name -- should fetch latest block not block index
                 match message {
                     SaitoMessage::NewBlock { payload } => {
                         let golden_tx = generate_golden_ticket_transaction(
@@ -139,10 +135,11 @@ impl Consensus {
                             .unwrap();
                     }
                     SaitoMessage::TryBundle => {
-                        let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
-                        let mut blockchain = blockchain_mutex.lock().unwrap();
-                        if let Some(block) = mempool.process(message, blockchain.latest_block()) {
+                        if let Some(block) = mempool.process(message) {
+                            let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
+                            let mut blockchain = blockchain_mutex.lock().unwrap();
                             let block_hash = block.hash().clone();
+                            
                             match blockchain.add_block(block) {
                                 AddBlockEvent::AcceptedAsLongestChain
                                 | AddBlockEvent::AcceptedAsNewLongestChain => {

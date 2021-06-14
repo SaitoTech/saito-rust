@@ -1,5 +1,4 @@
 use crate::block::Block;
-use crate::burnfee::BurnFee;
 use crate::constants;
 use crate::crypto::{verify_bytes_message, Sha256Hash};
 use crate::forktree::ForkTree;
@@ -242,20 +241,36 @@ impl Blockchain {
         // }
 
         // validate the fees match the work required to make a block
-        let work_available: u64 = block
-            .transactions()
-            .iter()
-            .map(|tx| self.utxoset.transaction_routing_fees(tx))
-            .sum();
-        if work_available
-            < BurnFee::return_work_needed(
-                previous_block.start_burnfee() as f64,
-                block.timestamp(),
-                previous_block.timestamp(),
-            )
-        {
-            return false;
-        }
+        // let work_available: u64 = block
+        //     .transactions()
+        //     .iter()
+        //     .map(|tx| self.utxoset.transaction_routing_fees(tx))
+        //     .sum();
+        // if work_available
+        //     < BurnFee::return_work_needed(
+        //         previous_block.start_burnfee() as f64,
+        //         block.timestamp(),
+        //         previous_block.timestamp(),
+        //     )
+        // {
+        //     return false;
+        // }
+
+        // validate the fees match the work required to make a block
+        // let work_available: u64 = block
+        //     .transactions()
+        //     .iter()
+        //     .map(|tx| self.utxoset.transaction_routing_fees(tx))
+        //     .sum();
+        // if work_available
+        //     < BurnFee::return_work_needed(
+        //         previous_block.start_burnfee() as f64,
+        //         block.timestamp(),
+        //         previous_block.timestamp(),
+        //     )
+        // {
+        //     return false;
+        // }
 
         // TODO: This should probably be >= but currently we are producing mock blocks very
         // quickly and this won't pass.
@@ -385,16 +400,11 @@ mod tests {
         let (mut blockchain, mut slips) =
             test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH);
 
-        //let block = test_utilities::make_mock_block(&keypair, [0; 32], 0, slips.pop().unwrap().0);
         let block = blockchain.latest_block().unwrap();
         let mut prev_block_hash = block.hash().clone();
         let mut prev_block_id = block.id();
         let first_block_hash = block.hash().clone();
-        // let result: AddBlockEvent = blockchain.add_block(block.clone());
-        // // println!("{:?}", result);
-        // assert_eq!(result, AddBlockEvent::AlreadyKnown);
-
-        println!("prev_block_id {}", prev_block_id);
+        
         for _n in 0..5 {
             let block = test_utilities::make_mock_block(
                 &keypair,

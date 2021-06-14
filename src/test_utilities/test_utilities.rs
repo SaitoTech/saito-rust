@@ -12,7 +12,7 @@ pub fn make_mock_blockchain_and_slips(
     keypair: &Keypair,
     slip_count: u64,
 ) -> (Blockchain, Vec<(SlipID, OutputSlip)>) {
-    let mut blockchain = Blockchain::new_mock(String::from("data/test/blocks/"));
+    let mut blockchain = Blockchain::new();
     let mut slips = vec![];
 
     println!("CREATING GOLDEN TRANSACTION");
@@ -91,6 +91,7 @@ pub fn make_mock_block_with_tx(
 ) -> Block {
     Block::new_mock(previous_block_hash, &mut vec![tx.clone()], block_id)
 }
+
 pub fn make_mock_tx(input: SlipID, amount: u64, to: PublicKey) -> Transaction {
     let to_slip = OutputSlip::new(to, SlipType::Normal, amount);
     Transaction::new(

@@ -84,7 +84,6 @@ impl Storage {
         let mut new_filename = self.blocks_dir_path.clone();
         new_filename.push_str(&block.hash_as_hex().clone());
         new_filename.push_str(&".sai");
-        println!("rollback {} {}", filename, new_filename);
         rename(filename, new_filename).unwrap();
     }
     pub async fn write_block_to_disk_async(
