@@ -228,12 +228,6 @@
 <span id="225">225</span>
 <span id="226">226</span>
 <span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">secp256k1</span>::<span class="ident">PublicKey</span>;
 
@@ -374,11 +368,6 @@
                         <span class="ident">timestamp</span>,
                         <span class="ident">previous_block</span>.<span class="ident">timestamp</span>(),
                     ),
-                    <span class="comment">// BurnFee::return_work_needed(</span>
-                    <span class="comment">//     previous_block.start_burnfee(),</span>
-                    <span class="comment">//     timestamp,</span>
-                    <span class="comment">//     previous_block.timestamp(),</span>
-                    <span class="comment">// ),</span>
                     <span class="number">0.0</span>,
                     <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">transactions</span>,
                 );
@@ -396,7 +385,6 @@
                     <span class="number">0</span>,
                     <span class="ident">TREASURY</span>,
                     <span class="number">10.0</span>,
-                    <span class="comment">// 0,</span>
                     <span class="number">0.0</span>,
                     <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec</span><span class="macro">!</span>[],
                 );
