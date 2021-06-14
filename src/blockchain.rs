@@ -4,7 +4,6 @@ use crate::crypto::{verify_bytes_message, Sha256Hash};
 use crate::forktree::ForkTree;
 use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
-use crate::storage::Storage;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
 use std::sync::Arc;
@@ -159,9 +158,6 @@ impl Blockchain {
                     self.longest_chain_queue.roll_forward(block.hash());
                     self.utxoset.roll_forward(&block);
                     self.fork_tree.insert(block.hash(), block.clone()).unwrap();
-
-                    let storage = Storage::new(None);
-                    storage.write_block_to_disk(block).unwrap();
 
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor

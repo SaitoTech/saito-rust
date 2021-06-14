@@ -1,10 +1,13 @@
 use crate::{
+    block::Block,
     blockchain::{AddBlockEvent, BLOCKCHAIN_GLOBAL},
+    constants,
     crypto::hash_bytes,
     golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
     keypair::Keypair,
     mempool::Mempool,
     network::Network,
+    storage::Storage,
     types::SaitoMessage,
     utxoset::UtxoSet,
 };
@@ -70,6 +73,35 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
 impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
+        let storage = Storage::new(String::from(constants::BLOCKS_DIR));
+        {
+            let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
+            let mut blockchain = blockchain_mutex.lock().unwrap();
+
+            let mut paths: Vec<_> = storage
+                .list_files_in_blocks_dir()
+                .map(|r| r.unwrap())
+                .collect();
+
+            paths.sort_by_key(|dir| dir.path());
+            for path in paths {
+                let bytes = storage.read(&path.path().to_str().unwrap()).unwrap();
+                let block = Block::from(bytes);
+
+                let block_hash = block.hash().clone();
+                match blockchain.add_block(block) {
+                    AddBlockEvent::AcceptedAsLongestChain
+                    | AddBlockEvent::AcceptedAsNewLongestChain => {
+                        let new_block = blockchain.get_block_by_hash(&block_hash).unwrap();
+                        println!("Loaded block from disk: {}", new_block.id());
+                    }
+                    fail_message => {
+                        println!("{:?}", fail_message)
+                    }
+                }
+            }
+        }
+
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
 
         let block_tx = saito_message_tx.clone();
@@ -104,6 +136,7 @@ impl Consensus {
                         miner_tx
                             .send(SaitoMessage::Transaction { payload: golden_tx })
                             .unwrap();
+
                     }
                     SaitoMessage::TryBundle => {
                         let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
@@ -111,8 +144,13 @@ impl Consensus {
                         if let Some(block) = mempool.process(message, blockchain.latest_block()) {
                             let block_hash = block.hash().clone();
                             match blockchain.add_block(block) {
-                                AddBlockEvent::AcceptedAsLongestChain => {
-                                    println!("AcceptedAsLongestChain");
+                                AddBlockEvent::AcceptedAsLongestChain
+                                | AddBlockEvent::AcceptedAsNewLongestChain => {
+                                    // The block is acceptable, we can store it
+                                    let new_block =
+                                        blockchain.get_block_by_hash(&block_hash).unwrap();
+                                    storage.write_block_to_disk(new_block)?;
+                                    println!("Block accepted, written to disk");
                                     block_tx
                                         .send(SaitoMessage::NewBlock {
                                             payload: block_hash,
