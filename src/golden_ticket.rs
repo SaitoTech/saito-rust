@@ -112,14 +112,14 @@ pub fn generate_random_data() -> Vec<u8> {
 mod tests {
 
     use super::*;
-    use crate::crypto::hash;
+    use crate::crypto::hash_bytes;
     use crate::keypair::Keypair;
 
     #[test]
     fn golden_ticket_test() {
         let keypair = Keypair::new();
         let publickey = keypair.public_key();
-        let random_hash = hash(&generate_random_data());
+        let random_hash = hash_bytes(&generate_random_data());
         let golden_ticket = GoldenTicket::new(random_hash, random_hash, *publickey);
 
         assert_eq!(golden_ticket.publickey, publickey.clone());

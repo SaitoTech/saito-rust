@@ -1,6 +1,6 @@
 use crate::{
     blockchain::{AddBlockEvent, BLOCKCHAIN_GLOBAL},
-    crypto::hash,
+    crypto::hash_bytes,
     golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
     keypair::Keypair,
     mempool::Mempool,
@@ -88,7 +88,7 @@ impl Consensus {
                 match message {
                     SaitoMessage::NewBlock { payload } => {
                         let golden_tx = generate_golden_ticket_transaction(
-                            hash(&generate_random_data()),
+                            hash_bytes(&generate_random_data()),
                             payload,
                             &keypair.read().unwrap(),
                         );

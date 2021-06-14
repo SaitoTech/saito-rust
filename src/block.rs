@@ -1,10 +1,8 @@
-use crate::crypto::{make_message_from_bytes, PublicKey, Sha256Hash};
+use crate::crypto::{hash_bytes, PublicKey, Sha256Hash};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use std::{mem, slice};
 
 pub const TREASURY: u64 = 286_810_000_000_000_000;
 
@@ -50,8 +48,11 @@ impl Block {
         Block::new(block_core)
     }
     pub fn new(core: BlockCore) -> Block {
-        let hash = make_message_from_bytes(&core.serialize());
-        Block { hash, core }
+        let core_bytes: Vec<u8> = core.clone().into();
+        Block {
+            hash: hash_bytes(&core_bytes),
+            core,
+        }
     }
 
     /// Returns the `Block` difficulty
@@ -117,19 +118,6 @@ impl Block {
     /// Converts our blockhash from a byte array into a hex string
     pub fn hash_as_hex(&self) -> String {
         hex::encode(self.hash)
-    }
-
-    /// Loops through all tx and
-    pub fn are_sigs_valid(&self) -> bool {
-        // loops through all tx and do tx.sig_is_valid()
-        true
-    }
-
-    /// Loops through all tx and
-    pub fn are_slips_spendable(&self) -> bool {
-        // loops through all tx and check with utxoset that all inputs are spendable
-        // their receiver and amount are correct
-        true
     }
 }
 
@@ -206,28 +194,21 @@ impl BlockCore {
         }
     }
 
-    // pub fn deserialize(bytes: [u8; 42]) -> Slip {
-    //     let public_key: PublicKey = PublicKey::from_slice(&bytes[..33]).unwrap();
-    //     let broadcast_type: SlipBroadcastType = SlipBroadcastType::try_from(bytes[41]).unwrap();
-    //     let amount = u64::from_be_bytes(bytes[33..41].try_into().unwrap());
-    //     Slip::new(public_key, broadcast_type, amount)
+    // pub fn serialize(&self) -> [u8; 44] {
+    //     let mut ret = [0; 44];
+    //     ret[..32].clone_from_slice(&self.previous_block_hash);
+    //     unsafe {
+    //         ret[32..40].clone_from_slice(&slice::from_raw_parts(
+    //             (&self.timestamp as *const u64) as *const u8,
+    //             mem::size_of::<u64>(),
+    //         ));
+    //     }
+    //     // TODO REMOVE THESE RANDOM BYTES ONCE WE ARE ACTUALLY DOING A FULL HASH, THIS IS JUST
+    //     // FOR HASHING BECAUSE THE TIMESTAMP ISN'T PRECISE ENOUGH TO GUARANTEE UNIQUENESS
+    //     let random_bytes = rand::thread_rng().gen::<[u8; 4]>();
+    //     ret[40..44].clone_from_slice(&random_bytes);
+    //     ret
     // }
-
-    pub fn serialize(&self) -> [u8; 44] {
-        let mut ret = [0; 44];
-        ret[..32].clone_from_slice(&self.previous_block_hash);
-        unsafe {
-            ret[32..40].clone_from_slice(&slice::from_raw_parts(
-                (&self.timestamp as *const u64) as *const u8,
-                mem::size_of::<u64>(),
-            ));
-        }
-        // TODO REMOVE THESE RANDOM BYTES ONCE WE ARE ACTUALLY DOING A FULL HASH, THIS IS JUST
-        // FOR HASHING BECAUSE THE TIMESTAMP ISN'T PRECISE ENOUGH TO GUARANTEE UNIQUENESS
-        let random_bytes = rand::thread_rng().gen::<[u8; 4]>();
-        ret[40..44].clone_from_slice(&random_bytes);
-        ret
-    }
 }
 
 impl From<Vec<u8>> for BlockCore {
