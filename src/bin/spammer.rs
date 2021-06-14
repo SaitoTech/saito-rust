@@ -15,7 +15,6 @@ use saito_rust::{
 pub async fn main() -> saito_rust::Result<()> {
     let keypair = Keypair::new();
 
-    println!("CREATE BLOCKCHAIN AND SLIPS");
     let (mut blockchain, mut slips) =
         test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 100000);
     let prev_block = blockchain.latest_block().unwrap();
@@ -30,8 +29,6 @@ pub async fn main() -> saito_rust::Result<()> {
     let mut finish_ts;
 
     for _ in 0..100 {
-        println!("make txs {}", create_timestamp());
-
         let pairs: Vec<(SlipID, OutputSlip)> = (0..1000)
             .into_iter()
             .map(|_| slips.pop().unwrap())
@@ -62,7 +59,6 @@ pub async fn main() -> saito_rust::Result<()> {
             })
             .collect();
 
-        println!("make blk {}", create_timestamp());
         let timestamp = create_timestamp();
         let block = Block::new(BlockCore::new(
             prev_block_id + 1,
@@ -75,21 +71,15 @@ pub async fn main() -> saito_rust::Result<()> {
             0.0,
             &mut txs,
         ));
-        // Block::new_mock(prev_block_hash, &mut txs, prev_block_id + 1);
-        println!("make don {}", create_timestamp());
         prev_block_hash = block.hash().clone();
         prev_block_id = block.id();
         prev_burn_fee = block.start_burnfee();
         prev_timestamp = block.timestamp();
 
-        println!("CREATING BLOCK {:?}", block.id());
-
         start_ts = create_timestamp();
         let result = blockchain.add_block_async(block).await;
-        println!("RESULT {:?}", result);
         assert!(result == AddBlockEvent::AcceptedAsLongestChain);
         finish_ts = create_timestamp();
-        println!("add block time: {}", finish_ts - start_ts);
         add_block_timestamps.push(finish_ts - start_ts);
     }
 

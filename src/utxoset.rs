@@ -44,7 +44,7 @@ impl SlipSpentStatus {
 
     pub fn new_on_fork(output_slip: OutputSlip, block_hash: Sha256Hash) -> Self {
         let mut fork_status_map: HashMap<Sha256Hash, ForkSpentStatus> = HashMap::new();
-        fork_status_map.insert(block_hash, ForkSpentStatus::ForkSpent);
+        fork_status_map.insert(block_hash, ForkSpentStatus::ForkUnspent);
         SlipSpentStatus {
             output_slip: output_slip,
             longest_chain_unspent_block_id: None,

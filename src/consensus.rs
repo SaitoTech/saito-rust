@@ -139,7 +139,6 @@ impl Consensus {
                             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
                             let mut blockchain = blockchain_mutex.lock().unwrap();
                             let block_hash = block.hash().clone();
-
                             match blockchain.add_block(block) {
                                 AddBlockEvent::AcceptedAsLongestChain
                                 | AddBlockEvent::AcceptedAsNewLongestChain => {

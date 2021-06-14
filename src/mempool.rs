@@ -97,7 +97,6 @@ impl Mempool {
     /// Calculates the work available to pay the network to produce a `Block`
     /// based off of `Transaction` fees in the `Mempool`
     fn calculate_work_available(&self) -> u64 {
-        println!("LOCK calculate_work_available");
         let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
         let blockchain = blockchain_mutex.lock().unwrap();
         let retval = self
