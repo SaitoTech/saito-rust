@@ -1,9 +1,11 @@
 use crate::block::Block;
 use crate::burnfee::BurnFee;
+use crate::constants;
 use crate::crypto::{verify_bytes_message, Sha256Hash};
 use crate::forktree::ForkTree;
 use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
+use crate::storage::Storage;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
 use std::sync::Arc;
@@ -59,6 +61,8 @@ pub struct Blockchain {
     longest_chain_queue: LongestChainQueue,
     // hashmap back tree to track blocks and potential forks
     fork_tree: ForkTree,
+    // storage
+    pub storage: Storage,
 }
 
 impl Blockchain {
@@ -68,6 +72,7 @@ impl Blockchain {
             utxoset: UtxoSet::new(),
             longest_chain_queue: LongestChainQueue::new(),
             fork_tree: ForkTree::new(),
+            storage: Storage::new(String::from(constants::BLOCKS_DIR)),
         }
     }
 
@@ -157,6 +162,12 @@ impl Blockchain {
                     // First Block or we're new tip of the longest chain
                     self.longest_chain_queue.roll_forward(block.hash());
                     self.utxoset.roll_forward(&block);
+                    // TODO: if AddBlockEvent::Accepted, store the block by only by hash, not by block.id.
+                    // TODO: Check if the block is already stored without block id, if so, just rename it.
+                    // let new_block =
+                    // blockchain.get_block_by_hash(&block_hash).unwrap();
+                    self.storage.roll_forward(&block);
+                    println!("Block accepted, written to disk");
                     self.fork_tree.insert(block.hash(), block.clone()).unwrap();
 
                     AddBlockEvent::AcceptedAsLongestChain
@@ -172,9 +183,9 @@ impl Blockchain {
                         });
                         // Wind up the new chain
                         fork_chains.new_chain.iter().rev().for_each(|block_hash| {
-                            let block = self.fork_tree.block_by_hash(block_hash).unwrap();
+                            let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
                             self.longest_chain_queue.roll_forward(block.hash());
-                            self.utxoset.roll_forward(&block);
+                            self.utxoset.roll_forward(block);
                         });
 
                         AddBlockEvent::AcceptedAsNewLongestChain

@@ -26,7 +26,7 @@ fn bench_add_block(c: &mut Criterion) {
                 prev_block_id = block.id();
                 block
             },
-            |block| blockchain.add_block(black_box(block)),
+            |block| blockchain.add_block(black_box(block)).await,
             BatchSize::NumIterations(1),
         )
     });

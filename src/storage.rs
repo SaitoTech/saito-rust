@@ -2,11 +2,15 @@ use crate::block::Block;
 use crate::crypto::Sha256Hash;
 
 use tokio::fs::File;
+use std::fs::rename;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
 
 use std::fs;
 use std::fs::ReadDir;
 use std::io::prelude::*;
+use std::path::Path;
+
+#[derive(Debug, Clone)]
 pub struct Storage {
     blocks_dir_path: String,
 }
@@ -24,17 +28,17 @@ impl Storage {
         filename: &str,
         byte_array: &[u8],
     ) -> io::Result<()> {
-        let mut path = self.blocks_dir_path.clone();
-        path.push_str(&filename);
-        let mut buffer = File::create(path).await?;
+        let mut full_filename = self.blocks_dir_path.clone();
+        full_filename.push_str(&filename);
+        let mut buffer = File::create(full_filename).await?;
         buffer.write_all(&byte_array[..]).await?;
         Ok(())
     }
     /// read from a filename in the blocks directory
     pub fn read_from_blocks_dir(&self, filename: &str) -> io::Result<Vec<u8>> {
-        let mut path = self.blocks_dir_path.clone();
-        path.push_str(&filename);
-        let mut f = std::fs::File::open(path)?;
+        let mut full_filename = self.blocks_dir_path.clone();
+        full_filename.push_str(&filename);
+        let mut f = std::fs::File::open(full_filename)?;
         let mut data = Vec::<u8>::new();
         f.read_to_end(&mut data)?;
 
@@ -51,14 +55,41 @@ impl Storage {
     pub fn list_files_in_blocks_dir(&self) -> ReadDir {
         fs::read_dir(self.blocks_dir_path.clone()).unwrap()
     }
-
-    pub async fn write_block_to_disk_async(&self, block: &Block) -> io::Result<()> {
-        // let mut bytes = [0u8; 8];
-        // hex::decode_to_slice(block.id().to_be_bytes(), &mut bytes as &mut [u8]).unwrap();
-        //let hash_as_hex = hex::encode(bytes);
-        let mut filename = hex::encode(block.id().to_be_bytes());
-        //let mut filename = block.hash_as_hex().clone();
+    pub fn roll_forward(&self, block: &Block) -> io::Result<()> {
+        let mut filename = self.blocks_dir_path.clone();
+        filename.push_str(&block.hash_as_hex());
+        filename.push_str(&".sai");
+        match Path::new(&filename[..]).exists() {
+            true => {
+                let mut new_filename = String::from("");
+                new_filename.push_str(&hex::encode(block.id().to_be_bytes()));    
+                new_filename.push_str(&String::from("-"));    
+                new_filename.push_str(&block.hash_as_hex().clone());
+                new_filename.push_str(&".sai");
+                rename(filename, new_filename)
+            },
+            false => self.write_block_to_disk(block, true),
+            // move file
+        }
+    }
+    pub fn roll_back(&self, block: &Block) -> io::Result<()>{
+        let mut filename = self.blocks_dir_path.clone();
+        filename.push_str(&hex::encode(block.id().to_be_bytes()));    
         filename.push_str(&String::from("-"));
+        filename.push_str(&block.hash_as_hex());
+        filename.push_str(&".sai");
+
+        let mut new_filename = String::from("");
+        new_filename.push_str(&block.hash_as_hex().clone());
+        new_filename.push_str(&".sai");
+        rename(filename, new_filename)
+    }
+    pub async fn write_block_to_disk_async(&self, block: &Block, is_longest_chain: bool) -> io::Result<()> {
+        let mut filename = String::from("");
+        if is_longest_chain {
+            filename.push_str(&hex::encode(block.id().to_be_bytes()));    
+            filename.push_str(&String::from("-"));    
+        }
         filename.push_str(&block.hash_as_hex().clone());
         filename.push_str(&".sai");
         let block_bytes: Vec<u8> = block.into();
@@ -92,16 +123,16 @@ impl Storage {
         Ok(encoded)
     }
 
-    pub fn write_block_to_disk(&self, block: &Block) -> io::Result<()> {
-        let mut filename = self.blocks_dir_path.clone();
-
-        filename.push_str(&block.hash_as_hex());
+    pub fn write_block_to_disk(&self, block: &Block, is_longest_chain: bool) -> io::Result<()> {
+        let mut filename = String::from("");
+        if is_longest_chain {
+            filename.push_str(&hex::encode(block.id().to_be_bytes()));    
+            filename.push_str(&String::from("-"));    
+        }
+        filename.push_str(&block.hash_as_hex().clone());
         filename.push_str(&".sai");
-
-        let mut buffer = std::fs::File::create(filename)?;
-
-        let byte_array: Vec<u8> = block.into();
-        buffer.write_all(&byte_array[..])?;
+        let block_bytes: Vec<u8> = block.into();
+        self.write_to_blocks_dir_async(&filename, &block_bytes[..]);
 
         Ok(())
     }
@@ -142,7 +173,7 @@ mod test {
         let dir_path = String::from("./data/test/blocks/");
         let block = &Block::default();
         let storage = Storage::new(dir_path.clone());
-        let result = storage.write_block_to_disk_async(block).await;
+        let result = storage.write_block_to_disk_async(block, true).await;
         assert_eq!(result.unwrap(), ());
 
         // TODO -- add unwind_panic to teardown when assert failes
@@ -156,7 +187,7 @@ mod test {
         let block = &Block::default();
         let block_hash = block.hash();
 
-        storage.write_block_to_disk_async(block).await.unwrap();
+        storage.write_block_to_disk_async(block, true).await.unwrap();
         match storage.read_block_from_disk_async(block_hash).await {
             Ok(_block) => {
                 assert!(true);
