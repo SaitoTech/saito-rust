@@ -18,6 +18,9 @@ use tokio::sync::{broadcast, mpsc};
 use std::sync::{Arc};
 use std::thread;
 
+// auto TX generation
+use rand::Rng;
+
 lazy_static! {
     // use RwLock for timer 
     pub static ref BUNDLER_ACTIVE: RwLock<u64> = RwLock::new(0);
@@ -172,9 +175,21 @@ println!("Inserting block: {:?}", block);
     pub fn generate_mempool_block(&self, previous_block_id: u64, previous_block_hash: [u8;32]) -> Block {
 
         let mut block = Block::new();
+	let message_size = 1024;
 	block.set_id(previous_block_id);
 	block.set_timestamp(create_timestamp());
 	block.set_previous_block_hash(previous_block_hash);
+
+	for i in 0..10 {
+
+            let mut transaction = Transaction::new();
+	    transaction.set_message( (0..message_size).map(|_| { rand::random::<u8>() }).collect() );
+
+	    block.add_transaction(transaction);
+
+	}
+
+
 	block.set_hash();
 
 	return block;

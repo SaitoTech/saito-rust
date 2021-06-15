@@ -2,8 +2,10 @@ use crate::{
   transaction::Transaction,
   crypto::{hash, PublicKey},
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, Debug, Clone)]
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
 
     //
@@ -54,6 +56,14 @@ impl Block {
         }
     }
 
+
+
+    /// Converts our blockhash from a byte array into a hex string
+    pub fn hash_as_hex(&self) -> String {
+        hex::encode(self.hash)
+    }
+
+
     pub fn get_hash(&self) -> [u8; 32] {
 	return self.hash;
     }
@@ -68,6 +78,11 @@ impl Block {
 
     pub fn get_lc(&self) -> bool {
 	return self.lc;
+    }
+
+
+    pub fn add_transaction(&mut self, transaction: Transaction) {
+        self.transactions.push(transaction);
     }
 
 

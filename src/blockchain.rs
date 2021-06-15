@@ -1,10 +1,17 @@
 use crate::{
   block::Block,
-  types::SaitoMessage,
   crypto::Sha256Hash,
+  types::SaitoMessage,
 };
 use std::collections::HashMap;
 use tokio::sync::{broadcast};
+
+// saving to disk
+//use std::fs::{self, File};
+//use std::io::prelude::*;
+//use std::io::LineWriter;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
 
 #[derive(Debug)]
@@ -82,6 +89,22 @@ impl Blockchain {
 	self.previous_lc_hash = self.lc_hash;
 	self.lc_hash = block.get_hash();
 
+	//
+        // we explicitly save the block to disk here, as serializing
+	// it after insertion into the hashmap is impossible. it would
+	// be better to only save after minimal validation, otherwise
+	// we may have to remove and then re-insert or... what else?
+	//
+        let file = File::create("test_saving_block_to_disk.txt")
+			.expect("Unable to create file");
+        let mut file = BufWriter::new(file);
+        file.write_all(&bincode::serialize(&block).unwrap())
+			.expect("Unable to write data");
+        file.flush()
+			.expect("Problems flushing file");
+
+
+
 
 	//
 	// insert block into index/hashmap
@@ -123,7 +146,6 @@ impl Blockchain {
 	let mut new_chain_hash = block_hash;
 	let mut old_chain_hash = self.previous_lc_hash;
 
-println!("Looking for chain of new hashes 1: {:?}", new_chain);
 
 	//
 	// track new chain down to last lc=true ancestor
@@ -145,10 +167,10 @@ println!("Looking for chain of new hashes 1: {:?}", new_chain);
 	    }
 
 	}
-println!("Looking for chain of new hashes 2: {:?}", new_chain);
+
 
 	//
-	// track old chain down to entry_point
+	// track old chain down to shared ancestor
 	//
 	if shared_ancestor_found {
 	    loop {
@@ -170,7 +192,8 @@ println!("Looking for chain of new hashes 2: {:?}", new_chain);
 	    }
 	}
 
-println!("Looking for chain of old hashes 2: {:?}", old_chain);
+println!("new chain: {:?}", new_chain);
+println!("old chain: {:?}", old_chain);
 
 	//
         // at this point we should have a shared ancestor
@@ -212,9 +235,6 @@ println!("FAILURE");
 
 
     pub fn add_block_success(&mut self) {
-
-        // save
-        //self.storage.write_block_to_disk(&self.blocks[self.pos]);
 
 	//
 	// block is longest-chain
@@ -297,6 +317,7 @@ println!("FAILURE");
         return true;
     }
 ***/
+
 
 }
 

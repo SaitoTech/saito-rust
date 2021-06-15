@@ -1,4 +1,6 @@
 use secp256k1::{PublicKey, Signature};
+//use serde::{Deserialize, Serialize};
+
 
 /// A single record used in the history of transactions being routed around the network
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -39,8 +41,4 @@ impl Path {
         self.hops.push(hop);
     }
 }
-
-
-
-
 

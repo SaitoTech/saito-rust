@@ -4,39 +4,48 @@ use crate::{
     time::create_timestamp,
 };
 use secp256k1::Signature;
+use serde::{Deserialize, Serialize};
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Transaction {
     id: u64,
     timestamp: u64,
-    signature: Signature,
+    // compact signatures are 64 bytes; DER signatures are 68-72 bytes
+    signature: Vec<u8>,
     inputs: Vec<Slip>,
     outputs: Vec<Slip>,
     message: Vec<u8>,
-    path: Path,
+    //path: Path,
     transaction_type: TransactionType,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum TransactionType {
     Normal,
 }
 
 
 impl Transaction {
+
     pub fn new() -> Transaction {
         Transaction {
             id: 0,
 	    timestamp: create_timestamp(),
-            signature: Signature::from_compact(&[0; 64]).unwrap(),
+            signature: vec![],
 	    inputs: vec![],
 	    outputs: vec![],
 	    message: vec![],
-            path: Path::new(),
+            //path: Path::new(),
 	    transaction_type: TransactionType::Normal,
         }
     }
 
+
+    pub fn set_message(&mut self, msg: Vec<u8>) {
+        self.message = msg;
+    }
+
 }
+
 
