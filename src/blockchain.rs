@@ -1,6 +1,7 @@
 use crate::{
   block::Block,
   crypto::Sha256Hash,
+  time::create_timestamp,
   types::SaitoMessage,
 };
 use std::collections::HashMap;
@@ -95,13 +96,15 @@ impl Blockchain {
 	// be better to only save after minimal validation, otherwise
 	// we may have to remove and then re-insert or... what else?
 	//
+println!("Pre Save: {:?}", create_timestamp());
         let file = File::create("test_saving_block_to_disk.txt")
 			.expect("Unable to create file");
         let mut file = BufWriter::new(file);
         file.write_all(&bincode::serialize(&block).unwrap())
 			.expect("Unable to write data");
-        file.flush()
-			.expect("Problems flushing file");
+        //file.flush()
+	//		.expect("Problems flushing file");
+println!("Post Save: {:?}", create_timestamp());
 
 
 
@@ -192,8 +195,8 @@ impl Blockchain {
 	    }
 	}
 
-println!("new chain: {:?}", new_chain);
-println!("old chain: {:?}", old_chain);
+//println!("new chain: {:?}", new_chain);
+//println!("old chain: {:?}", old_chain);
 
 	//
         // at this point we should have a shared ancestor
@@ -208,7 +211,7 @@ println!("old chain: {:?}", old_chain);
 
         //    let does_new_chain_validate = self.validate(new_chain, old_chain);
         //    if does_new_chain_validate {
-println!("SUCCESS");
+//println!("SUCCESS");
                 self.add_block_success();
         //    } else {
         //        self.add_block_failure();
@@ -217,7 +220,7 @@ println!("SUCCESS");
 
         } else {
 
-println!("FAILURE");
+//println!("FAILURE");
             self.add_block_failure();
 
         }

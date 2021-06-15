@@ -48,7 +48,7 @@ impl Mempool {
 
     pub fn add_block(&mut self, block: Block) {
 	if !self.blocks.contains_key(&block.get_hash()) {
-println!("Inserting block: {:?}", block);
+//println!("Inserting block: {:?}", block);
 	    self.blocks.insert(block.get_hash(), block);
 	} else {
 	    println!("Mempool already contains block: {:?}", block.get_hash());
@@ -175,7 +175,7 @@ println!("Inserting block: {:?}", block);
     pub fn generate_mempool_block(&self, previous_block_id: u64, previous_block_hash: [u8;32]) -> Block {
 
         let mut block = Block::new();
-	let message_size = 1024;
+	let message_size = 1024000;;
 	block.set_id(previous_block_id);
 	block.set_timestamp(create_timestamp());
 	block.set_previous_block_hash(previous_block_hash);
