@@ -719,12 +719,49 @@
 <span id="716">716</span>
 <span id="717">717</span>
 <span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">blockchain</span>::<span class="ident">ForkChains</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">Sha256Hash</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">slip</span>::{<span class="ident">OutputSlip</span>, <span class="ident">SlipID</span>};
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">transaction</span>::<span class="ident">Transaction</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionCore</span>};
 <span class="kw">use</span> <span class="ident">secp256k1</span>::<span class="ident">PublicKey</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">hash_map</span>::<span class="ident">Entry</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::<span class="ident">HashMap</span>;
@@ -1121,24 +1158,33 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fees_in_transactions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">transactions</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input_amt</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output_amt</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transaction_fees</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">tx_core</span>: <span class="kw-2">&amp;</span><span class="ident">TransactionCore</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="kw">let</span> <span class="ident">input_amt</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">tx_core</span>
+            .<span class="ident">inputs</span>()
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">output_slip_from_slip_id</span>(<span class="ident">input</span>).<span class="ident">unwrap</span>().<span class="ident">amount</span>())
+            .<span class="ident">sum</span>();
 
-        <span class="ident">transactions</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">input_tot</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">tx</span>
-                .<span class="ident">core</span>
-                .<span class="ident">inputs</span>()
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">output_slip_from_slip_id</span>(<span class="ident">input</span>).<span class="ident">unwrap</span>().<span class="ident">amount</span>())
-                .<span class="ident">sum</span>();
-            <span class="ident">input_amt</span> <span class="op">=</span> <span class="ident">input_amt</span> <span class="op">+</span> <span class="ident">input_tot</span>;
-
-            <span class="kw">let</span> <span class="ident">output_tot</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">outputs</span>().<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">output</span><span class="op">|</span> <span class="ident">output</span>.<span class="ident">amount</span>()).<span class="ident">sum</span>();
-            <span class="ident">output_amt</span> <span class="op">=</span> <span class="ident">output_amt</span> <span class="op">+</span> <span class="ident">output_tot</span>;
-        });
+        <span class="kw">let</span> <span class="ident">output_amt</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">tx_core</span>.<span class="ident">outputs</span>().<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">output</span><span class="op">|</span> <span class="ident">output</span>.<span class="ident">amount</span>()).<span class="ident">sum</span>();
 
         <span class="ident">input_amt</span> <span class="op">-</span> <span class="ident">output_amt</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transaction_routing_fees</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">tx</span>: <span class="kw-2">&amp;</span><span class="ident">Transaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="kw">let</span> <span class="ident">tx_fees</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">transaction_fees</span>(<span class="kw-2">&amp;</span><span class="ident">tx</span>.<span class="ident">core</span>);
+
+        <span class="kw">let</span> <span class="ident">factor</span>;
+        <span class="kw">let</span> <span class="ident">path_len</span>;
+
+        <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">path</span>().<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span> {
+            <span class="ident">factor</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">path</span>().<span class="ident">len</span>();
+            <span class="ident">path_len</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">path</span>().<span class="ident">len</span>();
+        } <span class="kw">else</span> {
+            <span class="ident">factor</span> <span class="op">=</span> <span class="number">1</span>;
+            <span class="ident">path_len</span> <span class="op">=</span> <span class="number">1</span>;
+        }
+
+        ((<span class="ident">tx_fees</span> <span class="kw">as</span> <span class="ident">f64</span>) <span class="op">/</span> <span class="ident">path_len</span>.<span class="ident">pow</span>(<span class="ident">factor</span> <span class="kw">as</span> <span class="ident">u32</span>) <span class="kw">as</span> <span class="ident">f64</span>).<span class="ident">round</span>() <span class="kw">as</span> <span class="ident">u64</span>
     }
 }
 
@@ -1146,7 +1192,7 @@
 <span class="kw">mod</span> <span class="ident">test</span> {
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">keypair</span>::<span class="ident">Keypair</span>, <span class="ident">test_utilities</span>};
+    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">crypto</span>::<span class="ident">hash_bytes</span>, <span class="ident">keypair</span>::<span class="ident">Keypair</span>, <span class="ident">test_utilities</span>, <span class="ident">transaction</span>::<span class="ident">Hop</span>};
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">roll_forward_and_back_test</span>() {
@@ -1430,13 +1476,41 @@
         });
     }
 
-    <span class="comment">// #[test]</span>
-    <span class="comment">// fn fees_in_transactions_test() {</span>
-    <span class="comment">//     let keypair = Keypair::new();</span>
-    <span class="comment">//     let (mut blockchain, mut slips) =</span>
-    <span class="comment">//         test_utilities::make_mock_blockchain_and_slips(&amp;keypair, 10);</span>
-    <span class="comment">//     assert!(false);</span>
-    <span class="comment">// }</span>
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">transaction_routing_work_test</span>() {
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> (<span class="ident">blockchain</span>, <span class="kw-2">mut</span> <span class="ident">slips</span>) <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">2</span>);
+
+        <span class="kw">let</span> (<span class="ident">input</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_tx</span>(<span class="ident">input</span>, <span class="number">100</span>, <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>());
+
+        <span class="kw">let</span> <span class="ident">keypair_bytes</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">serialize</span>().<span class="ident">to_vec</span>();
+        <span class="kw">let</span> <span class="ident">sig</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">sign_message</span>(<span class="kw-2">&amp;</span><span class="ident">hash_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">keypair_bytes</span>));
+
+        <span class="ident">tx</span>.<span class="ident">add_hop_to_path</span>(<span class="ident">Hop</span>::<span class="ident">new</span>(<span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(), <span class="ident">sig</span>.<span class="ident">clone</span>()));
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fees</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>.<span class="ident">transaction_routing_fees</span>(<span class="kw-2">&amp;</span><span class="ident">tx</span>);
+
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">2499999999900</span>, <span class="ident">fees</span>);
+
+        <span class="ident">tx</span>.<span class="ident">add_hop_to_path</span>(<span class="ident">Hop</span>::<span class="ident">new</span>(<span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(), <span class="ident">sig</span>.<span class="ident">clone</span>()));
+
+        <span class="ident">fees</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>.<span class="ident">transaction_routing_fees</span>(<span class="kw-2">&amp;</span><span class="ident">tx</span>);
+
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">624999999975</span>, <span class="ident">fees</span>);
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">transaction_fees_test</span>() {
+        <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> (<span class="ident">blockchain</span>, <span class="kw-2">mut</span> <span class="ident">slips</span>) <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">2</span>);
+
+        <span class="kw">let</span> (<span class="ident">input</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_tx</span>(<span class="ident">input</span>, <span class="number">100</span>, <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>());
+
+        <span class="kw">let</span> <span class="ident">fees</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>.<span class="ident">transaction_fees</span>(<span class="kw-2">&amp;</span><span class="ident">tx</span>.<span class="ident">core</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">2499999999900</span>, <span class="ident">fees</span>);
+    }
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-js="../../search-index.js"></div>

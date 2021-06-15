@@ -314,13 +314,6 @@
 <span id="311">311</span>
 <span id="312">312</span>
 <span id="313">313</span>
-<span id="314">314</span>
-<span id="315">315</span>
-<span id="316">316</span>
-<span id="317">317</span>
-<span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">crypto</span>::{<span class="ident">hash_bytes</span>, <span class="ident">Sha256Hash</span>},
@@ -459,6 +452,10 @@
         <span class="ident">hash_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>)
     }
 
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">path</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Hop</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">path</span>
+    }
+
     <span class="doccomment">/// Add a new `Hop` to the list of `Hop`s</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_hop_to_path</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">path</span>: <span class="ident">Hop</span>) {
         <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">push</span>(<span class="ident">path</span>);
@@ -478,17 +475,6 @@
         <span class="comment">// self.inputs().iter().all(|slip_id| self.is_slip_spendable(slip_id))</span>
         <span class="bool-val">true</span>
     }
-
-    <span class="comment">// Returns true if the slip has been seen in the blockchain</span>
-    <span class="comment">// fn is_slip_spendable(&amp;self, _slip_id: &amp;SlipID) -&gt; bool {</span>
-    <span class="comment">//     // TODO check with utxoset to see if slip is spendable</span>
-    <span class="comment">//     true</span>
-    <span class="comment">// }</span>
-    <span class="comment">// // Returns true if the OutputSlip found in the utxoset matches the OutputSlip</span>
-    <span class="comment">// fn is_slip_id_valid(&amp;self, _slip_id: &amp;SlipID, _slip_as_output: &amp;OutputSlip) -&gt; bool {</span>
-    <span class="comment">//     // TODO loop through all sigs in utxo set and make sure they have to correct receiver and amount</span>
-    <span class="comment">//     true</span>
-    <span class="comment">// }</span>
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TransactionCore</span> {

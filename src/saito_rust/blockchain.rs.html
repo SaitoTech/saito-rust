@@ -527,6 +527,22 @@
 <span id="524">524</span>
 <span id="525">525</span>
 <span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">burnfee</span>::<span class="ident">BurnFee</span>;
@@ -755,6 +771,22 @@
                 <span class="ident">block</span>.<span class="ident">timestamp</span>(),
                 <span class="ident">previous_block</span>.<span class="ident">timestamp</span>(),
             ) <span class="kw">as</span> <span class="ident">f64</span>
+        {
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+
+        <span class="comment">// validate the fees match the work required to make a block</span>
+        <span class="kw">let</span> <span class="ident">work_available</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">block</span>
+            .<span class="ident">transactions</span>()
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">utxoset</span>.<span class="ident">transaction_routing_fees</span>(<span class="ident">tx</span>))
+            .<span class="ident">sum</span>();
+        <span class="kw">if</span> <span class="ident">work_available</span>
+            <span class="op">&lt;</span> <span class="ident">BurnFee</span>::<span class="ident">return_work_needed</span>(
+                <span class="ident">previous_block</span>.<span class="ident">start_burnfee</span>() <span class="kw">as</span> <span class="ident">f64</span>,
+                <span class="ident">block</span>.<span class="ident">timestamp</span>(),
+                <span class="ident">previous_block</span>.<span class="ident">timestamp</span>(),
+            )
         {
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
