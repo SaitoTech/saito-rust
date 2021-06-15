@@ -229,6 +229,22 @@ impl Blockchain {
             return false;
         }
 
+        // validate the fees match the work required to make a block
+        let work_available: u64 = block
+            .transactions()
+            .iter()
+            .map(|tx| self.utxoset.transaction_routing_fees(tx))
+            .sum();
+        if work_available
+            < BurnFee::return_work_needed(
+                previous_block.start_burnfee() as f64,
+                block.timestamp(),
+                previous_block.timestamp(),
+            )
+        {
+            return false;
+        }
+
         // TODO: This should probably be >= but currently we are producing mock blocks very
         // quickly and this won't pass.
         if previous_block.timestamp() > block.timestamp() {

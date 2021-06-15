@@ -2,6 +2,7 @@ use secp256k1::PublicKey;
 
 use crate::{
     block::{Block, BlockCore, TREASURY},
+    blockchain::BLOCKCHAIN_GLOBAL,
     burnfee::BurnFee,
     keypair::Keypair,
     time::{create_timestamp, format_timestamp},
@@ -81,8 +82,7 @@ impl Mempool {
                     previous_block.timestamp(),
                 );
 
-                // TODO: re-add utxoset when it's decided on how we want to share mutable references
-                let work_available = 0;
+                let work_available = self.calculate_work_available();
 
                 println!(
                     "TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}",
@@ -97,6 +97,17 @@ impl Mempool {
             }
             None => true,
         }
+    }
+
+    /// Calculates the work available to pay the network to produce a `Block`
+    /// based off of `Transaction` fees in the `Mempool`
+    fn calculate_work_available(&self) -> u64 {
+        let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
+        let blockchain = blockchain_mutex.lock().unwrap();
+        self.transactions
+            .iter()
+            .map(|tx| blockchain.utxoset.transaction_routing_fees(tx))
+            .sum()
     }
 
     /// Clear the transactions from the `Mempool`
