@@ -12,7 +12,7 @@ pub fn make_mock_blockchain_and_slips(
     keypair: &Keypair,
     slip_count: u64,
 ) -> (Blockchain, Vec<(SlipID, OutputSlip)>) {
-    let mut blockchain = Blockchain::new();
+    let mut blockchain = Blockchain::new_mock(String::from("data/test/blocks/"));
     let mut slips = vec![];
     // seed some inputs and first block here
 
