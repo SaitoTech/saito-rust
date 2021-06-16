@@ -151,18 +151,27 @@ impl Blockchain {
             if !self.validate_block(&block, &fork_chains) {
                 AddBlockEvent::InvalidBlock
             } else {
+                println!("FINISHED VALIDATING");
                 let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
                 let is_new_lc_tip = !latest_block_hash.is_none()
                     && &latest_block_hash.unwrap() == block.previous_block_hash();
+                println!("IS FIRST BLOCK: {:?}", is_first_block);
+                println!("IS LC TIP: {:?}", is_new_lc_tip);
                 if is_first_block || is_new_lc_tip {
-                    // First Block or we're new tip of the longest chain
+                    // First Block or we'e new tip of the longest chain
+                    println!("LONGEST CHAIN QUEUE");
                     self.longest_chain_queue.roll_forward(block.hash());
+
+                    println!("UTXOSET ROLL FORWARD");
                     self.utxoset.roll_forward(&block);
+
+                    println!("FORK_TREE INSERT");
                     self.fork_tree.insert(block.hash(), block.clone()).unwrap();
 
-                    let storage = Storage::new(None);
-                    storage.write_block_to_disk(block).unwrap();
+                    // let storage = Storage::new(None);
+                    // storage.write_block_to_disk(block).unwrap();
 
+                    println!("ACCEPTED");
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
                 } else {
@@ -194,12 +203,14 @@ impl Blockchain {
     }
 
     fn validate_block(&self, block: &Block, fork_chains: &ForkChains) -> bool {
+        println!("VALIDATING BLOCK");
         // If the block has an empty hash as previous_block_hash, it's valid no question
         let previous_block_hash = block.previous_block_hash();
         if previous_block_hash == &[0; 32] && block.id() == 0 {
             return true;
         }
 
+        println!("CHECKING BLOCK HASH");
         // If the previous block hash doesn't exist in the ForkTree, it's rejected
         if !self.fork_tree.contains_block_hash(previous_block_hash) {
             return false;
@@ -217,6 +228,7 @@ impl Blockchain {
 
         // TODO -- include checks on difficulty and paysplit here to validate
 
+        println!("VALIDATE BURNFEE");
         // Validate the burnfee
         let previous_block = self.fork_tree.block_by_hash(previous_block_hash).unwrap();
         if block.start_burnfee()
@@ -229,6 +241,7 @@ impl Blockchain {
             return false;
         }
 
+        println!("CHECK WORK NEEDED");
         // validate the fees match the work required to make a block
         let work_available: u64 = block
             .transactions()
@@ -251,6 +264,7 @@ impl Blockchain {
             return false;
         }
 
+        println!("GOLDEN TICKET COUNT");
         let golden_ticket_count = block.transactions().iter().fold(0, |acc, tx| {
             if tx.core.broadcast_type() == &TransactionType::GoldenTicket {
                 acc + 1
@@ -266,6 +280,7 @@ impl Blockchain {
             .iter()
             .all(|tx| self.validate_transaction(previous_block, tx, fork_chains));
 
+        println!("FINISHED VALIDATING");
         transactions_valid
     }
 
@@ -275,6 +290,7 @@ impl Blockchain {
         tx: &Transaction,
         fork_chains: &ForkChains,
     ) -> bool {
+        println!("VALIDATING TRANSACTION");
         match tx.core.broadcast_type() {
             TransactionType::Normal => {
                 if tx.core.inputs().len() == 0 && tx.core.outputs().len() == 0 {
@@ -282,11 +298,13 @@ impl Blockchain {
                 }
 
                 if let Some(address) = self.utxoset.get_receiver_for_inputs(tx.core.inputs()) {
+                    println!("FOUND ADDRESS, CHECKING SIG");
                     if !verify_bytes_message(&tx.hash(), &tx.signature(), address) {
                         println!("SIGNATURE IS NOT VALID");
                         return false;
                     };
 
+                    println!("VALIDATING OUR SLIPS");
                     // validate our slips
                     let inputs_are_valid = tx.core.inputs().iter().all(|input| {
                         if fork_chains.old_chain.len() == 0 {
@@ -304,6 +322,7 @@ impl Blockchain {
                         return false;
                     }
 
+                    println!("VALIDATE THE INPUTS AND FEES");
                     // valuidate that inputs are unspent
                     let input_amt: u64 = tx
                         .core
@@ -334,6 +353,7 @@ impl Blockchain {
                 // need to validate the golden ticket correctly
                 let golden_ticket = GoldenTicket::from(tx.core.message().clone());
                 if golden_ticket.target != previous_block.hash() {
+                    println!("DOESN'T MATCH");
                     return false;
                 }
                 return true;

@@ -1,15 +1,12 @@
-// use criterion::{black_box, BatchSize};
 use criterion::{criterion_group, criterion_main, Criterion};
-// use saito_rust::{keypair::Keypair, test_utilities};
 use saito_rust::{
     keypair::Keypair,
     slip::{OutputSlip, SlipType},
-    transaction::{Transaction, TransactionCore}
+    transaction::{Transaction, TransactionCore},
 };
 
 // fn bench_add_block(c: &mut Criterion) {
 //     let keypair = Keypair::new();
-
 //     c.bench_function("add block", move |b| {
 //         let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 2);
 //         let mut prev_block_hash = [0; 32];
@@ -54,12 +51,16 @@ fn bench_create_output(c: &mut Criterion) {
 }
 
 fn bench_tx_core(c: &mut Criterion) {
-    c.bench_function("create transaction core", |b| b.iter(|| create_transaction_core()));
+    c.bench_function("create transaction core", |b| {
+        b.iter(|| create_transaction_core())
+    });
 }
 
 fn bench_tx_sig(c: &mut Criterion) {
     let keypair = Keypair::new();
-    c.bench_function("create tx signature", |b| b.iter(|| create_tx_signature(create_transaction_core(), &keypair)));
+    c.bench_function("create tx signature", |b| {
+        b.iter(|| create_tx_signature(create_transaction_core(), &keypair))
+    });
 }
 
 criterion_group!(benches, bench_create_output, bench_tx_core, bench_tx_sig);

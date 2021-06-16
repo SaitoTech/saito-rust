@@ -7,6 +7,8 @@ use secp256k1::PublicKey;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
+use rayon::prelude::*;
+
 #[derive(Debug, Clone, PartialEq)]
 enum LongestChainSpentTime {
     BeforeUnspent,
@@ -133,6 +135,7 @@ impl UtxoSet {
                 }
             });
     }
+
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Inputs can just be removed(delete the appropriate ForkSpent from the vector, the
     /// ForkUnspent is still in the vector). Outputs should also have their ForkSpent removed from
@@ -167,11 +170,23 @@ impl UtxoSet {
                 }
             });
     }
+
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Outputs should be added or marked Unspent, Inputs should be marked Spent. This method
     /// Can be called during a normal new block or during a reorg, so Unspent Outputs may already
     /// be present if we're doing a reorg.
     fn roll_forward_transaction(&mut self, tx: &Transaction, block: &Block) {
+        // loop through inputs and mark them as Spent, if they're not in the hashmap something is
+        // horribly wrong
+        tx.core.inputs().iter().for_each(|slip_id| {
+            // println!("SLIPS");
+            self.shashmap
+                .entry(*slip_id)
+                .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
+                    slip_spent_status.longest_chain_spent_block_id = Some(block.id());
+                });
+        });
+
         // loop through outputs and mark as unspent. Add them if they aren't already in the
         // hashmap, otherwise update them appropriately
         tx.core
@@ -179,6 +194,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, output)| {
+                println!("OUTPUT INDEX: {:?}", index);
                 let slip_id = SlipID::new(tx.core.hash(), index as u64);
                 self.shashmap
                     .entry(slip_id)
@@ -186,20 +202,12 @@ impl UtxoSet {
                         slip_spent_status.longest_chain_spent_block_id = Some(block.id());
                     })
                     .or_insert(SlipSpentStatus::new_on_longest_chain(
-                        output.clone(),
+                        *output,
                         block.id(),
                     ));
             });
-        // loop through inputs and mark them as Spent, if they're not in the hashmap something is
-        // horribly wrong
-        tx.core.inputs().iter().for_each(|slip_id| {
-            self.shashmap
-                .entry(*slip_id)
-                .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
-                    slip_spent_status.longest_chain_spent_block_id = Some(block.id());
-                });
-        });
     }
+
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Outputs should be added or marked as ForkUnspent, Inputs should be marked ForkSpent.
     /// This method be called when the block is first seen but should never need to be called
