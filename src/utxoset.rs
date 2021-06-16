@@ -194,7 +194,6 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, output)| {
-                println!("OUTPUT INDEX: {:?} {}", index, crate::time::create_timestamp());
                 let slip_id = SlipID::new(tx.hash(), index as u64);
                 self.shashmap
                     .entry(slip_id)
@@ -205,7 +204,6 @@ impl UtxoSet {
                         *output,
                         block.id(),
                     ));
-                println!("OUTPUT IDONE: {:?} {}", index, crate::time::create_timestamp());
             });
     }
 

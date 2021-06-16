@@ -11,7 +11,7 @@ pub async fn main() -> saito_rust::Result<()> {
 	let (mut blockchain, mut slips) =
         test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 10000);
 	let prev_block = blockchain.latest_block().unwrap();
-	println!("PREVIOUS BLOCK: {:?}", prev_block);
+	//println!("PREVIOUS BLOCK: {:?}", prev_block);
     let block = test_utilities::make_mock_block(&keypair, prev_block.hash(), prev_block.id() + 1, slips.pop().unwrap().0);
 
     let mut prev_block_hash = block.hash().clone();
@@ -24,10 +24,10 @@ pub async fn main() -> saito_rust::Result<()> {
     let result = blockchain.add_block(block.clone());
 	println!("{:?}", result);
 
-    for _ in 0..1000 {
+    for _ in 0..10 {
         let mut txs = vec![];
 
-        for _ in 0..1000 {
+        for _ in 0..10000 {
             txs.push(test_utilities::make_mock_sig_tx(
                 &keypair,
                 slips.pop().unwrap().0,
@@ -37,7 +37,7 @@ pub async fn main() -> saito_rust::Result<()> {
             ))
         }
 
-        let block = Block::new_mock(prev_block_hash, &mut txs, prev_block_id);
+        let block = Block::new_mock(prev_block_hash, &mut txs, prev_block_id + 1);
 
         prev_block_hash = block.hash().clone();
         prev_block_id = block.id();
@@ -47,7 +47,7 @@ pub async fn main() -> saito_rust::Result<()> {
         start_ts = create_timestamp();
         blockchain.add_block(block);
         finish_ts = create_timestamp();
-
+        
         add_block_timestamps.push(finish_ts - start_ts);
     }
 
