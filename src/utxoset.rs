@@ -2,7 +2,7 @@ use crate::block::Block;
 use crate::blockchain::ForkChains;
 use crate::crypto::Sha256Hash;
 use crate::slip::{OutputSlip, SlipID};
-use crate::transaction::Transaction;
+use crate::transaction::{Transaction, TransactionCore};
 use secp256k1::PublicKey;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -399,24 +399,33 @@ impl UtxoSet {
         }
     }
 
-    pub fn fees_in_transactions(&self, transactions: &Vec<Transaction>) -> u64 {
-        let mut input_amt = 0;
-        let mut output_amt = 0;
+    pub fn transaction_fees(&self, tx_core: &TransactionCore) -> u64 {
+        let input_amt: u64 = tx_core
+            .inputs()
+            .iter()
+            .map(|input| self.output_slip_from_slip_id(input).unwrap().amount())
+            .sum();
 
-        transactions.iter().for_each(|tx| {
-            let input_tot: u64 = tx
-                .core
-                .inputs()
-                .iter()
-                .map(|input| self.output_slip_from_slip_id(input).unwrap().amount())
-                .sum();
-            input_amt = input_amt + input_tot;
-
-            let output_tot: u64 = tx.core.outputs().iter().map(|output| output.amount()).sum();
-            output_amt = output_amt + output_tot;
-        });
+        let output_amt: u64 = tx_core.outputs().iter().map(|output| output.amount()).sum();
 
         input_amt - output_amt
+    }
+
+    pub fn transaction_routing_fees(&self, tx: &Transaction) -> u64 {
+        let tx_fees = self.transaction_fees(&tx.core);
+
+        let factor;
+        let path_len;
+
+        if tx.path().len() > 0 {
+            factor = tx.path().len();
+            path_len = tx.path().len();
+        } else {
+            factor = 1;
+            path_len = 1;
+        }
+
+        ((tx_fees as f64) / path_len.pow(factor as u32) as f64).round() as u64
     }
 }
 
@@ -424,7 +433,7 @@ impl UtxoSet {
 mod test {
 
     use super::*;
-    use crate::{keypair::Keypair, test_utilities};
+    use crate::{crypto::hash_bytes, keypair::Keypair, test_utilities, transaction::Hop};
 
     #[test]
     fn roll_forward_and_back_test() {
@@ -708,11 +717,39 @@ mod test {
         });
     }
 
-    // #[test]
-    // fn fees_in_transactions_test() {
-    //     let keypair = Keypair::new();
-    //     let (mut blockchain, mut slips) =
-    //         test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
-    //     assert!(false);
-    // }
+    #[test]
+    fn transaction_routing_work_test() {
+        let keypair = Keypair::new();
+        let (blockchain, mut slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 2);
+
+        let (input, _) = slips.pop().unwrap();
+        let mut tx = test_utilities::make_mock_tx(input, 100, keypair.public_key().clone());
+
+        let keypair_bytes = keypair.public_key().serialize().to_vec();
+        let sig = keypair.sign_message(&hash_bytes(&keypair_bytes));
+
+        tx.add_hop_to_path(Hop::new(keypair.public_key().clone(), sig.clone()));
+
+        let mut fees = blockchain.utxoset.transaction_routing_fees(&tx);
+
+        assert_eq!(2499999999900, fees);
+
+        tx.add_hop_to_path(Hop::new(keypair.public_key().clone(), sig.clone()));
+
+        fees = blockchain.utxoset.transaction_routing_fees(&tx);
+
+        assert_eq!(624999999975, fees);
+    }
+
+    #[test]
+    fn transaction_fees_test() {
+        let keypair = Keypair::new();
+        let (blockchain, mut slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 2);
+
+        let (input, _) = slips.pop().unwrap();
+        let tx = test_utilities::make_mock_tx(input, 100, keypair.public_key().clone());
+
+        let fees = blockchain.utxoset.transaction_fees(&tx.core);
+        assert_eq!(2499999999900, fees);
+    }
 }
