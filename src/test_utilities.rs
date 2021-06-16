@@ -113,13 +113,16 @@ pub fn make_mock_sig_tx(
     to: PublicKey,
     msg_bytes: u64,
 ) -> Transaction {
+    // println!("make slip {}", create_timestamp());
     let to_slip = OutputSlip::new(to, SlipType::Normal, amount);
+    // println!("make core {}", create_timestamp());
     let tx_core = TransactionCore::new(
         create_timestamp(),
-        vec![input.clone()],
-        vec![to_slip.clone()],
+        vec![input],
+        vec![to_slip],
         TransactionType::Normal,
         (0..msg_bytes).map(|_| rand::random::<u8>()).collect(),
     );
+    // println!("make sign {}", create_timestamp());
     Transaction::create_signature(tx_core, keypair)
 }
