@@ -42,7 +42,8 @@ pub async fn main() -> saito_rust::Result<()> {
     for _ in 0..100 {
         println!("make txs {}", create_timestamp());
         let mut txs = (0..1000)
-            .into_par_iter()
+            //.into_par_iter()
+            .into_iter()
             .map(|_| {
                 let mut guarded_slips= arc_slips.lock().unwrap();
                 let slip_pair = guarded_slips.pop().unwrap();
