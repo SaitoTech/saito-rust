@@ -92,7 +92,7 @@ pub async fn main() -> saito_rust::Result<()> {
         println!("CREATING BLOCK {:?}", block.id());
 
         start_ts = create_timestamp();
-        let result = blockchain.add_block(block);
+        let result = blockchain.add_block_async(block).await;
         println!("RESULT {:?}", result);
         assert!(result == AddBlockEvent::AcceptedAsLongestChain);
         finish_ts = create_timestamp();
