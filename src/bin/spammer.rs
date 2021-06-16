@@ -5,7 +5,7 @@ use saito_rust::{
     blockchain::AddBlockEvent,
     burnfee::BurnFee,
     keypair::Keypair,
-    slip::{OutputSlip, SlipType},
+    slip::{OutputSlip, SlipID, SlipType},
     test_utilities,
     time::create_timestamp,
     transaction::{Transaction, TransactionCore, TransactionType},
@@ -22,7 +22,7 @@ pub async fn main() -> saito_rust::Result<()> {
         test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 100000);
     let prev_block = blockchain.latest_block().unwrap();
 
-    let arc_slips = Arc::new(Mutex::new(slips));
+    // let arc_slips = Arc::new(Mutex::new(slips));
 
     //println!("PREVIOUS BLOCK: {:?}", prev_block);
     //let block = test_utilities::make_mock_block(&keypair, prev_block.hash(), prev_block.id() + 1, slips.pop().unwrap().0);
@@ -41,12 +41,15 @@ pub async fn main() -> saito_rust::Result<()> {
 
     for _ in 0..100 {
         println!("make txs {}", create_timestamp());
-        let mut txs = (0..1000)
-            //.into_par_iter()
+
+        let pairs: Vec<(SlipID, OutputSlip)> = (0..1000)
             .into_iter()
-            .map(|_| {
-                let mut guarded_slips= arc_slips.lock().unwrap();
-                let slip_pair = guarded_slips.pop().unwrap();
+            .map(|_| slips.pop().unwrap())
+            .collect();
+
+        let mut txs = pairs
+            .into_par_iter()
+            .map(|slip_pair| {
                 let to_slip = OutputSlip::new(
                     *keypair.public_key(),
                     SlipType::Normal,
