@@ -34,6 +34,7 @@ impl Storage {
         buffer.write_all(&byte_array[..]).await?;
         Ok(())
     }
+    
     /// read from a filename in the blocks directory
     pub fn read_from_blocks_dir(&self, filename: &str) -> io::Result<Vec<u8>> {
         let mut full_filename = self.blocks_dir_path.clone();
@@ -55,34 +56,42 @@ impl Storage {
     pub fn list_files_in_blocks_dir(&self) -> ReadDir {
         fs::read_dir(self.blocks_dir_path.clone()).unwrap()
     }
-    pub fn roll_forward(&self, block: &Block) -> io::Result<()> {
+    pub fn roll_forward(&self, block: &Block) {
         let mut filename = self.blocks_dir_path.clone();
         filename.push_str(&block.hash_as_hex());
         filename.push_str(&".sai");
+        println!("rollforward! {}", filename);
         match Path::new(&filename[..]).exists() {
             true => {
-                let mut new_filename = String::from("");
+                println!("FOUND");
+                let mut new_filename = self.blocks_dir_path.clone();
                 new_filename.push_str(&hex::encode(block.id().to_be_bytes()));    
                 new_filename.push_str(&String::from("-"));    
                 new_filename.push_str(&block.hash_as_hex().clone());
                 new_filename.push_str(&".sai");
-                rename(filename, new_filename)
+                println!("new filename {}", new_filename);
+                rename(filename, new_filename).unwrap();
             },
-            false => self.write_block_to_disk(block, true),
+            false => {
+                println!("NOT FOUND");
+                self.write_block_to_disk(block, true).unwrap();
+            },
             // move file
         }
     }
-    pub fn roll_back(&self, block: &Block) -> io::Result<()>{
+    pub fn roll_back(&self, block: &Block) {
+        
         let mut filename = self.blocks_dir_path.clone();
         filename.push_str(&hex::encode(block.id().to_be_bytes()));    
         filename.push_str(&String::from("-"));
         filename.push_str(&block.hash_as_hex());
         filename.push_str(&".sai");
 
-        let mut new_filename = String::from("");
+        let mut new_filename = self.blocks_dir_path.clone();
         new_filename.push_str(&block.hash_as_hex().clone());
         new_filename.push_str(&".sai");
-        rename(filename, new_filename)
+        println!("rollback {} {}", filename, new_filename);
+        rename(filename, new_filename).unwrap();
     }
     pub async fn write_block_to_disk_async(&self, block: &Block, is_longest_chain: bool) -> io::Result<()> {
         let mut filename = String::from("");
@@ -124,16 +133,20 @@ impl Storage {
     }
 
     pub fn write_block_to_disk(&self, block: &Block, is_longest_chain: bool) -> io::Result<()> {
-        let mut filename = String::from("");
+        let mut filename = self.blocks_dir_path.clone();
         if is_longest_chain {
             filename.push_str(&hex::encode(block.id().to_be_bytes()));    
             filename.push_str(&String::from("-"));    
         }
-        filename.push_str(&block.hash_as_hex().clone());
+        filename.push_str(&block.hash_as_hex());
         filename.push_str(&".sai");
-        let block_bytes: Vec<u8> = block.into();
-        self.write_to_blocks_dir_async(&filename, &block_bytes[..]);
 
+        let mut buffer = std::fs::File::create(filename)?;
+
+        let byte_array: Vec<u8> = block.into();
+        buffer.write_all(&byte_array[..])?;
+
+    
         Ok(())
     }
 
