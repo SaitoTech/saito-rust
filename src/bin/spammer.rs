@@ -1,3 +1,5 @@
+use rayon::iter::IntoParallelIterator;
+use rayon::prelude::*;
 use saito_rust::{
     block::{Block, BlockCore, TREASURY},
     blockchain::AddBlockEvent,
@@ -9,6 +11,8 @@ use saito_rust::{
     transaction::{Transaction, TransactionCore, TransactionType},
 };
 
+use std::sync::{Arc, Mutex};
+
 #[tokio::main]
 pub async fn main() -> saito_rust::Result<()> {
     let keypair = Keypair::new();
@@ -17,6 +21,9 @@ pub async fn main() -> saito_rust::Result<()> {
     let (mut blockchain, mut slips) =
         test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 100000);
     let prev_block = blockchain.latest_block().unwrap();
+
+    let arc_slips = Arc::new(Mutex::new(slips));
+
     //println!("PREVIOUS BLOCK: {:?}", prev_block);
     //let block = test_utilities::make_mock_block(&keypair, prev_block.hash(), prev_block.id() + 1, slips.pop().unwrap().0);
 
@@ -33,27 +40,33 @@ pub async fn main() -> saito_rust::Result<()> {
     // println!("{:?}", result);
 
     for _ in 0..100 {
-        let mut txs = vec![];
         println!("make txs {}", create_timestamp());
-        for _ in 0..1000 {
-            let slip_pair = slips.pop().unwrap();
-            let to_slip = OutputSlip::new(
-                *keypair.public_key(),
-                SlipType::Normal,
-                slip_pair.1.amount(),
-            );
+        let mut txs = (0..1000)
+            .into_par_iter()
+            .map(|_| {
+                let mut guarded_slips= arc_slips.lock().unwrap();
+                let slip_pair = guarded_slips.pop().unwrap();
+                let to_slip = OutputSlip::new(
+                    *keypair.public_key(),
+                    SlipType::Normal,
+                    slip_pair.1.amount(),
+                );
 
-            txs.push(Transaction::create_signature(
-                TransactionCore::new(
-                    create_timestamp(),
-                    vec![slip_pair.0],
-                    vec![to_slip],
-                    TransactionType::Normal,
-                    (0..1024).map(|_| rand::random::<u8>()).collect(),
-                ),
-                &keypair,
-            ));
-        }
+                Transaction::create_signature(
+                    TransactionCore::new(
+                        create_timestamp(),
+                        vec![slip_pair.0],
+                        vec![to_slip],
+                        TransactionType::Normal,
+                        (0..1024)
+                            .into_par_iter()
+                            .map(|_| rand::random::<u8>())
+                            .collect(),
+                    ),
+                    &keypair,
+                )
+            })
+            .collect();
 
         println!("make blk {}", create_timestamp());
         let timestamp = create_timestamp();
