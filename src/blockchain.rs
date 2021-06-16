@@ -240,33 +240,17 @@ impl Blockchain {
 
         println!("VALIDATE BURNFEE");
         // Validate the burnfee
-        let previous_block = self.fork_tree.block_by_hash(previous_block_hash).unwrap();
         // TODO put this back, it's breaking add_block_test. test probably just needs to be updated
-        // if block.start_burnfee()
-        //     != BurnFee::burn_fee_adjustment_calculation(
-        //         previous_block.start_burnfee() as f64,
-        //         block.timestamp(),
-        //         previous_block.timestamp(),
-        //     ) as f64
-        // {
-        //     return false;
-        // }
-
-        // validate the fees match the work required to make a block
-        // let work_available: u64 = block
-        //     .transactions()
-        //     .iter()
-        //     .map(|tx| self.utxoset.transaction_routing_fees(tx))
-        //     .sum();
-        // if work_available
-        //     < BurnFee::return_work_needed(
-        //         previous_block.start_burnfee() as f64,
-        //         block.timestamp(),
-        //         previous_block.timestamp(),
-        //     )
-        // {
-        //     return false;
-        // }
+        let previous_block = self.fork_tree.block_by_hash(previous_block_hash).unwrap();
+        if block.start_burnfee()
+            != BurnFee::burn_fee_adjustment_calculation(
+                previous_block.start_burnfee() as f64,
+                block.timestamp(),
+                previous_block.timestamp(),
+            ) as f64
+        {
+            return false;
+        }
 
         println!("CHECK WORK NEEDED");
         // validate the fees match the work required to make a block
@@ -324,11 +308,10 @@ impl Blockchain {
                 }
 
                 if let Some(address) = self.utxoset.get_receiver_for_inputs(tx.core.inputs()) {
-                    // println!("FOUND ADDRESS, CHECKING SIG");
-                    // if !verify_bytes_message(&tx.hash(), &tx.signature(), address) {
-                    //     println!("SIGNATURE IS NOT VALID");
-                    //     return false;
-                    // };
+                    if !verify_bytes_message(&tx.hash(), &tx.signature(), address) {
+                        println!("SIGNATURE IS NOT VALID");
+                        return false;
+                    };
 
                     // validate our slips
                     let inputs_are_valid = tx.core.inputs().iter().all(|input| {

@@ -110,10 +110,9 @@ impl Consensus {
         let miner_tx = saito_message_tx.clone();
 
         let keypair = Arc::new(RwLock::new(Keypair::new()));
-        let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
 
-        let mut mempool = Mempool::new(keypair.clone(), utxoset);
-        
+        let mut mempool = Mempool::new(keypair.clone());
+
         tokio::spawn(async move {
             loop {
                 println!("TryBundle...");
@@ -141,13 +140,13 @@ impl Consensus {
                     }
                     SaitoMessage::TryBundle => {
                         println!("try bundle message...");
-                  
+
                         println!("got blockchain mutex...");
                         if let Some(block) = mempool.process(message) {
                             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
                             let mut blockchain = blockchain_mutex.lock().unwrap();
                             let block_hash = block.hash().clone();
-                            
+
                             match blockchain.add_block(block) {
                                 AddBlockEvent::AcceptedAsLongestChain
                                 | AddBlockEvent::AcceptedAsNewLongestChain => {

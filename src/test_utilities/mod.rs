@@ -56,7 +56,7 @@ pub fn make_mock_blockchain_and_slips(
 
     println!("ADD BLOCK TO CHAIN");
     let result = blockchain.add_block(block);
-	println!("RESULT {:?}", result);
+    println!("RESULT {:?}", result);
 
     (blockchain, slips)
 }

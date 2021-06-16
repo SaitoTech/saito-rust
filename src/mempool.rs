@@ -1,8 +1,17 @@
 use secp256k1::PublicKey;
 
-use crate::{block::{self, Block, BlockCore, TREASURY}, blockchain::BLOCKCHAIN_GLOBAL, burnfee::BurnFee, keypair::Keypair, time::{create_timestamp, format_timestamp}, transaction::Transaction, types::SaitoMessage, utxoset::UtxoSet};
+use crate::{
+    block::{Block, BlockCore, TREASURY},
+    blockchain::BLOCKCHAIN_GLOBAL,
+    burnfee::BurnFee,
+    keypair::Keypair,
+    time::{create_timestamp, format_timestamp},
+    transaction::Transaction,
+    types::SaitoMessage,
+    utxoset::UtxoSet,
+};
 
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 pub const GENESIS_PERIOD: u64 = 21500;
 
@@ -14,17 +23,14 @@ pub const GENESIS_PERIOD: u64 = 21500;
 pub struct Mempool {
     /// Keypair
     keypair: Arc<RwLock<Keypair>>,
-    /// RefCell UTXoSet
-    _utxoset: Arc<Mutex<UtxoSet>>,
     /// A list of `Transaction`s to be bundled into `Block`s
     transactions: Vec<Transaction>,
 }
 
 impl Mempool {
     /// Creates new `Memppol`
-    pub fn new(keypair: Arc<RwLock<Keypair>>, utxoset: Arc<Mutex<UtxoSet>>) -> Self {
+    pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
         Mempool {
-            _utxoset: utxoset,
             keypair,
             transactions: vec![],
         }
@@ -34,10 +40,7 @@ impl Mempool {
     ///
     /// * `message` - `SaitoMessage` enum commanding `Mempool` operation
     /// * `previous_block` - `Block` at longest chain position in `Blockchain`
-    pub fn process(
-        &mut self,
-        message: SaitoMessage,
-    ) -> Option<Block> {
+    pub fn process(&mut self, message: SaitoMessage) -> Option<Block> {
         match message {
             SaitoMessage::Transaction { payload } => {
                 self.transactions.push(payload);
@@ -51,7 +54,7 @@ impl Mempool {
     /// Attempt to create a new `Block`
     ///
     /// * `previous_block` - `Option` of previous `Block`
-    fn try_bundle(&mut self) -> Option<Block> {        
+    fn try_bundle(&mut self) -> Option<Block> {
         if self.can_bundle_block() {
             Some(self.bundle_block())
         } else {
@@ -69,6 +72,7 @@ impl Mempool {
         let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
         let mut blockchain = blockchain_mutex.lock().unwrap();
         let previous_block_option = blockchain.latest_block();
+
         match previous_block_option {
             Some(previous_block) => {
                 let current_timestamp = create_timestamp();
@@ -77,7 +81,6 @@ impl Mempool {
                     current_timestamp,
                     previous_block.timestamp(),
                 );
-
 
                 println!(
                     "TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}",
@@ -91,7 +94,6 @@ impl Mempool {
             }
             None => true,
         }
-        
     }
 
     /// Calculates the work available to pay the network to produce a `Block`
@@ -100,7 +102,8 @@ impl Mempool {
         println!("LOCK calculate_work_available");
         let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
         let blockchain = blockchain_mutex.lock().unwrap();
-        let retval = self.transactions
+        let retval = self
+            .transactions
             .iter()
             .map(|tx| blockchain.utxoset.transaction_routing_fees(tx))
             .sum();
@@ -194,9 +197,7 @@ mod tests {
     fn mempool_test() {
         assert_eq!(true, true);
         let keypair = Arc::new(RwLock::new(Keypair::new()));
-        let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
-        let mempool = Mempool::new(keypair, utxoset);
-
+        let mempool = Mempool::new(keypair);
         assert_eq!(mempool.transactions, vec![]);
     }
 

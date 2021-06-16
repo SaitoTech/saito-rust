@@ -47,7 +47,7 @@ impl Block {
         );
         Block::new(block_core)
     }
-    
+
     pub fn new(core: BlockCore) -> Block {
         let core_bytes: Vec<u8> = core.clone().into();
         Block {

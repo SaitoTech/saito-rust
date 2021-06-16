@@ -114,7 +114,7 @@ impl Transaction {
         let mut tx = Transaction {
             signature: Signature::from_compact(&[0; 64]).unwrap(),
             path: vec![],
-            hash: [0;32],
+            hash: [0; 32],
             core: core,
         };
         tx.set_hash(hash_bytes(&tx.core().into()));
@@ -126,7 +126,7 @@ impl Transaction {
         let mut tx = Transaction {
             signature: signature,
             path: vec![],
-            hash: [0;32],
+            hash: [0; 32],
             core: core,
         };
         tx.set_hash(hash_bytes(&tx.core().into()));
@@ -140,7 +140,7 @@ impl Transaction {
         let signature = keypair.sign_message(&message_hash[..]);
         Transaction::add_signature(core, signature)
     }
-    /// 
+    ///
     pub fn core(&self) -> &TransactionCore {
         &self.core
     }
