@@ -31,7 +31,7 @@ pub fn make_mock_blockchain_and_slips(
     println!("SIGNING TX");
     let golden_tx = Transaction::create_signature(golden_tx_core, keypair);
 
-    let tx_hash = golden_tx.core.hash();
+    let tx_hash = golden_tx.hash();
     golden_tx
         .core
         .outputs()

@@ -111,7 +111,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, _output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 let entry = self
                     .shashmap
                     .entry(slip_id)
@@ -146,7 +146,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, _output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 let entry = self
                     .shashmap
                     .entry(slip_id)
@@ -194,8 +194,8 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, output)| {
-                println!("OUTPUT INDEX: {:?}", index);
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                println!("OUTPUT INDEX: {:?} {}", index, crate::time::create_timestamp());
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 self.shashmap
                     .entry(slip_id)
                     .and_modify(|slip_spent_status| {
@@ -205,6 +205,7 @@ impl UtxoSet {
                         *output,
                         block.id(),
                     ));
+                println!("OUTPUT IDONE: {:?} {}", index, crate::time::create_timestamp());
             });
     }
 
@@ -218,7 +219,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 self.shashmap
                     .entry(slip_id)
                     .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
@@ -452,7 +453,7 @@ mod test {
         let block = test_utilities::make_mock_block(&keypair, [0; 32], 1, from_slip);
 
         let tx = block.transactions().first().unwrap();
-        let slip_id = SlipID::new(tx.core.hash(), 0);
+        let slip_id = SlipID::new(tx.hash(), 0);
 
         blockchain.utxoset.roll_forward(&block);
 
@@ -501,7 +502,7 @@ mod test {
         let block = test_utilities::make_mock_block(&keypair, [0; 32], 1, from_slip);
 
         let tx = block.transactions().first().unwrap();
-        let slip_id = SlipID::new(tx.core.hash(), 0);
+        let slip_id = SlipID::new(tx.hash(), 0);
 
         blockchain.utxoset.roll_forward_on_fork(&block);
 
