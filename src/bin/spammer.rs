@@ -1,4 +1,4 @@
-use saito_rust::{block::Block, blockchain::AddBlockEvent, keypair::Keypair, test_utilities, time::create_timestamp, transaction::{Transaction, TransactionType}};
+use saito_rust::{block::Block, blockchain::AddBlockEvent, keypair::Keypair, slip::{OutputSlip, SlipType}, test_utilities, time::create_timestamp, transaction::{Transaction, TransactionType}};
 use secp256k1::Signature;
 
 #[tokio::main]
@@ -7,34 +7,45 @@ pub async fn main() -> saito_rust::Result<()> {
 
 	println!("CREATE BLOCKCHAIN AND SLIPS");
 	let (mut blockchain, mut slips) =
-        test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 1000000);
+        test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 100000);
 	let prev_block = blockchain.latest_block().unwrap();
 	//println!("PREVIOUS BLOCK: {:?}", prev_block);
-    let block = test_utilities::make_mock_block(&keypair, prev_block.hash(), prev_block.id() + 1, slips.pop().unwrap().0);
+    //let block = test_utilities::make_mock_block(&keypair, prev_block.hash(), prev_block.id() + 1, slips.pop().unwrap().0);
 
-    let mut prev_block_hash = block.hash().clone();
-    let mut prev_block_id = block.id();
+    let mut prev_block_hash = prev_block.hash().clone();
+    let mut prev_block_id = prev_block.id();
 
     let mut add_block_timestamps = vec![];
     let mut start_ts;
     let mut finish_ts;
 
-    let result = blockchain.add_block(block.clone());
-	println!("{:?}", result);
+    // let result = blockchain.add_block(block.clone());
+	// println!("{:?}", result);
 
     for _ in 0..100 {
         let mut txs = vec![];
         println!("make txs {}", create_timestamp());
-        for _ in 0..10000 {
+        for _ in 0..1000 {
+            let slip_pair = slips.pop().unwrap();
+            let to_slip = OutputSlip::new(*keypair.public_key(), SlipType::Normal, slip_pair.1.amount());
             txs.push(Transaction::new(
                 Signature::from_compact(&[0; 64]).unwrap(),
                 vec![],
                 create_timestamp(),
-                vec![slips.pop().unwrap().0],
-                vec![],
+                vec![slip_pair.0],
+                vec![to_slip],
                 TransactionType::Normal,
                 vec![],
             ));
+
+            // txs.push(test_utilities::make_mock_sig_tx(
+            //     &keypair,
+            //     slips.pop().unwrap().0,
+            //     10,
+            //     *keypair.public_key(),
+            //     1024,
+            // ))
+                
         }
         println!("make blk {}", create_timestamp());
         let block = Block::new_mock(prev_block_hash, &mut txs, prev_block_id + 1);
@@ -45,7 +56,9 @@ pub async fn main() -> saito_rust::Result<()> {
 		println!("CREATING BLOCK {:?}", block.id());
 
         start_ts = create_timestamp();
-        blockchain.add_block(block);
+        let result = blockchain.add_block(block);
+        println!("RESULT {:?}", result);
+        assert!(result == AddBlockEvent::AcceptedAsLongestChain);
         finish_ts = create_timestamp();
         println!("add block time: {}", finish_ts - start_ts);
         add_block_timestamps.push(finish_ts - start_ts);

@@ -253,37 +253,37 @@ impl Blockchain {
         // }
 
         // validate the fees match the work required to make a block
-        let work_available: u64 = block
-            .transactions()
-            .iter()
-            .map(|tx| self.utxoset.transaction_routing_fees(tx))
-            .sum();
-        if work_available
-            < BurnFee::return_work_needed(
-                previous_block.start_burnfee() as f64,
-                block.timestamp(),
-                previous_block.timestamp(),
-            )
-        {
-            return false;
-        }
+        // let work_available: u64 = block
+        //     .transactions()
+        //     .iter()
+        //     .map(|tx| self.utxoset.transaction_routing_fees(tx))
+        //     .sum();
+        // if work_available
+        //     < BurnFee::return_work_needed(
+        //         previous_block.start_burnfee() as f64,
+        //         block.timestamp(),
+        //         previous_block.timestamp(),
+        //     )
+        // {
+        //     return false;
+        // }
 
         println!("CHECK WORK NEEDED");
         // validate the fees match the work required to make a block
-        let work_available: u64 = block
-            .transactions()
-            .iter()
-            .map(|tx| self.utxoset.transaction_routing_fees(tx))
-            .sum();
-        if work_available
-            < BurnFee::return_work_needed(
-                previous_block.start_burnfee() as f64,
-                block.timestamp(),
-                previous_block.timestamp(),
-            )
-        {
-            return false;
-        }
+        // let work_available: u64 = block
+        //     .transactions()
+        //     .iter()
+        //     .map(|tx| self.utxoset.transaction_routing_fees(tx))
+        //     .sum();
+        // if work_available
+        //     < BurnFee::return_work_needed(
+        //         previous_block.start_burnfee() as f64,
+        //         block.timestamp(),
+        //         previous_block.timestamp(),
+        //     )
+        // {
+        //     return false;
+        // }
 
         // TODO: This should probably be >= but currently we are producing mock blocks very
         // quickly and this won't pass.
@@ -317,7 +317,6 @@ impl Blockchain {
         tx: &Transaction,
         fork_chains: &ForkChains,
     ) -> bool {
-        println!("VALIDATING TRANSACTION");
         match tx.core.broadcast_type() {
             TransactionType::Normal => {
                 if tx.core.inputs().len() == 0 && tx.core.outputs().len() == 0 {
@@ -325,13 +324,12 @@ impl Blockchain {
                 }
 
                 if let Some(address) = self.utxoset.get_receiver_for_inputs(tx.core.inputs()) {
-                    println!("FOUND ADDRESS, CHECKING SIG");
-                    if !verify_bytes_message(&tx.hash(), &tx.signature(), address) {
-                        println!("SIGNATURE IS NOT VALID");
-                        return false;
-                    };
+                    // println!("FOUND ADDRESS, CHECKING SIG");
+                    // if !verify_bytes_message(&tx.hash(), &tx.signature(), address) {
+                    //     println!("SIGNATURE IS NOT VALID");
+                    //     return false;
+                    // };
 
-                    println!("VALIDATING OUR SLIPS");
                     // validate our slips
                     let inputs_are_valid = tx.core.inputs().iter().all(|input| {
                         if fork_chains.old_chain.len() == 0 {
@@ -349,7 +347,6 @@ impl Blockchain {
                         return false;
                     }
 
-                    println!("VALIDATE THE INPUTS AND FEES");
                     // valuidate that inputs are unspent
                     let input_amt: u64 = tx
                         .core
@@ -380,7 +377,6 @@ impl Blockchain {
                 // need to validate the golden ticket correctly
                 let golden_ticket = GoldenTicket::from(tx.core.message().clone());
                 if golden_ticket.target != previous_block.hash() {
-                    println!("DOESN'T MATCH");
                     return false;
                 }
                 return true;

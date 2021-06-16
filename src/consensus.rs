@@ -72,6 +72,7 @@ impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         {
+            println!("LOCK load blocks from disk");
             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
             let mut blockchain = blockchain_mutex.lock().unwrap();
 
@@ -102,7 +103,7 @@ impl Consensus {
                 }
             }
         }
-
+        println!("RELEASE load blocks from disk");
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
 
         let block_tx = saito_message_tx.clone();
@@ -112,9 +113,10 @@ impl Consensus {
         let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
 
         let mut mempool = Mempool::new(keypair.clone(), utxoset);
-
+        
         tokio::spawn(async move {
             loop {
+                println!("TryBundle...");
                 saito_message_tx
                     .send(SaitoMessage::TryBundle)
                     .expect("error: TryBundle message failed to send");
@@ -124,8 +126,7 @@ impl Consensus {
 
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
-                //
-                // TODO - "process" what? descriptive function name -- should fetch latest block not block index
+                println!("recv...");
                 match message {
                     SaitoMessage::NewBlock { payload } => {
                         let golden_tx = generate_golden_ticket_transaction(
@@ -139,10 +140,14 @@ impl Consensus {
                             .unwrap();
                     }
                     SaitoMessage::TryBundle => {
-                        let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
-                        let mut blockchain = blockchain_mutex.lock().unwrap();
-                        if let Some(block) = mempool.process(message, blockchain.latest_block()) {
+                        println!("try bundle message...");
+                  
+                        println!("got blockchain mutex...");
+                        if let Some(block) = mempool.process(message) {
+                            let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
+                            let mut blockchain = blockchain_mutex.lock().unwrap();
                             let block_hash = block.hash().clone();
+                            
                             match blockchain.add_block(block) {
                                 AddBlockEvent::AcceptedAsLongestChain
                                 | AddBlockEvent::AcceptedAsNewLongestChain => {
