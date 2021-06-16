@@ -59,6 +59,7 @@ pub struct TransactionCore {
     /// A enum brodcast type determining how to process `Transaction` in consensus
     broadcast_type: TransactionType,
     /// A byte array of miscellaneous information
+    #[serde(with = "serde_bytes")]
     message: Vec<u8>,
 }
 
