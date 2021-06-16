@@ -275,7 +275,6 @@ impl Blockchain {
                         //     task.await.unwrap();
                         // }
 
-
                         AddBlockEvent::AcceptedAsNewLongestChain
                     } else {
                         // we're just building on a new chain. Won't take over... yet!

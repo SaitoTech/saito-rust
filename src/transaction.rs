@@ -300,7 +300,7 @@ impl TransactionCore {
             timestamp: self.timestamp(),
             inputs: self.inputs().clone(),
             outputs: self.outputs().clone(),
-            broadcast_type: self.broadcast_type().clone()
+            broadcast_type: self.broadcast_type().clone(),
         }
     }
 

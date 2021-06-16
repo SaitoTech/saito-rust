@@ -227,7 +227,11 @@ impl BlockCore {
             treasury: self.treasury,
             start_burnfee: self.start_burnfee,
             difficulty: self.difficulty,
-            transaction_sig_cores: self.transactions.iter().map(|tx| tx.core().sig_core()).collect()
+            transaction_sig_cores: self
+                .transactions
+                .iter()
+                .map(|tx| tx.core().sig_core())
+                .collect(),
         }
     }
 }

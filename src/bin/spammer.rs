@@ -22,11 +22,6 @@ pub async fn main() -> saito_rust::Result<()> {
         test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 100000);
     let prev_block = blockchain.latest_block().unwrap();
 
-    // let arc_slips = Arc::new(Mutex::new(slips));
-
-    //println!("PREVIOUS BLOCK: {:?}", prev_block);
-    //let block = test_utilities::make_mock_block(&keypair, prev_block.hash(), prev_block.id() + 1, slips.pop().unwrap().0);
-
     let mut prev_block_hash = prev_block.hash().clone();
     let mut prev_block_id = prev_block.id();
     let mut prev_burn_fee = prev_block.start_burnfee();
@@ -35,9 +30,6 @@ pub async fn main() -> saito_rust::Result<()> {
     let mut add_block_timestamps = vec![];
     let mut start_ts;
     let mut finish_ts;
-
-    // let result = blockchain.add_block(block.clone());
-    // println!("{:?}", result);
 
     for _ in 0..100 {
         println!("make txs {}", create_timestamp());
