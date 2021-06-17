@@ -387,7 +387,7 @@ impl Blockchain {
                         if fork_chains.old_chain.len() == 0 {
                             return self
                                 .utxoset
-                                .is_slip_spendable_at_block(input, previous_block);
+                                .is_slip_spendable_at_block(input, previous_block.id());
                         } else {
                             return self
                                 .utxoset
