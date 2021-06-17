@@ -8,6 +8,8 @@ use crate::slip::{OutputSlip, SlipID, SlipType};
 use crate::time::create_timestamp;
 use crate::transaction::{Transaction, TransactionCore, TransactionType};
 
+use tokio::runtime::Runtime;
+
 pub struct MockTimestampGenerator {
     timestamp: u64,
 }
@@ -70,7 +72,9 @@ pub fn make_mock_blockchain_and_slips(
 
     let block = Block::new(block_core);
 
-    let _result = blockchain.add_block(block);
+    let _result = Runtime::new()
+        .unwrap()
+        .block_on(blockchain.add_block(block));
     // TODO assert something about this result
 
     (blockchain, slips)

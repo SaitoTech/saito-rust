@@ -6,6 +6,7 @@ use crate::{
     keypair::Keypair,
     mempool::Mempool,
     network::Network,
+    time::create_timestamp,
     types::SaitoMessage,
 };
 use std::{
@@ -83,14 +84,16 @@ impl Consensus {
 
             paths.sort_by_key(|dir| dir.path());
             for path in paths {
+                println!("START TIMESTAMP: {:?}", create_timestamp());
                 let bytes = blockchain
                     .storage
                     .read(&path.path().to_str().unwrap())
                     .unwrap();
                 let block = Block::from(bytes);
+                println!("FINISH TIMESTAMP: {:?}", create_timestamp());
 
                 let block_hash = block.hash().clone();
-                match blockchain.add_block(block) {
+                match blockchain.add_block(block).await {
                     AddBlockEvent::AcceptedAsLongestChain
                     | AddBlockEvent::AcceptedAsNewLongestChain => {
                         blockchain.get_block_by_hash(&block_hash).unwrap();
@@ -101,6 +104,7 @@ impl Consensus {
                 }
             }
         }
+
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
 
         let block_tx = saito_message_tx.clone();
@@ -139,7 +143,7 @@ impl Consensus {
                             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
                             let mut blockchain = blockchain_mutex.lock().unwrap();
                             let block_hash = block.hash().clone();
-                            match blockchain.add_block(block) {
+                            match blockchain.add_block(block).await {
                                 AddBlockEvent::AcceptedAsLongestChain
                                 | AddBlockEvent::AcceptedAsNewLongestChain => {
                                     block_tx
