@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use warp::Filter;
 
-use crate::storage::Storage;
+use crate::{constants, storage::Storage};
 
 pub struct Network {}
 
@@ -20,9 +20,7 @@ impl Network {
 }
 
 async fn get_block(str_block_hash: String) -> Result<impl warp::Reply, Infallible> {
-    let storage = Storage::new(None);
-
-    println!("{:?}", str_block_hash.clone());
+    let storage = Storage::new(String::from(constants::BLOCKS_DIR));
 
     let mut block_hash = [0u8; 32];
     hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");

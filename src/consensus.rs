@@ -1,4 +1,5 @@
 use crate::{
+    block::Block,
     blockchain::{AddBlockEvent, BLOCKCHAIN_GLOBAL},
     crypto::hash_bytes,
     golden_ticket::{generate_golden_ticket_transaction, generate_random_data},
@@ -6,11 +7,10 @@ use crate::{
     mempool::Mempool,
     network::Network,
     types::SaitoMessage,
-    utxoset::UtxoSet,
 };
 use std::{
     future::Future,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
     thread::sleep,
     time::Duration,
 };
@@ -70,18 +70,49 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
 impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
+        {
+            println!("LOCK load blocks from disk");
+            let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
+            let mut blockchain = blockchain_mutex.lock().unwrap();
+
+            let mut paths: Vec<_> = blockchain
+                .storage
+                .list_files_in_blocks_dir()
+                .map(|r| r.unwrap())
+                .collect();
+
+            paths.sort_by_key(|dir| dir.path());
+            for path in paths {
+                let bytes = blockchain
+                    .storage
+                    .read(&path.path().to_str().unwrap())
+                    .unwrap();
+                let block = Block::from(bytes);
+
+                let block_hash = block.hash().clone();
+                match blockchain.add_block(block) {
+                    AddBlockEvent::AcceptedAsLongestChain
+                    | AddBlockEvent::AcceptedAsNewLongestChain => {
+                        blockchain.get_block_by_hash(&block_hash).unwrap();
+                    }
+                    fail_message => {
+                        println!("{:?}", fail_message)
+                    }
+                }
+            }
+        }
         let (saito_message_tx, mut saito_message_rx) = broadcast::channel(32);
 
         let block_tx = saito_message_tx.clone();
         let miner_tx = saito_message_tx.clone();
 
         let keypair = Arc::new(RwLock::new(Keypair::new()));
-        let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
 
-        let mut mempool = Mempool::new(keypair.clone(), utxoset);
+        let mut mempool = Mempool::new(keypair.clone());
 
         tokio::spawn(async move {
             loop {
+                println!("TryBundle...");
                 saito_message_tx
                     .send(SaitoMessage::TryBundle)
                     .expect("error: TryBundle message failed to send");
@@ -91,8 +122,6 @@ impl Consensus {
 
         loop {
             while let Ok(message) = saito_message_rx.recv().await {
-                //
-                // TODO - "process" what? descriptive function name -- should fetch latest block not block index
                 match message {
                     SaitoMessage::NewBlock { payload } => {
                         let golden_tx = generate_golden_ticket_transaction(
@@ -106,13 +135,14 @@ impl Consensus {
                             .unwrap();
                     }
                     SaitoMessage::TryBundle => {
-                        let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
-                        let mut blockchain = blockchain_mutex.lock().unwrap();
-                        if let Some(block) = mempool.process(message, blockchain.latest_block()) {
+                        if let Some(block) = mempool.process(message) {
+                            let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
+                            let mut blockchain = blockchain_mutex.lock().unwrap();
                             let block_hash = block.hash().clone();
+
                             match blockchain.add_block(block) {
-                                AddBlockEvent::AcceptedAsLongestChain => {
-                                    println!("AcceptedAsLongestChain");
+                                AddBlockEvent::AcceptedAsLongestChain
+                                | AddBlockEvent::AcceptedAsNewLongestChain => {
                                     block_tx
                                         .send(SaitoMessage::NewBlock {
                                             payload: block_hash,

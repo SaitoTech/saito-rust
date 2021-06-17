@@ -1,6 +1,6 @@
 use crate::crypto::{hash_bytes, PublicKey, Sha256Hash};
 use crate::time::create_timestamp;
-use crate::transaction::Transaction;
+use crate::transaction::{Transaction, TransactionSignatureCore};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -47,8 +47,9 @@ impl Block {
         );
         Block::new(block_core)
     }
+
     pub fn new(core: BlockCore) -> Block {
-        let core_bytes: Vec<u8> = core.clone().into();
+        let core_bytes: Vec<u8> = core.hash_core().into();
         Block {
             hash: hash_bytes(&core_bytes),
             core,
@@ -146,6 +147,28 @@ pub struct BlockCore {
     transactions: Vec<Transaction>,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct BlockHashCore {
+    /// Block id
+    id: u64,
+    /// Block timestamp
+    timestamp: u64,
+    /// Byte array hash of the previous block in the chain
+    previous_block_hash: Sha256Hash,
+    /// `Publickey` of the block creator
+    creator: PublicKey,
+    /// Total block reward being released in the block
+    coinbase: u64,
+    /// Amount of SAITO left in reserve on the network
+    treasury: u64,
+    /// Start value in the `Burnfee` algorithm
+    start_burnfee: f64,
+    /// Block difficulty required to win the `LotteryGame` in golden ticket generation
+    difficulty: f32,
+    /// simplified transaction cores
+    transaction_sig_cores: Vec<TransactionSignatureCore>,
+}
+
 impl BlockCore {
     /// Creates a new mock `BlockCore` for use as we develop code. Please replace the fields with actual fields as we get them
     /// until we arrive at something the actual constructor:
@@ -194,21 +217,29 @@ impl BlockCore {
         }
     }
 
-    // pub fn serialize(&self) -> [u8; 44] {
-    //     let mut ret = [0; 44];
-    //     ret[..32].clone_from_slice(&self.previous_block_hash);
-    //     unsafe {
-    //         ret[32..40].clone_from_slice(&slice::from_raw_parts(
-    //             (&self.timestamp as *const u64) as *const u8,
-    //             mem::size_of::<u64>(),
-    //         ));
-    //     }
-    //     // TODO REMOVE THESE RANDOM BYTES ONCE WE ARE ACTUALLY DOING A FULL HASH, THIS IS JUST
-    //     // FOR HASHING BECAUSE THE TIMESTAMP ISN'T PRECISE ENOUGH TO GUARANTEE UNIQUENESS
-    //     let random_bytes = rand::thread_rng().gen::<[u8; 4]>();
-    //     ret[40..44].clone_from_slice(&random_bytes);
-    //     ret
-    // }
+    pub fn hash_core(&self) -> BlockHashCore {
+        BlockHashCore {
+            id: self.id,
+            timestamp: self.timestamp,
+            previous_block_hash: self.previous_block_hash,
+            creator: self.creator,
+            coinbase: self.coinbase,
+            treasury: self.treasury,
+            start_burnfee: self.start_burnfee,
+            difficulty: self.difficulty,
+            transaction_sig_cores: self
+                .transactions
+                .iter()
+                .map(|tx| tx.core().sig_core())
+                .collect(),
+        }
+    }
+}
+
+impl Into<Vec<u8>> for BlockHashCore {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
 }
 
 impl From<Vec<u8>> for BlockCore {
@@ -230,6 +261,12 @@ impl From<Vec<u8>> for Block {
 }
 
 impl Into<Vec<u8>> for Block {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for &Block {
     fn into(self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
     }

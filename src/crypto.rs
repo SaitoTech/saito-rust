@@ -5,6 +5,7 @@ pub use secp256k1::{Message, PublicKey, Signature, SECP256K1};
 use sha2::{Digest, Sha256};
 
 /// Sha256Hash byte array type
+
 pub type Sha256Hash = [u8; 32];
 
 /// Hash the message string with sha256 for signing by secp256k1 and return as byte array
@@ -15,7 +16,6 @@ pub fn make_message_from_string(message_string: &str) -> Sha256Hash {
 
     hashvalue.as_slice().try_into().unwrap()
 }
-
 /// Hash the message byte Vec with sha256 for signing by secp256k1 and return as Sha256Hash
 pub fn hash_bytes(data: &Vec<u8>) -> Sha256Hash {
     let mut hasher = Sha256::new();

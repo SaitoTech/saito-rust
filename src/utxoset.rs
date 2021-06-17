@@ -109,7 +109,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, _output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 let entry = self
                     .shashmap
                     .entry(slip_id)
@@ -133,6 +133,7 @@ impl UtxoSet {
                 }
             });
     }
+
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Inputs can just be removed(delete the appropriate ForkSpent from the vector, the
     /// ForkUnspent is still in the vector). Outputs should also have their ForkSpent removed from
@@ -143,7 +144,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, _output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 let entry = self
                     .shashmap
                     .entry(slip_id)
@@ -167,29 +168,12 @@ impl UtxoSet {
                 }
             });
     }
+
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Outputs should be added or marked Unspent, Inputs should be marked Spent. This method
     /// Can be called during a normal new block or during a reorg, so Unspent Outputs may already
     /// be present if we're doing a reorg.
     fn roll_forward_transaction(&mut self, tx: &Transaction, block: &Block) {
-        // loop through outputs and mark as unspent. Add them if they aren't already in the
-        // hashmap, otherwise update them appropriately
-        tx.core
-            .outputs()
-            .iter()
-            .enumerate()
-            .for_each(|(index, output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
-                self.shashmap
-                    .entry(slip_id)
-                    .and_modify(|slip_spent_status| {
-                        slip_spent_status.longest_chain_spent_block_id = Some(block.id());
-                    })
-                    .or_insert(SlipSpentStatus::new_on_longest_chain(
-                        output.clone(),
-                        block.id(),
-                    ));
-            });
         // loop through inputs and mark them as Spent, if they're not in the hashmap something is
         // horribly wrong
         tx.core.inputs().iter().for_each(|slip_id| {
@@ -199,7 +183,24 @@ impl UtxoSet {
                     slip_spent_status.longest_chain_spent_block_id = Some(block.id());
                 });
         });
+
+        // loop through outputs and mark as unspent. Add them if they aren't already in the
+        // hashmap, otherwise update them appropriately
+        tx.core
+            .outputs()
+            .iter()
+            .enumerate()
+            .for_each(|(index, output)| {
+                let slip_id = SlipID::new(tx.hash(), index as u64);
+                self.shashmap
+                    .entry(slip_id)
+                    .and_modify(|slip_spent_status| {
+                        slip_spent_status.longest_chain_spent_block_id = Some(block.id());
+                    })
+                    .or_insert(SlipSpentStatus::new_on_longest_chain(*output, block.id()));
+            });
     }
+
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Outputs should be added or marked as ForkUnspent, Inputs should be marked ForkSpent.
     /// This method be called when the block is first seen but should never need to be called
@@ -210,7 +211,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 self.shashmap
                     .entry(slip_id)
                     .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
@@ -386,7 +387,6 @@ impl UtxoSet {
                     None
                 }
             } else {
-                println!("COULDN'T FIND INPUTS");
                 None
             }
         }
@@ -444,7 +444,7 @@ mod test {
         let block = test_utilities::make_mock_block(&keypair, [0; 32], 1, from_slip);
 
         let tx = block.transactions().first().unwrap();
-        let slip_id = SlipID::new(tx.core.hash(), 0);
+        let slip_id = SlipID::new(tx.hash(), 0);
 
         blockchain.utxoset.roll_forward(&block);
 
@@ -493,7 +493,7 @@ mod test {
         let block = test_utilities::make_mock_block(&keypair, [0; 32], 1, from_slip);
 
         let tx = block.transactions().first().unwrap();
-        let slip_id = SlipID::new(tx.core.hash(), 0);
+        let slip_id = SlipID::new(tx.hash(), 0);
 
         blockchain.utxoset.roll_forward_on_fork(&block);
 
