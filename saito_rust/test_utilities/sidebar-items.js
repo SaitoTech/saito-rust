@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["make_mock_block",""],["make_mock_block_empty",""],["make_mock_block_with_tx",""],["make_mock_blockchain_and_slips",""],["make_mock_sig_tx",""],["make_mock_tx",""]]});
+initSidebarItems({"fn":[["make_mock_block",""],["make_mock_block_empty",""],["make_mock_block_with_tx",""],["make_mock_blockchain_and_slips",""],["make_mock_sig_tx",""],["make_mock_tx",""]],"struct":[["MockTimestampGenerator",""]]});

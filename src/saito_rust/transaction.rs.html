@@ -350,21 +350,6 @@
 <span id="347">347</span>
 <span id="348">348</span>
 <span id="349">349</span>
-<span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
-<span id="354">354</span>
-<span id="355">355</span>
-<span id="356">356</span>
-<span id="357">357</span>
-<span id="358">358</span>
-<span id="359">359</span>
-<span id="360">360</span>
-<span id="361">361</span>
-<span id="362">362</span>
-<span id="363">363</span>
-<span id="364">364</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">crypto</span>::{<span class="ident">hash_bytes</span>, <span class="ident">Sha256Hash</span>},
@@ -546,21 +531,6 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_hop_to_path</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">path</span>: <span class="ident">Hop</span>) {
         <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">push</span>(<span class="ident">path</span>);
     }
-
-    <span class="comment">// /// validates sig</span>
-    <span class="comment">// pub fn sig_is_valid(&amp;self) -&gt; bool {</span>
-    <span class="comment">//     // TODO check with keypair if things are valid</span>
-    <span class="comment">//     true</span>
-    <span class="comment">// }</span>
-    <span class="comment">// /// validates slip against utxoset</span>
-    <span class="comment">// pub fn are_slips_valid(&amp;self) -&gt; bool {</span>
-    <span class="comment">//     // self.inputs.iter()</span>
-    <span class="comment">//     // result = result &amp;&amp; self.is_slip_spendable(slip_id);</span>
-    <span class="comment">//     // result = result &amp;&amp; self.is_slip_id_valid(slip_id, output_slip);</span>
-    <span class="comment">//     // true</span>
-    <span class="comment">//     // self.inputs().iter().all(|slip_id| self.is_slip_spendable(slip_id))</span>
-    <span class="comment">//     true</span>
-    <span class="comment">// }</span>
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TransactionCore</span> {
