@@ -133,7 +133,6 @@ impl UtxoSet {
                 }
             });
     }
-
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Inputs can just be removed(delete the appropriate ForkSpent from the vector, the
     /// ForkUnspent is still in the vector). Outputs should also have their ForkSpent removed from
@@ -168,22 +167,11 @@ impl UtxoSet {
                 }
             });
     }
-
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Outputs should be added or marked Unspent, Inputs should be marked Spent. This method
     /// Can be called during a normal new block or during a reorg, so Unspent Outputs may already
     /// be present if we're doing a reorg.
     fn roll_forward_transaction(&mut self, tx: &Transaction, block: &Block) {
-        // loop through inputs and mark them as Spent, if they're not in the hashmap something is
-        // horribly wrong
-        tx.core.inputs().iter().for_each(|slip_id| {
-            self.shashmap
-                .entry(*slip_id)
-                .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
-                    slip_spent_status.longest_chain_spent_block_id = Some(block.id());
-                });
-        });
-
         // loop through outputs and mark as unspent. Add them if they aren't already in the
         // hashmap, otherwise update them appropriately
         tx.core
@@ -197,10 +185,21 @@ impl UtxoSet {
                     .and_modify(|slip_spent_status| {
                         slip_spent_status.longest_chain_spent_block_id = Some(block.id());
                     })
-                    .or_insert(SlipSpentStatus::new_on_longest_chain(*output, block.id()));
+                    .or_insert(SlipSpentStatus::new_on_longest_chain(
+                        output.clone(),
+                        block.id(),
+                    ));
             });
+        // loop through inputs and mark them as Spent, if they're not in the hashmap something is
+        // horribly wrong
+        tx.core.inputs().iter().for_each(|slip_id| {
+            self.shashmap
+                .entry(*slip_id)
+                .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
+                    slip_spent_status.longest_chain_spent_block_id = Some(block.id());
+                });
+        });
     }
-
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
     /// Outputs should be added or marked as ForkUnspent, Inputs should be marked ForkSpent.
     /// This method be called when the block is first seen but should never need to be called
@@ -236,7 +235,7 @@ impl UtxoSet {
     fn longest_chain_spent_time_status(
         &self,
         slip_id: &SlipID,
-        block: &Block,
+        block_id: u64,
     ) -> LongestChainSpentTime {
         match &self.shashmap.get(slip_id) {
             Some(status) => {
@@ -244,13 +243,13 @@ impl UtxoSet {
                     Some(longest_chain_unspent_block_id) => {
                         match status.longest_chain_spent_block_id {
                             Some(longest_chain_spent_block_id) => {
-                                if longest_chain_unspent_block_id <= block.id()
-                                    && longest_chain_spent_block_id > block.id()
+                                if longest_chain_unspent_block_id <= block_id
+                                    && longest_chain_spent_block_id > block_id
                                 {
                                     // There is a spent_block_id but we are interested in the state of the slip before it was spent,
                                     // this is useful when looking at the common_ancestor of forks.
                                     LongestChainSpentTime::BetweenUnspentAndSpent
-                                } else if longest_chain_unspent_block_id <= block.id() {
+                                } else if longest_chain_unspent_block_id <= block_id {
                                     // The slip was already spent
                                     LongestChainSpentTime::AfterSpent
                                 } else {
@@ -259,7 +258,7 @@ impl UtxoSet {
                                 }
                             }
                             None => {
-                                if longest_chain_unspent_block_id <= block.id() {
+                                if longest_chain_unspent_block_id <= block_id {
                                     // The slip is created/unspent before this block and we don't have any spent block id
                                     LongestChainSpentTime::BetweenUnspentAndSpent
                                 } else {
@@ -281,8 +280,8 @@ impl UtxoSet {
     /// Returns true if the slip is Unspent(present in the hashmap and marked Unspent before the
     /// block). The ForkTuple allows us to check for Unspent/Spent status along the fork's
     /// potential new chain more quickly. This can be further optimized in the future.
-    pub fn is_slip_spendable_at_block(&self, slip_id: &SlipID, block: &Block) -> bool {
-        let longest_chain_spent_time = self.longest_chain_spent_time_status(slip_id, block);
+    pub fn is_slip_spendable_at_block(&self, slip_id: &SlipID, block_id: u64) -> bool {
+        let longest_chain_spent_time = self.longest_chain_spent_time_status(slip_id, block_id);
         longest_chain_spent_time == LongestChainSpentTime::BetweenUnspentAndSpent
     }
     /// Returns true if the slip is Unspent(present in the hashmap and marked Unspent before the
@@ -294,7 +293,7 @@ impl UtxoSet {
         fork_chains: &ForkChains,
     ) -> bool {
         let longest_chain_spent_time =
-            self.longest_chain_spent_time_status(slip_id, &fork_chains.ancestor_block);
+            self.longest_chain_spent_time_status(slip_id, fork_chains.ancestor_block.id());
         if longest_chain_spent_time == LongestChainSpentTime::AfterSpent {
             return false;
         }
@@ -543,35 +542,35 @@ mod test {
             keypair.public_key().clone(),
         );
         // get an input for the mock_tx's output
-        let outputs_input = SlipID::new(mock_tx.hash(), 0);
+        let outputs_input_a = SlipID::new(mock_tx.hash(), 0);
         // make a mock block with the tx
         let first_block = blockchain.latest_block().unwrap();
-        let new_block2 = test_utilities::make_mock_block_with_tx(
+        let new_block_a = test_utilities::make_mock_block_with_tx(
             first_block.hash(),
             first_block.id() + 1,
             mock_tx,
         );
 
         // make a block where we will test spendability
-        let new_block3 =
-            test_utilities::make_mock_block_empty(first_block.hash(), new_block2.id() + 1);
+        let new_block_b =
+            test_utilities::make_mock_block_empty(first_block.hash(), new_block_a.id() + 1);
         assert!(!blockchain
             .utxoset
-            .is_slip_spendable_at_block(&outputs_input, &new_block3));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
         // roll_forward block #2
         blockchain
             .utxoset
-            .roll_forward_transaction(&new_block2.transactions()[0], &new_block2);
+            .roll_forward_transaction(&new_block_a.transactions()[0], &new_block_a);
         // assert that tx in block #2 is spendable in block #3
         assert!(blockchain
             .utxoset
-            .is_slip_spendable_at_block(&outputs_input, &new_block3));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
         blockchain
             .utxoset
-            .roll_back_transaction(&new_block2.transactions()[0], &new_block2);
+            .roll_back_transaction(&new_block_a.transactions()[0], &new_block_a);
         assert!(!blockchain
             .utxoset
-            .is_slip_spendable_at_block(&outputs_input, &new_block3));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
     }
 
     #[test]
@@ -580,91 +579,165 @@ mod test {
         let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
         // make a mock tx
         let (slip_id, output_slip) = slips[0];
-        let mock_tx = test_utilities::make_mock_tx(
+        let mock_tx_a = test_utilities::make_mock_tx(
             slip_id,
             output_slip.amount(),
             keypair.public_key().clone(),
         );
         // get an input for the mock_tx's output
-        let outputs_input = SlipID::new(mock_tx.hash(), 0);
-        let mock_tx2 = test_utilities::make_mock_tx(
-            outputs_input,
+        let outputs_input_a = SlipID::new(mock_tx_a.hash(), 0);
+        let mock_tx_b = test_utilities::make_mock_tx(
+            outputs_input_a,
             output_slip.amount(),
             keypair.public_key().clone(),
         );
+        let outputs_input_b = SlipID::new(mock_tx_b.hash(), 0);
 
-        // make a mock block with the tx
+        // make mock blocks so we can use their hashes
         let first_block = blockchain.latest_block().unwrap();
-        let new_block2 = test_utilities::make_mock_block_with_tx(
+        let new_block_a = test_utilities::make_mock_block_with_tx(
             first_block.hash(),
             first_block.id() + 1,
-            mock_tx,
+            mock_tx_a,
         );
-        let new_block3 = test_utilities::make_mock_block_with_tx(
-            new_block2.hash().clone(),
-            new_block2.id().clone() + 1,
-            mock_tx2,
+        let new_block_b = test_utilities::make_mock_block_with_tx(
+            new_block_a.hash().clone(),
+            new_block_a.id().clone() + 1,
+            mock_tx_b,
         );
 
-        // roll_forward tx (as it would if block #2 were added), it should be spendable in the next fork block
+        // roll_forward tx 1 (as it would if block #2 were added), it should be spendable in the next fork block
         blockchain
             .utxoset
-            .roll_forward_transaction(&new_block2.transactions()[0], &new_block2);
+            .roll_forward_transaction(&new_block_a.transactions()[0], &new_block_a);
         let fork_chains: ForkChains = ForkChains {
-            ancestor_block: new_block2.clone(),
+            ancestor_block: new_block_a.clone(),
             old_chain: vec![],
-            new_chain: vec![new_block2.hash(), new_block3.hash()],
+            new_chain: vec![new_block_a.hash(), new_block_b.hash()],
         };
+        // a should be spendable, but not b
+        assert_eq!(
+            blockchain
+                .utxoset
+                .longest_chain_spent_time_status(&outputs_input_a, new_block_a.id() - 1),
+            LongestChainSpentTime::BeforeUnspent
+        );
+        assert_eq!(
+            blockchain
+                .utxoset
+                .longest_chain_spent_time_status(&outputs_input_a, new_block_a.id()),
+            LongestChainSpentTime::BetweenUnspentAndSpent
+        );
         assert!(blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
+        assert!(blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_b.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
 
         // roll_back tx (as it would if block #2 were rolled back), it should no longer be spendable in the next fork block
         blockchain
             .utxoset
-            .roll_back_transaction(&new_block2.transactions()[0], &new_block2);
+            .roll_back_transaction(&new_block_a.transactions()[0], &new_block_a);
+        assert_eq!(
+            blockchain
+                .utxoset
+                .longest_chain_spent_time_status(&outputs_input_a, new_block_a.id() - 1),
+            LongestChainSpentTime::AfterSpentOrNeverExisted
+        );
         assert!(!blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_b.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
 
         // roll forward tx like it's in a potential fork
         blockchain
             .utxoset
-            .roll_forward_transaction_on_fork(&new_block2.transactions()[0], &new_block2);
+            .roll_forward_transaction_on_fork(&new_block_a.transactions()[0], &new_block_a);
         let fork_chains: ForkChains = ForkChains {
-            ancestor_block: new_block2.clone(),
+            ancestor_block: new_block_a.clone(),
             old_chain: vec![],
-            new_chain: vec![new_block2.hash(), new_block3.hash()],
+            new_chain: vec![new_block_a.hash(), new_block_b.hash()],
         };
+        // it should be spendable at block b as a new fork but not spendable at block id 1
+        // on the longest chain
         assert!(blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
-
-        // roll forward a tx that spends the output, it's input should become unspendable again
-        blockchain
-            .utxoset
-            .roll_forward_transaction_on_fork(&new_block3.transactions()[0], &new_block3);
-        let fork_chains: ForkChains = ForkChains {
-            ancestor_block: new_block2.clone(),
-            old_chain: vec![],
-            new_chain: vec![new_block2.hash(), new_block3.hash(), [0; 32]],
-        };
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
         assert!(!blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_a.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_a.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
+
+        // roll forward a tx that spends the output, it's input should become unspendable again and
+        // tx b should become spendable on the fork
+        blockchain
+            .utxoset
+            .roll_forward_transaction_on_fork(&new_block_b.transactions()[0], &new_block_b);
+        let fork_chains: ForkChains = ForkChains {
+            ancestor_block: new_block_a.clone(),
+            old_chain: vec![],
+            new_chain: vec![new_block_a.hash(), new_block_b.hash(), [0; 32]],
+        };
+        assert_eq!(
+            blockchain
+                .utxoset
+                .longest_chain_spent_time_status(&outputs_input_b, new_block_a.id() - 1),
+            LongestChainSpentTime::AfterSpentOrNeverExisted
+        );
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_a.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_a.id()));
+        assert!(blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
 
         // roll back the tx that spent it, it input should become spendable again
         blockchain
             .utxoset
-            .roll_back_transaction_on_fork(&new_block3.transactions()[0], &new_block3);
+            .roll_back_transaction_on_fork(&new_block_b.transactions()[0], &new_block_b);
         let fork_chains: ForkChains = ForkChains {
-            ancestor_block: new_block2.clone(),
+            ancestor_block: new_block_a.clone(),
             old_chain: vec![],
-            new_chain: vec![new_block2.hash(), new_block3.hash()],
+            new_chain: vec![new_block_a.hash(), new_block_b.hash()],
         };
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_a.id()));
         assert!(blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_a.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
     }
 
     #[test]
@@ -703,7 +776,7 @@ mod test {
         );
         let is_slip_spendable = blockchain
             .utxoset
-            .is_slip_spendable_at_block(&slip_id, &new_block);
+            .is_slip_spendable_at_block(&slip_id, new_block.id());
         assert!(is_slip_spendable);
     }
 
