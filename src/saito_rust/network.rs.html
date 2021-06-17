@@ -36,6 +36,8 @@
 <span id="33">33</span>
 <span id="34">34</span>
 <span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">Infallible</span>;
 <span class="kw">use</span> <span class="ident">warp</span>::<span class="ident">Filter</span>;
@@ -60,6 +62,8 @@
 
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_block</span>(<span class="ident">str_block_hash</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">impl</span> <span class="ident">warp</span>::<span class="ident">Reply</span>, <span class="ident">Infallible</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage</span>::<span class="ident">new</span>(<span class="prelude-val">None</span>);
+
+    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">str_block_hash</span>.<span class="ident">clone</span>());
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_hash</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="number">32</span>];
     <span class="ident">hex</span>::<span class="ident">decode_to_slice</span>(<span class="ident">str_block_hash</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">block_hash</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to parse hash&quot;</span>);

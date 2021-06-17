@@ -209,6 +209,8 @@
 <span id="206">206</span>
 <span id="207">207</span>
 <span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">Sha256Hash</span>;
 
@@ -264,6 +266,7 @@
         <span class="self">self</span>.<span class="ident">epoch_ring_length</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
         <span class="comment">// We should be safe to just unwrap here instead of returning and Option because</span>
         <span class="comment">// we&#39;ve already done a check about to make sure the chain length is not 0</span>
+        <span class="comment">//println!(&quot;roll_back {:?}&quot;, self.latest_block_hash().unwrap());</span>
         <span class="self">self</span>.<span class="ident">latest_block_hash</span>().<span class="ident">unwrap</span>()
     }
     <span class="doccomment">/// Roll forward the longest chain by 1.</span>
@@ -271,6 +274,7 @@
     <span class="doccomment">/// If the length epoch_ring_length exceeds RING_BUFFER_LENGTH, we are overwriting data and</span>
     <span class="doccomment">/// therefore cap epoch_ring_length at RING_BUFFER_LENGTH.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">roll_forward</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">new_block_hash</span>: <span class="ident">Sha256Hash</span>) {
+        <span class="comment">//println!(&quot;roll_forward {:?}&quot;, new_block_hash);</span>
         <span class="self">self</span>.<span class="ident">longest_chain_length</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
         <span class="self">self</span>.<span class="ident">epoch_ring_top_location</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
         <span class="self">self</span>.<span class="ident">epoch_ring_top_location</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">epoch_ring_top_location</span> <span class="op">%</span> <span class="ident">RING_BUFFER_LENGTH</span>;
