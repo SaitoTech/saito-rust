@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["saito_rust"];
+window.ALL_CRATES = ["saito_rust","saito_spammer"];

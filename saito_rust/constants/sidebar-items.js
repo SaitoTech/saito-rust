@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["BLOCKS_DIR",""]]});
