@@ -178,21 +178,6 @@ impl Transaction {
     pub fn add_hop_to_path(&mut self, path: Hop) {
         self.path.push(path);
     }
-
-    // /// validates sig
-    // pub fn sig_is_valid(&self) -> bool {
-    //     // TODO check with keypair if things are valid
-    //     true
-    // }
-    // /// validates slip against utxoset
-    // pub fn are_slips_valid(&self) -> bool {
-    //     // self.inputs.iter()
-    //     // result = result && self.is_slip_spendable(slip_id);
-    //     // result = result && self.is_slip_id_valid(slip_id, output_slip);
-    //     // true
-    //     // self.inputs().iter().all(|slip_id| self.is_slip_spendable(slip_id))
-    //     true
-    // }
 }
 
 impl From<Vec<u8>> for TransactionCore {

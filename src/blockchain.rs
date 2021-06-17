@@ -260,11 +260,7 @@ impl Blockchain {
                             let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
                             self.longest_chain_queue.roll_forward(block.hash());
                             self.utxoset.roll_forward(block);
-                            self.storage.roll_forward(&block)
-                            // tokio::spawn(async {
-                            //     let storage = Storage::new(blocks_dir);
-                            //     storage.roll_forward_async(&block).await
-                            // })
+                            self.storage.roll_forward(&block);
                         });
 
                         // for task in tasks {
@@ -309,7 +305,6 @@ impl Blockchain {
 
         // TODO -- include checks on difficulty and paysplit here to validate
         // Validate the burnfee
-        // TODO put this back, it's breaking add_block_test. test probably just needs to be updated
         let previous_block = self.fork_tree.block_by_hash(previous_block_hash).unwrap();
         if block.start_burnfee()
             != BurnFee::burn_fee_adjustment_calculation(
@@ -377,7 +372,6 @@ impl Blockchain {
                 }
 
                 if let Some(address) = self.utxoset.get_receiver_for_inputs(tx.core.inputs()) {
-                    println!("FOUND ADDRESS, CHECKING SIG");
                     if !verify_bytes_message(&tx.hash(), &tx.signature(), address) {
                         return false;
                     };
@@ -394,7 +388,6 @@ impl Blockchain {
                                 .is_slip_spendable_at_fork_block(input, fork_chains);
                         }
                     });
-
                     if !inputs_are_valid {
                         return false;
                     }
@@ -444,8 +437,16 @@ impl Blockchain {
 mod tests {
 
     use super::*;
+    use crate::block::BlockCore;
+    use crate::block::TREASURY;
     use crate::keypair::Keypair;
+    use crate::slip::OutputSlip;
+    use crate::slip::SlipID;
+    use crate::slip::SlipType;
     use crate::test_utilities;
+    use crate::test_utilities::MockTimestampGenerator;
+    use crate::time::create_timestamp;
+    use crate::transaction::TransactionCore;
     include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
     fn teardown() -> std::io::Result<()> {
@@ -461,94 +462,335 @@ mod tests {
 
         Ok(())
     }
+    #[test]
+    fn double_spend_on_fork_test() {
+        let keypair = Keypair::new();
 
-    #[ignore]
+        let mut mock_timestamp_generator = MockTimestampGenerator::new();
+        let (mut blockchain, mut slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH);
+        let block = blockchain.latest_block().unwrap();
+
+        let mut prev_block_hash = block.hash();
+        let mut prev_block_id = block.id();
+        let mut prev_burn_fee = block.start_burnfee();
+        let mut prev_timestamp = block.timestamp();
+        let first_block_hash = block.hash();
+        let first_block_id = block.id();
+        let first_burn_fee = block.start_burnfee();
+        let first_timestamp = block.timestamp();
+
+        for _n in 0..3 {
+            let timestamp = mock_timestamp_generator.next();
+            let block = Block::new(BlockCore::new(
+                prev_block_id + 1,
+                timestamp,
+                prev_block_hash,
+                *keypair.public_key(),
+                0,
+                TREASURY,
+                BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+                0.0,
+                &mut vec![],
+            ));
+
+            prev_block_hash = block.hash().clone();
+            prev_block_id = block.id();
+            prev_burn_fee = block.start_burnfee();
+            prev_timestamp = block.timestamp();
+            let result: AddBlockEvent = blockchain.add_block(block.clone());
+            assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
+        }
+        // make a fork
+        let timestamp = mock_timestamp_generator.next() + 1;
+        let block_y1 = Block::new(BlockCore::new(
+            first_block_id + 1,
+            timestamp,
+            first_block_hash,
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(first_burn_fee, timestamp, first_timestamp),
+            0.0,
+            &mut vec![],
+        ));
+
+        let result: AddBlockEvent = blockchain.add_block(block_y1.clone());
+        assert_eq!(result, AddBlockEvent::Accepted);
+
+        // make a valid tx to add to block y2
+        let slip_pair = slips.pop().unwrap();
+        let to_slip = OutputSlip::new(
+            *keypair.public_key(),
+            SlipType::Normal,
+            slip_pair.1.amount(),
+        );
+        let tx = Transaction::create_signature(
+            TransactionCore::new(
+                create_timestamp(),
+                vec![slip_pair.0],
+                vec![to_slip],
+                TransactionType::Normal,
+                vec![],
+            ),
+            &keypair,
+        );
+        let double_spent_attempt_input = SlipID::new(tx.hash(), 0);
+        let double_spent_attempt_to_slip = OutputSlip::new(
+            *keypair.public_key(),
+            SlipType::Normal,
+            slip_pair.1.amount(),
+        );
+
+        let double_spent_attempt_tx = Transaction::create_signature(
+            TransactionCore::new(
+                create_timestamp(),
+                vec![double_spent_attempt_input],
+                vec![double_spent_attempt_to_slip],
+                TransactionType::Normal,
+                vec![],
+            ),
+            &keypair,
+        );
+        let mut txs = vec![tx];
+        let timestamp = mock_timestamp_generator.next();
+        let block_y2 = Block::new(BlockCore::new(
+            block_y1.id() + 1,
+            timestamp,
+            block_y1.hash(),
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(
+                block_y1.start_burnfee(),
+                timestamp,
+                block_y1.timestamp(),
+            ),
+            0.0,
+            &mut txs,
+        ));
+
+        let result: AddBlockEvent = blockchain.add_block(block_y2.clone());
+        assert_eq!(result, AddBlockEvent::Accepted);
+
+        let timestamp = mock_timestamp_generator.next();
+        let block_z2 = Block::new(BlockCore::new(
+            block_y1.id() + 1,
+            timestamp,
+            block_y1.hash(),
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(
+                block_y1.start_burnfee(),
+                timestamp,
+                block_y1.timestamp(),
+            ),
+            0.0,
+            &mut vec![],
+        ));
+        let result: AddBlockEvent = blockchain.add_block(block_z2.clone());
+        assert_eq!(result, AddBlockEvent::Accepted);
+
+        let mut double_spent_attempt_txs = vec![double_spent_attempt_tx.clone()];
+
+        let timestamp = mock_timestamp_generator.next();
+        let block_z3 = Block::new(BlockCore::new(
+            block_z2.id() + 1,
+            timestamp,
+            block_z2.hash(),
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(
+                block_z2.start_burnfee(),
+                timestamp,
+                block_z2.timestamp(),
+            ),
+            0.0,
+            &mut double_spent_attempt_txs,
+        ));
+
+        let result: AddBlockEvent = blockchain.add_block(block_z3.clone());
+        // z3 is rejected because it contains an unspendable transaction from y2
+        assert_eq!(result, AddBlockEvent::InvalidBlock);
+
+        let timestamp = mock_timestamp_generator.next();
+        let block_y3 = Block::new(BlockCore::new(
+            block_y2.id() + 1,
+            timestamp,
+            block_y2.hash(),
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(
+                block_y2.start_burnfee(),
+                timestamp,
+                block_y2.timestamp(),
+            ),
+            0.0,
+            &mut double_spent_attempt_txs,
+        ));
+
+        let result: AddBlockEvent = blockchain.add_block(block_y3.clone());
+        // y3 also spends from y2 but is accepted because y2 is it's parent
+        assert_eq!(result, AddBlockEvent::Accepted);
+    }
+
     #[test]
     fn add_block_test() {
         let keypair = Keypair::new();
-        let (mut blockchain, mut slips) =
+        let mut mock_timestamp_generator = MockTimestampGenerator::new();
+        let (mut blockchain, _slips) =
             test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH);
 
         let block = blockchain.latest_block().unwrap();
-        let mut prev_block_hash = block.hash().clone();
+        let mut prev_block_hash = block.hash();
         let mut prev_block_id = block.id();
-        let first_block_hash = block.hash().clone();
+        let mut prev_burn_fee = block.start_burnfee();
+        let mut prev_timestamp = block.timestamp();
+        let first_block_hash = block.hash();
+        let first_block_id = block.id();
+        let first_burn_fee = block.start_burnfee();
+        let first_timestamp = block.timestamp();
 
         for _n in 0..5 {
-            let block = test_utilities::make_mock_block(
-                &keypair,
-                prev_block_hash,
+            let timestamp = mock_timestamp_generator.next();
+            let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
-                slips.pop().unwrap().0,
-            );
+                timestamp,
+                prev_block_hash,
+                *keypair.public_key(),
+                0,
+                TREASURY,
+                BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+                0.0,
+                &mut vec![],
+            ));
+
             prev_block_hash = block.hash().clone();
             prev_block_id = block.id();
+            prev_burn_fee = block.start_burnfee();
+            prev_timestamp = block.timestamp();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
             // println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
         }
         // make a fork
-        let block =
-            test_utilities::make_mock_block(&keypair, first_block_hash, 1, slips.pop().unwrap().0);
-        let result: AddBlockEvent = blockchain.add_block(block.clone());
-        prev_block_hash = block.hash().clone();
+        let timestamp = mock_timestamp_generator.next() + 1;
+        let block = Block::new(BlockCore::new(
+            first_block_id + 1,
+            timestamp,
+            first_block_hash,
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(first_burn_fee, timestamp, first_timestamp),
+            0.0,
+            &mut vec![],
+        ));
+        prev_block_hash = block.hash();
         prev_block_id = block.id();
+        prev_burn_fee = block.start_burnfee();
+        prev_timestamp = block.timestamp();
+
+        let result: AddBlockEvent = blockchain.add_block(block.clone());
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::Accepted);
 
         for _n in 0..4 {
-            let block = test_utilities::make_mock_block(
-                &keypair,
-                prev_block_hash,
+            let timestamp = mock_timestamp_generator.next();
+            let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
-                slips.pop().unwrap().0,
-            );
-            prev_block_hash = block.hash().clone();
+                timestamp,
+                prev_block_hash,
+                *keypair.public_key(),
+                0,
+                TREASURY,
+                BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+                0.0,
+                &mut vec![],
+            ));
+            prev_block_hash = block.hash();
             prev_block_id = block.id();
+            prev_burn_fee = block.start_burnfee();
+            prev_timestamp = block.timestamp();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
             // println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::Accepted);
         }
         // new longest chain tip on top of the fork
-        let block = test_utilities::make_mock_block(
-            &keypair,
-            prev_block_hash,
+        let timestamp = mock_timestamp_generator.next();
+        let block = Block::new(BlockCore::new(
             prev_block_id + 1,
-            slips.pop().unwrap().0,
-        );
+            timestamp,
+            prev_block_hash,
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+            0.0,
+            &mut vec![],
+        ));
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
 
         // make another fork
-        let block =
-            test_utilities::make_mock_block(&keypair, first_block_hash, 1, slips.pop().unwrap().0);
-        let result: AddBlockEvent = blockchain.add_block(block.clone());
+        let timestamp = mock_timestamp_generator.next();
+        let block = Block::new(BlockCore::new(
+            first_block_id + 1,
+            timestamp,
+            first_block_hash,
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(first_burn_fee, timestamp, first_timestamp),
+            0.0,
+            &mut vec![],
+        ));
         prev_block_hash = block.hash().clone();
         prev_block_id = block.id();
+        prev_burn_fee = block.start_burnfee();
+        prev_timestamp = block.timestamp();
+        let result: AddBlockEvent = blockchain.add_block(block.clone());
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::Accepted);
 
         for _n in 0..5 {
-            let block = test_utilities::make_mock_block(
-                &keypair,
-                prev_block_hash,
+            let timestamp = mock_timestamp_generator.next();
+            let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
-                slips.pop().unwrap().0,
-            );
-            prev_block_hash = block.hash().clone();
+                timestamp,
+                prev_block_hash,
+                *keypair.public_key(),
+                0,
+                TREASURY,
+                BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+                0.0,
+                &mut vec![],
+            ));
+            prev_block_hash = block.hash();
             prev_block_id = block.id();
+            prev_burn_fee = block.start_burnfee();
+            prev_timestamp = block.timestamp();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
             // println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::Accepted);
         }
         // new longest chain tip on top of the fork
-        let block = test_utilities::make_mock_block(
-            &keypair,
-            prev_block_hash,
+        let timestamp = mock_timestamp_generator.next();
+        let block = Block::new(BlockCore::new(
             prev_block_id + 1,
-            slips.pop().unwrap().0,
-        );
+            timestamp,
+            prev_block_hash,
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+            0.0,
+            &mut vec![],
+        ));
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
@@ -564,62 +806,107 @@ mod tests {
         prev_block = blockchain.get_block_by_hash(&prev_block_hash).unwrap();
         prev_block_hash = prev_block.hash().clone();
         prev_block_id = prev_block.id();
+        prev_burn_fee = prev_block.start_burnfee();
+        prev_timestamp = prev_block.timestamp();
 
         for _n in 0..2 {
-            let block = test_utilities::make_mock_block(
-                &keypair,
-                prev_block_hash,
+            let timestamp = mock_timestamp_generator.next();
+            let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
-                slips.pop().unwrap().0,
-            );
-            prev_block_hash = block.hash().clone();
+                timestamp,
+                prev_block_hash,
+                *keypair.public_key(),
+                0,
+                TREASURY,
+                BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+                0.0,
+                &mut vec![],
+            ));
+            prev_block_hash = block.hash();
             prev_block_id = block.id();
+            prev_burn_fee = block.start_burnfee();
+            prev_timestamp = block.timestamp();
             let result: AddBlockEvent = blockchain.add_block(block.clone());
             // println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::Accepted);
         }
 
-        let block = test_utilities::make_mock_block(
-            &keypair,
-            prev_block_hash,
+        let timestamp = mock_timestamp_generator.next();
+        let block = Block::new(BlockCore::new(
             prev_block_id + 1,
-            slips.pop().unwrap().0,
-        );
-        prev_block_hash = block.hash().clone();
+            timestamp,
+            prev_block_hash,
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+            0.0,
+            &mut vec![],
+        ));
+        prev_block_hash = block.hash();
         prev_block_id = block.id();
+        prev_burn_fee = block.start_burnfee();
+        prev_timestamp = block.timestamp();
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
 
-        let block = test_utilities::make_mock_block(
-            &keypair,
-            prev_block_hash,
+        // make another block because why not
+        let timestamp = mock_timestamp_generator.next();
+        let block = Block::new(BlockCore::new(
             prev_block_id + 1,
-            slips.pop().unwrap().0,
-        );
+            timestamp,
+            prev_block_hash,
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+            0.0,
+            &mut vec![],
+        ));
         let result: AddBlockEvent = blockchain.add_block(block.clone());
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
 
         // make another fork
-        let block =
-            test_utilities::make_mock_block(&keypair, first_block_hash, 1, slips.pop().unwrap().0);
-        let result: AddBlockEvent = blockchain.add_block(block.clone());
+        let timestamp = mock_timestamp_generator.next();
+        let block = Block::new(BlockCore::new(
+            first_block_id + 1,
+            timestamp,
+            first_block_hash,
+            *keypair.public_key(),
+            0,
+            TREASURY,
+            BurnFee::burn_fee_adjustment_calculation(first_burn_fee, timestamp, first_timestamp),
+            0.0,
+            &mut vec![],
+        ));
         prev_block_hash = block.hash().clone();
         prev_block_id = block.id();
+        prev_burn_fee = block.start_burnfee();
+        prev_timestamp = block.timestamp();
+        let result = blockchain.add_block(block.clone());
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::Accepted);
 
         // run past 2x EPOCH_LENGTH blocks to test the epoch a bit
         for _n in 0..(2 * EPOCH_LENGTH + 1) {
-            let block = test_utilities::make_mock_block(
-                &keypair,
-                prev_block_hash,
+            let timestamp = mock_timestamp_generator.next();
+            let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
-                slips.pop().unwrap().0,
-            );
-            prev_block_hash = block.hash().clone();
+                timestamp,
+                prev_block_hash,
+                *keypair.public_key(),
+                0,
+                TREASURY,
+                BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+                0.0,
+                &mut vec![],
+            ));
+            prev_block_hash = block.hash();
             prev_block_id = block.id();
+            prev_burn_fee = block.start_burnfee();
+            prev_timestamp = block.timestamp();
             let result = blockchain.add_block(block.clone());
             // println!("{} {:?}", block.id(), result);
             // weak assertion is okay here, we just want to make sure nothing panics

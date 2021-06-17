@@ -8,6 +8,22 @@ use crate::slip::{OutputSlip, SlipID, SlipType};
 use crate::time::create_timestamp;
 use crate::transaction::{Transaction, TransactionCore, TransactionType};
 
+pub struct MockTimestampGenerator {
+    timestamp: u64,
+}
+
+impl MockTimestampGenerator {
+    pub fn new() -> MockTimestampGenerator {
+        MockTimestampGenerator {
+            timestamp: create_timestamp(),
+        }
+    }
+    pub fn next(&mut self) -> u64 {
+        self.timestamp += 1000;
+        self.timestamp
+    }
+}
+
 pub fn make_mock_blockchain_and_slips(
     keypair: &Keypair,
     slip_count: u64,

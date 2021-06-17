@@ -59,7 +59,6 @@ pub fn generate_golden_ticket_transaction(
 
     // TODO -- create our Golden Ticket
     // until we implement serializers, paysplit and difficulty functionality this doesn't do much
-    println!("LOCK generate_golden_ticket_transaction");
     let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
     let blockchain = blockchain_mutex.lock().unwrap();
 
