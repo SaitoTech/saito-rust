@@ -1026,7 +1026,7 @@
                         <span class="kw">if</span> <span class="ident">fork_chains</span>.<span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
                             <span class="kw">return</span> <span class="self">self</span>
                                 .<span class="ident">utxoset</span>
-                                .<span class="ident">is_slip_spendable_at_block</span>(<span class="ident">input</span>, <span class="ident">previous_block</span>);
+                                .<span class="ident">is_slip_spendable_at_block</span>(<span class="ident">input</span>, <span class="ident">previous_block</span>.<span class="ident">id</span>());
                         } <span class="kw">else</span> {
                             <span class="kw">return</span> <span class="self">self</span>
                                 .<span class="ident">utxoset</span>
