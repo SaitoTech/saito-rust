@@ -16,7 +16,7 @@ pub async fn main() -> saito_rust::Result<()> {
     let keypair = Keypair::new();
 
     let (mut blockchain, mut slips) =
-        test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 100000);
+        test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 100000).await;
     let prev_block = blockchain.latest_block().unwrap();
 
     let mut prev_block_hash = prev_block.hash().clone();
@@ -28,7 +28,7 @@ pub async fn main() -> saito_rust::Result<()> {
     let mut start_ts;
     let mut finish_ts;
 
-    for _ in 0..100 {
+    for _ in 0..100 as i32 {
         let pairs: Vec<(SlipID, OutputSlip)> = (0..1000)
             .into_iter()
             .map(|_| slips.pop().unwrap())
@@ -49,7 +49,7 @@ pub async fn main() -> saito_rust::Result<()> {
                         vec![slip_pair.0],
                         vec![to_slip],
                         TransactionType::Normal,
-                        (0..1024)
+                        (0..102400)
                             .into_par_iter()
                             .map(|_| rand::random::<u8>())
                             .collect(),
@@ -77,7 +77,7 @@ pub async fn main() -> saito_rust::Result<()> {
         prev_timestamp = block.timestamp();
 
         start_ts = create_timestamp();
-        let result = blockchain.add_block_async(block).await;
+        let result = blockchain.add_block(block).await;
         assert!(result == AddBlockEvent::AcceptedAsLongestChain);
         finish_ts = create_timestamp();
         add_block_timestamps.push(finish_ts - start_ts);

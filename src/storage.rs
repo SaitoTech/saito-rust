@@ -58,7 +58,7 @@ impl Storage {
         fs::read_dir(self.blocks_dir_path.clone()).unwrap()
     }
 
-    pub fn roll_forward(&self, block: &Block) {
+    pub async fn roll_forward(&self, block: &Block) {
         let mut filename = self.blocks_dir_path.clone();
         filename.push_str(&block.hash_as_hex());
         filename.push_str(&".sai");
@@ -69,10 +69,11 @@ impl Storage {
                 new_filename.push_str(&String::from("-"));
                 new_filename.push_str(&block.hash_as_hex().clone());
                 new_filename.push_str(&".sai");
+                println!("new filename {}", new_filename);
                 rename(filename, new_filename).unwrap();
             }
             false => {
-                self.write_block_to_disk(block, true).unwrap();
+                self.write_block_to_disk_async(block, true).await.unwrap();
             }
         }
     }
@@ -88,29 +89,6 @@ impl Storage {
         new_filename.push_str(&block.hash_as_hex().clone());
         new_filename.push_str(&".sai");
         rename(filename, new_filename).unwrap();
-    }
-
-    pub async fn roll_forward_async(&self, block: &Block) {
-        let mut filename = self.blocks_dir_path.clone();
-        filename.push_str(&block.hash_as_hex());
-        filename.push_str(&".sai");
-        println!("rollforward! {}", filename);
-        match Path::new(&filename[..]).exists() {
-            true => {
-                println!("FOUND");
-                let mut new_filename = self.blocks_dir_path.clone();
-                new_filename.push_str(&hex::encode(block.id().to_be_bytes()));
-                new_filename.push_str(&String::from("-"));
-                new_filename.push_str(&block.hash_as_hex().clone());
-                new_filename.push_str(&".sai");
-                println!("new filename {}", new_filename);
-                rename(filename, new_filename).unwrap();
-            }
-            false => {
-                println!("NOT FOUND");
-                self.write_block_to_disk_async(block, true).await.unwrap();
-            } // move file
-        }
     }
 
     pub async fn write_block_to_disk_async(

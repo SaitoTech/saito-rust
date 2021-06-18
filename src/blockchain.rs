@@ -8,6 +8,7 @@ use crate::longest_chain_queue::LongestChainQueue;
 use crate::storage::Storage;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
+
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -146,10 +147,11 @@ impl Blockchain {
             new_chain: new_chain,
         }
     }
+
     /// Append `Block` to the index of `Blockchain`
     /// These `AddBlockEvent`s will be turned into network responses so peers can figure out
     /// what's going on.
-    pub fn add_block(&mut self, block: Block) -> AddBlockEvent {
+    pub async fn add_block(&mut self, block: Block) -> AddBlockEvent {
         // TODO: Should we pass a serialized block [u8] to add_block instead of a Block?
         let is_first_block = block.previous_block_hash() == &[0u8; 32]
             && !self.contains_block_hash(block.previous_block_hash());
@@ -159,113 +161,39 @@ impl Blockchain {
             AddBlockEvent::ParentNotFound
         } else {
             let fork_chains: ForkChains = self.find_fork_chains(&block);
+
             if !self.validate_block(&block, &fork_chains) {
                 AddBlockEvent::InvalidBlock
             } else {
-                println!("FINISHED VALIDATING");
                 let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
                 let is_new_lc_tip = !latest_block_hash.is_none()
                     && &latest_block_hash.unwrap() == block.previous_block_hash();
-                println!("IS FIRST BLOCK: {:?}", is_first_block);
-                println!("IS LC TIP: {:?}", is_new_lc_tip);
                 if is_first_block || is_new_lc_tip {
                     // First Block or we'e new tip of the longest chain
                     self.longest_chain_queue.roll_forward(block.hash());
-
                     self.utxoset.roll_forward(&block);
-
                     self.fork_tree.insert(block.hash(), block.clone()).unwrap();
-                    self.storage.roll_forward(&block);
+                    self.storage.roll_forward(&block).await;
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
                 } else {
                     if self.is_longer_chain(&fork_chains.new_chain, &fork_chains.old_chain) {
                         self.fork_tree.insert(block.hash(), block).unwrap();
                         // Unwind the old chain
-                        fork_chains.old_chain.iter().for_each(|block_hash| {
+                        for block_hash in fork_chains.old_chain.iter() {
                             let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
                             self.longest_chain_queue.roll_back();
                             self.utxoset.roll_back(block);
                             self.storage.roll_back(&block);
-                        });
+                        }
+
                         // Wind up the new chain
-                        fork_chains.new_chain.iter().rev().for_each(|block_hash| {
+                        for block_hash in fork_chains.new_chain.iter().rev() {
                             let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
                             self.longest_chain_queue.roll_forward(block.hash());
                             self.utxoset.roll_forward(block);
-                            self.storage.roll_forward(&block);
-                        });
-
-                        AddBlockEvent::AcceptedAsNewLongestChain
-                    } else {
-                        // we're just building on a new chain. Won't take over... yet!
-                        self.utxoset.roll_forward_on_fork(&block);
-                        self.fork_tree.insert(block.hash(), block).unwrap();
-                        AddBlockEvent::Accepted
-                    }
-                }
-            }
-        }
-    }
-
-    /// Append `Block` to the index of `Blockchain`
-    /// These `AddBlockEvent`s will be turned into network responses so peers can figure out
-    /// what's going on.
-    pub async fn add_block_async(&mut self, block: Block) -> AddBlockEvent {
-        // TODO: Should we pass a serialized block [u8] to add_block instead of a Block?
-        let is_first_block = block.previous_block_hash() == &[0u8; 32]
-            && !self.contains_block_hash(block.previous_block_hash());
-        if self.contains_block_hash(&(block.hash())) {
-            AddBlockEvent::AlreadyKnown
-        } else if !is_first_block && !self.contains_block_hash(block.previous_block_hash()) {
-            AddBlockEvent::ParentNotFound
-        } else {
-            let fork_chains: ForkChains = self.find_fork_chains(&block);
-            if !self.validate_block(&block, &fork_chains) {
-                AddBlockEvent::InvalidBlock
-            } else {
-                println!("FINISHED VALIDATING");
-                let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
-                let is_new_lc_tip = !latest_block_hash.is_none()
-                    && &latest_block_hash.unwrap() == block.previous_block_hash();
-                println!("IS FIRST BLOCK: {:?}", is_first_block);
-                println!("IS LC TIP: {:?}", is_new_lc_tip);
-                if is_first_block || is_new_lc_tip {
-                    // First Block or we'e new tip of the longest chain
-                    println!("LONGEST CHAIN QUEUE");
-                    self.longest_chain_queue.roll_forward(block.hash());
-
-                    println!("UTXOSET ROLL FORWARD");
-                    self.utxoset.roll_forward(&block);
-
-                    println!("FORK_TREE INSERT");
-                    self.fork_tree.insert(block.hash(), block.clone()).unwrap();
-                    self.storage.roll_forward_async(&block).await;
-                    println!("Block accepted, written to disk");
-                    AddBlockEvent::AcceptedAsLongestChain
-                // We are not on the longest chain, need to find the commone ancestor
-                } else {
-                    if self.is_longer_chain(&fork_chains.new_chain, &fork_chains.old_chain) {
-                        self.fork_tree.insert(block.hash(), block).unwrap();
-                        // Unwind the old chain
-                        fork_chains.old_chain.iter().for_each(|block_hash| {
-                            let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
-                            self.longest_chain_queue.roll_back();
-                            self.utxoset.roll_back(block);
-                            self.storage.roll_back(&block);
-                        });
-                        // Wind up the new chain
-                        // let tasks = fork_chains.new_chain.iter().rev().map(|block_hash| {
-                        fork_chains.new_chain.iter().rev().for_each(|block_hash| {
-                            let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
-                            self.longest_chain_queue.roll_forward(block.hash());
-                            self.utxoset.roll_forward(block);
-                            self.storage.roll_forward(&block);
-                        });
-
-                        // for task in tasks {
-                        //     task.await.unwrap();
-                        // }
+                            self.storage.roll_forward(block).await;
+                        }
 
                         AddBlockEvent::AcceptedAsNewLongestChain
                     } else {
@@ -280,14 +208,11 @@ impl Blockchain {
     }
 
     fn validate_block(&self, block: &Block, fork_chains: &ForkChains) -> bool {
-        println!("VALIDATING BLOCK");
         // If the block has an empty hash as previous_block_hash, it's valid no question
         let previous_block_hash = block.previous_block_hash();
         if previous_block_hash == &[0; 32] && block.id() == 0 {
             return true;
         }
-
-        println!("CHECKING BLOCK HASH");
         // If the previous block hash doesn't exist in the ForkTree, it's rejected
         if !self.fork_tree.contains_block_hash(previous_block_hash) {
             return false;
@@ -316,7 +241,6 @@ impl Blockchain {
             return false;
         }
 
-        println!("CHECK WORK NEEDED");
         // validate the fees match the work required to make a block
         // let work_available: u64 = block
         //     .transactions()
@@ -339,7 +263,6 @@ impl Blockchain {
             return false;
         }
 
-        println!("GOLDEN TICKET COUNT");
         let golden_ticket_count = block.transactions().iter().fold(0, |acc, tx| {
             if tx.core.broadcast_type() == &TransactionType::GoldenTicket {
                 acc + 1
@@ -355,7 +278,6 @@ impl Blockchain {
             .iter()
             .all(|tx| self.validate_transaction(previous_block, tx, fork_chains));
 
-        println!("FINISHED VALIDATING");
         transactions_valid
     }
 
@@ -462,13 +384,13 @@ mod tests {
 
         Ok(())
     }
-    #[test]
-    fn double_spend_on_fork_test() {
+    #[tokio::test]
+    async fn double_spend_on_fork_test() {
         let keypair = Keypair::new();
 
         let mut mock_timestamp_generator = MockTimestampGenerator::new();
         let (mut blockchain, mut slips) =
-            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH);
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH).await;
         let block = blockchain.latest_block().unwrap();
 
         let mut prev_block_hash = block.hash();
@@ -480,7 +402,7 @@ mod tests {
         let first_burn_fee = block.start_burnfee();
         let first_timestamp = block.timestamp();
 
-        for _n in 0..3 {
+        for _ in 0..3 {
             let timestamp = mock_timestamp_generator.next();
             let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
@@ -498,7 +420,7 @@ mod tests {
             prev_block_id = block.id();
             prev_burn_fee = block.start_burnfee();
             prev_timestamp = block.timestamp();
-            let result: AddBlockEvent = blockchain.add_block(block.clone());
+            let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
             assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
         }
         // make a fork
@@ -515,7 +437,7 @@ mod tests {
             &mut vec![],
         ));
 
-        let result: AddBlockEvent = blockchain.add_block(block_y1.clone());
+        let result: AddBlockEvent = blockchain.add_block(block_y1.clone()).await;
         assert_eq!(result, AddBlockEvent::Accepted);
 
         // make a valid tx to add to block y2
@@ -570,7 +492,7 @@ mod tests {
             &mut txs,
         ));
 
-        let result: AddBlockEvent = blockchain.add_block(block_y2.clone());
+        let result: AddBlockEvent = blockchain.add_block(block_y2.clone()).await;
         assert_eq!(result, AddBlockEvent::Accepted);
 
         let timestamp = mock_timestamp_generator.next();
@@ -589,7 +511,8 @@ mod tests {
             0.0,
             &mut vec![],
         ));
-        let result: AddBlockEvent = blockchain.add_block(block_z2.clone());
+        let result: AddBlockEvent = blockchain.add_block(block_z2.clone()).await;
+
         assert_eq!(result, AddBlockEvent::Accepted);
 
         let mut double_spent_attempt_txs = vec![double_spent_attempt_tx.clone()];
@@ -611,7 +534,7 @@ mod tests {
             &mut double_spent_attempt_txs,
         ));
 
-        let result: AddBlockEvent = blockchain.add_block(block_z3.clone());
+        let result: AddBlockEvent = blockchain.add_block(block_z3.clone()).await;
         // z3 is rejected because it contains an unspendable transaction from y2
         assert_eq!(result, AddBlockEvent::InvalidBlock);
 
@@ -632,17 +555,17 @@ mod tests {
             &mut double_spent_attempt_txs,
         ));
 
-        let result: AddBlockEvent = blockchain.add_block(block_y3.clone());
+        let result: AddBlockEvent = blockchain.add_block(block_y3.clone()).await;
         // y3 also spends from y2 but is accepted because y2 is it's parent
         assert_eq!(result, AddBlockEvent::Accepted);
     }
 
-    #[test]
-    fn add_block_test() {
+    #[tokio::test]
+    async fn add_block_test() {
         let keypair = Keypair::new();
         let mut mock_timestamp_generator = MockTimestampGenerator::new();
         let (mut blockchain, _slips) =
-            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH);
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH).await;
 
         let block = blockchain.latest_block().unwrap();
         let mut prev_block_hash = block.hash();
@@ -654,7 +577,7 @@ mod tests {
         let first_burn_fee = block.start_burnfee();
         let first_timestamp = block.timestamp();
 
-        for _n in 0..5 {
+        for n in 0..5 as i32 {
             let timestamp = mock_timestamp_generator.next();
             let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
@@ -672,8 +595,9 @@ mod tests {
             prev_block_id = block.id();
             prev_burn_fee = block.start_burnfee();
             prev_timestamp = block.timestamp();
-            let result: AddBlockEvent = blockchain.add_block(block.clone());
+            let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
             // println!("{:?}", result);
+            assert_eq!(blockchain.latest_block().unwrap().id(), (n + 1) as u64);
             assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
         }
         // make a fork
@@ -694,11 +618,12 @@ mod tests {
         prev_burn_fee = block.start_burnfee();
         prev_timestamp = block.timestamp();
 
-        let result: AddBlockEvent = blockchain.add_block(block.clone());
+        let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
+
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::Accepted);
 
-        for _n in 0..4 {
+        for _ in 0..4 as i32 {
             let timestamp = mock_timestamp_generator.next();
             let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
@@ -715,7 +640,7 @@ mod tests {
             prev_block_id = block.id();
             prev_burn_fee = block.start_burnfee();
             prev_timestamp = block.timestamp();
-            let result: AddBlockEvent = blockchain.add_block(block.clone());
+            let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
             // println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::Accepted);
         }
@@ -732,8 +657,12 @@ mod tests {
             0.0,
             &mut vec![],
         ));
-        let result: AddBlockEvent = blockchain.add_block(block.clone());
+
+        let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
         // println!("{:?}", result);
+        assert_eq!(blockchain.latest_block().unwrap().hash(), block.hash());
+        assert_eq!(blockchain.latest_block().unwrap().id(), block.id());
+
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
 
         // make another fork
@@ -753,11 +682,11 @@ mod tests {
         prev_block_id = block.id();
         prev_burn_fee = block.start_burnfee();
         prev_timestamp = block.timestamp();
-        let result: AddBlockEvent = blockchain.add_block(block.clone());
+        let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::Accepted);
 
-        for _n in 0..5 {
+        for _n in 0..5 as i32 {
             let timestamp = mock_timestamp_generator.next();
             let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
@@ -774,7 +703,7 @@ mod tests {
             prev_block_id = block.id();
             prev_burn_fee = block.start_burnfee();
             prev_timestamp = block.timestamp();
-            let result: AddBlockEvent = blockchain.add_block(block.clone());
+            let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
             // println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::Accepted);
         }
@@ -791,7 +720,7 @@ mod tests {
             0.0,
             &mut vec![],
         ));
-        let result: AddBlockEvent = blockchain.add_block(block.clone());
+        let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
 
@@ -804,12 +733,13 @@ mod tests {
         let mut prev_block = blockchain.get_block_by_hash(&prev_block_hash).unwrap();
         prev_block_hash = prev_block.previous_block_hash().clone();
         prev_block = blockchain.get_block_by_hash(&prev_block_hash).unwrap();
+
         prev_block_hash = prev_block.hash().clone();
         prev_block_id = prev_block.id();
         prev_burn_fee = prev_block.start_burnfee();
         prev_timestamp = prev_block.timestamp();
 
-        for _n in 0..2 {
+        for _ in 0..2 as i32 {
             let timestamp = mock_timestamp_generator.next();
             let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
@@ -826,7 +756,7 @@ mod tests {
             prev_block_id = block.id();
             prev_burn_fee = block.start_burnfee();
             prev_timestamp = block.timestamp();
-            let result: AddBlockEvent = blockchain.add_block(block.clone());
+            let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
             // println!("{:?}", result);
             assert_eq!(result, AddBlockEvent::Accepted);
         }
@@ -847,7 +777,7 @@ mod tests {
         prev_block_id = block.id();
         prev_burn_fee = block.start_burnfee();
         prev_timestamp = block.timestamp();
-        let result: AddBlockEvent = blockchain.add_block(block.clone());
+        let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
 
@@ -864,7 +794,7 @@ mod tests {
             0.0,
             &mut vec![],
         ));
-        let result: AddBlockEvent = blockchain.add_block(block.clone());
+        let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
 
@@ -885,7 +815,7 @@ mod tests {
         prev_block_id = block.id();
         prev_burn_fee = block.start_burnfee();
         prev_timestamp = block.timestamp();
-        let result = blockchain.add_block(block.clone());
+        let result = blockchain.add_block(block.clone()).await;
         // println!("{:?}", result);
         assert_eq!(result, AddBlockEvent::Accepted);
 
@@ -907,8 +837,8 @@ mod tests {
             prev_block_id = block.id();
             prev_burn_fee = block.start_burnfee();
             prev_timestamp = block.timestamp();
-            let result = blockchain.add_block(block.clone());
-            // println!("{} {:?}", block.id(), result);
+            let result = blockchain.add_block(block.clone()).await;
+
             // weak assertion is okay here, we just want to make sure nothing panics
             assert!(
                 result == AddBlockEvent::Accepted
