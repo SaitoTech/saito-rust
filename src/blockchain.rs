@@ -183,6 +183,7 @@ impl Blockchain {
                     "             VALIDATED BLOCK: {:?}",
                     tracing_tracker.time_since_last()
                 );
+
                 let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
                 let is_new_lc_tip = !latest_block_hash.is_none()
                     && &latest_block_hash.unwrap() == block.previous_block_hash();
@@ -217,6 +218,7 @@ impl Blockchain {
                         "             STORAGE ROLLFWD: {:?}",
                         tracing_tracker.time_since_last()
                     );
+
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
                 } else {

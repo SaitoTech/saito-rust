@@ -93,6 +93,7 @@ impl Consensus {
                     &path.path().to_str().unwrap()
                 );
                 let mut tracing_timer = TracingTimer::new();
+
                 let bytes = blockchain
                     .storage
                     .read(&path.path().to_str().unwrap())
@@ -109,8 +110,8 @@ impl Consensus {
                     "                  DESERIALIZE: {:?}",
                     tracing_timer.time_since_last()
                 );
-
                 let block_id = block.id();
+
                 match blockchain.add_block(block).await {
                     AddBlockEvent::AcceptedAsLongestChain
                     | AddBlockEvent::AcceptedAsNewLongestChain => {
@@ -166,8 +167,10 @@ impl Consensus {
                         if let Some(block) = mempool.process(message) {
                             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
                             let mut blockchain = blockchain_mutex.lock().unwrap();
+
                             let block_hash = block.hash();
                             let block_id = block.id();
+
                             match blockchain.add_block(block).await {
                                 AddBlockEvent::AcceptedAsLongestChain
                                 | AddBlockEvent::AcceptedAsNewLongestChain => {
