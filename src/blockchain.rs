@@ -15,6 +15,8 @@ use crate::utxoset::UtxoSet;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use rayon::prelude::*;
+
 // A lazy-loaded global static reference to Blockchain. For now, we will simply treat
 // everything(utxoset, mempool, etc) as a single shared resource which is managed by blockchain.
 // In the future we may want to create separate globals for some of the resources being held
@@ -320,7 +322,7 @@ impl Blockchain {
         }
         let transactions_valid = block
             .transactions()
-            .iter()
+            .par_iter()
             .all(|tx| self.validate_transaction(previous_block, tx, fork_chains));
 
         transactions_valid
