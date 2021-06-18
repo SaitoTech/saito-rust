@@ -2,10 +2,13 @@ use crate::block::Block;
 use crate::blockchain::ForkChains;
 use crate::crypto::Sha256Hash;
 use crate::slip::{OutputSlip, SlipID};
+use crate::time::TracingAccumulator;
+use crate::time::TracingTimer;
 use crate::transaction::{Transaction, TransactionCore};
 use secp256k1::PublicKey;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use tracing::Level;
 
 #[derive(Debug, Clone, PartialEq)]
 enum LongestChainSpentTime {
@@ -93,10 +96,28 @@ impl UtxoSet {
     }
 
     pub fn roll_forward(&mut self, block: &Block) {
-        block
-            .transactions()
-            .iter()
-            .for_each(|tx| self.roll_forward_transaction(tx, block));
+        let mut tracing_timer = TracingTimer::new();
+
+        let mut tracing_accumulator = TracingAccumulator::new();
+        block.transactions().iter().for_each(|tx| {
+            tracing_accumulator.set_start();
+            self.roll_forward_transaction(tx, block);
+            tracing_accumulator.accumulate_time_since_start();
+        });
+        event!(
+            Level::TRACE,
+            "                  ADDED {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_accumulator.finish()
+        );
+        event!(
+            Level::TRACE,
+            "                  ADDED {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_timer.time_since_last()
+        );
     }
 
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
@@ -434,10 +455,11 @@ mod test {
     use super::*;
     use crate::{crypto::hash_bytes, keypair::Keypair, test_utilities, transaction::Hop};
 
-    #[test]
-    fn roll_forward_and_back_test() {
+    #[tokio::test]
+    async fn roll_forward_and_back_test() {
         let keypair = Keypair::new();
-        let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 1);
+        let (mut blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 1).await;
 
         let from_slip = slips.first().unwrap().0;
         let block = test_utilities::make_mock_block(&keypair, [0; 32], 1, from_slip);
@@ -483,10 +505,11 @@ mod test {
         }
     }
 
-    #[test]
-    fn roll_forward_and_back_fork_test() {
+    #[tokio::test]
+    async fn roll_forward_and_back_fork_test() {
         let keypair = Keypair::new();
-        let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 1);
+        let (mut blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 1).await;
 
         let from_slip = slips.first().unwrap().0;
         let block = test_utilities::make_mock_block(&keypair, [0; 32], 1, from_slip);
@@ -530,10 +553,11 @@ mod test {
         }
     }
 
-    #[test]
-    fn roll_forward_and_back_transaction_test() {
+    #[tokio::test]
+    async fn roll_forward_and_back_transaction_test() {
         let keypair = Keypair::new();
-        let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (mut blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         // make a mock tx
         let (slip_id, output_slip) = slips[0];
         let mock_tx = test_utilities::make_mock_tx(
@@ -573,10 +597,11 @@ mod test {
             .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
     }
 
-    #[test]
-    fn roll_forward_and_back_transaction_on_fork_test() {
+    #[tokio::test]
+    async fn roll_forward_and_back_transaction_on_fork_test() {
         let keypair = Keypair::new();
-        let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (mut blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         // make a mock tx
         let (slip_id, output_slip) = slips[0];
         let mock_tx_a = test_utilities::make_mock_tx(
@@ -740,10 +765,11 @@ mod test {
             .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
     }
 
-    #[test]
-    fn get_total_for_inputs_test() {
+    #[tokio::test]
+    async fn get_total_for_inputs_test() {
         let keypair = Keypair::new();
-        let (blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         let mut inputs = vec![];
         slips.iter().for_each(|(slip_id, _output_slip)| {
             inputs.push(*slip_id);
@@ -753,10 +779,11 @@ mod test {
         assert_eq!(50_000_0000_0000, total.unwrap());
     }
 
-    #[test]
-    fn get_receiver_for_inputs_test() {
+    #[tokio::test]
+    async fn get_receiver_for_inputs_test() {
         let keypair = Keypair::new();
-        let (blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         slips.iter().for_each(|(slip_id, _output_slip)| {
             let receiver = blockchain.utxoset.get_receiver_for_inputs(&vec![*slip_id]);
             assert_eq!(receiver.unwrap(), keypair.public_key());
@@ -780,20 +807,22 @@ mod test {
         assert!(is_slip_spendable);
     }
 
-    #[test]
-    fn output_slip_from_slip_id_test() {
+    #[tokio::test]
+    async fn output_slip_from_slip_id_test() {
         let keypair = Keypair::new();
-        let (blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         slips.iter().for_each(|(slip_id, output_slip)| {
             let receiver = blockchain.utxoset.output_slip_from_slip_id(slip_id);
             assert_eq!(receiver.unwrap(), output_slip);
         });
     }
 
-    #[test]
-    fn transaction_routing_work_test() {
+    #[tokio::test]
+    async fn transaction_routing_work_test() {
         let keypair = Keypair::new();
-        let (blockchain, mut slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 2);
+        let (blockchain, mut slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 2).await;
 
         let (input, _) = slips.pop().unwrap();
         let mut tx = test_utilities::make_mock_tx(input, 100, keypair.public_key().clone());
@@ -814,10 +843,11 @@ mod test {
         assert_eq!(624999999975, fees);
     }
 
-    #[test]
-    fn transaction_fees_test() {
+    #[tokio::test]
+    async fn transaction_fees_test() {
         let keypair = Keypair::new();
-        let (blockchain, mut slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 2);
+        let (blockchain, mut slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 2).await;
 
         let (input, _) = slips.pop().unwrap();
         let tx = test_utilities::make_mock_tx(input, 100, keypair.public_key().clone());

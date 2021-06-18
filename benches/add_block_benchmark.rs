@@ -4,6 +4,7 @@ use saito_rust::{
     slip::{OutputSlip, SlipType},
     transaction::{Transaction, TransactionCore},
 };
+
 // fn bench_add_block(c: &mut Criterion) {
 //     let keypair = Keypair::new();
 //     c.bench_function("add block", move |b| {

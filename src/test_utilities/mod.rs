@@ -26,7 +26,7 @@ impl MockTimestampGenerator {
     }
 }
 
-pub fn make_mock_blockchain_and_slips(
+pub async fn make_mock_blockchain_and_slips(
     keypair: &Keypair,
     slip_count: u64,
 ) -> (Blockchain, Vec<(SlipID, OutputSlip)>) {
@@ -72,9 +72,7 @@ pub fn make_mock_blockchain_and_slips(
 
     let block = Block::new(block_core);
 
-    let _result = Runtime::new()
-        .unwrap()
-        .block_on(blockchain.add_block(block));
+    blockchain.add_block(block).await;
     // TODO assert something about this result
 
     (blockchain, slips)

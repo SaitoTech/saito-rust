@@ -16,7 +16,7 @@ pub async fn main() -> saito_rust::Result<()> {
     let keypair = Keypair::new();
 
     let (mut blockchain, mut slips) =
-        test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 100000);
+        test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * 100000).await;
     let prev_block = blockchain.latest_block().unwrap();
 
     let mut prev_block_hash = prev_block.hash().clone();
@@ -77,6 +77,7 @@ pub async fn main() -> saito_rust::Result<()> {
         prev_timestamp = block.timestamp();
 
         start_ts = create_timestamp();
+        println!("ADD BLOCK {}", block.id());
         let result = blockchain.add_block(block).await;
         assert!(result == AddBlockEvent::AcceptedAsLongestChain);
         finish_ts = create_timestamp();
