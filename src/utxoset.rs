@@ -2,10 +2,13 @@ use crate::block::Block;
 use crate::blockchain::ForkChains;
 use crate::crypto::Sha256Hash;
 use crate::slip::{OutputSlip, SlipID};
+use crate::time::TracingAccumulator;
+use crate::time::TracingTimer;
 use crate::transaction::{Transaction, TransactionCore};
 use secp256k1::PublicKey;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use tracing::Level;
 
 #[derive(Debug, Clone, PartialEq)]
 enum LongestChainSpentTime {
@@ -93,10 +96,28 @@ impl UtxoSet {
     }
 
     pub fn roll_forward(&mut self, block: &Block) {
-        block
-            .transactions()
-            .iter()
-            .for_each(|tx| self.roll_forward_transaction(tx, block));
+        let mut tracing_timer = TracingTimer::new();
+
+        let mut tracing_accumulator = TracingAccumulator::new();
+        block.transactions().iter().for_each(|tx| {
+            tracing_accumulator.set_start();
+            self.roll_forward_transaction(tx, block);
+            tracing_accumulator.accumulate_time_since_start();
+        });
+        event!(
+            Level::TRACE,
+            "                  ADDED {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_accumulator.finish()
+        );
+        event!(
+            Level::TRACE,
+            "                  ADDED {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_timer.time_since_last()
+        );
     }
 
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.

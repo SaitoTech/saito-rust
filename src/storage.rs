@@ -69,7 +69,6 @@ impl Storage {
                 new_filename.push_str(&String::from("-"));
                 new_filename.push_str(&block.hash_as_hex().clone());
                 new_filename.push_str(&".sai");
-                println!("new filename {}", new_filename);
                 rename(filename, new_filename).unwrap();
             }
             false => {

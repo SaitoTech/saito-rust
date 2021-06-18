@@ -1,4 +1,5 @@
 use secp256k1::PublicKey;
+use tracing::Level;
 
 use crate::{
     block::{Block, BlockCore, TREASURY},
@@ -79,8 +80,8 @@ impl Mempool {
                     current_timestamp,
                     previous_block.timestamp(),
                 );
-
-                println!(
+                event!(
+                    Level::DEBUG,
                     "TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}",
                     format_timestamp(current_timestamp),
                     work_needed,
