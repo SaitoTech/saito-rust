@@ -112,7 +112,7 @@
     <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
 
     <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">blockchain</span>, <span class="kw-2">mut</span> <span class="ident">slips</span>) <span class="op">=</span>
-        <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">3</span> <span class="op">*</span> <span class="number">100000</span>);
+        <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">3</span> <span class="op">*</span> <span class="number">100000</span>).<span class="kw">await</span>;
     <span class="kw">let</span> <span class="ident">prev_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">latest_block</span>().<span class="ident">unwrap</span>();
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">prev_block_hash</span> <span class="op">=</span> <span class="ident">prev_block</span>.<span class="ident">hash</span>().<span class="ident">clone</span>();
@@ -124,7 +124,7 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">start_ts</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">finish_ts</span>;
 
-    <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">100</span> {
+    <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">100</span> <span class="kw">as</span> <span class="ident">i32</span> {
         <span class="kw">let</span> <span class="ident">pairs</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">SlipID</span>, <span class="ident">OutputSlip</span>)<span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">1000</span>)
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>())
@@ -145,7 +145,7 @@
                         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">slip_pair</span>.<span class="number">0</span>],
                         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">to_slip</span>],
                         <span class="ident">TransactionType</span>::<span class="ident">Normal</span>,
-                        (<span class="number">0</span>..<span class="number">1024</span>)
+                        (<span class="number">0</span>..<span class="number">102400</span>)
                             .<span class="ident">into_par_iter</span>()
                             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">rand</span>::<span class="ident">random</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>())
                             .<span class="ident">collect</span>(),
@@ -173,7 +173,7 @@
         <span class="ident">prev_timestamp</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">timestamp</span>();
 
         <span class="ident">start_ts</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
-        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block_async</span>(<span class="ident">block</span>).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">result</span> <span class="op">=</span><span class="op">=</span> <span class="ident">AddBlockEvent</span>::<span class="ident">AcceptedAsLongestChain</span>);
         <span class="ident">finish_ts</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
         <span class="ident">add_block_timestamps</span>.<span class="ident">push</span>(<span class="ident">finish_ts</span> <span class="op">-</span> <span class="ident">start_ts</span>);

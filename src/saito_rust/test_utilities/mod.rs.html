@@ -170,7 +170,7 @@
     }
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_mock_blockchain_and_slips</span>(
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">make_mock_blockchain_and_slips</span>(
     <span class="ident">keypair</span>: <span class="kw-2">&amp;</span><span class="ident">Keypair</span>,
     <span class="ident">slip_count</span>: <span class="ident">u64</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Blockchain</span>, <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">SlipID</span>, <span class="ident">OutputSlip</span>)<span class="op">&gt;</span>) {
@@ -216,7 +216,7 @@
 
     <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">new</span>(<span class="ident">block_core</span>);
 
-    <span class="kw">let</span> <span class="ident">_result</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>);
+    <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
     <span class="comment">// TODO assert something about this result</span>
 
     (<span class="ident">blockchain</span>, <span class="ident">slips</span>)
