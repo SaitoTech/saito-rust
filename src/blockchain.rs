@@ -161,33 +161,24 @@ impl Blockchain {
             AddBlockEvent::ParentNotFound
         } else {
             let fork_chains: ForkChains = self.find_fork_chains(&block);
+
             if !self.validate_block(&block, &fork_chains) {
                 AddBlockEvent::InvalidBlock
             } else {
-                println!("FINISHED VALIDATING");
                 let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
                 let is_new_lc_tip = !latest_block_hash.is_none()
                     && &latest_block_hash.unwrap() == block.previous_block_hash();
-                println!("IS FIRST BLOCK: {:?}", is_first_block);
-                println!("IS LC TIP: {:?}", is_new_lc_tip);
                 if is_first_block || is_new_lc_tip {
                     // First Block or we'e new tip of the longest chain
-                    println!("LONGEST CHAIN QUEUE");
                     self.longest_chain_queue.roll_forward(block.hash());
-
-                    println!("UTXOSET ROLL FORWARD");
                     self.utxoset.roll_forward(&block);
-
-                    println!("FORK_TREE INSERT");
                     self.fork_tree.insert(block.hash(), block.clone()).unwrap();
                     self.storage.roll_forward(&block).await;
-                    println!("Block accepted, written to disk");
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
                 } else {
                     if self.is_longer_chain(&fork_chains.new_chain, &fork_chains.old_chain) {
                         self.fork_tree.insert(block.hash(), block).unwrap();
-
                         // Unwind the old chain
                         for block_hash in fork_chains.old_chain.iter() {
                             let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
@@ -197,7 +188,7 @@ impl Blockchain {
                         }
 
                         // Wind up the new chain
-                        for block_hash in fork_chains.new_chain.iter() {
+                        for block_hash in fork_chains.new_chain.iter().rev() {
                             let block: &Block = self.fork_tree.block_by_hash(block_hash).unwrap();
                             self.longest_chain_queue.roll_forward(block.hash());
                             self.utxoset.roll_forward(block);
@@ -217,14 +208,11 @@ impl Blockchain {
     }
 
     fn validate_block(&self, block: &Block, fork_chains: &ForkChains) -> bool {
-        println!("VALIDATING BLOCK");
         // If the block has an empty hash as previous_block_hash, it's valid no question
         let previous_block_hash = block.previous_block_hash();
         if previous_block_hash == &[0; 32] && block.id() == 0 {
             return true;
         }
-
-        println!("CHECKING BLOCK HASH");
         // If the previous block hash doesn't exist in the ForkTree, it's rejected
         if !self.fork_tree.contains_block_hash(previous_block_hash) {
             return false;
@@ -253,7 +241,6 @@ impl Blockchain {
             return false;
         }
 
-        println!("CHECK WORK NEEDED");
         // validate the fees match the work required to make a block
         // let work_available: u64 = block
         //     .transactions()
@@ -276,7 +263,6 @@ impl Blockchain {
             return false;
         }
 
-        println!("GOLDEN TICKET COUNT");
         let golden_ticket_count = block.transactions().iter().fold(0, |acc, tx| {
             if tx.core.broadcast_type() == &TransactionType::GoldenTicket {
                 acc + 1
@@ -292,7 +278,6 @@ impl Blockchain {
             .iter()
             .all(|tx| self.validate_transaction(previous_block, tx, fork_chains));
 
-        println!("FINISHED VALIDATING");
         transactions_valid
     }
 
@@ -405,7 +390,7 @@ mod tests {
 
         let mut mock_timestamp_generator = MockTimestampGenerator::new();
         let (mut blockchain, mut slips) =
-            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH);
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH).await;
         let block = blockchain.latest_block().unwrap();
 
         let mut prev_block_hash = block.hash();
@@ -580,7 +565,7 @@ mod tests {
         let keypair = Keypair::new();
         let mut mock_timestamp_generator = MockTimestampGenerator::new();
         let (mut blockchain, _slips) =
-            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH);
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH).await;
 
         let block = blockchain.latest_block().unwrap();
         let mut prev_block_hash = block.hash();
@@ -592,7 +577,7 @@ mod tests {
         let first_burn_fee = block.start_burnfee();
         let first_timestamp = block.timestamp();
 
-        for _ in 0..5 as i32 {
+        for n in 0..5 as i32 {
             let timestamp = mock_timestamp_generator.next();
             let block = Block::new(BlockCore::new(
                 prev_block_id + 1,
@@ -612,6 +597,7 @@ mod tests {
             prev_timestamp = block.timestamp();
             let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
             // println!("{:?}", result);
+            assert_eq!(blockchain.latest_block().unwrap().id(), (n + 1) as u64);
             assert_eq!(result, AddBlockEvent::AcceptedAsLongestChain);
         }
         // make a fork
@@ -671,8 +657,12 @@ mod tests {
             0.0,
             &mut vec![],
         ));
+
         let result: AddBlockEvent = blockchain.add_block(block.clone()).await;
         // println!("{:?}", result);
+        assert_eq!(blockchain.latest_block().unwrap().hash(), block.hash());
+        assert_eq!(blockchain.latest_block().unwrap().id(), block.id());
+
         assert_eq!(result, AddBlockEvent::AcceptedAsNewLongestChain);
 
         // make another fork
@@ -743,6 +733,7 @@ mod tests {
         let mut prev_block = blockchain.get_block_by_hash(&prev_block_hash).unwrap();
         prev_block_hash = prev_block.previous_block_hash().clone();
         prev_block = blockchain.get_block_by_hash(&prev_block_hash).unwrap();
+
         prev_block_hash = prev_block.hash().clone();
         prev_block_id = prev_block.id();
         prev_burn_fee = prev_block.start_burnfee();
