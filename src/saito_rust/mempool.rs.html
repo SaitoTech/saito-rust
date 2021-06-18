@@ -235,8 +235,10 @@
 <span id="232">232</span>
 <span id="233">233</span>
 <span id="234">234</span>
+<span id="235">235</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">secp256k1</span>::<span class="ident">PublicKey</span>;
+<span class="kw">use</span> <span class="ident">tracing</span>::<span class="ident">Level</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block</span>::{<span class="ident">Block</span>, <span class="ident">BlockCore</span>, <span class="ident">TREASURY</span>},
@@ -317,8 +319,8 @@
                     <span class="ident">current_timestamp</span>,
                     <span class="ident">previous_block</span>.<span class="ident">timestamp</span>(),
                 );
-
-                <span class="macro">println</span><span class="macro">!</span>(
+                <span class="macro">event</span><span class="macro">!</span>(
+                    <span class="ident">Level</span>::<span class="ident">DEBUG</span>,
                     <span class="string">&quot;TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}&quot;</span>,
                     <span class="ident">format_timestamp</span>(<span class="ident">current_timestamp</span>),
                     <span class="ident">work_needed</span>,

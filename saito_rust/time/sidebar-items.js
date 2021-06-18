@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["create_timestamp",""],["format_timestamp",""]]});
+initSidebarItems({"fn":[["create_timestamp",""],["format_timestamp",""]],"struct":[["TracingAccumulator",""],["TracingTimer","A helper for tracing. Get the amount of time passed. Only for use in a single task/thread/future."]]});
