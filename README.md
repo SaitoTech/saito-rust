@@ -32,8 +32,10 @@ rustup component add rustfmt
 ### Run the node
 
 ```
-cargo run
+RUST_LOG=debug cargo run --bin saito_rust
 ```
+
+Possible log levels are Error, Warn, Info, Debug, Trace.
 
 ### Tests
 

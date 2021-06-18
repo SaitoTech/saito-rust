@@ -6,7 +6,7 @@ use crate::{
     keypair::Keypair,
     mempool::Mempool,
     network::Network,
-    time::create_timestamp,
+    time::TracingTimer,
     types::SaitoMessage,
 };
 use std::{
@@ -16,7 +16,7 @@ use std::{
     time::Duration,
 };
 use tokio::sync::{broadcast, mpsc};
-
+use tracing::{span, Level};
 /// The consensus state which exposes a run method
 /// initializes Saito state
 struct Consensus {
@@ -61,7 +61,7 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
             }
         },
         _ = shutdown => {
-            println!("shutting down")
+            println!("Shutting down!")
         }
     }
 
@@ -72,7 +72,9 @@ impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         {
-            println!("LOCK load blocks from disk");
+            let span = span!(Level::TRACE, "Load blocks from disk");
+            let _enter = span.enter();
+            event!(Level::DEBUG, "Start load blocks from disk");
             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
             let mut blockchain = blockchain_mutex.lock().unwrap();
 
@@ -83,25 +85,49 @@ impl Consensus {
                 .collect();
 
             paths.sort_by_key(|dir| dir.path());
+
             for path in paths {
-                println!("START TIMESTAMP: {:?}", create_timestamp());
+                event!(
+                    Level::DEBUG,
+                    "Start load block {}",
+                    &path.path().to_str().unwrap()
+                );
+                let mut tracing_timer = TracingTimer::new();
+
                 let bytes = blockchain
                     .storage
                     .read(&path.path().to_str().unwrap())
                     .unwrap();
+                event!(
+                    Level::TRACE,
+                    "                         READ: {:?}",
+                    tracing_timer.time_since_last()
+                );
                 let block = Block::from(bytes);
-                println!("FINISH TIMESTAMP: {:?}", create_timestamp());
-
                 let block_hash = block.hash().clone();
+                event!(
+                    Level::TRACE,
+                    "                  DESERIALIZE: {:?}",
+                    tracing_timer.time_since_last()
+                );
+                let block_id = block.id();
+
                 match blockchain.add_block(block).await {
                     AddBlockEvent::AcceptedAsLongestChain
                     | AddBlockEvent::AcceptedAsNewLongestChain => {
                         blockchain.get_block_by_hash(&block_hash).unwrap();
                     }
                     fail_message => {
-                        println!("{:?}", fail_message)
+                        event!(Level::ERROR, "{:?}", fail_message);
                     }
                 }
+                event!(
+                    Level::TRACE,
+                    "BLOCK {blockid:>0width$}        ADD BLOCK: {time:?}",
+                    blockid = block_id,
+                    width = 6,
+                    time = tracing_timer.time_since_last()
+                );
             }
         }
 
@@ -116,7 +142,6 @@ impl Consensus {
 
         tokio::spawn(async move {
             loop {
-                println!("TryBundle...");
                 saito_message_tx
                     .send(SaitoMessage::TryBundle)
                     .expect("error: TryBundle message failed to send");
@@ -142,10 +167,14 @@ impl Consensus {
                         if let Some(block) = mempool.process(message) {
                             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
                             let mut blockchain = blockchain_mutex.lock().unwrap();
-                            let block_hash = block.hash().clone();
+
+                            let block_hash = block.hash();
+                            let block_id = block.id();
+
                             match blockchain.add_block(block).await {
                                 AddBlockEvent::AcceptedAsLongestChain
                                 | AddBlockEvent::AcceptedAsNewLongestChain => {
+                                    event!(Level::INFO, "NEW BLOCK {:?}", block_id);
                                     block_tx
                                         .send(SaitoMessage::NewBlock {
                                             payload: block_hash,
@@ -153,8 +182,8 @@ impl Consensus {
                                         .unwrap();
                                 }
                                 fail_message => {
-                                    println!("WE MISSED LONGEST CHAIN, WHAT HAPPENED?");
-                                    println!("{:?}", fail_message)
+                                    event!(Level::ERROR, "WE MISSED LONGEST CHAIN, WHAT HAPPENED?");
+                                    event!(Level::ERROR, "{:?}", fail_message);
                                 }
                             }
                         }

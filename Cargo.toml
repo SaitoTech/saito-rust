@@ -25,6 +25,8 @@ lazy_static = "1.4.0"
 rand = "0.8.3"
 warp = "0.3"
 tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.2"
 
 [dev-dependencies]
 criterion = "0.3"

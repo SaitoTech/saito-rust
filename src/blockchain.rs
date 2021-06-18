@@ -1,3 +1,5 @@
+use tracing::Level;
+
 use crate::block::Block;
 use crate::burnfee::BurnFee;
 use crate::constants;
@@ -6,6 +8,7 @@ use crate::forktree::ForkTree;
 use crate::golden_ticket::GoldenTicket;
 use crate::longest_chain_queue::LongestChainQueue;
 use crate::storage::Storage;
+use crate::time::TracingTimer;
 use crate::transaction::{Transaction, TransactionType};
 use crate::utxoset::UtxoSet;
 
@@ -153,6 +156,7 @@ impl Blockchain {
     /// what's going on.
     pub async fn add_block(&mut self, block: Block) -> AddBlockEvent {
         // TODO: Should we pass a serialized block [u8] to add_block instead of a Block?
+        let mut tracing_tracker = TracingTimer::new();
         let is_first_block = block.previous_block_hash() == &[0u8; 32]
             && !self.contains_block_hash(block.previous_block_hash());
         if self.contains_block_hash(&(block.hash())) {
@@ -160,20 +164,61 @@ impl Blockchain {
         } else if !is_first_block && !self.contains_block_hash(block.previous_block_hash()) {
             AddBlockEvent::ParentNotFound
         } else {
+            event!(
+                Level::TRACE,
+                "  COMPUTE BASIC BLOCK STATUS: {:?}",
+                tracing_tracker.time_since_last()
+            );
             let fork_chains: ForkChains = self.find_fork_chains(&block);
-
+            event!(
+                Level::TRACE,
+                "                COMPUTE FORK: {:?}",
+                tracing_tracker.time_since_last()
+            );
             if !self.validate_block(&block, &fork_chains) {
                 AddBlockEvent::InvalidBlock
             } else {
+                event!(
+                    Level::TRACE,
+                    "             VALIDATED BLOCK: {:?}",
+                    tracing_tracker.time_since_last()
+                );
+
                 let latest_block_hash = &self.longest_chain_queue.latest_block_hash();
                 let is_new_lc_tip = !latest_block_hash.is_none()
                     && &latest_block_hash.unwrap() == block.previous_block_hash();
                 if is_first_block || is_new_lc_tip {
+                    event!(
+                        Level::TRACE,
+                        "                  SIMPLE ADD: {:?}",
+                        tracing_tracker.time_since_last()
+                    );
                     // First Block or we'e new tip of the longest chain
                     self.longest_chain_queue.roll_forward(block.hash());
+                    event!(
+                        Level::TRACE,
+                        "                  LC ROLLFWD: {:?}",
+                        tracing_tracker.time_since_last()
+                    );
                     self.utxoset.roll_forward(&block);
+                    event!(
+                        Level::TRACE,
+                        "                UTXO ROLLFWD: {:?}",
+                        tracing_tracker.time_since_last()
+                    );
                     self.fork_tree.insert(block.hash(), block.clone()).unwrap();
+                    event!(
+                        Level::TRACE,
+                        "            FORKTREE FOLLFWD: {:?}",
+                        tracing_tracker.time_since_last()
+                    );
                     self.storage.roll_forward(&block).await;
+                    event!(
+                        Level::TRACE,
+                        "             STORAGE ROLLFWD: {:?}",
+                        tracing_tracker.time_since_last()
+                    );
+
                     AddBlockEvent::AcceptedAsLongestChain
                 // We are not on the longest chain, need to find the commone ancestor
                 } else {
