@@ -1,25 +1,21 @@
-use std::convert::Infallible;
-use warp::Filter;
-use warp::{body};
-use futures::stream::{Stream, StreamExt};
+use crate::{constants, storage::Storage, transaction::Transaction};
 
-use crate::{constants, storage::Storage};
+use std::convert::Infallible;
+use warp::{Buf, Filter};
+use warp::{body};
 
 pub struct Network {}
 
 impl Network {
     pub async fn start(&self) -> crate::Result<()> {
         let blocks= warp::path("blocks")
-          .and(warp::path::param().and_then(get_block));
+            .and(warp::path::param().and_then(get_block));
 
         let transactions = warp::post()
             .and(warp::path("transactions"))
             .and(warp::path::end())
-            .and(body::stream())
+            .and(body::aggregate())
             .and_then(post_transaction);
-
-        // warp::path("transactions")
-        //     .and(warp::path::param().and_then(post_transaction));
 
         let routes = blocks.or(transactions);
 
@@ -45,21 +41,16 @@ async fn get_block(str_block_hash: String) -> Result<impl warp::Reply, Infallibl
     }
 }
 
-async fn post_transaction<S, B>(stream: S) -> Result<impl warp::Reply, warp::Rejection>
-where
-    S: Stream<Item = Result<B, warp::Error>>,
-    S: StreamExt,
-    B: warp::Buf
-{
-    // let mut file = File::create("some_binary_file").unwrap();
-
-    let pinnedStream = Box::pin(stream);
+async fn post_transaction(mut body: impl Buf) -> Result<impl warp::Reply, warp::Rejection> {
     let mut buffer = vec![];
-    while let Some(item) = pinnedStream.next().await {
-        let mut data = item.unwrap();
-        // file.write_all(data.to_bytes().as_ref());
-        buffer.put(data.into_buf());
-        // file.write_all(data);
+    while body.has_remaining() {
+        buffer.append(&mut body.chunk().to_vec());
+        let cnt = body.chunk().len();
+        body.advance(cnt);
     }
+
+    let tx = Transaction::from(buffer);
+    println!("{:?}", tx.signature());
+
     Ok(warp::reply())
 }

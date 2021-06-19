@@ -25,8 +25,8 @@ pub async fn main() -> saito_rust::Result<()> {
     let mut prev_timestamp = prev_block.timestamp();
 
     let mut add_block_timestamps = vec![];
-    let mut start_ts;
-    let mut finish_ts;
+    // let mut start_ts;
+    // let mut finish_ts;
 
     for _ in 0..100 as i32 {
         let pairs: Vec<(SlipID, OutputSlip)> = (0..1000)
@@ -49,7 +49,7 @@ pub async fn main() -> saito_rust::Result<()> {
                         vec![slip_pair.0],
                         vec![to_slip],
                         TransactionType::Normal,
-                        (0..102400)
+                        (0..1024)
                             .into_par_iter()
                             .map(|_| rand::random::<u8>())
                             .collect(),
@@ -57,31 +57,40 @@ pub async fn main() -> saito_rust::Result<()> {
                     &keypair,
                 )
             })
-            .collect();
+            .collect::<Vec<Transaction>>();
 
-        let timestamp = create_timestamp();
-        let block = Block::new(BlockCore::new(
-            prev_block_id + 1,
-            timestamp,
-            prev_block_hash,
-            *keypair.public_key(),
-            0,
-            TREASURY,
-            BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
-            0.0,
-            &mut txs,
-        ));
-        prev_block_hash = block.hash().clone();
-        prev_block_id = block.id();
-        prev_burn_fee = block.start_burnfee();
-        prev_timestamp = block.timestamp();
+        let client = reqwest::Client::new();
+        for tx in txs.into_iter() {
+            let bytes: Vec<u8> = tx.into();
+            let _res = client.post("http://localhost:3030/transactions")
+                .body(bytes)
+                .send()
+                .await;
+        }
 
-        start_ts = create_timestamp();
-        println!("ADD BLOCK {}", block.id());
-        let result = blockchain.add_block(block).await;
-        assert!(result == AddBlockEvent::AcceptedAsLongestChain);
-        finish_ts = create_timestamp();
-        add_block_timestamps.push(finish_ts - start_ts);
+        // let timestamp = create_timestamp();
+        // let block = Block::new(BlockCore::new(
+        //     prev_block_id + 1,
+        //     timestamp,
+        //     prev_block_hash,
+        //     *keypair.public_key(),
+        //     0,
+        //     TREASURY,
+        //     BurnFee::burn_fee_adjustment_calculation(prev_burn_fee, timestamp, prev_timestamp),
+        //     0.0,
+        //     &mut txs,
+        // ));
+        // prev_block_hash = block.hash().clone();
+        // prev_block_id = block.id();
+        // prev_burn_fee = block.start_burnfee();
+        // prev_timestamp = block.timestamp();
+
+        // start_ts = create_timestamp();
+        // println!("ADD BLOCK {}", block.id());
+        // let result = blockchain.add_block(block).await;
+        // assert!(result == AddBlockEvent::AcceptedAsLongestChain);
+        // finish_ts = create_timestamp();
+        // add_block_timestamps.push(finish_ts - start_ts);
     }
 
     let add_block_sum: u64 = add_block_timestamps.iter().sum();

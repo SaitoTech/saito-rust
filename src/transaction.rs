@@ -180,6 +180,18 @@ impl Transaction {
     }
 }
 
+impl From<Vec<u8>> for Transaction {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for Transaction {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
+
 impl From<Vec<u8>> for TransactionCore {
     fn from(data: Vec<u8>) -> Self {
         bincode::deserialize(&data[..]).unwrap()

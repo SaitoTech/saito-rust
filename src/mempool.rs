@@ -1,6 +1,8 @@
 use secp256k1::PublicKey;
 use tracing::Level;
 
+use rayon::prelude::*;
+
 use crate::{
     block::{Block, BlockCore, TREASURY},
     blockchain::BLOCKCHAIN_GLOBAL,
@@ -102,7 +104,7 @@ impl Mempool {
         let blockchain = blockchain_mutex.lock().unwrap();
         let retval = self
             .transactions
-            .iter()
+            .par_iter()
             .map(|tx| blockchain.utxoset.transaction_routing_fees(tx))
             .sum();
         retval
