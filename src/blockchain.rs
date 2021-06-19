@@ -5,6 +5,7 @@ use crate::{
   time::create_timestamp,
   types::SaitoMessage,
 };
+use ahash::AHashMap;
 use std::collections::HashMap;
 use tokio::sync::{broadcast};
 
@@ -35,7 +36,7 @@ impl BlockIndex {
 #[derive(Debug)]
 pub struct Blockchain {
 
-    utxoset: HashMap<Vec<u8>, u64>,
+    utxoset: AHashMap<[u8;47], u64>,
     blocks: HashMap<Sha256Hash, Block>,
     index: HashMap<u64, BlockIndex>,
     broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
@@ -52,7 +53,7 @@ impl Blockchain {
             broadcast_channel_sender: None,
     	    lc_hash: [0;32],
     	    previous_lc_hash: [0;32],
-            utxoset: HashMap::new(),
+            utxoset: AHashMap::new(),
             blocks: HashMap::new(),
             index: HashMap::new(),
         }
@@ -109,8 +110,8 @@ println!(" ... add_block start: {:?}", create_timestamp());
 	//let mut transaction = vec![];
 	//let message_size = 1024000;
 	//transaction = (0..message_size).map(|_| { rand::random::<u8>() }).collect();
-        let mut file = BufWriter::new(file);
 /***
+        let mut file = BufWriter::new(file);
         for i in 0..100 {
 	    let mut transaction = [1;1024000];
             file.write_all(&transaction)
@@ -118,11 +119,11 @@ println!(" ... add_block start: {:?}", create_timestamp());
 	        }
 //        file.write_all(&transaction)
 
-***/
         file.write_all(&bincode::serialize(&block).unwrap())
 			.expect("Unable to write data");
         file.flush()
 			.expect("Problems flushing file");
+***/
 
 println!(" ... indexing start:  {:?}", create_timestamp());
 

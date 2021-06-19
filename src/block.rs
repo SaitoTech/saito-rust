@@ -4,8 +4,11 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use ahash::AHashMap;
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+
+//#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Block {
 
     //
@@ -123,7 +126,8 @@ impl Block {
 
     }
 
-    pub fn validate(&self, utxoset : &HashMap<Vec<u8>, u64>) -> bool {
+    //pub fn validate(&self, utxoset : &HashMap<Vec<u8>, u64>) -> bool {
+    pub fn validate(&self, utxoset : &AHashMap<[u8;47], u64>) -> bool {
 
 	for tx in &self.transactions {
 	    if !tx.validate(utxoset) {
@@ -136,7 +140,8 @@ impl Block {
     }
 
 
-    pub fn on_chain_reorganization(&self, utxoset : &mut HashMap<Vec<u8>, u64>, longest_chain : bool) -> bool {
+    //pub fn on_chain_reorganization(&self, utxoset : &mut HashMap<Vec<u8>, u64>, longest_chain : bool) -> bool {
+    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<[u8;47], u64>, longest_chain : bool) -> bool {
 
 	for tx in &self.transactions {
 	    tx.on_chain_reorganization(utxoset, longest_chain, self.id);

@@ -11,6 +11,14 @@ pub fn hash(data: &Vec<u8>) -> Sha256Hash {
     hasher.update(data);
     hasher.finalize().as_slice().try_into().unwrap()
 }
+pub fn verify(msg: &[u8], sig: [u8;64], publickey: [u8;33]) -> bool {
+    let m = Message::from_slice(msg).unwrap();
+    let p = PublicKey::from_slice(&publickey).unwrap();
+    let s = Signature::from_compact(&sig).unwrap();
+    SECP256K1.verify(&m, &s, &p).is_ok()
+}
+
+
 
 /// Hash the message string with sha256 for signing by secp256k1 and return as byte array
 pub fn make_message_from_string(message_string: &str) -> Sha256Hash {
