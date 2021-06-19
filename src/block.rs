@@ -3,7 +3,7 @@ use crate::{
   crypto::{hash, PublicKey},
 };
 use serde::{Deserialize, Serialize};
-
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
@@ -123,12 +123,29 @@ impl Block {
 
     }
 
+    pub fn validate(&self, utxoset : &HashMap<Vec<u8>, u64>) -> bool {
 
-    pub fn validate(&self) -> bool {
+	for tx in &self.transactions {
+	    if !tx.validate(utxoset) {
+	        return false;
+	    }
+	}
+
 	return true;
+
     }
 
 
+    pub fn on_chain_reorganization(&self, utxoset : &mut HashMap<Vec<u8>, u64>, longest_chain : bool) -> bool {
+
+	for tx in &self.transactions {
+	    tx.on_chain_reorganization(utxoset, longest_chain, self.id);
+	}
+	return true;
+
+    }
+
 }
+
 
 

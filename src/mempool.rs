@@ -1,4 +1,5 @@
 use crate::{
+    slip::Slip,
     blockchain::Blockchain,
     block::Block,
     crypto::Sha256Hash,
@@ -175,20 +176,39 @@ impl Mempool {
     pub fn generate_mempool_block(&self, previous_block_id: u64, previous_block_hash: [u8;32]) -> Block {
 
         let mut block = Block::new();
-	let message_size = 1024000;;
+	let message_size = 10240;
 	block.set_id(previous_block_id);
 	block.set_timestamp(create_timestamp());
 	block.set_previous_block_hash(previous_block_hash);
 
-	for i in 0..10 {
+	for i in 0..10000 {
+
+println!("Creating Transaction {:?}", i);
 
             let mut transaction = Transaction::new();
 	    transaction.set_message( (0..message_size).map(|_| { rand::random::<u8>() }).collect() );
 
+	    let mut input1 = Slip::new();
+	    input1.set_publickey([1;32]); // shd be 33
+	    input1.set_amount(1000000);
+	    input1.set_uuid([1;32]);
+	    transaction.add_input(input1);
+
+	    let mut output1 = Slip::new();
+	    output1.set_publickey([1;32]);
+	    output1.set_amount(1000000);
+	    output1.set_uuid([1;32]);
+	    transaction.add_output(output1);
+
+	    let mut output2 = Slip::new();
+	    output2.set_publickey([1;32]);
+	    output2.set_amount(1000000);
+	    output2.set_uuid([1;32]);
+	    transaction.add_output(output2);
+
 	    block.add_transaction(transaction);
 
 	}
-
 
 	block.set_hash();
 

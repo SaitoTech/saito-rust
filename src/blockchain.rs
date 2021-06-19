@@ -1,3 +1,4 @@
+
 use crate::{
   block::Block,
   crypto::Sha256Hash,
@@ -13,6 +14,7 @@ use tokio::sync::{broadcast};
 //use std::io::LineWriter;
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use rand::Rng;
 
 
 #[derive(Debug)]
@@ -33,6 +35,7 @@ impl BlockIndex {
 #[derive(Debug)]
 pub struct Blockchain {
 
+    utxoset: HashMap<Vec<u8>, u64>,
     blocks: HashMap<Sha256Hash, Block>,
     index: HashMap<u64, BlockIndex>,
     broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
@@ -49,6 +52,7 @@ impl Blockchain {
             broadcast_channel_sender: None,
     	    lc_hash: [0;32],
     	    previous_lc_hash: [0;32],
+            utxoset: HashMap::new(),
             blocks: HashMap::new(),
             index: HashMap::new(),
         }
@@ -62,6 +66,8 @@ impl Blockchain {
 
     /// Append `Block` to the index of `Blockchain`
     pub fn add_block(&mut self, block: Block) {
+
+println!(" ... add_block start: {:?}", create_timestamp());
 
 	//
 	// start by extracting some variables that we will need
@@ -96,21 +102,32 @@ impl Blockchain {
 	// be better to only save after minimal validation, otherwise
 	// we may have to remove and then re-insert or... what else?
 	//
-println!("Pre Save: {:?}", create_timestamp());
         let file = File::create("test_saving_block_to_disk.txt")
 			.expect("Unable to create file");
+
+
+	//let mut transaction = vec![];
+	//let message_size = 1024000;
+	//transaction = (0..message_size).map(|_| { rand::random::<u8>() }).collect();
         let mut file = BufWriter::new(file);
+/***
+        for i in 0..100 {
+	    let mut transaction = [1;1024000];
+            file.write_all(&transaction)
+			.expect("Unable to write data");
+	        }
+//        file.write_all(&transaction)
+
+***/
         file.write_all(&bincode::serialize(&block).unwrap())
 			.expect("Unable to write data");
-        //file.flush()
-	//		.expect("Problems flushing file");
-println!("Post Save: {:?}", create_timestamp());
+        file.flush()
+			.expect("Problems flushing file");
 
-
-
+println!(" ... indexing start:  {:?}", create_timestamp());
 
 	//
-	// insert block into index/hashmap
+	// insert block into hashmap and index
 	//
 	if !self.blocks.contains_key(&block_hash) {
 	    self.blocks.insert(block_hash, block);
@@ -137,7 +154,7 @@ println!("Post Save: {:?}", create_timestamp());
 	    self.index.insert(block_id, new_block_index);
 	}
 
-
+println!(" ... ancestor search: {:?}", create_timestamp());
 	//
 	// now we find the shared ancestor
 	//
@@ -171,6 +188,7 @@ println!("Post Save: {:?}", create_timestamp());
 
 	}
 
+println!(" ... chain generates: {:?}", create_timestamp());
 
 	//
 	// track old chain down to shared ancestor
@@ -209,20 +227,20 @@ println!("Post Save: {:?}", create_timestamp());
         //
         if am_i_the_longest_chain {
 
-        //    let does_new_chain_validate = self.validate(new_chain, old_chain);
-        //    if does_new_chain_validate {
-//println!("SUCCESS");
+println!(" ... start validate:  {:?}", create_timestamp());
+            let does_new_chain_validate = self.validate(new_chain, old_chain);
+println!(" ... finish validate: {:?}", create_timestamp());
+            if does_new_chain_validate {
+println!("SUCCESS");
                 self.add_block_success();
-        //    } else {
-        //        self.add_block_failure();
-        //    }
-        //    println!("does the new chain validate: {}", does_new_chain_validate);
-
+            } else {
+println!("FAILURE 1");
+                self.add_block_failure();
+            }
+println!("does the new chain validate: {}", does_new_chain_validate);
         } else {
-
-//println!("FAILURE");
+println!("FAILURE 2");
             self.add_block_failure();
-
         }
    
 
@@ -286,24 +304,25 @@ println!("Post Save: {:?}", create_timestamp());
         return true;
     }
 
-/***
-    pub fn validate(&self, new_chain: Vec<BlockHeader>, old_chain: Vec<BlockHeader>) -> bool {
+    pub fn validate(&mut self, new_chain: Vec<[u8;32]>, old_chain: Vec<[u8;32]>) -> bool {
         if old_chain.len() > 0 {
             return self.unwind_chain(&new_chain, &old_chain, old_chain.len()-1);
         } else if new_chain.len() > 0 {
             return self.wind_chain(&new_chain, &old_chain, 0, false);
         }
-        return false;
+        return true;
     }
 
-    pub fn wind_chain(&self, new_chain: &Vec<BlockHeader>, old_chain: &Vec<BlockHeader>, current_wind_index: usize, wind_failure: bool) -> bool {
+
+    pub fn wind_chain(&mut self, new_chain: &Vec<[u8;32]>, old_chain: &Vec<[u8;32]>, current_wind_index: usize, wind_failure: bool) -> bool {
 
         // validate the block
-        let block_pos = new_chain[current_wind_index].pos;
-        let block = &self.blocks[block_pos];
-        let does_block_validate = block.validate();
+        let block = &self.blocks[&new_chain[current_wind_index]];
+        let does_block_validate = block.validate(&self.utxoset);
 
         if does_block_validate {
+println!(" ... on_chain_reorg:  {:?}", create_timestamp());
+            block.on_chain_reorganization(&mut self.utxoset, true);
             if current_wind_index == (new_chain.len()-1) {
                 return true;
             }
@@ -315,11 +334,12 @@ println!("Post Save: {:?}", create_timestamp());
         return false;
     }
 
-    pub fn unwind_chain(&self, new_chain: &Vec<BlockHeader>, old_chain: &Vec<BlockHeader>, current_unwind_index: usize) -> bool {
+    // TODO - not properly implemented
+    pub fn unwind_chain(&mut self, new_chain: &Vec<[u8;32]>, old_chain: &Vec<[u8;32]>, current_unwind_index: usize) -> bool {
+        //block.on_chain_reorganization(&mut self.utxoset, 0);
         println!("UNWIND CHAIN {}", current_unwind_index);
         return true;
     }
-***/
 
 
 }
