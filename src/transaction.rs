@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ahash::AHashMap;
 
+
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 //#[derive(Debug, PartialEq, Clone)]
@@ -21,7 +22,7 @@ pub struct Transaction {
     signature: [u8;64],
     inputs: Vec<Slip>,
     outputs: Vec<Slip>,
-    //#[serde(with = "serde_bytes")]
+    #[serde(with = "serde_bytes")]
     message: Vec<u8>,
     //path: Path,
     transaction_type: TransactionType,
@@ -90,20 +91,21 @@ impl Transaction {
     }
 
 
-    pub fn validate(&self, utxoset : &AHashMap<[u8;47], u64>) -> bool {
+    //pub fn validate(&self, utxoset : &AHashMap<[u8;47], u64>) -> bool {
+    pub fn validate(&self, utxoset : &AHashMap<Vec<u8>, u64>) -> bool {
 
 	//
 	// validate sigs
 	//
-	let m : [u8;32] = self.get_signature_source();
-	let s : [u8;64] = self.get_signature();
-	let mut p : [u8;33] = [0;33];
-	if self.inputs.len() > 0 { p = self.inputs[0].get_publickey(); }
+//	let m : [u8;32] = self.get_signature_source();
+//	let s : [u8;64] = self.get_signature();
+//	let mut p : [u8;33] = [0;33];
+//	if self.inputs.len() > 0 { p = self.inputs[0].get_publickey(); }
 
-	if !verify(&m, s, p) {
-	    println!("message verifies not");
-	    return false;
-	}
+//	if !verify(&m, s, p) {
+//	    println!("message verifies not");
+//	    return false;
+//	}
 
 
 	//
@@ -119,7 +121,8 @@ impl Transaction {
     }
 
     // TODO -- shashmap values are nonsensical 0 unspendable, 1 spendable, block_id = when spent -- just testing speeds here
-    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<[u8;47], u64>, longest_chain : bool, block_id : u64) {
+    //pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<[u8;47], u64>, longest_chain : bool, block_id : u64) {
+    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<Vec<u8>, u64>, longest_chain : bool, block_id : u64) {
 
 	if longest_chain {
 	    for input in &self.inputs {

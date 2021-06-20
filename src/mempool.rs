@@ -177,7 +177,7 @@ impl Mempool {
     pub fn generate_mempool_block(&self, previous_block_id: u64, previous_block_hash: [u8;32]) -> Block {
 
         let mut block = Block::new();
-	let message_size = 10240;
+	let message_size = 102400;
 	block.set_id(previous_block_id);
 	block.set_timestamp(create_timestamp());
 	block.set_previous_block_hash(previous_block_hash);

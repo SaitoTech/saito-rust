@@ -129,8 +129,8 @@ impl Block {
 
     }
 
-    //pub fn validate(&self, utxoset : &HashMap<Vec<u8>, u64>) -> bool {
-    pub fn validate(&self, utxoset : &AHashMap<[u8;47], u64>) -> bool {
+    pub fn validate(&self, utxoset : &AHashMap<Vec<u8>, u64>) -> bool {
+    //pub fn validate(&self, utxoset : &AHashMap<[u8;47], u64>) -> bool {
 
 
         let transactions_valid = &self.transactions
@@ -141,7 +141,7 @@ impl Block {
 
 //	for tx in &self.transactions {
 //	    if !tx.validate(utxoset) {
-println!("gx invalid");
+println!("tx valid? {}", transactions_valid);
 //	        return false;
 //	    }
 //	}
@@ -151,8 +151,8 @@ println!("gx invalid");
     }
 
 
-    //pub fn on_chain_reorganization(&self, utxoset : &mut HashMap<Vec<u8>, u64>, longest_chain : bool) -> bool {
-    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<[u8;47], u64>, longest_chain : bool) -> bool {
+    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<Vec<u8>, u64>, longest_chain : bool) -> bool {
+    //pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<[u8;47], u64>, longest_chain : bool) -> bool {
 
 	for tx in &self.transactions {
 	    tx.on_chain_reorganization(utxoset, longest_chain, self.id);

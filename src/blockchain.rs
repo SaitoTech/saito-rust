@@ -36,7 +36,7 @@ impl BlockIndex {
 #[derive(Debug)]
 pub struct Blockchain {
 
-    utxoset: AHashMap<[u8;47], u64>,
+    utxoset: AHashMap<Vec<u8>, u64>,
     blocks: HashMap<Sha256Hash, Block>,
     index: HashMap<u64, BlockIndex>,
     broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,

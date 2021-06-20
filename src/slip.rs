@@ -14,8 +14,8 @@ pub struct Slip {
     uuid: [u8;32],
     amount: u64,
     sliptype: SlipType,
-//    #[serde_as(as = "[_; 47]")]
-//    slipkey: [u8;47],
+    //#[serde_as(as = "[_; 47]")]
+    //slipkey: [u8;47],
 
 }
 
@@ -36,7 +36,7 @@ impl Slip {
             amount: 0,
             uuid: [0;32],
             sliptype: SlipType::Normal,
-//    	    slipkey: [0;47],
+    	    //slipkey: [0;47],
         }
     }
 
@@ -66,18 +66,21 @@ impl Slip {
 
     pub fn to_be_bytes(&self) -> Vec<u8> {
 
-	let st = self.sliptype as u32;
-	let mut vbytes : Vec<u8> = vec![];
-	        vbytes.extend(&self.publickey);
-	        vbytes.extend(&self.uuid);
-	        vbytes.extend(&self.amount.to_be_bytes());
-	        vbytes.extend(&(self.sliptype as u32).to_be_bytes());
+	return vec![];
 
-	return vbytes;
+//	let st = self.sliptype as u32;
+//	let mut vbytes : Vec<u8> = vec![];
+//	        vbytes.extend(&self.publickey);
+//	        vbytes.extend(&self.uuid);
+//	        vbytes.extend(&self.amount.to_be_bytes());
+//	        vbytes.extend(&(self.sliptype as u32).to_be_bytes());
+//
+//	return vbytes;
 
     }
 
-    pub fn validate(&self, utxoset : &AHashMap<[u8;47], u64>) -> bool {
+
+    pub fn validate(&self, utxoset : &AHashMap<Vec<u8>, u64>) -> bool {
 
 	let slip_key = self.get_shashmap_slip_id();
 	//let slip_key = self.slipkey;
@@ -95,7 +98,8 @@ impl Slip {
 
     }
 
-    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<[u8;47], u64>, longest_chain : bool , slip_value : u64) {
+
+    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<Vec<u8>, u64>, longest_chain : bool , slip_value : u64) {
 
 	let slip_key = self.get_shashmap_slip_id();
 	//let slip_key = self.slipkey;
@@ -103,15 +107,15 @@ impl Slip {
 
     }
 
-    //pub fn get_shashmap_slip_id(&self) -> Vec<u8> {
-    pub fn get_shashmap_slip_id(&self) -> [u8;47] {
+    pub fn get_shashmap_slip_id(&self) -> Vec<u8> {
+    //pub fn get_shashmap_slip_id(&self) -> [u8;47] {
 
-	return [1;47];
-//      let mut res:Vec<u8> = vec![];
-//      res.extend(&self.publickey);
-//      res.extend(&self.uuid);
-//      res.extend(&self.amount.to_be_bytes());
-//      return res;
+//	return [1;47];
+        let mut res:Vec<u8> = vec![];
+        res.extend(&self.publickey);
+        res.extend(&self.uuid);
+        res.extend(&self.amount.to_be_bytes());
+        return res;
 
     }
 
