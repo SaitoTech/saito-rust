@@ -110,20 +110,18 @@ println!(" ... add_block start: {:?}", create_timestamp());
 	//let mut transaction = vec![];
 	//let message_size = 1024000;
 	//transaction = (0..message_size).map(|_| { rand::random::<u8>() }).collect();
-/***
         let mut file = BufWriter::new(file);
-        for i in 0..100 {
-	    let mut transaction = [1;1024000];
-            file.write_all(&transaction)
-			.expect("Unable to write data");
-	        }
+//        for i in 0..100 {
+//	    let mut transaction = [1;1024000];
+//            file.write_all(&transaction)
+//			.expect("Unable to write data");
+//	        }
 //        file.write_all(&transaction)
 
         file.write_all(&bincode::serialize(&block).unwrap())
 			.expect("Unable to write data");
         file.flush()
 			.expect("Problems flushing file");
-***/
 
 println!(" ... indexing start:  {:?}", create_timestamp());
 

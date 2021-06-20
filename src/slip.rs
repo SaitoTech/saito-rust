@@ -4,15 +4,18 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ahash::AHashMap;
 
-//#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq)]
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, Eq, PartialEq)]
+//#[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub struct Slip {
 
+    #[serde_as(as = "[_; 33]")]
     publickey: [u8;33],
     uuid: [u8;32],
     amount: u64,
     sliptype: SlipType,
-    slipkey: [u8;47],
+//    #[serde_as(as = "[_; 47]")]
+//    slipkey: [u8;47],
 
 }
 
@@ -33,8 +36,12 @@ impl Slip {
             amount: 0,
             uuid: [0;32],
             sliptype: SlipType::Normal,
-    	    slipkey: [0;47],
+//    	    slipkey: [0;47],
         }
+    }
+
+    pub fn get_publickey(&self) -> [u8;33] {
+        self.publickey
     }
 
     pub fn set_publickey(&mut self, publickey: [u8;33]) {
@@ -49,9 +56,9 @@ impl Slip {
         self.uuid = uuid;
     }
 
-    pub fn set_slipkey(&mut self, slipkey: [u8;47]) {
-        self.slipkey = slipkey;
-    }
+    //pub fn set_slipkey(&mut self, slipkey: [u8;47]) {
+    //    self.slipkey = slipkey;
+    //}
 
     pub fn set_sliptype(&mut self, sliptype: SlipType) {
         self.sliptype = sliptype;
@@ -72,8 +79,8 @@ impl Slip {
 
     pub fn validate(&self, utxoset : &AHashMap<[u8;47], u64>) -> bool {
 
-	//let slip_key = self.get_shashmap_slip_id();
-	let slip_key = self.slipkey;
+	let slip_key = self.get_shashmap_slip_id();
+	//let slip_key = self.slipkey;
 
         match utxoset.get(&slip_key) {
             Some(slip_value) => {
@@ -90,19 +97,21 @@ impl Slip {
 
     pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<[u8;47], u64>, longest_chain : bool , slip_value : u64) {
 
-	//let slip_key = self.get_shashmap_slip_id();
-	let slip_key = self.slipkey;
+	let slip_key = self.get_shashmap_slip_id();
+	//let slip_key = self.slipkey;
         utxoset.entry(slip_key).or_insert(slip_value);
 
     }
 
-    pub fn get_shashmap_slip_id(&self) -> Vec<u8> {
+    //pub fn get_shashmap_slip_id(&self) -> Vec<u8> {
+    pub fn get_shashmap_slip_id(&self) -> [u8;47] {
 
-      let mut res:Vec<u8> = vec![];
-      res.extend(&self.publickey);
-      res.extend(&self.uuid);
-      res.extend(&self.amount.to_be_bytes());
-      return res;
+	return [1;47];
+//      let mut res:Vec<u8> = vec![];
+//      res.extend(&self.publickey);
+//      res.extend(&self.uuid);
+//      res.extend(&self.amount.to_be_bytes());
+//      return res;
 
     }
 

@@ -6,9 +6,12 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ahash::AHashMap;
 
+extern crate rayon;
+use rayon::prelude::*;
 
-//#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-#[derive(PartialEq, Debug, Clone)]
+
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+//#[derive(PartialEq, Debug, Clone)]
 pub struct Block {
 
     //
@@ -129,11 +132,19 @@ impl Block {
     //pub fn validate(&self, utxoset : &HashMap<Vec<u8>, u64>) -> bool {
     pub fn validate(&self, utxoset : &AHashMap<[u8;47], u64>) -> bool {
 
-	for tx in &self.transactions {
-	    if !tx.validate(utxoset) {
-	        return false;
-	    }
-	}
+
+        let transactions_valid = &self.transactions
+            .par_iter()
+            .all(|tx| tx.validate(utxoset));
+
+//println!("tx valid? {}", transactions_valid);
+
+//	for tx in &self.transactions {
+//	    if !tx.validate(utxoset) {
+println!("gx invalid");
+//	        return false;
+//	    }
+//	}
 
 	return true;
 

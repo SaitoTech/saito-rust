@@ -182,34 +182,36 @@ impl Mempool {
 	block.set_timestamp(create_timestamp());
 	block.set_previous_block_hash(previous_block_hash);
 
-	for i in 0..100000 {
+	for i in 0..10000 {
 
 println!("Creating Transaction {:?}", i);
 
             let mut transaction = Transaction::new();
+	    let keypair = Keypair::new();
+
 	    transaction.set_message( (0..message_size).map(|_| { rand::random::<u8>() }).collect() );
 
 	    let mut input1 = Slip::new();
-	    input1.set_publickey(Keypair::new().publickey().serialize());
+	    input1.set_publickey(keypair.publickey().serialize());
 	    input1.set_amount(1000000);
 	    input1.set_uuid([1;32]);
 	    transaction.add_input(input1);
 
 	    let mut output1 = Slip::new();
-	    output1.set_publickey(Keypair::new().publickey().serialize());
+	    output1.set_publickey(keypair.publickey().serialize());
 	    output1.set_amount(1000000);
 	    output1.set_uuid([1;32]);
 	    transaction.add_output(output1);
 
 	    let mut output2 = Slip::new();
-	    output2.set_publickey(Keypair::new().publickey().serialize());
+	    output2.set_publickey(keypair.publickey().serialize());
 	    output2.set_amount(1000000);
 	    output2.set_uuid([1;32]);
 	    transaction.add_output(output2);
 
-let keypair = Keypair::new();
-transaction.sign_transaction(&keypair);
+	    transaction.sign_transaction(&keypair);
 
+/****
 let msg2 = transaction.get_signature_source();
 let sig2 = transaction.get_signature();
 let pub2 = keypair.publickey().serialize();
@@ -218,8 +220,8 @@ if !verify(&msg2, sig2, pub2) {
     println!("message verifies not");
 } else {
     println!("message verifies");
-
 }
+****/
 
 	    block.add_transaction(transaction);
 

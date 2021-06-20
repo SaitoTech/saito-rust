@@ -1,5 +1,5 @@
 use crate::{
-    crypto::{hash},
+    crypto::{hash, verify},
     keypair::Keypair,
     slip::Slip,
     path::Path,
@@ -10,13 +10,14 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use ahash::AHashMap;
 
-
-//#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-#[derive(Debug, PartialEq, Clone)]
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+//#[derive(Debug, PartialEq, Clone)]
 pub struct Transaction {
     id: u64,
     timestamp: u64,
     // compact signatures are 64 bytes; DER signatures are 68-72 bytes
+    #[serde_as(as = "[_; 64]")]
     signature: [u8;64],
     inputs: Vec<Slip>,
     outputs: Vec<Slip>,
@@ -56,7 +57,7 @@ impl Transaction {
 	self.outputs.push(output_slip);
     }
 
-    pub fn get_signature(&mut self) -> [u8;64] {
+    pub fn get_signature(&self) -> [u8;64] {
        self.signature
     }
 
@@ -90,6 +91,20 @@ impl Transaction {
 
 
     pub fn validate(&self, utxoset : &AHashMap<[u8;47], u64>) -> bool {
+
+	//
+	// validate sigs
+	//
+	let m : [u8;32] = self.get_signature_source();
+	let s : [u8;64] = self.get_signature();
+	let mut p : [u8;33] = [0;33];
+	if self.inputs.len() > 0 { p = self.inputs[0].get_publickey(); }
+
+	if !verify(&m, s, p) {
+	    println!("message verifies not");
+	    return false;
+	}
+
 
 	//
 	// UTXO validate inputs
