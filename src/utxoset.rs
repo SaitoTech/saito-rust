@@ -73,26 +73,93 @@ impl UtxoSet {
     }
 
     pub fn roll_back_on_fork(&mut self, block: &Block) {
+        let mut tracing_timer = TracingTimer::new();
+
+        let mut tracing_accumulator = TracingAccumulator::new();
+
         block
             .transactions()
             .iter()
-            .for_each(|tx| self.roll_back_transaction_on_fork(tx, block));
+            .for_each(|tx| {
+                tracing_accumulator.set_start();
+                self.roll_back_transaction_on_fork(tx, block);
+                tracing_accumulator.accumulate_time_since_start();
+            });
+
+        event!(
+            Level::TRACE,
+            "                  REMOVED FORK {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_accumulator.finish()
+        );
+        event!(
+            Level::TRACE,
+            "                  REMOVED {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_timer.time_since_last()
+        );
     }
 
     pub fn roll_forward_on_fork(&mut self, block: &Block) {
         // spendoutputs and spend the inputs
+        let mut tracing_timer = TracingTimer::new();
+
+        let mut tracing_accumulator = TracingAccumulator::new();
         block
             .transactions()
             .iter()
-            .for_each(|tx| self.roll_forward_transaction_on_fork(tx, block));
+            .for_each(|tx| {
+                tracing_accumulator.set_start();
+                self.roll_forward_transaction_on_fork(tx, block);
+                tracing_accumulator.accumulate_time_since_start();
+            });
+
+        event!(
+            Level::TRACE,
+            "                  ADDED FORK {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_accumulator.finish()
+        );
+        event!(
+            Level::TRACE,
+            "                  ADDED FORK {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_timer.time_since_last()
+        );
     }
 
     pub fn roll_back(&mut self, block: &Block) {
         // unspend outputs and spend the inputs
+        let mut tracing_timer = TracingTimer::new();
+
+        let mut tracing_accumulator = TracingAccumulator::new();
+
         block
             .transactions()
             .iter()
-            .for_each(|tx| self.roll_back_transaction(tx, block));
+            .for_each(|tx| {
+                tracing_accumulator.set_start();
+                self.roll_back_transaction(tx, block);
+                tracing_accumulator.accumulate_time_since_start();
+            });
+        event!(
+            Level::TRACE,
+            "                  REMOVED {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_accumulator.finish()
+        );
+        event!(
+            Level::TRACE,
+            "                  REMOVED {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_timer.time_since_last()
+        );
     }
 
     pub fn roll_forward(&mut self, block: &Block) {
