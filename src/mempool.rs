@@ -62,7 +62,7 @@ impl Mempool {
 	// sanity check to update already_bundling
 	//
         {
-            let mut r = BUNDLER_ACTIVE.read().await;
+            let r = BUNDLER_ACTIVE.read().await;
             already_bundling = *r;
         }
 
@@ -103,7 +103,7 @@ impl Mempool {
 			// call above) has changed the value of our timer
 			// tracker.
 			//
-                        let mut r = BUNDLER_ACTIVE.read().await;
+                        let r = BUNDLER_ACTIVE.read().await;
                         already_bundling = *r;
                     }
                 }
@@ -140,6 +140,12 @@ mod tests {
 
     #[test]
     fn mempool_test() {
+        assert_eq!(true, true);
+    }
+    fn mempool_start_bundling_test() {
+        assert_eq!(true, true);
+    }
+    fn mempool_stop_bundling_test() {
         assert_eq!(true, true);
     }
 
