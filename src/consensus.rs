@@ -79,14 +79,13 @@ impl Consensus {
         // being sent into the async threads rather than the original
         //
         // major classes get a clone of the broadcast channel sender
-        // on initialization so they can broadcast cross-system messages
+        // on initialization so they can broadcast cross-system messages.
+	// submission on init avoids the need for constant checks to see
+	// whether the channels exist and unwrapping them when sending 
+	// messages, as well as setters.
         //
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(
-	    broadcast_channel_sender.clone()
-	)));
-        let mempool_lock = Arc::new(RwLock::new(Mempool::new(
-	    broadcast_channel_sender.clone()
-	)));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new( broadcast_channel_sender.clone() )));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new( broadcast_channel_sender.clone() )));
 
 
         //
@@ -97,7 +96,9 @@ impl Consensus {
             .expect("error: Consensus StartBundling message failed to send");
 
 
-
+	//
+	// and listen to main system broadcast messages
+	//
         loop {
             while let Ok(message) = broadcast_channel_receiver.recv().await {
                 match message {
