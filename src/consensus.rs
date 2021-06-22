@@ -1,6 +1,5 @@
 use crate::{
     blockchain::Blockchain,
-    constants::{SaitoMessage},
     mempool::Mempool,
 };
 use std::{
@@ -20,6 +19,16 @@ struct Consensus {
     _shutdown_complete_rx: mpsc::Receiver<()>,
     _shutdown_complete_tx: mpsc::Sender<()>,
 }
+
+
+/// The types of messages broadcast over the main
+/// broadcast channel in normal operations.
+#[derive(Clone, Debug)]
+pub enum SaitoMessage {
+    StartBundling,
+    StopBundling,
+}
+
 
 
 /// Run the Saito consensus runtime
@@ -93,10 +102,12 @@ impl Consensus {
             while let Ok(message) = broadcast_channel_receiver.recv().await {
                 match message {
 		    SaitoMessage::StartBundling => {
-			println!("Start Bundling");
+                        let mempool = mempool_lock.read().await;
+                        mempool.start_bundling(mempool_lock.clone(), blockchain_lock.clone()).await;
 		    }
 		    SaitoMessage::StopBundling => {
-			println!("Stop Bundling");
+                        let mempool = mempool_lock.read().await;
+                        mempool.stop_bundling();
 		    }
 		    _ => {
 			println!("Received Unknown Message Type in Main Loop");
