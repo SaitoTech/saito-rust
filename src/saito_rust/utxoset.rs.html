@@ -1321,10 +1321,10 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">roll_forward_and_back_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">blockchain</span>, <span class="ident">slips</span>) <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">1</span>).<span class="kw">await</span>;
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">1</span>).<span class="kw">await</span>;
 
         <span class="kw">let</span> <span class="ident">from_slip</span> <span class="op">=</span> <span class="ident">slips</span>.<span class="ident">first</span>().<span class="ident">unwrap</span>().<span class="number">0</span>;
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="number">1</span>, <span class="ident">from_slip</span>);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_block</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="number">1</span>, <span class="ident">from_slip</span>);
 
         <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">transactions</span>().<span class="ident">first</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">slip_id</span> <span class="op">=</span> <span class="ident">SlipID</span>::<span class="ident">new</span>(<span class="ident">tx</span>.<span class="ident">hash</span>(), <span class="number">0</span>);
@@ -1371,10 +1371,10 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">roll_forward_and_back_fork_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">blockchain</span>, <span class="ident">slips</span>) <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">1</span>).<span class="kw">await</span>;
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">1</span>).<span class="kw">await</span>;
 
         <span class="kw">let</span> <span class="ident">from_slip</span> <span class="op">=</span> <span class="ident">slips</span>.<span class="ident">first</span>().<span class="ident">unwrap</span>().<span class="number">0</span>;
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="number">1</span>, <span class="ident">from_slip</span>);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_block</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="number">1</span>, <span class="ident">from_slip</span>);
 
         <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">transactions</span>().<span class="ident">first</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">slip_id</span> <span class="op">=</span> <span class="ident">SlipID</span>::<span class="ident">new</span>(<span class="ident">tx</span>.<span class="ident">hash</span>(), <span class="number">0</span>);
@@ -1419,10 +1419,10 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">roll_forward_and_back_transaction_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">blockchain</span>, <span class="ident">slips</span>) <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
         <span class="comment">// make a mock tx</span>
         <span class="kw">let</span> (<span class="ident">slip_id</span>, <span class="ident">output_slip</span>) <span class="op">=</span> <span class="ident">slips</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">mock_tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_tx</span>(
+        <span class="kw">let</span> <span class="ident">mock_tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_tx</span>(
             <span class="ident">slip_id</span>,
             <span class="ident">output_slip</span>.<span class="ident">amount</span>(),
             <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(),
@@ -1431,7 +1431,7 @@
         <span class="kw">let</span> <span class="ident">outputs_input_a</span> <span class="op">=</span> <span class="ident">SlipID</span>::<span class="ident">new</span>(<span class="ident">mock_tx</span>.<span class="ident">hash</span>(), <span class="number">0</span>);
         <span class="comment">// make a mock block with the tx</span>
         <span class="kw">let</span> <span class="ident">first_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">latest_block</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">new_block_a</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block_with_tx</span>(
+        <span class="kw">let</span> <span class="ident">new_block_a</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_block_with_tx</span>(
             <span class="ident">first_block</span>.<span class="ident">hash</span>(),
             <span class="ident">first_block</span>.<span class="ident">id</span>() <span class="op">+</span> <span class="number">1</span>,
             <span class="ident">mock_tx</span>,
@@ -1439,7 +1439,7 @@
 
         <span class="comment">// make a block where we will test spendability</span>
         <span class="kw">let</span> <span class="ident">new_block_b</span> <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_block_empty</span>(<span class="ident">first_block</span>.<span class="ident">hash</span>(), <span class="ident">new_block_a</span>.<span class="ident">id</span>() <span class="op">+</span> <span class="number">1</span>);
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_block_empty</span>(<span class="ident">first_block</span>.<span class="ident">hash</span>(), <span class="ident">new_block_a</span>.<span class="ident">id</span>() <span class="op">+</span> <span class="number">1</span>);
         <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">blockchain</span>
             .<span class="ident">utxoset</span>
             .<span class="ident">is_slip_spendable_at_block</span>(<span class="kw-2">&amp;</span><span class="ident">outputs_input_a</span>, <span class="ident">new_block_b</span>.<span class="ident">id</span>()));
@@ -1463,17 +1463,17 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">roll_forward_and_back_transaction_on_fork_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">blockchain</span>, <span class="ident">slips</span>) <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
         <span class="comment">// make a mock tx</span>
         <span class="kw">let</span> (<span class="ident">slip_id</span>, <span class="ident">output_slip</span>) <span class="op">=</span> <span class="ident">slips</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">mock_tx_a</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_tx</span>(
+        <span class="kw">let</span> <span class="ident">mock_tx_a</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_tx</span>(
             <span class="ident">slip_id</span>,
             <span class="ident">output_slip</span>.<span class="ident">amount</span>(),
             <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(),
         );
         <span class="comment">// get an input for the mock_tx&#39;s output</span>
         <span class="kw">let</span> <span class="ident">outputs_input_a</span> <span class="op">=</span> <span class="ident">SlipID</span>::<span class="ident">new</span>(<span class="ident">mock_tx_a</span>.<span class="ident">hash</span>(), <span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">mock_tx_b</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_tx</span>(
+        <span class="kw">let</span> <span class="ident">mock_tx_b</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_tx</span>(
             <span class="ident">outputs_input_a</span>,
             <span class="ident">output_slip</span>.<span class="ident">amount</span>(),
             <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(),
@@ -1482,12 +1482,12 @@
 
         <span class="comment">// make mock blocks so we can use their hashes</span>
         <span class="kw">let</span> <span class="ident">first_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">latest_block</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">new_block_a</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block_with_tx</span>(
+        <span class="kw">let</span> <span class="ident">new_block_a</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_block_with_tx</span>(
             <span class="ident">first_block</span>.<span class="ident">hash</span>(),
             <span class="ident">first_block</span>.<span class="ident">id</span>() <span class="op">+</span> <span class="number">1</span>,
             <span class="ident">mock_tx_a</span>,
         );
-        <span class="kw">let</span> <span class="ident">new_block_b</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block_with_tx</span>(
+        <span class="kw">let</span> <span class="ident">new_block_b</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_block_with_tx</span>(
             <span class="ident">new_block_a</span>.<span class="ident">hash</span>().<span class="ident">clone</span>(),
             <span class="ident">new_block_a</span>.<span class="ident">id</span>().<span class="ident">clone</span>() <span class="op">+</span> <span class="number">1</span>,
             <span class="ident">mock_tx_b</span>,
@@ -1631,7 +1631,7 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_total_for_inputs_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> (<span class="ident">blockchain</span>, <span class="ident">slips</span>) <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inputs</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
         <span class="ident">slips</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">slip_id</span>, <span class="ident">_output_slip</span>)<span class="op">|</span> {
             <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">slip_id</span>);
@@ -1645,20 +1645,20 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_receiver_for_inputs_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> (<span class="ident">blockchain</span>, <span class="ident">slips</span>) <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
         <span class="ident">slips</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">slip_id</span>, <span class="ident">_output_slip</span>)<span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">receiver</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>.<span class="ident">get_receiver_for_inputs</span>(<span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="kw-2">*</span><span class="ident">slip_id</span>]);
             <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">receiver</span>.<span class="ident">unwrap</span>(), <span class="ident">keypair</span>.<span class="ident">public_key</span>());
         });
 
         <span class="kw">let</span> (<span class="ident">slip_id</span>, <span class="ident">output_slip</span>) <span class="op">=</span> <span class="ident">slips</span>[<span class="number">0</span>];
-        <span class="kw">let</span> <span class="ident">mock_tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_tx</span>(
+        <span class="kw">let</span> <span class="ident">mock_tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_tx</span>(
             <span class="ident">slip_id</span>,
             <span class="ident">output_slip</span>.<span class="ident">amount</span>(),
             <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>(),
         );
         <span class="kw">let</span> <span class="ident">first_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">latest_block</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">new_block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_block_with_tx</span>(
+        <span class="kw">let</span> <span class="ident">new_block</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_block_with_tx</span>(
             <span class="ident">first_block</span>.<span class="ident">hash</span>(),
             <span class="ident">first_block</span>.<span class="ident">id</span>() <span class="op">+</span> <span class="number">1</span>,
             <span class="ident">mock_tx</span>,
@@ -1673,7 +1673,7 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">output_slip_from_slip_id_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> (<span class="ident">blockchain</span>, <span class="ident">slips</span>) <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">10</span>).<span class="kw">await</span>;
         <span class="ident">slips</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">slip_id</span>, <span class="ident">output_slip</span>)<span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">receiver</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>.<span class="ident">output_slip_from_slip_id</span>(<span class="ident">slip_id</span>);
             <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">receiver</span>.<span class="ident">unwrap</span>(), <span class="ident">output_slip</span>);
@@ -1684,10 +1684,10 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">transaction_routing_work_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> (<span class="ident">blockchain</span>, <span class="kw-2">mut</span> <span class="ident">slips</span>) <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">2</span>).<span class="kw">await</span>;
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">2</span>).<span class="kw">await</span>;
 
         <span class="kw">let</span> (<span class="ident">input</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_tx</span>(<span class="ident">input</span>, <span class="number">100</span>, <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_tx</span>(<span class="ident">input</span>, <span class="number">100</span>, <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>());
 
         <span class="kw">let</span> <span class="ident">keypair_bytes</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">serialize</span>().<span class="ident">to_vec</span>();
         <span class="kw">let</span> <span class="ident">sig</span> <span class="op">=</span> <span class="ident">keypair</span>.<span class="ident">sign_message</span>(<span class="kw-2">&amp;</span><span class="ident">hash_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">keypair_bytes</span>));
@@ -1709,10 +1709,10 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">transaction_fees_test</span>() {
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
         <span class="kw">let</span> (<span class="ident">blockchain</span>, <span class="kw-2">mut</span> <span class="ident">slips</span>) <span class="op">=</span>
-            <span class="ident">test_utilities</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">2</span>).<span class="kw">await</span>;
+            <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_blockchain_and_slips</span>(<span class="kw-2">&amp;</span><span class="ident">keypair</span>, <span class="number">2</span>).<span class="kw">await</span>;
 
         <span class="kw">let</span> (<span class="ident">input</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">slips</span>.<span class="ident">pop</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">make_mock_tx</span>(<span class="ident">input</span>, <span class="number">100</span>, <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>());
+        <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">test_utilities</span>::<span class="ident">mocks</span>::<span class="ident">make_mock_tx</span>(<span class="ident">input</span>, <span class="number">100</span>, <span class="ident">keypair</span>.<span class="ident">public_key</span>().<span class="ident">clone</span>());
 
         <span class="kw">let</span> <span class="ident">fees</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>.<span class="ident">transaction_fees</span>(<span class="kw-2">&amp;</span><span class="ident">tx</span>.<span class="ident">core</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="number">2499999999900</span>, <span class="ident">fees</span>);

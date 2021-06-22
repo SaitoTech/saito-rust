@@ -71,6 +71,9 @@
 <span id="68">68</span>
 <span id="69">69</span>
 <span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">/*!
 # Welcome to Saito
@@ -113,6 +116,9 @@ dev@saito.tech
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">transaction</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">types</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">utxoset</span>;
+
+<span class="attribute">#[<span class="ident">global_allocator</span>]</span>
+<span class="kw">static</span> <span class="ident">ALLOC</span>: <span class="ident">jemallocator</span>::<span class="ident">Jemalloc</span> <span class="op">=</span> <span class="ident">jemallocator</span>::<span class="ident">Jemalloc</span>;
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">lazy_static</span>;
