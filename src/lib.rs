@@ -21,6 +21,7 @@ The Saito Team
 dev@saito.tech
 
 */
+pub mod blockchain;
 pub mod consensus;
 pub mod constants;
 pub mod mempool;

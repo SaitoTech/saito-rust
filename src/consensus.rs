@@ -1,4 +1,6 @@
 use crate::{
+    blockchain::Blockchain,
+    constants::{SaitoMessage},
     mempool::Mempool,
 };
 use std::{
@@ -9,14 +11,6 @@ use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{span, Level};
 
-
-//
-// Broadcast Messages sent between components in the 
-//
-pub enum SaitoMessage {
-    StartBundling,
-    StopBundling,
-}
 
 
 /// The consensus state which exposes a run method
@@ -96,8 +90,17 @@ impl Consensus {
 
 
         loop {
-            while let Ok(message) = saito_message_rx.recv().await {
+            while let Ok(message) = broadcast_channel_receiver.recv().await {
                 match message {
+		    SaitoMessage::StartBundling => {
+			println!("Start Bundling");
+		    }
+		    SaitoMessage::StopBundling => {
+			println!("Stop Bundling");
+		    }
+		    _ => {
+			println!("Received Unknown Message Type in Main Loop");
+		    }
                 }
             }
         }

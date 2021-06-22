@@ -7,10 +7,6 @@ authors = [
 ]
 edition = "2018"
 
-[[bin]]
-name = "saito-spammer"
-path = "src/bin/spammer.rs"
-
 [dependencies]
 rayon = "1.5"
 serde = { version = "1.0", features = ["derive"] }

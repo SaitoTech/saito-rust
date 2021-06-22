@@ -1,5 +1,5 @@
 use crate::{
-    saito_message::SaitoMessage,
+    constants::{SaitoMessage},
 };
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
@@ -18,16 +18,14 @@ lazy_static! {
 /// received over the network are queued in the `Mempool` before being added to 
 /// the `Blockchain`
 pub struct Mempool {
-
     broadcast_channel_sender:  broadcast::Sender<SaitoMessage>,
-
 }
 
 impl Mempool {
 
     pub fn new(bcs : broadcast::Sender<SaitoMessage>) -> Self {
         Mempool {
-	    broadcast_channel_sender = bcs,
+	    broadcast_channel_sender : bcs,
         }
     }
 }
