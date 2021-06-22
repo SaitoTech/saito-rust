@@ -2,9 +2,9 @@ use crate::crypto::Sha256Hash;
 
 include!(concat!(env!("OUT_DIR"), "/constants.rs"));
 
-// The epoch should be stored in a ring. The location pointer is the index of the latest block.
+// The epoch should be stored in a ring. The top_location pointer is the index of the latest block.
 // When the length of the blockchain begins to exceed 2x epoch length new blocks will begin to
-// overwrite older blocks.
+// overwrite older blocks hashes.
 // the top_location + length tells us where valid data is.
 
 const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
@@ -104,17 +104,8 @@ impl LongestChainQueue {
         Some(self.epoch_ring_array[self.epoch_ring_top_location as usize])
     }
 
-    pub fn last_block_in_epoch(&self) -> Sha256Hash {
-        if self.epoch_ring_length < RING_BUFFER_LENGTH
-            || self.epoch_ring_top_location == RING_BUFFER_LENGTH - 1
-        {
-            self.epoch_ring_array[0]
-        } else {
-            self.epoch_ring_array[(self.epoch_ring_top_location + 1) as usize]
-        }
-    }
-
     pub fn contains_hash_by_block_id(&self, hash: Sha256Hash, block_id: u64) -> bool {
+        // TODO make sure the block id is not less than the minimum. I think block_hash_by_id already does this.
         if block_id + 1 > self.longest_chain_length {
             false
         } else {

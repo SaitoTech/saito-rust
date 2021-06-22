@@ -72,18 +72,19 @@ impl Consensus {
     /// Run consensus
     async fn _run(&mut self) -> crate::Result<()> {
         {
+            // Load blocks from disk
             let span = span!(Level::TRACE, "Load blocks from disk");
             let _enter = span.enter();
             event!(Level::DEBUG, "Start load blocks from disk");
             let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
             let mut blockchain = blockchain_mutex.lock().unwrap();
-
+            // Get filenames from the blocks directory
             let mut paths: Vec<_> = blockchain
                 .storage
                 .list_files_in_blocks_dir()
                 .map(|r| r.unwrap())
                 .collect();
-
+            // sort them(the block id is first in the filename)
             paths.sort_by_key(|dir| dir.path());
 
             for path in paths {

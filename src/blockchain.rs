@@ -222,8 +222,9 @@ impl Blockchain {
                     );
 
                     AddBlockEvent::AcceptedAsLongestChain
-                // We are not on the longest chain, need to find the commone ancestor
+                
                 } else {
+                    // We are not on the longest chain
                     if self.is_longer_chain(&fork_chains.new_chain, &fork_chains.old_chain) {
                         self.fork_tree.insert(block.hash(), block).unwrap();
                         // Unwind the old chain

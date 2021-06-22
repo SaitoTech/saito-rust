@@ -19,23 +19,32 @@ enum LongestChainSpentTime {
     AfterSpentOrNeverExisted,
 }
 
-/// TODO document this
+/// The fork spent status indicates when a slip on a fork block was 
+/// unspent or spent. It is stored in a map keyed by the block hash
+/// where the event occurred. This could be optimized to use the 
+/// block id. Block hash is 32 bytes, block id is 8, however, this
+/// would also require a way to keep track of forks.
 #[derive(Debug, Clone, Hash, PartialEq)]
 enum ForkSpentStatus {
     ForkUnspent,
     ForkSpent,
 }
 
-/// TODO document this
+/// This structure is stored in the slip hashmap(currently called shashmap
+/// for historical reasons). This data serves two purposes: to validate 
+/// spendability on the longest chain and to validate spendability on
+/// forks.
 #[derive(Debug, Clone, PartialEq)]
 struct SlipSpentStatus {
     output_slip: OutputSlip,
-    //longest_chain_status: Option<LongestChainSpentStatus>,
     longest_chain_unspent_block_id: Option<u64>,
     longest_chain_spent_block_id: Option<u64>,
     fork_status: HashMap<Sha256Hash, ForkSpentStatus>,
 }
 impl SlipSpentStatus {
+    /// When we create a new SlipSpentStatus, this is because it is the first
+    /// time we have seen this output. If this is on the longest chain we can
+    /// this this constructor.
     pub fn new_on_longest_chain(output_slip: OutputSlip, unspent_block_id: u64) -> Self {
         SlipSpentStatus {
             output_slip: output_slip,
@@ -45,6 +54,9 @@ impl SlipSpentStatus {
         }
     }
 
+    /// When we create a new SlipSpentStatus, this is because it is the first
+    /// time we have seen this output. If this is in a fork block we can
+    /// this this constructor.
     pub fn new_on_fork(output_slip: OutputSlip, block_hash: Sha256Hash) -> Self {
         let mut fork_status_map: HashMap<Sha256Hash, ForkSpentStatus> = HashMap::new();
         fork_status_map.insert(block_hash, ForkSpentStatus::ForkUnspent);
@@ -57,8 +69,9 @@ impl SlipSpentStatus {
     }
 }
 
-/// A hashmap storing Slips TODO fix this documentation once we've settled on what
-/// data structures actually belong here.
+/// A hashmap storing everything needed to validate the spendability of a slip.
+/// This may be optimized in the future, but should be performant enough for the
+/// time being.
 #[derive(Debug, Clone)]
 pub struct UtxoSet {
     shashmap: HashMap<SlipID, SlipSpentStatus>,
@@ -71,14 +84,16 @@ impl UtxoSet {
             shashmap: HashMap::new(),
         }
     }
-
+    /// Removes a block from the tip of a fork chain. This is not technically needed yet,
+    /// but might be very helpful if we wanted to cleanup a fork, especially if it is a
+    /// fork of a fork.
     pub fn roll_back_on_fork(&mut self, block: &Block) {
         block
             .transactions()
             .iter()
             .for_each(|tx| self.roll_back_transaction_on_fork(tx, block));
     }
-
+    /// Add a block to the tip of a fork
     pub fn roll_forward_on_fork(&mut self, block: &Block) {
         // spendoutputs and spend the inputs
         block
@@ -86,7 +101,7 @@ impl UtxoSet {
             .iter()
             .for_each(|tx| self.roll_forward_transaction_on_fork(tx, block));
     }
-
+    /// Remove a block from the tip of the longest chain
     pub fn roll_back(&mut self, block: &Block) {
         // unspend outputs and spend the inputs
         block
@@ -94,7 +109,7 @@ impl UtxoSet {
             .iter()
             .for_each(|tx| self.roll_back_transaction(tx, block));
     }
-
+    /// Add a block to the tip of the longest chain
     pub fn roll_forward(&mut self, block: &Block) {
         let mut tracing_timer = TracingTimer::new();
 
@@ -252,7 +267,11 @@ impl UtxoSet {
                 });
         });
     }
-
+    /// Used internally in utxoset to determine the status of a slip with respect
+    /// to the longest chain. This is useful for validating a slip on the longest
+    /// chain, and also used when we are trying to determine a slip's status in 
+    /// a fork, in which case we need to know it's status at the common ancestor
+    /// block.
     fn longest_chain_spent_time_status(
         &self,
         slip_id: &SlipID,
@@ -418,7 +437,7 @@ impl UtxoSet {
             None => None,
         }
     }
-
+    /// Computes the fee(leftover of output amount - input amount) for a given transaction.
     pub fn transaction_fees(&self, tx_core: &TransactionCore) -> u64 {
         let input_amt: u64 = tx_core
             .inputs()
@@ -430,7 +449,7 @@ impl UtxoSet {
 
         input_amt - output_amt
     }
-
+    /// TODO 
     pub fn transaction_routing_fees(&self, tx: &Transaction) -> u64 {
         let tx_fees = self.transaction_fees(&tx.core);
 
