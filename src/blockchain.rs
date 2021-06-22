@@ -413,7 +413,7 @@ mod tests {
     use crate::slip::SlipID;
     use crate::slip::SlipType;
     use crate::test_utilities;
-    use crate::test_utilities::MockTimestampGenerator;
+    use crate::test_utilities::mocks::MockTimestampGenerator;
     use crate::time::create_timestamp;
     use crate::transaction::TransactionCore;
     include!(concat!(env!("OUT_DIR"), "/constants.rs"));
@@ -437,7 +437,7 @@ mod tests {
 
         let mut mock_timestamp_generator = MockTimestampGenerator::new();
         let (mut blockchain, mut slips) =
-            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH).await;
+            test_utilities::mocks::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH).await;
         let block = blockchain.latest_block().unwrap();
 
         let mut prev_block_hash = block.hash();
@@ -612,7 +612,7 @@ mod tests {
         let keypair = Keypair::new();
         let mut mock_timestamp_generator = MockTimestampGenerator::new();
         let (mut blockchain, _slips) =
-            test_utilities::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH).await;
+            test_utilities::mocks::make_mock_blockchain_and_slips(&keypair, 3 * EPOCH_LENGTH).await;
 
         let block = blockchain.latest_block().unwrap();
         let mut prev_block_hash = block.hash();

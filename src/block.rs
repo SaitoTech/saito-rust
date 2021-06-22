@@ -300,7 +300,8 @@ mod test {
         let keypair = Keypair::new();
         let public_key = keypair.public_key();
 
-        let block = test_utilities::make_mock_block(&keypair, [0; 32], 0, SlipID::new([0; 32], 0));
+        let block =
+            test_utilities::mocks::make_mock_block(&keypair, [0; 32], 0, SlipID::new([0; 32], 0));
         assert_eq!(block.transactions().len(), 1);
         assert_eq!(
             block.transactions()[0].core.outputs()[0].address(),

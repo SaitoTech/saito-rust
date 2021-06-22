@@ -37,7 +37,7 @@ impl ForkTree {
 mod test {
 
     use super::*;
-    use crate::test_utilities::make_mock_block_empty;
+    use crate::test_utilities::mocks::make_mock_block_empty;
 
     #[test]
     fn fork_tree_tree() {
