@@ -22,7 +22,7 @@ sha2 = "0.9.5"
 base58 = "0.1.0"
 hex = "0.4.3"
 lazy_static = "1.4.0"
-rand = "0.8.3"
+rand = "0.8.4"
 warp = "0.3"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
