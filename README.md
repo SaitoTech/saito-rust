@@ -18,8 +18,12 @@ https://trello.com/b/gWPiQFZ1/saito-rust-project-management
 ## Documentation
 
 - https://saitotech.github.io/saito-rust/saito_rust/index.html
+- [Architecture doc](ARCHITECTURE.md)
 
 ### Deps
+
+- (If on OSX: `xcode-select --install`)
+- [Install Rust](https://www.rust-lang.org/tools/install)
 
 ```
 rustup component add rustfmt
@@ -28,15 +32,19 @@ rustup component add rustfmt
 ### Run the node
 
 ```
-cargo run
+RUST_LOG=debug cargo run --bin saito_rust
 ```
+
+Possible log levels are Error, Warn, Info, Debug, Trace.
 
 ### Tests
 
 ```
 scripts/test.sh
 ```
-or 
+
+or
+
 ```
 cargo test --features=test-utilities
 ```

@@ -28,10 +28,6 @@ impl ForkTree {
         self.fork_tree.get(block_hash)
     }
 
-    pub fn parent_by_hash(&self, block_hash: &Sha256Hash) -> Option<&Block> {
-        self.fork_tree.get(block_hash)
-    }
-
     pub fn contains_block_hash(&self, block_hash: &Sha256Hash) -> bool {
         self.fork_tree.contains_key(block_hash)
     }
@@ -40,8 +36,40 @@ impl ForkTree {
 #[cfg(test)]
 mod test {
 
+    use super::*;
+    use crate::test_utilities::make_mock_block_empty;
+
     #[test]
-    fn test_fork_tree() {
-        assert!(true);
+    fn fork_tree_tree() {
+        let fork_tree = ForkTree::new();
+        assert_eq!(fork_tree.fork_tree, HashMap::new());
+    }
+
+    #[test]
+    fn fork_tree_insert_remove_test() {
+        let mut ft = ForkTree::new();
+        let block = make_mock_block_empty([0; 32], 0);
+
+        if let Some(new_block) = ft.insert(block.hash(), block.clone()) {
+            assert_eq!(&block, new_block);
+        }
+
+        match ft.block_by_hash(&block.hash()) {
+            Some(b) => {
+                assert_eq!(b, &block);
+            }
+            None => assert!(false),
+        }
+
+        assert_eq!(ft.contains_block_hash(&block.hash()), true);
+
+        ft.remove(&block.hash());
+
+        match ft.block_by_hash(&block.hash()) {
+            Some(_) => assert!(false),
+            None => assert!(true),
+        }
+
+        assert_eq!(ft.contains_block_hash(&block.hash()), false);
     }
 }

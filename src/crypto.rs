@@ -4,13 +4,9 @@ use base58::FromBase58;
 pub use secp256k1::{Message, PublicKey, Signature, SECP256K1};
 use sha2::{Digest, Sha256};
 
-pub type Sha256Hash = [u8; 32];
+/// Sha256Hash byte array type
 
-pub fn hash(data: &Vec<u8>) -> Sha256Hash {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    hasher.finalize().as_slice().try_into().unwrap()
-}
+pub type Sha256Hash = [u8; 32];
 
 /// Hash the message string with sha256 for signing by secp256k1 and return as byte array
 pub fn make_message_from_string(message_string: &str) -> Sha256Hash {
@@ -20,14 +16,11 @@ pub fn make_message_from_string(message_string: &str) -> Sha256Hash {
 
     hashvalue.as_slice().try_into().unwrap()
 }
-
-/// Hash the message byte array with sha256 for signing by secp256k1 and return as byte array
-pub fn make_message_from_bytes(message_bytes: &[u8]) -> Sha256Hash {
+/// Hash the message byte Vec with sha256 for signing by secp256k1 and return as Sha256Hash
+pub fn hash_bytes(data: &Vec<u8>) -> Sha256Hash {
     let mut hasher = Sha256::new();
-    hasher.update(message_bytes);
-    let hashvalue = hasher.finalize();
-
-    hashvalue.as_slice().try_into().unwrap()
+    hasher.update(data);
+    hasher.finalize().as_slice().try_into().unwrap()
 }
 
 /// Verify a message signed by secp256k1. Message is a plain string. Sig and pubkey should be base58 encoded.
@@ -50,7 +43,20 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_make_message_from_string() {
+    fn hash_test() {
+        let vec: Vec<u8> = vec![0; 32];
+        let hash = hash_bytes(&vec);
+        assert_eq!(
+            hash,
+            [
+                102, 104, 122, 173, 248, 98, 189, 119, 108, 143, 193, 139, 142, 159, 142, 32, 8,
+                151, 20, 133, 110, 226, 51, 179, 144, 42, 89, 29, 13, 95, 41, 37
+            ]
+        );
+    }
+
+    #[test]
+    fn make_message_from_string_test() {
         make_message_from_string("foobarbaz");
         make_message_from_string("1231231231");
         make_message_from_string("");

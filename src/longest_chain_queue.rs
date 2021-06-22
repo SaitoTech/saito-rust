@@ -52,7 +52,6 @@ impl LongestChainQueue {
         self.epoch_ring_length -= 1;
         // We should be safe to just unwrap here instead of returning and Option because
         // we've already done a check about to make sure the chain length is not 0
-        //println!("roll_back {:?}", self.latest_block_hash().unwrap());
         self.latest_block_hash().unwrap()
     }
     /// Roll forward the longest chain by 1.
@@ -60,7 +59,6 @@ impl LongestChainQueue {
     /// If the length epoch_ring_length exceeds RING_BUFFER_LENGTH, we are overwriting data and
     /// therefore cap epoch_ring_length at RING_BUFFER_LENGTH.
     pub fn roll_forward(&mut self, new_block_hash: Sha256Hash) {
-        //println!("roll_forward {:?}", new_block_hash);
         self.longest_chain_length += 1;
         self.epoch_ring_top_location += 1;
         self.epoch_ring_top_location = self.epoch_ring_top_location % RING_BUFFER_LENGTH;
@@ -131,7 +129,7 @@ mod test {
     use crate::crypto::make_message_from_string;
 
     #[test]
-    fn test_longest_chain_queue() {
+    fn longest_chain_queue_test() {
         // TODO: paramterize the contructor of longest chain with EPOCH_LENGTH rather than reading it from
         // the global so that the length of these tests runs doesn't have to be dependant on EPOCH_LENGTH
         let ring_buffer_length_test: u64 = 2 * EPOCH_LENGTH;

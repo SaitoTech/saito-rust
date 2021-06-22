@@ -2,10 +2,13 @@ use crate::block::Block;
 use crate::blockchain::ForkChains;
 use crate::crypto::Sha256Hash;
 use crate::slip::{OutputSlip, SlipID};
-use crate::transaction::Transaction;
+use crate::time::TracingAccumulator;
+use crate::time::TracingTimer;
+use crate::transaction::{Transaction, TransactionCore};
 use secp256k1::PublicKey;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use tracing::Level;
 
 #[derive(Debug, Clone, PartialEq)]
 enum LongestChainSpentTime {
@@ -44,7 +47,7 @@ impl SlipSpentStatus {
 
     pub fn new_on_fork(output_slip: OutputSlip, block_hash: Sha256Hash) -> Self {
         let mut fork_status_map: HashMap<Sha256Hash, ForkSpentStatus> = HashMap::new();
-        fork_status_map.insert(block_hash, ForkSpentStatus::ForkSpent);
+        fork_status_map.insert(block_hash, ForkSpentStatus::ForkUnspent);
         SlipSpentStatus {
             output_slip: output_slip,
             longest_chain_unspent_block_id: None,
@@ -93,10 +96,28 @@ impl UtxoSet {
     }
 
     pub fn roll_forward(&mut self, block: &Block) {
-        block
-            .transactions()
-            .iter()
-            .for_each(|tx| self.roll_forward_transaction(tx, block));
+        let mut tracing_timer = TracingTimer::new();
+
+        let mut tracing_accumulator = TracingAccumulator::new();
+        block.transactions().iter().for_each(|tx| {
+            tracing_accumulator.set_start();
+            self.roll_forward_transaction(tx, block);
+            tracing_accumulator.accumulate_time_since_start();
+        });
+        event!(
+            Level::TRACE,
+            "                  ADDED {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_accumulator.finish()
+        );
+        event!(
+            Level::TRACE,
+            "                  ADDED {count:>width$} TX: {time:?}",
+            count = block.transactions().len(),
+            width = 4,
+            time = tracing_timer.time_since_last()
+        );
     }
 
     /// Loop through the inputs and outputs in a transaction update the hashmap appropriately.
@@ -109,7 +130,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, _output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 let entry = self
                     .shashmap
                     .entry(slip_id)
@@ -143,7 +164,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, _output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 let entry = self
                     .shashmap
                     .entry(slip_id)
@@ -179,7 +200,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 self.shashmap
                     .entry(slip_id)
                     .and_modify(|slip_spent_status| {
@@ -210,7 +231,7 @@ impl UtxoSet {
             .iter()
             .enumerate()
             .for_each(|(index, output)| {
-                let slip_id = SlipID::new(tx.core.hash(), index as u64);
+                let slip_id = SlipID::new(tx.hash(), index as u64);
                 self.shashmap
                     .entry(slip_id)
                     .and_modify(|slip_spent_status: &mut SlipSpentStatus| {
@@ -235,7 +256,7 @@ impl UtxoSet {
     fn longest_chain_spent_time_status(
         &self,
         slip_id: &SlipID,
-        block: &Block,
+        block_id: u64,
     ) -> LongestChainSpentTime {
         match &self.shashmap.get(slip_id) {
             Some(status) => {
@@ -243,13 +264,13 @@ impl UtxoSet {
                     Some(longest_chain_unspent_block_id) => {
                         match status.longest_chain_spent_block_id {
                             Some(longest_chain_spent_block_id) => {
-                                if longest_chain_unspent_block_id <= block.id()
-                                    && longest_chain_spent_block_id > block.id()
+                                if longest_chain_unspent_block_id <= block_id
+                                    && longest_chain_spent_block_id > block_id
                                 {
                                     // There is a spent_block_id but we are interested in the state of the slip before it was spent,
                                     // this is useful when looking at the common_ancestor of forks.
                                     LongestChainSpentTime::BetweenUnspentAndSpent
-                                } else if longest_chain_unspent_block_id <= block.id() {
+                                } else if longest_chain_unspent_block_id <= block_id {
                                     // The slip was already spent
                                     LongestChainSpentTime::AfterSpent
                                 } else {
@@ -258,7 +279,7 @@ impl UtxoSet {
                                 }
                             }
                             None => {
-                                if longest_chain_unspent_block_id <= block.id() {
+                                if longest_chain_unspent_block_id <= block_id {
                                     // The slip is created/unspent before this block and we don't have any spent block id
                                     LongestChainSpentTime::BetweenUnspentAndSpent
                                 } else {
@@ -280,8 +301,8 @@ impl UtxoSet {
     /// Returns true if the slip is Unspent(present in the hashmap and marked Unspent before the
     /// block). The ForkTuple allows us to check for Unspent/Spent status along the fork's
     /// potential new chain more quickly. This can be further optimized in the future.
-    pub fn is_slip_spendable_at_block(&self, slip_id: &SlipID, block: &Block) -> bool {
-        let longest_chain_spent_time = self.longest_chain_spent_time_status(slip_id, block);
+    pub fn is_slip_spendable_at_block(&self, slip_id: &SlipID, block_id: u64) -> bool {
+        let longest_chain_spent_time = self.longest_chain_spent_time_status(slip_id, block_id);
         longest_chain_spent_time == LongestChainSpentTime::BetweenUnspentAndSpent
     }
     /// Returns true if the slip is Unspent(present in the hashmap and marked Unspent before the
@@ -293,7 +314,7 @@ impl UtxoSet {
         fork_chains: &ForkChains,
     ) -> bool {
         let longest_chain_spent_time =
-            self.longest_chain_spent_time_status(slip_id, &fork_chains.ancestor_block);
+            self.longest_chain_spent_time_status(slip_id, fork_chains.ancestor_block.id());
         if longest_chain_spent_time == LongestChainSpentTime::AfterSpent {
             return false;
         }
@@ -386,12 +407,10 @@ impl UtxoSet {
                     None
                 }
             } else {
-                println!("COULDN'T FIND INPUTS");
                 None
             }
         }
     }
-
     /// This is used to get the Output(`OutputSlip`) which corresponds to a given Input(`SlipID`)
     pub fn output_slip_from_slip_id(&self, slip_id: &SlipID) -> Option<&OutputSlip> {
         match self.shashmap.get(slip_id) {
@@ -400,24 +419,33 @@ impl UtxoSet {
         }
     }
 
-    pub fn fees_in_transactions(&self, transactions: &Vec<Transaction>) -> u64 {
-        let mut input_amt = 0;
-        let mut output_amt = 0;
+    pub fn transaction_fees(&self, tx_core: &TransactionCore) -> u64 {
+        let input_amt: u64 = tx_core
+            .inputs()
+            .iter()
+            .map(|input| self.output_slip_from_slip_id(input).unwrap().amount())
+            .sum();
 
-        transactions.iter().for_each(|tx| {
-            let input_tot: u64 = tx
-                .core
-                .inputs()
-                .iter()
-                .map(|input| self.output_slip_from_slip_id(input).unwrap().amount())
-                .sum();
-            input_amt = input_amt + input_tot;
-
-            let output_tot: u64 = tx.core.outputs().iter().map(|output| output.amount()).sum();
-            output_amt = output_amt + output_tot;
-        });
+        let output_amt: u64 = tx_core.outputs().iter().map(|output| output.amount()).sum();
 
         input_amt - output_amt
+    }
+
+    pub fn transaction_routing_fees(&self, tx: &Transaction) -> u64 {
+        let tx_fees = self.transaction_fees(&tx.core);
+
+        let factor;
+        let path_len;
+
+        if tx.path().len() > 0 {
+            factor = tx.path().len();
+            path_len = tx.path().len();
+        } else {
+            factor = 1;
+            path_len = 1;
+        }
+
+        ((tx_fees as f64) / path_len.pow(factor as u32) as f64).round() as u64
     }
 }
 
@@ -425,18 +453,19 @@ impl UtxoSet {
 mod test {
 
     use super::*;
-    use crate::{keypair::Keypair, test_utilities};
+    use crate::{crypto::hash_bytes, keypair::Keypair, test_utilities, transaction::Hop};
 
-    #[test]
-    fn roll_forward_and_back_test() {
+    #[tokio::test]
+    async fn roll_forward_and_back_test() {
         let keypair = Keypair::new();
-        let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 1);
+        let (mut blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 1).await;
 
         let from_slip = slips.first().unwrap().0;
         let block = test_utilities::make_mock_block(&keypair, [0; 32], 1, from_slip);
 
         let tx = block.transactions().first().unwrap();
-        let slip_id = SlipID::new(tx.core.hash(), 0);
+        let slip_id = SlipID::new(tx.hash(), 0);
 
         blockchain.utxoset.roll_forward(&block);
 
@@ -476,16 +505,17 @@ mod test {
         }
     }
 
-    #[test]
-    fn roll_forward_and_back_fork_test() {
+    #[tokio::test]
+    async fn roll_forward_and_back_fork_test() {
         let keypair = Keypair::new();
-        let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 1);
+        let (mut blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 1).await;
 
         let from_slip = slips.first().unwrap().0;
         let block = test_utilities::make_mock_block(&keypair, [0; 32], 1, from_slip);
 
         let tx = block.transactions().first().unwrap();
-        let slip_id = SlipID::new(tx.core.hash(), 0);
+        let slip_id = SlipID::new(tx.hash(), 0);
 
         blockchain.utxoset.roll_forward_on_fork(&block);
 
@@ -523,10 +553,11 @@ mod test {
         }
     }
 
-    #[test]
-    fn roll_forward_and_back_transaction_test() {
+    #[tokio::test]
+    async fn roll_forward_and_back_transaction_test() {
         let keypair = Keypair::new();
-        let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (mut blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         // make a mock tx
         let (slip_id, output_slip) = slips[0];
         let mock_tx = test_utilities::make_mock_tx(
@@ -535,134 +566,210 @@ mod test {
             keypair.public_key().clone(),
         );
         // get an input for the mock_tx's output
-        let outputs_input = SlipID::new(mock_tx.hash(), 0);
+        let outputs_input_a = SlipID::new(mock_tx.hash(), 0);
         // make a mock block with the tx
         let first_block = blockchain.latest_block().unwrap();
-        let new_block2 = test_utilities::make_mock_block_with_tx(
+        let new_block_a = test_utilities::make_mock_block_with_tx(
             first_block.hash(),
             first_block.id() + 1,
             mock_tx,
         );
 
         // make a block where we will test spendability
-        let new_block3 =
-            test_utilities::make_mock_block_empty(first_block.hash(), new_block2.id() + 1);
+        let new_block_b =
+            test_utilities::make_mock_block_empty(first_block.hash(), new_block_a.id() + 1);
         assert!(!blockchain
             .utxoset
-            .is_slip_spendable_at_block(&outputs_input, &new_block3));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
         // roll_forward block #2
         blockchain
             .utxoset
-            .roll_forward_transaction(&new_block2.transactions()[0], &new_block2);
+            .roll_forward_transaction(&new_block_a.transactions()[0], &new_block_a);
         // assert that tx in block #2 is spendable in block #3
         assert!(blockchain
             .utxoset
-            .is_slip_spendable_at_block(&outputs_input, &new_block3));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
         blockchain
             .utxoset
-            .roll_back_transaction(&new_block2.transactions()[0], &new_block2);
+            .roll_back_transaction(&new_block_a.transactions()[0], &new_block_a);
         assert!(!blockchain
             .utxoset
-            .is_slip_spendable_at_block(&outputs_input, &new_block3));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
     }
 
-    #[test]
-    fn roll_forward_and_back_transaction_on_fork_test() {
+    #[tokio::test]
+    async fn roll_forward_and_back_transaction_on_fork_test() {
         let keypair = Keypair::new();
-        let (mut blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (mut blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         // make a mock tx
         let (slip_id, output_slip) = slips[0];
-        let mock_tx = test_utilities::make_mock_tx(
+        let mock_tx_a = test_utilities::make_mock_tx(
             slip_id,
             output_slip.amount(),
             keypair.public_key().clone(),
         );
         // get an input for the mock_tx's output
-        let outputs_input = SlipID::new(mock_tx.hash(), 0);
-        let mock_tx2 = test_utilities::make_mock_tx(
-            outputs_input,
+        let outputs_input_a = SlipID::new(mock_tx_a.hash(), 0);
+        let mock_tx_b = test_utilities::make_mock_tx(
+            outputs_input_a,
             output_slip.amount(),
             keypair.public_key().clone(),
         );
+        let outputs_input_b = SlipID::new(mock_tx_b.hash(), 0);
 
-        // make a mock block with the tx
+        // make mock blocks so we can use their hashes
         let first_block = blockchain.latest_block().unwrap();
-        let new_block2 = test_utilities::make_mock_block_with_tx(
+        let new_block_a = test_utilities::make_mock_block_with_tx(
             first_block.hash(),
             first_block.id() + 1,
-            mock_tx,
+            mock_tx_a,
         );
-        let new_block3 = test_utilities::make_mock_block_with_tx(
-            new_block2.hash().clone(),
-            new_block2.id().clone() + 1,
-            mock_tx2,
+        let new_block_b = test_utilities::make_mock_block_with_tx(
+            new_block_a.hash().clone(),
+            new_block_a.id().clone() + 1,
+            mock_tx_b,
         );
 
-        // roll_forward tx (as it would if block #2 were added), it should be spendable in the next fork block
+        // roll_forward tx 1 (as it would if block #2 were added), it should be spendable in the next fork block
         blockchain
             .utxoset
-            .roll_forward_transaction(&new_block2.transactions()[0], &new_block2);
+            .roll_forward_transaction(&new_block_a.transactions()[0], &new_block_a);
         let fork_chains: ForkChains = ForkChains {
-            ancestor_block: new_block2.clone(),
+            ancestor_block: new_block_a.clone(),
             old_chain: vec![],
-            new_chain: vec![new_block2.hash(), new_block3.hash()],
+            new_chain: vec![new_block_a.hash(), new_block_b.hash()],
         };
+        // a should be spendable, but not b
+        assert_eq!(
+            blockchain
+                .utxoset
+                .longest_chain_spent_time_status(&outputs_input_a, new_block_a.id() - 1),
+            LongestChainSpentTime::BeforeUnspent
+        );
+        assert_eq!(
+            blockchain
+                .utxoset
+                .longest_chain_spent_time_status(&outputs_input_a, new_block_a.id()),
+            LongestChainSpentTime::BetweenUnspentAndSpent
+        );
         assert!(blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
+        assert!(blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_b.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
 
         // roll_back tx (as it would if block #2 were rolled back), it should no longer be spendable in the next fork block
         blockchain
             .utxoset
-            .roll_back_transaction(&new_block2.transactions()[0], &new_block2);
+            .roll_back_transaction(&new_block_a.transactions()[0], &new_block_a);
+        assert_eq!(
+            blockchain
+                .utxoset
+                .longest_chain_spent_time_status(&outputs_input_a, new_block_a.id() - 1),
+            LongestChainSpentTime::AfterSpentOrNeverExisted
+        );
         assert!(!blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_b.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_b.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
 
         // roll forward tx like it's in a potential fork
         blockchain
             .utxoset
-            .roll_forward_transaction_on_fork(&new_block2.transactions()[0], &new_block2);
+            .roll_forward_transaction_on_fork(&new_block_a.transactions()[0], &new_block_a);
         let fork_chains: ForkChains = ForkChains {
-            ancestor_block: new_block2.clone(),
+            ancestor_block: new_block_a.clone(),
             old_chain: vec![],
-            new_chain: vec![new_block2.hash(), new_block3.hash()],
+            new_chain: vec![new_block_a.hash(), new_block_b.hash()],
         };
+        // it should be spendable at block b as a new fork but not spendable at block id 1
+        // on the longest chain
         assert!(blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
-
-        // roll forward a tx that spends the output, it's input should become unspendable again
-        blockchain
-            .utxoset
-            .roll_forward_transaction_on_fork(&new_block3.transactions()[0], &new_block3);
-        let fork_chains: ForkChains = ForkChains {
-            ancestor_block: new_block2.clone(),
-            old_chain: vec![],
-            new_chain: vec![new_block2.hash(), new_block3.hash(), [0; 32]],
-        };
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
         assert!(!blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_a.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_a.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
+
+        // roll forward a tx that spends the output, it's input should become unspendable again and
+        // tx b should become spendable on the fork
+        blockchain
+            .utxoset
+            .roll_forward_transaction_on_fork(&new_block_b.transactions()[0], &new_block_b);
+        let fork_chains: ForkChains = ForkChains {
+            ancestor_block: new_block_a.clone(),
+            old_chain: vec![],
+            new_chain: vec![new_block_a.hash(), new_block_b.hash(), [0; 32]],
+        };
+        assert_eq!(
+            blockchain
+                .utxoset
+                .longest_chain_spent_time_status(&outputs_input_b, new_block_a.id() - 1),
+            LongestChainSpentTime::AfterSpentOrNeverExisted
+        );
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_a.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_a.id()));
+        assert!(blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
 
         // roll back the tx that spent it, it input should become spendable again
         blockchain
             .utxoset
-            .roll_back_transaction_on_fork(&new_block3.transactions()[0], &new_block3);
+            .roll_back_transaction_on_fork(&new_block_b.transactions()[0], &new_block_b);
         let fork_chains: ForkChains = ForkChains {
-            ancestor_block: new_block2.clone(),
+            ancestor_block: new_block_a.clone(),
             old_chain: vec![],
-            new_chain: vec![new_block2.hash(), new_block3.hash()],
+            new_chain: vec![new_block_a.hash(), new_block_b.hash()],
         };
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_a, new_block_a.id()));
         assert!(blockchain
             .utxoset
-            .is_slip_spendable_at_fork_block(&outputs_input, &fork_chains));
+            .is_slip_spendable_at_fork_block(&outputs_input_a, &fork_chains));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_block(&outputs_input_b, new_block_a.id()));
+        assert!(!blockchain
+            .utxoset
+            .is_slip_spendable_at_fork_block(&outputs_input_b, &fork_chains));
     }
 
-    #[test]
-    fn get_total_for_inputs_test() {
+    #[tokio::test]
+    async fn get_total_for_inputs_test() {
         let keypair = Keypair::new();
-        let (blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         let mut inputs = vec![];
         slips.iter().for_each(|(slip_id, _output_slip)| {
             inputs.push(*slip_id);
@@ -672,10 +779,11 @@ mod test {
         assert_eq!(50_000_0000_0000, total.unwrap());
     }
 
-    #[test]
-    fn get_receiver_for_inputs_test() {
+    #[tokio::test]
+    async fn get_receiver_for_inputs_test() {
         let keypair = Keypair::new();
-        let (blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         slips.iter().for_each(|(slip_id, _output_slip)| {
             let receiver = blockchain.utxoset.get_receiver_for_inputs(&vec![*slip_id]);
             assert_eq!(receiver.unwrap(), keypair.public_key());
@@ -695,25 +803,56 @@ mod test {
         );
         let is_slip_spendable = blockchain
             .utxoset
-            .is_slip_spendable_at_block(&slip_id, &new_block);
+            .is_slip_spendable_at_block(&slip_id, new_block.id());
         assert!(is_slip_spendable);
     }
 
-    #[test]
-    fn output_slip_from_slip_id_test() {
+    #[tokio::test]
+    async fn output_slip_from_slip_id_test() {
         let keypair = Keypair::new();
-        let (blockchain, slips) = test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
+        let (blockchain, slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 10).await;
         slips.iter().for_each(|(slip_id, output_slip)| {
             let receiver = blockchain.utxoset.output_slip_from_slip_id(slip_id);
             assert_eq!(receiver.unwrap(), output_slip);
         });
     }
 
-    // #[test]
-    // fn fees_in_transactions_test() {
-    //     let keypair = Keypair::new();
-    //     let (mut blockchain, mut slips) =
-    //         test_utilities::make_mock_blockchain_and_slips(&keypair, 10);
-    //     assert!(false);
-    // }
+    #[tokio::test]
+    async fn transaction_routing_work_test() {
+        let keypair = Keypair::new();
+        let (blockchain, mut slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 2).await;
+
+        let (input, _) = slips.pop().unwrap();
+        let mut tx = test_utilities::make_mock_tx(input, 100, keypair.public_key().clone());
+
+        let keypair_bytes = keypair.public_key().serialize().to_vec();
+        let sig = keypair.sign_message(&hash_bytes(&keypair_bytes));
+
+        tx.add_hop_to_path(Hop::new(keypair.public_key().clone(), sig.clone()));
+
+        let mut fees = blockchain.utxoset.transaction_routing_fees(&tx);
+
+        assert_eq!(2499999999900, fees);
+
+        tx.add_hop_to_path(Hop::new(keypair.public_key().clone(), sig.clone()));
+
+        fees = blockchain.utxoset.transaction_routing_fees(&tx);
+
+        assert_eq!(624999999975, fees);
+    }
+
+    #[tokio::test]
+    async fn transaction_fees_test() {
+        let keypair = Keypair::new();
+        let (blockchain, mut slips) =
+            test_utilities::make_mock_blockchain_and_slips(&keypair, 2).await;
+
+        let (input, _) = slips.pop().unwrap();
+        let tx = test_utilities::make_mock_tx(input, 100, keypair.public_key().clone());
+
+        let fees = blockchain.utxoset.transaction_fees(&tx.core);
+        assert_eq!(2499999999900, fees);
+    }
 }

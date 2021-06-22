@@ -1,5 +1,5 @@
 use crate::{
-    crypto::{hash, make_message_from_bytes, Sha256Hash},
+    crypto::{hash_bytes, Sha256Hash},
     keypair::Keypair,
     slip::{OutputSlip, SlipID},
     time::create_timestamp,
@@ -41,6 +41,8 @@ pub struct Transaction {
     signature: Signature,
     /// A list of `Hop` stipulating the history of `Transaction` routing
     path: Vec<Hop>,
+    /// hash of the tx
+    hash: Sha256Hash,
     /// All data which is serialized and signed
     pub core: TransactionCore,
 }
@@ -57,7 +59,20 @@ pub struct TransactionCore {
     /// A enum brodcast type determining how to process `Transaction` in consensus
     broadcast_type: TransactionType,
     /// A byte array of miscellaneous information
+    #[serde(with = "serde_bytes")]
     message: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+pub struct TransactionSignatureCore {
+    /// UNIX timestamp when the `Transaction` was created
+    timestamp: u64,
+    /// A list of `SlipID` inputs
+    inputs: Vec<SlipID>,
+    /// A list of `OutputSlip` outputs
+    outputs: Vec<OutputSlip>,
+    /// A enum brodcast type determining how to process `Transaction` in consensus
+    broadcast_type: TransactionType,
 }
 
 impl Transaction {
@@ -86,9 +101,15 @@ impl Transaction {
         broadcast_type: TransactionType,
         message: Vec<u8>,
     ) -> Transaction {
-        Transaction {
+        // For the constructors of Transaction, Rust tries to be helpful and disallows
+        // us from createing a core and then getting a hash from it using a shared borrow and
+        // then moving it to the Transaction. To circumvent this, we instead let the tx own
+        // the core and then get a shared borrow of it through the core() getter and use that
+        // to generate and assign the hash.
+        let mut tx = Transaction {
             signature: signature,
             path: path,
+            hash: [0; 32],
             core: TransactionCore {
                 timestamp: timestamp,
                 inputs: inputs,
@@ -96,75 +117,67 @@ impl Transaction {
                 broadcast_type: broadcast_type,
                 message: message,
             },
-        }
+        };
+        tx.set_hash(hash_bytes(&tx.core().sig_core().into()));
+        tx
     }
 
-    /// Sign
+    /// Construct a new tx from the Transaction Core and sign it
     pub fn sign(core: TransactionCore) -> Transaction {
-        Transaction {
+        let mut tx = Transaction {
             signature: Signature::from_compact(&[0; 64]).unwrap(),
             path: vec![],
+            hash: [0; 32],
             core: core,
-        }
+        };
+        tx.set_hash(hash_bytes(&tx.core().sig_core().into()));
+        tx
     }
 
-    /// Add a `Signature` to `Transaction`
+    /// Construct a new tx with signature from the Transaction Core
     pub fn add_signature(core: TransactionCore, signature: Signature) -> Transaction {
-        Transaction {
+        let mut tx = Transaction {
             signature: signature,
             path: vec![],
+            hash: [0; 32],
             core: core,
-        }
+        };
+        tx.set_hash(hash_bytes(&tx.core().sig_core().into()));
+        tx
     }
 
     /// Create signature and new `Transaction`
     pub fn create_signature(core: TransactionCore, keypair: &Keypair) -> Transaction {
-        let message_bytes: Vec<u8> = core.clone().into();
-        let message_hash = make_message_from_bytes(&message_bytes[..]);
+        let message_bytes: Vec<u8> = core.sig_core().into();
+        let message_hash = hash_bytes(&message_bytes);
         let signature = keypair.sign_message(&message_hash[..]);
         Transaction::add_signature(core, signature)
     }
-
+    ///
+    pub fn core(&self) -> &TransactionCore {
+        &self.core
+    }
     /// Returns `secp256k1::Signature` verifying the validity of data on a transaction
     pub fn signature(&self) -> &Signature {
         &self.signature
     }
 
     pub fn hash(&self) -> Sha256Hash {
-        let data: Vec<u8> = self.core.clone().into();
-        hash(&data)
+        self.hash
+    }
+
+    fn set_hash(&mut self, hash: Sha256Hash) {
+        self.hash = hash;
+    }
+
+    pub fn path(&self) -> &Vec<Hop> {
+        &self.path
     }
 
     /// Add a new `Hop` to the list of `Hop`s
     pub fn add_hop_to_path(&mut self, path: Hop) {
         self.path.push(path);
     }
-
-    /// validates sig
-    pub fn sig_is_valid(&self) -> bool {
-        // TODO check with keypair if things are valid
-        true
-    }
-    /// validates slip against utxoset
-    pub fn are_slips_valid(&self) -> bool {
-        // self.inputs.iter()
-        // result = result && self.is_slip_spendable(slip_id);
-        // result = result && self.is_slip_id_valid(slip_id, output_slip);
-        // true
-        // self.inputs().iter().all(|slip_id| self.is_slip_spendable(slip_id))
-        true
-    }
-
-    // Returns true if the slip has been seen in the blockchain
-    // fn is_slip_spendable(&self, _slip_id: &SlipID) -> bool {
-    //     // TODO check with utxoset to see if slip is spendable
-    //     true
-    // }
-    // // Returns true if the OutputSlip found in the utxoset matches the OutputSlip
-    // fn is_slip_id_valid(&self, _slip_id: &SlipID, _slip_as_output: &OutputSlip) -> bool {
-    //     // TODO loop through all sigs in utxo set and make sure they have to correct receiver and amount
-    //     true
-    // }
 }
 
 impl From<Vec<u8>> for TransactionCore {
@@ -174,6 +187,18 @@ impl From<Vec<u8>> for TransactionCore {
 }
 
 impl Into<Vec<u8>> for TransactionCore {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for &TransactionCore {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for TransactionSignatureCore {
     fn into(self) -> Vec<u8> {
         bincode::serialize(&self).unwrap()
     }
@@ -255,10 +280,13 @@ impl TransactionCore {
         &self.message
     }
 
-    pub fn hash(&self) -> Sha256Hash {
-        // TODO get rid of this clone
-        let serialized_tx: Vec<u8> = self.clone().into();
-        make_message_from_bytes(&serialized_tx[..])
+    pub fn sig_core(&self) -> TransactionSignatureCore {
+        TransactionSignatureCore {
+            timestamp: self.timestamp(),
+            inputs: self.inputs().clone(),
+            outputs: self.outputs().clone(),
+            broadcast_type: self.broadcast_type().clone(),
+        }
     }
 
     pub fn set_type(&mut self, tx_type: TransactionType) {
@@ -274,7 +302,7 @@ impl TransactionCore {
 mod tests {
     use super::*;
     use crate::{
-        crypto::{hash, verify_bytes_message},
+        crypto::{hash_bytes, verify_bytes_message},
         keypair::Keypair,
         slip::{OutputSlip, SlipID, SlipType},
     };
@@ -286,7 +314,8 @@ mod tests {
         assert_eq!(tx.core.outputs(), &vec![]);
         assert_eq!(tx.core.inputs(), &vec![]);
         assert_eq!(tx.core.broadcast_type(), &TransactionType::Normal);
-        assert_eq!(tx.core.message(), &vec![]);
+        let message: Vec<u8> = vec![];
+        assert_eq!(tx.core.message(), &message);
 
         let keypair = Keypair::new();
         let to_slip = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, 0);
@@ -299,6 +328,7 @@ mod tests {
         assert_eq!(tx.core.inputs(), &vec![from_slip]);
     }
 
+    #[ignore]
     #[test]
     fn transaction_signature_test() {
         let keypair = Keypair::new();
@@ -308,7 +338,7 @@ mod tests {
 
         let tx = Transaction::create_signature(tx_core, &keypair);
         let serialize_tx: Vec<u8> = tx.core.clone().into();
-        let hash = hash(&serialize_tx);
+        let hash = hash_bytes(&serialize_tx);
 
         assert!(verify_bytes_message(
             &hash,

@@ -8,28 +8,46 @@ use crate::slip::{OutputSlip, SlipID, SlipType};
 use crate::time::create_timestamp;
 use crate::transaction::{Transaction, TransactionCore, TransactionType};
 
-pub fn make_mock_blockchain_and_slips(
+pub struct MockTimestampGenerator {
+    timestamp: u64,
+}
+
+impl MockTimestampGenerator {
+    pub fn new() -> MockTimestampGenerator {
+        MockTimestampGenerator {
+            timestamp: create_timestamp(),
+        }
+    }
+    pub fn next(&mut self) -> u64 {
+        self.timestamp += 1000;
+        self.timestamp
+    }
+}
+
+pub async fn make_mock_blockchain_and_slips(
     keypair: &Keypair,
     slip_count: u64,
 ) -> (Blockchain, Vec<(SlipID, OutputSlip)>) {
-    let mut blockchain = Blockchain::new();
+    let mut blockchain = Blockchain::new_mock(String::from("data/test/blocks/"));
     let mut slips = vec![];
-    // seed some inputs and first block here
 
+    println!("CREATING GOLDEN TRANSACTION");
     let mut golden_tx_core = TransactionCore::default();
     golden_tx_core.set_type(TransactionType::GoldenTicket);
 
     let coinbase = 50_000_0000_0000;
 
+    println!("CREAITNG SLIPS");
     for _i in 0..slip_count {
         let slip_share = (coinbase as f64 / slip_count as f64).round() as u64;
         let output = OutputSlip::new(keypair.public_key().clone(), SlipType::Normal, slip_share);
         golden_tx_core.add_output(output);
     }
 
+    println!("SIGNING TX");
     let golden_tx = Transaction::create_signature(golden_tx_core, keypair);
 
-    let tx_hash = golden_tx.core.hash();
+    let tx_hash = golden_tx.hash();
     golden_tx
         .core
         .outputs()
@@ -37,6 +55,7 @@ pub fn make_mock_blockchain_and_slips(
         .enumerate()
         .for_each(|(idx, output)| slips.push((SlipID::new(tx_hash, idx as u64), output.clone())));
 
+    println!("CREATING BLOCK");
     let block_core = BlockCore::new(
         0,
         create_timestamp(),
@@ -51,7 +70,8 @@ pub fn make_mock_blockchain_and_slips(
 
     let block = Block::new(block_core);
 
-    blockchain.add_block(block);
+    blockchain.add_block(block).await;
+    // TODO assert something about this result
 
     (blockchain, slips)
 }
@@ -98,4 +118,25 @@ pub fn make_mock_tx(input: SlipID, amount: u64, to: PublicKey) -> Transaction {
         TransactionType::Normal,
         vec![104, 101, 108, 108, 111],
     )
+}
+
+pub fn make_mock_sig_tx(
+    keypair: &Keypair,
+    input: SlipID,
+    amount: u64,
+    to: PublicKey,
+    msg_bytes: u64,
+) -> Transaction {
+    // println!("make slip {}", create_timestamp());
+    let to_slip = OutputSlip::new(to, SlipType::Normal, amount);
+    // println!("make core {}", create_timestamp());
+    let tx_core = TransactionCore::new(
+        create_timestamp(),
+        vec![input],
+        vec![to_slip],
+        TransactionType::Normal,
+        (0..msg_bytes).map(|_| rand::random::<u8>()).collect(),
+    );
+    // println!("make sign {}", create_timestamp());
+    Transaction::create_signature(tx_core, keypair)
 }
