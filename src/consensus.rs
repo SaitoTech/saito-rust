@@ -2,7 +2,6 @@ use crate::{blockchain::Blockchain, mempool::Mempool};
 use std::{future::Future, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{span, Level};
 
 /// The consensus state which exposes a run method
 /// initializes Saito state
@@ -16,9 +15,10 @@ struct Consensus {
 /// broadcast channel in normal operations.
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {
-    TryBundle,
+    MempoolAddBlock,
+    MempoolAddTransaction,
+    NewBlock,
 }
-
 
 /// Run the Saito consensus runtime
 pub async fn run(shutdown: impl Future) -> crate::Result<()> {
@@ -67,12 +67,8 @@ impl Consensus {
         // whether the channels exist and unwrapping them when sending
         // messages, as well as setters.
         //
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(
-            broadcast_channel_sender.clone(),
-        )));
-        let mempool_lock = Arc::new(RwLock::new(Mempool::new(
-            broadcast_channel_sender.clone(),
-	)));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new()));
 
         tokio::select! {
             res = crate::mempool::run(
@@ -85,6 +81,14 @@ impl Consensus {
                     eprintln!("{:?}", err)
                 }
             },
+            res = crate::network::run(
+                broadcast_channel_sender.clone(),
+                broadcast_channel_sender.subscribe()
+            ) => {
+                if let Err(err) = res {
+                    eprintln!("{:?}", err)
+                }
+            }
             _ = self._shutdown_complete_tx.closed() => {
                 println!("Shutdown message complete")
             }
@@ -93,4 +97,3 @@ impl Consensus {
         Ok(())
     }
 }
-
