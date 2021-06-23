@@ -24,11 +24,10 @@ dev@saito.tech
 pub mod blockchain;
 pub mod consensus;
 pub mod mempool;
+pub mod network;
 
-#[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
 extern crate tracing;
 
 /// Error returned by most functions.
