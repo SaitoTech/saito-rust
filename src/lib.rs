@@ -40,6 +40,9 @@ pub mod transaction;
 pub mod types;
 pub mod utxoset;
 
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 #[macro_use]
 extern crate lazy_static;
 

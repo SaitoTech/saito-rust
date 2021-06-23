@@ -6,9 +6,10 @@ authors = [
     "Stephen Peterkins <stephen@saito.tech>"
 ]
 edition = "2018"
+default-run = "saito_rust"
 
 [[bin]]
-name = "saito-spammer"
+name = "saito_spammer"
 path = "src/bin/spammer.rs"
 
 [dependencies]
@@ -17,12 +18,14 @@ serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11"
 bincode = "1.3"
 chrono = "0.4"
-secp256k1 = { version = "0.20.2", features = ["global-context", "serde"] }
+secp256k1 = { version = "0.20.3", features = ["global-context", "serde"] }
 sha2 = "0.9.5"
 base58 = "0.1.0"
 hex = "0.4.3"
+jemallocator = "0.1.9"
+jemalloc-ctl = "0.2.0"
 lazy_static = "1.4.0"
-rand = "0.8.3"
+rand = "0.8.4"
 warp = "0.3"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"

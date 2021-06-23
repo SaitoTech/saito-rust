@@ -6,7 +6,7 @@ This project will serve as the reference implementation for other code-bases. It
 
 ## Contributing
 
-We're happy for an contribution.  
+We're happy for any contribution.  
 Please have a look at our [contributing guidelines](CONTRIBUTING.md) before you start.
 
 ## Roadmap
@@ -85,7 +85,7 @@ GH Actions are located here: [.github/workflows](.github/workflows)
 - cargo build & test  
   Tries to build the code and run all tests
 
-- [Convo](https://convco.github.io/check/) commit format check (**required**)  
+- [Convco](https://convco.github.io/check/) commit format check (**required**)  
   Check all commits or range for errors against [the convention](CONTRIBUTING.md#commit-format)
 
 ### VSCode
