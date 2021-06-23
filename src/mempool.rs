@@ -35,7 +35,7 @@ impl Mempool {
     }
 
 
-    pub async fn start_bundling(&self, mempool_lock: Arc<RwLock<Mempool>>, blockchain_lock: Arc<RwLock<Blockchain>>) {
+    pub async fn start_bundling(mempool_lock: Arc<RwLock<Mempool>>, blockchain_lock: Arc<RwLock<Blockchain>>) {
 
         let mut already_bundling;
         let mut count = 5;
@@ -93,7 +93,7 @@ impl Mempool {
 			// have received the clones of the locks as args
 			//
                         let mut mempool = mempool_lock.write().await;
-                        mempool.stop_bundling().await;
+                        Mempool::stop_bundling().await;
                         mempool.bundle_block(blockchain_lock.clone()).await;
                     }
                     {
@@ -112,7 +112,7 @@ impl Mempool {
     }
 
 
-    pub async fn stop_bundling(&self) {
+    pub async fn stop_bundling() {
         let mut w = BUNDLER_ACTIVE.write().await;
         *w = 0;
     }
@@ -135,7 +135,6 @@ impl Mempool {
 mod tests {
 
     use super::*;
-    use crate::keypair::Keypair;
     use std::sync::Arc;
 
     #[test]

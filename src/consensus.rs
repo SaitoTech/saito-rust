@@ -103,13 +103,20 @@ impl Consensus {
             while let Ok(message) = broadcast_channel_receiver.recv().await {
                 match message {
 		    SaitoMessage::StartBundling => {
-                        let mempool = mempool_lock.read().await;
-                        mempool.start_bundling(mempool_lock.clone(), blockchain_lock.clone()).await;
+                        Mempool::start_bundling(mempool_lock.clone(), blockchain_lock.clone()).await;
 		    }
 		    SaitoMessage::StopBundling => {
-                        let mempool = mempool_lock.read().await;
-                        mempool.stop_bundling();
+                        Mempool::stop_bundling();
 		    }
+
+//		    SaitoMessage::StartBundling => {
+//                        let mempool = mempool_lock.read().await;
+//                        mempool.start_bundling(mempool_lock.clone(), blockchain_lock.clone()).await;
+//		    }
+//		    SaitoMessage::StopBundling => {
+//                        let mempool = mempool_lock.read().await;
+//                        mempool.stop_bundling();
+//		    }
 		    _ => {
 			println!("Received Unknown Message Type in Main Loop");
 		    }
