@@ -30,7 +30,6 @@ pub mod slip;
 pub mod time;
 pub mod transaction;
 
-
 extern crate lazy_static;
 
 extern crate tracing;

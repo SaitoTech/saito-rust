@@ -15,8 +15,9 @@ pub enum MempoolMessage {
 pub struct Mempool {}
 
 impl Mempool {
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
-        Mempool {}
+        Self {}
     }
 
     pub fn can_bundle_block(&self, _blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
@@ -28,10 +29,8 @@ impl Mempool {
     }
 }
 
-//
 // This function is called on initialization to setup the sending
 // and receiving channels for asynchronous loops or message checks
-//
 pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,

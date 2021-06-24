@@ -13,8 +13,7 @@ pub fn format_timestamp(
 ) -> chrono::format::DelayedFormat<chrono::format::StrftimeItems<'static>> {
     let naive = NaiveDateTime::from_timestamp((timestamp / 1000) as i64, 0);
     let datetime: DateTime<Utc> = DateTime::from_utc(naive, Utc);
-    let newdate = datetime.format("%Y-%m-%d %H:%M:%S");
-    return newdate;
+    datetime.format("%Y-%m-%d %H:%M:%S")
 }
 
 /// A helper for tracing. Get the amount of time passed. Only for use in a single task/thread/future.
@@ -23,6 +22,7 @@ pub struct TracingTimer {
 }
 impl TracingTimer {
     /// Create a new TracingTimer
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> TracingTimer {
         TracingTimer {
             prev_timestamp: create_timestamp(),
@@ -44,6 +44,7 @@ pub struct TracingAccumulator {
 /// A helper for tracing. Get the amount of time for a series of. Only for use in a single task/thread/future.
 impl TracingAccumulator {
     /// Create a new TracingAccumulator
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> TracingAccumulator {
         TracingAccumulator {
             prev_timestamp: create_timestamp(),
