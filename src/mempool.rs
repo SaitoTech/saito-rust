@@ -1,235 +1,100 @@
-use secp256k1::PublicKey;
-use tracing::Level;
+use crate::{blockchain::Blockchain, consensus::SaitoMessage};
+use ::std::{sync::Arc, thread::sleep, time::Duration};
+use tokio::sync::{broadcast, mpsc, RwLock};
 
-use crate::{
-    block::{Block, BlockCore, TREASURY},
-    blockchain::BLOCKCHAIN_GLOBAL,
-    burnfee::BurnFee,
-    keypair::Keypair,
-    time::{create_timestamp, format_timestamp},
-    transaction::Transaction,
-    types::SaitoMessage,
-};
-
-use std::sync::{Arc, RwLock};
-
-pub const GENESIS_PERIOD: u64 = 21500;
-
-/// The `Mempool` is the structure that collects blocks and transactions
-/// and is control of discerning whether the node is allowed to create a block.
-/// It bundles the block, the sends it to `Blockchain` to be added to the longest chain.
-/// New `Block`s coming in over the network will hit the `Mempool` before being added to
-/// the `Blockchain`
-pub struct Mempool {
-    /// Keypair
-    keypair: Arc<RwLock<Keypair>>,
-    /// A list of `Transaction`s to be bundled into `Block`s
-    transactions: Vec<Transaction>,
+#[derive(Clone, Debug)]
+pub enum MempoolMessage {
+    TryBundle,
 }
 
+/// The `Mempool` holds unprocessed blocks and transactions and is in control of
+/// discerning when thenodeis allowed to create a block. It bundles the block and
+/// sends it to the `Blockchain` to be added to the longest-chain. New `Block`s
+/// received over the network are queued in the `Mempool` before being added to
+/// the `Blockchain`
+pub struct Mempool {}
+
 impl Mempool {
-    /// Creates new `Memppol`
-    pub fn new(keypair: Arc<RwLock<Keypair>>) -> Self {
-        Mempool {
-            keypair,
-            transactions: vec![],
-        }
+    pub fn new() -> Self {
+        Mempool {}
     }
 
-    /// Processes `SaitoMessage` and attempts to return `Block`
-    ///
-    /// * `message` - `SaitoMessage` enum commanding `Mempool` operation
-    /// * `previous_block` - `Block` at longest chain position in `Blockchain`
-    pub fn process(&mut self, message: SaitoMessage) -> Option<Block> {
-        match message {
-            SaitoMessage::Transaction { payload } => {
-                self.transactions.push(payload);
-                self.try_bundle()
+    pub fn can_bundle_block(&self, _blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
+        true
+    }
+
+    pub fn bundle_block(&mut self, _blockchain_lock: Arc<RwLock<Blockchain>>) {
+        println!("Bundling a Block!");
+    }
+}
+
+//
+// This function is called on initialization to setup the sending
+// and receiving channels for asynchronous loops or message checks
+//
+pub async fn run(
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
+) -> crate::Result<()> {
+    let (mempool_sender, mut mempool_receiver) = mpsc::channel(4);
+
+    tokio::spawn(async move {
+        loop {
+            mempool_sender
+                .send(MempoolMessage::TryBundle)
+                .await
+                .expect("error: TryBundle message failed to send");
+            sleep(Duration::from_millis(1000));
+        }
+    });
+
+    loop {
+        tokio::select! {
+            Some(message) = mempool_receiver.recv() => {
+                match message {
+                    MempoolMessage::TryBundle => {
+                        let mut mempool = mempool_lock.write().await;
+                        if mempool.can_bundle_block(blockchain_lock.clone()) {
+                            mempool.bundle_block(blockchain_lock.clone());
+                            broadcast_channel_sender.send(SaitoMessage::NewBlock).expect("Error sending new block");
+                        }
+                    }
+                }
             }
-            SaitoMessage::TryBundle => self.try_bundle(),
-            _ => None,
-        }
-    }
-
-    /// Attempt to create a new `Block`
-    ///
-    /// * `previous_block` - `Option` of previous `Block`
-    fn try_bundle(&mut self) -> Option<Block> {
-        if self.can_bundle_block() {
-            Some(self.bundle_block())
-        } else {
-            None
-        }
-    }
-
-    /// Check to see if the `Mempool` has enough work to bundle a block
-    ///
-    /// * `previous_block` - `Option` of previous `Block`
-    fn can_bundle_block(&self) -> bool {
-        let work_available = self.calculate_work_available();
-
-        let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
-        let blockchain = blockchain_mutex.lock().unwrap();
-        let previous_block_option = blockchain.latest_block();
-
-        match previous_block_option {
-            Some(previous_block) => {
-                let current_timestamp = create_timestamp();
-                let work_needed = BurnFee::return_work_needed(
-                    previous_block.start_burnfee(),
-                    current_timestamp,
-                    previous_block.timestamp(),
-                );
-                event!(
-                    Level::DEBUG,
-                    "TS: {} -- WORK ---- {:?} -- {:?} --- TX COUNT {:?}",
-                    format_timestamp(current_timestamp),
-                    work_needed,
-                    work_available,
-                    self.transactions.len(),
-                );
-                // TODO -- add check for transactions in Mempool
-                work_available >= work_needed
-            }
-            None => true,
-        }
-    }
-
-    /// Calculates the work available to pay the network to produce a `Block`
-    /// based off of `Transaction` fees in the `Mempool`
-    fn calculate_work_available(&self) -> u64 {
-        let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
-        let blockchain = blockchain_mutex.lock().unwrap();
-        let retval = self
-            .transactions
-            .iter()
-            .map(|tx| blockchain.utxoset.transaction_routing_fees(tx))
-            .sum();
-        retval
-    }
-
-    /// Clear the transactions from the `Mempool`
-    fn clear_transactions(&mut self) {
-        self.transactions = vec![];
-    }
-
-    /// Create a new `Block` from the `Mempool`'s list of `Transaction`s
-    ///
-    /// * `previous_block` - `Option` of the previous block on the longest chain
-    fn bundle_block(&mut self) -> Block {
-        let publickey: PublicKey;
-
-        {
-            let keypair = self.keypair.read().unwrap();
-            publickey = keypair.public_key().clone();
-        }
-
-        let block: Block;
-        let block_core: BlockCore;
-
-        let blockchain_mutex = Arc::clone(&BLOCKCHAIN_GLOBAL);
-        let blockchain = blockchain_mutex.lock().unwrap();
-        match blockchain.latest_block() {
-            Some(previous_block) => {
-                let timestamp = create_timestamp();
-
-                let treasury = previous_block.treasury();
-                let coinbase = (treasury as f64 / GENESIS_PERIOD as f64).round() as u64;
-
-                block_core = BlockCore::new(
-                    previous_block.id() + 1,
-                    timestamp,
-                    previous_block.hash(),
-                    publickey,
-                    coinbase,
-                    treasury - coinbase,
-                    BurnFee::burn_fee_adjustment_calculation(
-                        previous_block.start_burnfee(),
-                        timestamp,
-                        previous_block.timestamp(),
-                    ),
-                    0.0,
-                    &mut self.transactions,
-                );
-
-                block = Block::new(block_core);
-
-                // TODO -- include reclaimed fees here
-            }
-            None => {
-                block_core = BlockCore::new(
-                    0,
-                    create_timestamp(),
-                    [0; 32],
-                    publickey.clone(),
-                    0,
-                    TREASURY,
-                    10.0,
-                    0.0,
-                    &mut vec![],
-                );
-
-                block = Block::new(block_core);
+            Ok(message) = broadcast_channel_receiver.recv() => {
+                match message {
+                    SaitoMessage::MempoolAddBlock=> {
+                        let mut _mempool = mempool_lock.write().await;
+                        println!("ADD BLOCK TO MEMPOOL");
+                    }
+                    SaitoMessage::MempoolAddTransaction=> {
+                        let mut _mempool = mempool_lock.write().await;
+                        println!("ADD TRANSACTION TO MEMPOOL");
+                    },
+                    _ => {}
+                }
             }
         }
-        // TODO -- calculate difficulty and paysplit changes
-        // https://github.com/orgs/SaitoTech/projects/5#card-61347666
-
-        self.clear_transactions();
-
-        block
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use crate::keypair::Keypair;
-    use std::sync::Arc;
-
     #[test]
-    fn mempool_test() {
+    fn mempool_new_test() {
         assert_eq!(true, true);
-        let keypair = Arc::new(RwLock::new(Keypair::new()));
-        let mempool = Mempool::new(keypair);
-        assert_eq!(mempool.transactions, vec![]);
     }
 
-    // #[test]
-    // fn mempool_try_bundle_some_test() {
-    //     let keypair = Arc::new(RwLock::new(Keypair::new()));
-    //     let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
-    //     let mut mempool = Mempool::new(keypair, utxoset);
+    #[test]
+    fn mempool_can_bundle_block_test() {
+        assert_eq!(true, true);
+    }
 
-    //     let new_block = mempool.try_bundle(None);
-
-    //     match new_block {
-    //         Some(block) => {
-    //             assert_eq!(block.id(), 0);
-    //             assert_eq!(*block.previous_block_hash(), [0; 32]);
-    //             assert_eq!(mempool.transactions, vec![]);
-    //         }
-    //         None => {}
-    //     }
-    // }
-
-    // #[test]
-    // fn mempool_try_bundle_none_test() {
-    //     let keypair = Arc::new(RwLock::new(Keypair::new()));
-    //     let utxoset = Arc::new(Mutex::new(UtxoSet::new()));
-    //     let mut mempool = Mempool::new(keypair, utxoset);
-
-    //     let core = BlockCore::default();
-    //     let prev_block = Block::new(core);
-
-    //     let new_block = mempool.try_bundle(Some(&prev_block));
-
-    //     match new_block {
-    //         Some(_) => {}
-    //         None => {
-    //             assert_eq!(true, true)
-    //         }
-    //     }
-    // }
+    #[test]
+    fn mempool_bundle_block_test() {
+        assert_eq!(true, true);
+    }
 }
