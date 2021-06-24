@@ -1,4 +1,5 @@
 use crate::transaction::Transaction;
+use crate::crypto::{SaitoHash,SaitoPublicKey,SaitoSignature};
 use serde::{Deserialize, Serialize};
 
 //
@@ -16,12 +17,12 @@ use serde::{Deserialize, Serialize};
 pub struct BlockCore {
     id: 			u64,
     timestamp: 			u64,
-    previous_block_hash: 	[u8;32], // sha256hash
+    previous_block_hash: 	SaitoHash,
     #[serde_as(as = "[_; 33]")]
-    creator: 			[u8;33], // secp256k1 publickey
-    merkle_root: 		[u8;32], // sha256hash
+    creator: 			SaitoPublicKey, // public key of block creator
+    merkle_root: 		SaitoHash, // merkle root of txs
     #[serde_as(as = "[_; 64]")]
-    signature:			[u8;64], // signature of block creator
+    signature:			SaitoSignature, // signature of block creator
     treasury: 			u64,
     burnfee:			u64,
     difficulty:			u64,
@@ -60,7 +61,7 @@ pub struct Block {
     //
     // Self-Calculated / Validated
     //
-    hash: [u8; 32],
+    hash: SaitoHash,
     lc: bool,
 
 }
@@ -76,7 +77,7 @@ impl Block {
         }
     }
 
-    pub fn get_hash(&self) -> [u8;32] {
+    pub fn get_hash(&self) -> SaitoHash {
 	self.hash
     }
 }

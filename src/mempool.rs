@@ -28,6 +28,9 @@ impl Mempool {
     }
 }
 
+
+
+
 //
 // This function is called on initialization to setup the sending
 // and receiving channels for asynchronous loops or message checks
@@ -40,6 +43,9 @@ pub async fn run(
 ) -> crate::Result<()> {
     let (mempool_sender, mut mempool_receiver) = mpsc::channel(4);
 
+    //
+    // loops to trigger messages
+    //
     tokio::spawn(async move {
         loop {
             mempool_sender
@@ -50,6 +56,10 @@ pub async fn run(
         }
     });
 
+
+    //
+    // loop to receive and process local and system messages
+    //
     loop {
         tokio::select! {
             Some(message) = mempool_receiver.recv() => {

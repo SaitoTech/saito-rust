@@ -1,3 +1,4 @@
+use crate::crypto::{SaitoPublicKey,SaitoSignature};
 use serde::{Deserialize, Serialize};
 
 //
@@ -25,16 +26,16 @@ pub enum SlipType {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SlipCore {
     #[serde_as(as = 	"[_; 33]")]
-    publickey: 		[u8;33],
+    publickey: 		SaitoPublicKey,
     #[serde_as(as = 	"[_; 64]")]
-    uuid: 		[u8;64],
+    uuid: 		SaitoSignature,
     amount: 		u64,
     sliptype: 		SlipType,
 }
 impl SlipCore {
     pub fn new() -> SlipCore {
         SlipCore {
-            publickey: 	[0;33],
+            publickey:  [0;33],
             uuid:      	[0;64],
             amount:    	0,
             sliptype:  	SlipType::Normal,
