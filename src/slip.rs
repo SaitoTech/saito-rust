@@ -6,7 +6,7 @@ use std::{mem, slice};
 pub use enum_variant_count_derive::TryFromByte;
 
 /// A record of owernship of funds on the network
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Slip {
     /// Contains concrete data which is not relative to state of the chain
     body: SlipBody,
@@ -21,7 +21,7 @@ pub struct Slip {
 }
 
 /// An object that holds concrete data not subjective to state of chain
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct SlipBody {
     /// An `Sectp256K::PublicKey` determining who owns the `Slip`
     address: PublicKey,
@@ -29,6 +29,7 @@ pub struct SlipBody {
     broadcast_type: SlipBroadcastType,
     /// Amount of Saito
     amount: u64,
+    message: Vec<u8>
 }
 
 /// An enumerated set of `Slip` types
@@ -45,20 +46,34 @@ impl Slip {
     /// * `address` - `Publickey` address to assign ownership
     /// * `broadcast_type` - `SlipBroadcastType` of `Slip`
     /// * `amount` - `u64` amount of Saito contained in the `Slip`
+    pub fn new_mock(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64, message: Vec<u8>) -> Slip {
+        return Slip {
+            body: SlipBody {
+                address,
+                broadcast_type,
+                amount,
+                message: message,
+            },
+            block_id: 0,
+            tx_id: 0,
+            slip_id: 0,
+            block_hash: [0; 32]
+        };
+    }
     pub fn new(address: PublicKey, broadcast_type: SlipBroadcastType, amount: u64) -> Slip {
         return Slip {
             body: SlipBody {
                 address,
                 broadcast_type,
                 amount,
+                message: vec![],
             },
             block_id: 0,
             tx_id: 0,
             slip_id: 0,
-            block_hash: [0; 32],
+            block_hash: [0; 32]
         };
     }
-    
     pub fn deserialize(bytes: [u8; 42]) -> Slip {
         let public_key: PublicKey = PublicKey::from_slice(&bytes[..33]).unwrap();
         let broadcast_type: SlipBroadcastType = SlipBroadcastType::try_from(bytes[41]).unwrap();
@@ -73,6 +88,23 @@ impl Slip {
             ret[33..41].clone_from_slice(&slice::from_raw_parts((&self.body.amount as *const u64) as *const u8, mem::size_of::<u64>()));
         }
         ret[41] = self.body.broadcast_type as u8;
+        ret
+    }
+    pub fn deserialize2(bytes: &Vec<u8>) -> Slip {
+
+        let public_key: PublicKey = PublicKey::from_slice(&bytes[..33]).unwrap();
+        let broadcast_type: SlipBroadcastType = SlipBroadcastType::try_from(bytes[41]).unwrap();
+        let amount = u64::from_be_bytes(bytes[33..41].try_into().unwrap());
+        Slip::new(public_key, broadcast_type, amount)
+    }
+    
+    pub fn serialize2(&self) -> Vec<u8> {
+        let mut ret = vec![];
+        ret.extend(&self.body.address.serialize());
+        unsafe {
+            ret.extend(slice::from_raw_parts((&self.body.amount as *const u64) as *const u8, mem::size_of::<u64>()));
+        }
+        ret.extend(&(self.body.broadcast_type as u8).to_be_bytes());
         ret
     }
     /// Returns address in `Slip`
