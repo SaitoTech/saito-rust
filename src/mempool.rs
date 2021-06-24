@@ -2,7 +2,9 @@ use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash};
+use crate::slip::Slip;
 use crate::time::{create_timestamp};
+use crate::transaction::Transaction;
 use ::std::{sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -48,8 +50,6 @@ impl Mempool {
     }
 
     pub fn get_block(&mut self, hash: SaitoHash) -> Option<Block> {
-
-	println!("Blockchain attempting to fetch block with hash: {:?}", hash);
 
 	let mut block_found = false;
 	let mut block_idx = 0;
@@ -113,16 +113,24 @@ impl Mempool {
 println!("Creating Transaction {:?}", i);
 
             let mut transaction = Transaction::new();
-            let keypair = Keypair::new();
 
             transaction.set_message( (0..1024).map(|_| { rand::random::<u8>() }).collect() );
             //transaction.set_message( (0..message_size).map(|_| { rand::random::<u8>() }).collect() );
 
             let mut input1 = Slip::new();
-            input1.set_publickey(keypair.publickey().serialize());
+            input1.set_publickey([1;33]);
             input1.set_amount(1000000);
             input1.set_uuid([1;64]);
+
+            let mut output1 = Slip::new();
+            output1.set_publickey([1;33]);
+            output1.set_amount(1000000);
+            output1.set_uuid([1;64]);
+
             transaction.add_input(input1);
+            transaction.add_output(output1);
+
+	}
 
 	return block;
 
@@ -255,3 +263,4 @@ mod tests {
         assert_eq!(true, true);
     }
 }
+

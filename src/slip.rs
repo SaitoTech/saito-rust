@@ -63,7 +63,6 @@ impl Slip {
         }
     }
 
-
     pub fn get_publickey(&self) -> SaitoPublicKey {
         self.core.publickey
     }
@@ -114,7 +113,7 @@ impl Slip {
 	        vbytes.extend(&self.core.publickey);
 	        vbytes.extend(&self.core.uuid);
 	        vbytes.extend(&self.core.amount.to_be_bytes());
-	        vbytes.extend(&(self.core.sliptype as u32).to_be_bytes());
+	        vbytes.extend(&(self.core.slip_type as u32).to_be_bytes());
 
 	return vbytes;
 
