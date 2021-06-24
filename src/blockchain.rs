@@ -23,6 +23,14 @@ impl Blockchain {
 
     }
 
+    pub fn get_latest_block_id(&self) -> u64 {
+        1
+    }
+
+    pub fn get_latest_block_hash(&self) -> SaitoHash {
+        [0; 32]
+    }
+
 }
 
 

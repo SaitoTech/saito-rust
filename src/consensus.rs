@@ -1,4 +1,5 @@
 use crate::{blockchain::Blockchain, mempool::Mempool};
+use crate::crypto::{SaitoHash};
 use std::{future::Future, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
@@ -15,9 +16,9 @@ struct Consensus {
 /// broadcast channel in normal operations.
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {
-    MempoolAddBlock,
-    MempoolAddTransaction,
-    NewBlock,
+    TestMessage,
+    MempoolNewBlock { hash : SaitoHash }, 
+    MempoolNewTransaction,
 }
 
 /// Run the Saito consensus runtime

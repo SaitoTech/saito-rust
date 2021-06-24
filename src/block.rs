@@ -80,6 +80,27 @@ impl Block {
     pub fn get_hash(&self) -> SaitoHash {
 	self.hash
     }
+
+    pub fn get_id(&self) -> u64 {
+        1
+    }
+
+    pub fn set_id(&mut self, id : u64) {
+        self.core.id = id;
+    }
+
+    pub fn set_timestamp(&mut self, timestamp : u64) {
+        self.core.timestamp = timestamp;
+    }
+
+    pub fn set_previous_block_hash(&mut self , previous_block_hash : SaitoHash) {
+        self.core.previous_block_hash = previous_block_hash;
+    }
+
+    pub fn set_hash(&mut self) {
+        self.hash = [0;32];
+    }
+
 }
 
 
