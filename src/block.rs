@@ -1,5 +1,5 @@
 use crate::transaction::Transaction;
-use crate::crypto::{SaitoHash,SaitoPublicKey,SaitoSignature};
+use crate::crypto::{SaitoHash,SaitoPublicKey,SaitoSignature,hash};
 use serde::{Deserialize, Serialize};
 
 //
@@ -98,7 +98,21 @@ impl Block {
     }
 
     pub fn set_hash(&mut self) {
-        self.hash = [0;32];
+
+      if self.hash == [0;32] {
+
+        let mut data: Vec<u8> = vec![];
+
+        let id_bytes: [u8; 8] = self.core.id.to_be_bytes();
+        let ts_bytes: [u8; 8] = self.core.timestamp.to_be_bytes();
+
+        data.extend(&id_bytes);
+        data.extend(&ts_bytes);
+
+        self.hash = hash(&data);
+
+      }
+ 
     }
 
 }

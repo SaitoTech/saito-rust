@@ -1,5 +1,6 @@
 pub use secp256k1::{Message, PublicKey, Signature, SECP256K1};
 use sha2::{Digest, Sha256};
+use std::convert::TryInto;
 
 //
 // forward-looking flexibility
@@ -12,9 +13,9 @@ pub type SaitoSignature = [u8; 64];
 pub fn hash(data: &Vec<u8>) -> SaitoHash {
     let mut hasher = Sha256::new();
     hasher.update(data);
-    // TODO - we are getting an error here, unsure why [david]
-    //hasher.finalize().as_slice().try_into().unwrap();
-    [0; 32]
+    hasher.finalize().as_slice().try_into().unwrap()
+    //let results : [u8;32] = hasher.finalize().as_slice().try_into().unwrap()
+    //hasher.finalize().try_into().expect("hash is wrong size")
 }
 
 pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> bool {

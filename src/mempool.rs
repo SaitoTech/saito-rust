@@ -51,20 +51,22 @@ impl Mempool {
 
 	println!("Blockchain attempting to fetch block with hash: {:?}", hash);
 
-/****
-        for blk in &self.blocks {
-            if !blk.get_hash() == hash {
-                let block = blk;
-                return Some(block);
-            }
-            match block {
-                Some(block) => {
-            }
-            None => {
-                return None;
-            }
+	let mut block_found = false;
+	let mut block_idx = 0;
+
+	for i in 0..self.blocks.len() {
+	    if self.blocks[0].get_hash() == hash {
+	        block_idx = i;
+		block_found = true;
+		break;
+	    }
         }
-****/
+
+	if block_found {
+	    let block = self.blocks.remove(block_idx);
+	    return Some(block);
+	}
+
 	return None;
 
     }
@@ -164,30 +166,52 @@ println!("done with that, moving on...");
     });
 
 
-    //
-    // loop to receive and process local and system messages
-    //
     loop {
         tokio::select! {
+
+      	    //
+	    // local messages
+	    //
             Some(message) = mempool_channel_receiver.recv() => {
                 match message {
+		    //
+		    // TryBundle
+		    //
+		    // the dominant local message is TryBundle, which triggrs
+		    // periodic attempts to analyze the state of the mempool
+		    // and make blocks if appropriate.
+		    //
                     MempoolMessage::TryBundle => {
-println!("println in try bundle receiver");
                         let mut mempool = mempool_lock.write().await;
                         if mempool.can_bundle_block(blockchain_lock.clone()) {
-println!("we can make a block, lets do it!");
                             mempool.bundle_block(blockchain_lock.clone()).await;
-                            //broadcast_channel_sender.send(SaitoMessage::NewBlock).expect("Error sending new block");
                         }
                     },
 		    _ => {}
                 }
             }
+
+
+      	    //
+	    // system-wide messages
+	    //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
+		    //
+		    // MempoolNewBlock
+		    //
+		    // triggered when the mempool produces a new block, we 
+		    // hand off the block to the blockchain.
+		    //
                     SaitoMessage::MempoolNewBlock { hash } => {
-                        let mut _mempool = mempool_lock.write().await;
-                        println!("NEW BLOCK IN MEMPOOL: {:?}", hash);
+                        let mut mempool = mempool_lock.write().await;
+                        let mut blockchain = blockchain_lock.write().await;
+			let block = mempool.get_block(hash);
+			if block.is_none() {
+                            // bad block
+                        } else {
+                            blockchain.add_block(block.unwrap());
+                        }
                     }
                     SaitoMessage::MempoolNewTransaction => {
                         let mut _mempool = mempool_lock.write().await;
