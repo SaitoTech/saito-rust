@@ -22,12 +22,14 @@ fn make_mock_slip() -> Slip {
         public_key,
         SlipBroadcastType::Normal,
         10_000_000,
-        vec![]
+        (0..512)
+        .map(|_| rand::random::<u8>())
+        .collect()
     )
 }
 
 fn slip_bespoke_serialize(slip: &Slip) {
-    let _serialized_slip: [u8; 42] = slip.serialize();
+    let _serialized_slip: [u8; 1024] = slip.serialize();
 }
 
 fn bench_slip_bespoke_serialize(c: &mut Criterion) {
