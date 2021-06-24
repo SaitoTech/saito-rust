@@ -1,3 +1,4 @@
+use crate::crypto::{SaitoPublicKey, SaitoSignature};
 use serde::{Deserialize, Serialize};
 
 /// SlipType is a human-readable indicator of the slip-type, such
@@ -20,19 +21,27 @@ pub enum SlipType {
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SlipCore {
     #[serde_as(as = "[_; 33]")]
-    publickey: [u8; 33],
+    publickey: SaitoPublicKey,
     #[serde_as(as = "[_; 64]")]
-    uuid: [u8; 64],
+    uuid: SaitoSignature,
     amount: u64,
+    slip_ordinal: u8,
     slip_type: SlipType,
 }
 
 impl SlipCore {
-    pub fn new(publickey: [u8; 33], uuid: [u8; 64], amount: u64, slip_type: SlipType) -> Self {
+    pub fn new(
+        publickey: [u8; 33],
+        uuid: [u8; 64],
+        amount: u64,
+        slip_ordinal: u8,
+        slip_type: SlipType,
+    ) -> Self {
         Self {
             publickey,
             uuid,
             amount,
+            slip_ordinal,
             slip_type,
         }
     }
@@ -40,7 +49,7 @@ impl SlipCore {
 
 impl Default for SlipCore {
     fn default() -> Self {
-        Self::new([0; 33], [0; 64], 0, SlipType::Normal)
+        Self::new([0; 33], [0; 64], 0, 0, SlipType::Normal)
     }
 }
 
@@ -52,6 +61,46 @@ pub struct Slip {
 impl Slip {
     pub fn new(core: SlipCore) -> Self {
         Self { core }
+    }
+
+    pub fn get_publickey(&self) -> SaitoPublicKey {
+        self.core.publickey
+    }
+
+    pub fn get_amount(&self) -> u64 {
+        self.core.amount
+    }
+
+    pub fn get_uuid(&self) -> SaitoSignature {
+        self.core.uuid
+    }
+
+    pub fn get_slip_ordinal(&self) -> u8 {
+        self.core.slip_ordinal
+    }
+
+    pub fn get_slip_type(&self) -> SlipType {
+        self.core.slip_type
+    }
+
+    pub fn set_publickey(&mut self, publickey: SaitoPublicKey) {
+        self.core.publickey = publickey;
+    }
+
+    pub fn set_amount(&mut self, amount: u64) {
+        self.core.amount = amount;
+    }
+
+    pub fn set_uuid(&mut self, uuid: SaitoSignature) {
+        self.core.uuid = uuid;
+    }
+
+    pub fn set_slip_ordinal(&mut self, slip_ordinal: u8) {
+        self.core.slip_ordinal = slip_ordinal;
+    }
+
+    pub fn set_slip_type(&mut self, slip_type: SlipType) {
+        self.core.slip_type = slip_type;
     }
 
     pub fn serialize_for_signature(&self) -> Vec<u8> {
@@ -86,7 +135,7 @@ mod tests {
 
     #[test]
     fn slip_core_new_test() {
-        let slip_core = SlipCore::new([0; 33], [0; 64], 0, SlipType::Normal);
+        let slip_core = SlipCore::new([0; 33], [0; 64], 0, 0, SlipType::Normal);
         assert_eq!(slip_core.publickey, [0; 33]);
         assert_eq!(slip_core.uuid, [0; 64]);
         assert_eq!(slip_core.amount, 0);
