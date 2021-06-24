@@ -84,9 +84,7 @@ impl Mempool {
 
         let mut block = self.generate_block_from_mempool_transactions(previous_block_id, previous_block_hash);
 
-        block.set_hash();
-
-        let block_hash = block.get_hash();
+        let block_hash = block.set_hash();
 
         self.add_block(block);
 
@@ -110,6 +108,21 @@ impl Mempool {
         block.set_timestamp(create_timestamp());
         block.set_previous_block_hash(previous_block_hash);
 	block.set_hash();
+
+        for i in 0..1000 {
+println!("Creating Transaction {:?}", i);
+
+            let mut transaction = Transaction::new();
+            let keypair = Keypair::new();
+
+            transaction.set_message( (0..1024).map(|_| { rand::random::<u8>() }).collect() );
+            //transaction.set_message( (0..message_size).map(|_| { rand::random::<u8>() }).collect() );
+
+            let mut input1 = Slip::new();
+            input1.set_publickey(keypair.publickey().serialize());
+            input1.set_amount(1000000);
+            input1.set_uuid([1;64]);
+            transaction.add_input(input1);
 
 	return block;
 

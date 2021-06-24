@@ -97,9 +97,15 @@ impl Block {
         self.core.previous_block_hash = previous_block_hash;
     }
 
-    pub fn set_hash(&mut self) {
-
-      if self.hash == [0;32] {
+    // TODO
+    //
+    // hash is nor being serialized from the right data - requires
+    // merkle_root as an input into the hash, and that is not yet 
+    // supported. this is a stub that uses the timestamp and the
+    // id -- it exists so each block will still have a unique hash
+    // for blockchain functions.
+    //
+    pub fn set_hash(&mut self) -> SaitoHash {
 
         let mut data: Vec<u8> = vec![];
 
@@ -110,11 +116,33 @@ impl Block {
         data.extend(&ts_bytes);
 
         self.hash = hash(&data);
-
-      }
+ 
+	self.hash     
  
     }
 
+
+}
+
+
+//
+// TODO
+//
+// temporary data-serialization of blocks so that we can save
+// to disk. These should only be called through the serialization
+// functions within the block class, so that all access is 
+// compartmentalized and we can move to custom serialization
+//
+impl From<Vec<u8>> for Block {
+    fn from(data: Vec<u8>) -> Self {
+        bincode::deserialize(&data[..]).unwrap()
+    }
+}
+
+impl Into<Vec<u8>> for Block {
+    fn into(self) -> Vec<u8> {
+        bincode::serialize(&self).unwrap()
+    }
 }
 
 

@@ -30,7 +30,8 @@ pub struct SlipCore {
     #[serde_as(as = 	"[_; 64]")]
     uuid: 		SaitoSignature,
     amount: 		u64,
-    sliptype: 		SlipType,
+    slip_ordinal:	u8,
+    slip_type: 		SlipType,
 }
 impl SlipCore {
     pub fn new() -> SlipCore {
@@ -38,7 +39,8 @@ impl SlipCore {
             publickey:  [0;33],
             uuid:      	[0;64],
             amount:    	0,
-            sliptype:  	SlipType::Normal,
+	    slip_ordinal: 0,
+            slip_type:  	SlipType::Normal,
         }
     }
 }
@@ -62,6 +64,50 @@ impl Slip {
     }
 
 
+    pub fn get_publickey(&self) -> SaitoPublicKey {
+        self.core.publickey
+    }
+
+    pub fn get_amount(&self) -> u64 {
+        self.core.amount
+    }
+
+    pub fn get_uuid(&self) -> SaitoSignature {
+        self.core.uuid
+    }
+
+    pub fn get_slip_ordinal(&self) -> u8 {
+        self.core.slip_ordinal
+    }
+
+    pub fn get_slip_type(&self) -> SlipType {
+        self.core.slip_type
+    }
+
+    pub fn set_publickey(&mut self, publickey : SaitoPublicKey) {
+        self.core.publickey = publickey;
+    }
+
+    pub fn set_amount(&mut self, amount : u64) {
+        self.core.amount = amount;
+    }
+
+    pub fn set_uuid(&mut self, uuid : SaitoSignature) {
+        self.core.uuid = uuid;
+    }
+
+    pub fn set_slip_ordinal(&mut self, slip_ordinal : u8) {
+        self.core.slip_ordinal = slip_ordinal;
+    }
+
+    pub fn set_slip_type(&mut self, slip_type : SlipType) {
+        self.core.slip_type = slip_type;
+    }
+
+
+    //
+    // when users sign transactions, they must be signing 
+    //
     pub fn serialize_for_signature(&self) -> Vec<u8> {
 
 	let mut vbytes : Vec<u8> = vec![];
@@ -75,6 +121,7 @@ impl Slip {
     }
 
 }
+
 
 
 
