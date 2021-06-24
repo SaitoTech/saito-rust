@@ -1,5 +1,6 @@
 use crate::{blockchain::Blockchain, mempool::Mempool};
 use crate::crypto::{SaitoHash};
+use crate::wallet::Wallet;
 use std::{future::Future, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
@@ -11,6 +12,7 @@ struct Consensus {
     _shutdown_complete_rx: mpsc::Receiver<()>,
     _shutdown_complete_tx: mpsc::Sender<()>,
 }
+
 
 /// The types of messages broadcast over the main
 /// broadcast channel in normal operations.
@@ -70,6 +72,7 @@ impl Consensus {
         //
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
 
         tokio::select! {
             res = crate::mempool::run(
@@ -83,6 +86,15 @@ impl Consensus {
                 }
             },
             res = crate::network::run(
+                broadcast_channel_sender.clone(),
+                broadcast_channel_sender.subscribe()
+            ) => {
+                if let Err(err) = res {
+                    eprintln!("{:?}", err)
+                }
+            }
+            res = crate::wallet::run(
+                wallet_lock,
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
