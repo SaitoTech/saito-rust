@@ -1,11 +1,10 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
-use crate::crypto::{SaitoHash,SaitoPublicKey,SaitoPrivateKey,hash,verify};
+use crate::crypto::{SaitoHash};
 use crate::slip::Slip;
 use crate::time::{create_timestamp};
 use crate::transaction::Transaction;
-use crate::wallet::Wallet;
 use ::std::{sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -23,21 +22,14 @@ pub enum MempoolMessage {
 pub struct Mempool {
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
     mempool_channel_sender: Option<mpsc::Sender<MempoolMessage>>,
-    blockchain_lock: Option<Arc<RwLock<Blockchain>>>,
-    wallet_lock: Option<Arc<RwLock<Wallet>>>,
     blocks: Vec<Block>,
 }
 
 impl Mempool {
     pub fn new() -> Self {
         Mempool {
-
             broadcast_channel_sender: None,
             mempool_channel_sender: None,
-
-	    blockchain_lock: None,
-	    wallet_lock: None,
-
 	    blocks: vec![],
         }
     }
@@ -79,37 +71,18 @@ impl Mempool {
 
     }
 
-    pub async fn bundle_block(&mut self) {
+    pub async fn bundle_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) {
 
         println!("Bundling a Block!");
-
-	//
-	// check that we have the ability to fetch the latest block from
-	// the blockchain. If this does not exist, the run function has 
-	// yet to run or we have run into an error.
-	//
-	if self.blockchain_lock.is_none() {
-	    println!("Cannot Unlock Blockchain as none is available...");
-	    return;
- 	}
-
 
         //
         // create the block and add it to our blocks vector
         //
-	let previous_block_hash : SaitoHash;
-        let previous_block_id : u64;
+        let blockchain = blockchain_lock.read().await;
+        let previous_block_hash = blockchain.get_latest_block_hash();
+        let previous_block_id = blockchain.get_latest_block_id();
 
-	//
-	// as_ref requires quick fetch-and-release before self is used below
-	//
-	{
-            let blockchain = self.blockchain_lock.as_ref().unwrap().read().await;
-            previous_block_hash = blockchain.get_latest_block_hash();
-            previous_block_id = blockchain.get_latest_block_id();
-	}
-
-        let mut block = self.generate_block_from_mempool_transactions(previous_block_id, previous_block_hash).await;
+        let mut block = self.generate_block_from_mempool_transactions(previous_block_id, previous_block_hash);
 
         let block_hash = block.set_hash();
 
@@ -124,24 +97,11 @@ impl Mempool {
 
     }
 
-    pub fn can_bundle_block(&self) -> bool {
+    pub fn can_bundle_block(&self, _blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
         true
     }
 
-    pub async fn generate_block_from_mempool_transactions(&mut self, previous_block_id : u64, previous_block_hash : SaitoHash) -> Block {
-
-	//
-	// grab wallet public / private keys
-	//
-	let mut creator_publickey : SaitoPublicKey = [0;33];
-	let mut creator_privatekey : SaitoPrivateKey = [0;32];
-	if !self.wallet_lock.is_none() {
-	    let wallet = self.wallet_lock.as_ref().unwrap().read().await;
-	    creator_publickey = wallet.get_publickey();
-	    creator_privatekey = wallet.get_privatekey();
-println!("CREATOR PRIVATEKEY {:?}", creator_privatekey);
- 	}
-
+    pub fn generate_block_from_mempool_transactions(&mut self, previous_block_id : u64, previous_block_hash : SaitoHash) -> Block {
 
         let mut block = Block::new();
         block.set_id(previous_block_id);
@@ -169,26 +129,6 @@ println!("CREATOR PRIVATEKEY {:?}", creator_privatekey);
             transaction.add_input(input1);
             transaction.add_output(output1);
 
-	    //
-	    // sign transaction if possible
-	    //
-	    if !self.wallet_lock.is_none() {
-	        transaction.sign(creator_privatekey);
-println!("and now verifying...");
-	        let tx_sig = transaction.get_signature();
-
-	        let vbytes = transaction.serialize_for_transaction_signature();
-	        let hash = hash(&vbytes);
-		let v = verify(&hash, tx_sig, creator_publickey);
-println!("Transaction Verifies: {:?}", v);
-
-
-		//let v = verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> bool {
-
-
-//aprintln!("Transaction Sig Source: {:?}", transaction.get_signature_source_hash());
-	    }
-
 	}
 
 	return block;
@@ -201,12 +141,6 @@ println!("Transaction Verifies: {:?}", v);
     }
     pub fn set_mempool_channel_sender(&mut self, mcs : mpsc::Sender<MempoolMessage>) {
       self.mempool_channel_sender = Some(mcs);
-    }
-    pub fn set_blockchain_lock(&mut self, bl : Arc<RwLock<Blockchain>>) {
-      self.blockchain_lock = Some(bl);
-    }
-    pub fn set_wallet_lock(&mut self, wl : Arc<RwLock<Wallet>>) {
-      self.wallet_lock = Some(wl);
     }
 
 }
@@ -221,7 +155,6 @@ println!("Transaction Verifies: {:?}", v);
 pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    wallet_lock: Arc<RwLock<Wallet>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
@@ -236,8 +169,6 @@ println!("about to write mempool to send channels in...");
         let mut mempool = mempool_lock.write().await;
         mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
         mempool.set_mempool_channel_sender(mempool_channel_sender.clone());
-        mempool.set_wallet_lock(wallet_lock.clone());
-        mempool.set_blockchain_lock(blockchain_lock.clone());
     }
 println!("done with that, moving on...");
 
@@ -272,8 +203,8 @@ println!("done with that, moving on...");
 		    //
                     MempoolMessage::TryBundle => {
                         let mut mempool = mempool_lock.write().await;
-                        if mempool.can_bundle_block() {
-                            mempool.bundle_block().await;
+                        if mempool.can_bundle_block(blockchain_lock.clone()) {
+                            mempool.bundle_block(blockchain_lock.clone()).await;
                         }
                     },
 		    _ => {}

@@ -107,7 +107,7 @@ impl Slip {
     //
     // when users sign transactions, they must be signing 
     //
-    pub fn serialize_for_signature(&self) -> Vec<u8> {
+    pub fn serialize_for_transaction_signature(&self) -> Vec<u8> {
 
 	let mut vbytes : Vec<u8> = vec![];
 	        vbytes.extend(&self.core.publickey);
