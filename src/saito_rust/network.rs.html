@@ -14,63 +14,19 @@
 <span id="11">11</span>
 <span id="12">12</span>
 <span id="13">13</span>
-<span id="14">14</span>
-<span id="15">15</span>
-<span id="16">16</span>
-<span id="17">17</span>
-<span id="18">18</span>
-<span id="19">19</span>
-<span id="20">20</span>
-<span id="21">21</span>
-<span id="22">22</span>
-<span id="23">23</span>
-<span id="24">24</span>
-<span id="25">25</span>
-<span id="26">26</span>
-<span id="27">27</span>
-<span id="28">28</span>
-<span id="29">29</span>
-<span id="30">30</span>
-<span id="31">31</span>
-<span id="32">32</span>
-<span id="33">33</span>
-<span id="34">34</span>
-<span id="35">35</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">Infallible</span>;
-<span class="kw">use</span> <span class="ident">warp</span>::<span class="ident">Filter</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">consensus</span>::<span class="ident">SaitoMessage</span>;
+<span class="kw">use</span> <span class="ident">tokio</span>::<span class="ident">sync</span>::<span class="ident">broadcast</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">constants</span>, <span class="ident">storage</span>::<span class="ident">Storage</span>};
-
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Network</span> {}
-
-<span class="kw">impl</span> <span class="ident">Network</span> {
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">blocks</span> <span class="op">=</span> <span class="ident">warp</span>::<span class="ident">path</span>(<span class="string">&quot;blocks&quot;</span>);
-
-        <span class="kw">let</span> <span class="ident">get_blocks</span> <span class="op">=</span> <span class="ident">warp</span>::<span class="ident">path</span>::<span class="ident">param</span>().<span class="ident">and_then</span>(<span class="ident">get_block</span>);
-
-        <span class="kw">let</span> <span class="ident">_get_blocks</span> <span class="op">=</span> <span class="ident">blocks</span>.<span class="ident">and</span>(<span class="ident">get_blocks</span>);
-
-        <span class="ident">warp</span>::<span class="ident">serve</span>(<span class="ident">_get_blocks</span>).<span class="ident">run</span>(([<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>], <span class="number">3030</span>)).<span class="kw">await</span>;
-
-        <span class="prelude-val">Ok</span>(())
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
+    <span class="ident">_broadcast_channel_sender</span>: <span class="ident">broadcast</span>::<span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
+    <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast</span>::<span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">_message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;NEW BLOCK!&quot;</span>);
     }
-}
 
-<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_block</span>(<span class="ident">str_block_hash</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">impl</span> <span class="ident">warp</span>::<span class="ident">Reply</span>, <span class="ident">Infallible</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage</span>::<span class="ident">new</span>(<span class="ident">String</span>::<span class="ident">from</span>(<span class="ident">constants</span>::<span class="ident">BLOCKS_DIR</span>));
-
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_hash</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="number">32</span>];
-    <span class="ident">hex</span>::<span class="ident">decode_to_slice</span>(<span class="ident">str_block_hash</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">block_hash</span>).<span class="ident">expect</span>(<span class="string">&quot;Failed to parse hash&quot;</span>);
-
-    <span class="kw">match</span> <span class="ident">storage</span>.<span class="ident">stream_block_from_disk</span>(<span class="ident">block_hash</span>).<span class="kw">await</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">block_bytes</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">block_bytes</span>),
-        <span class="prelude-val">Err</span>(<span class="ident">_err</span>) <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="macro">eprintln</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">_err</span>);
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[])
-        }
-    }
+    <span class="prelude-val">Ok</span>(())
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-js="../../search-index.js"></div>

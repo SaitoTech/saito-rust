@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["SlipType","An enumerated set of `Slip` types"]],"struct":[["OutputSlip","An object that holds concrete data not subjective to state of chain"],["Signature","An ECDSA signature"],["SlipID","A record of owernship of funds on the network"]]});

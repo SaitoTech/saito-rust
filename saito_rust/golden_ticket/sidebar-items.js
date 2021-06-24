@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["generate_golden_ticket_transaction","Create a new `GoldenTicket` `Transaction`"],["generate_random_data","Generate random data, used for generating solutions in lottery game"]],"struct":[["GoldenTicket","The golden ticket is a data structure containing instructions for picking a winner for paysplit in saito consensus."]]});

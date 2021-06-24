@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["HEARTBEAT",""]],"struct":[["BurnFee","The Burnfee object which contains our starting value and current value when the fee was paid"]]});

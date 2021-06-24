@@ -50,30 +50,6 @@
 <span id="47">47</span>
 <span id="48">48</span>
 <span id="49">49</span>
-<span id="50">50</span>
-<span id="51">51</span>
-<span id="52">52</span>
-<span id="53">53</span>
-<span id="54">54</span>
-<span id="55">55</span>
-<span id="56">56</span>
-<span id="57">57</span>
-<span id="58">58</span>
-<span id="59">59</span>
-<span id="60">60</span>
-<span id="61">61</span>
-<span id="62">62</span>
-<span id="63">63</span>
-<span id="64">64</span>
-<span id="65">65</span>
-<span id="66">66</span>
-<span id="67">67</span>
-<span id="68">68</span>
-<span id="69">69</span>
-<span id="70">70</span>
-<span id="71">71</span>
-<span id="72">72</span>
-<span id="73">73</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">/*!
 # Welcome to Saito
@@ -98,38 +74,14 @@ The Saito Team
 dev@saito.tech
 
 */</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">block</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">blockchain</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">burnfee</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">consensus</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">constants</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">crypto</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">forktree</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">golden_ticket</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">keypair</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">longest_chain_queue</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">mempool</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">network</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">slip</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">storage</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">time</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">transaction</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">types</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">utxoset</span>;
 
-<span class="attribute">#[<span class="ident">global_allocator</span>]</span>
-<span class="kw">static</span> <span class="ident">ALLOC</span>: <span class="ident">jemallocator</span>::<span class="ident">Jemalloc</span> <span class="op">=</span> <span class="ident">jemallocator</span>::<span class="ident">Jemalloc</span>;
-
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">lazy_static</span>;
 
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
-
-<span class="comment">// TODO put test_utilities behind a feature flag so it&#39;s not built into non-test builds</span>
-<span class="comment">//   i.e. uncomment this line:</span>
-<span class="comment">// [cfg(feature = &quot;test-utilities&quot;)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_utilities</span>;
 
 <span class="doccomment">/// Error returned by most functions.</span>
 <span class="doccomment">///</span>

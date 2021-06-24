@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["AddBlockEvent","Enumerated types of `Transaction`s to be handlded by consensus"]],"struct":[["BLOCKCHAIN_GLOBAL",""],["Blockchain","The structure represents the state of the blockchain itself, including the blocks that are on the longest-chain as well as the material that is sitting off the longest-chain but capable of being switched over."],["ForkChains",""]]});
+initSidebarItems({"struct":[["Blockchain",""]]});

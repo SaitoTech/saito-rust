@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["saito_rust"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html\" title=\"trait core::hash::Hash\">Hash</a> for <a class=\"struct\" href=\"saito_rust/slip/struct.SlipID.html\" title=\"struct saito_rust::slip::SlipID\">SlipID</a>","synthetic":false,"types":["saito_rust::slip::SlipID"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

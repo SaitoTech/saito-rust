@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Network",""]]});
+initSidebarItems({"fn":[["run",""]]});
