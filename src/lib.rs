@@ -21,38 +21,14 @@ The Saito Team
 dev@saito.tech
 
 */
-pub mod block;
 pub mod blockchain;
-pub mod burnfee;
 pub mod consensus;
-pub mod constants;
-pub mod crypto;
-pub mod forktree;
-pub mod golden_ticket;
-pub mod keypair;
-pub mod longest_chain_queue;
 pub mod mempool;
 pub mod network;
-pub mod slip;
-pub mod storage;
-pub mod time;
-pub mod transaction;
-pub mod types;
-pub mod utxoset;
 
-#[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
-
-#[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
 extern crate tracing;
-
-// TODO put test_utilities behind a feature flag so it's not built into non-test builds
-//   i.e. uncomment this line:
-// [cfg(feature = "test-utilities")]
-pub mod test_utilities;
 
 /// Error returned by most functions.
 ///
