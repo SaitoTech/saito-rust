@@ -23,6 +23,7 @@ dev@saito.tech
 */
 pub mod block;
 pub mod blockchain;
+pub mod crypto;
 pub mod consensus;
 pub mod mempool;
 pub mod network;
