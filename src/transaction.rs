@@ -112,6 +112,7 @@ impl Transaction {
         self.core.message = message;
     }
 
+    // TODO - this is just a stub
     pub fn set_signature(&self) -> SaitoSignature {
 
 	// sign the transaction and return a signature

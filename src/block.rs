@@ -82,7 +82,39 @@ impl Block {
     }
 
     pub fn get_id(&self) -> u64 {
-        1
+        self.core.id
+    }
+
+    pub fn get_timestamp(&self) -> u64 {
+	self.core.timestamp
+    }
+
+    pub fn previous_block_hash(&self) -> SaitoHash {
+	self.core.previous_block_hash
+    }
+
+    pub fn get_creator(&self) -> SaitoPublicKey {
+	self.core.creator
+    }
+
+    pub fn get_merkle_root(&self) -> SaitoHash {
+	self.core.merkle_root
+    }
+
+    pub fn get_signature(&self) -> SaitoSignature {
+	self.core.signature
+    }
+
+    pub fn get_treasury(&self) -> u64 {
+	self.core.treasury
+    }
+
+    pub fn get_burnfee(&self) -> u64 {
+	self.core.burnfee
+    }
+
+    pub fn get_difficulty(&self) -> u64 {
+	self.core.difficulty
     }
 
     pub fn set_id(&mut self, id : u64) {
@@ -96,6 +128,33 @@ impl Block {
     pub fn set_previous_block_hash(&mut self , previous_block_hash : SaitoHash) {
         self.core.previous_block_hash = previous_block_hash;
     }
+
+    pub fn set_creator(&mut self, creator : SaitoPublicKey) {
+        self.core.creator = creator;
+    }
+
+    // TODO - merkle root needs to be generated from the transactions
+    pub fn set_merkle_root(&mut self) {
+    }
+
+    // TODO - signature needs to be generated from consensus vars
+    pub fn set_signature(&mut self) {
+    }
+
+    pub fn set_treasury(&mut self, treasury : u64) {
+        self.core.treasury = treasury;
+    }
+
+    pub fn set_burnfee(&mut self, burnfee : u64) {
+        self.core.burnfee = burnfee;
+    }
+
+    pub fn set_difficulty(&mut self, difficulty : u64) {
+        self.core.difficulty = difficulty;
+    }
+
+
+
 
     // TODO
     //
