@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["TransactionType",""]],"struct":[["Transaction",""],["TransactionCore",""]]});
