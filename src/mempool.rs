@@ -185,7 +185,6 @@ println!("Transaction Verifies: {:?}", v);
 
 		//let v = verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> bool {
 
-
 //aprintln!("Transaction Sig Source: {:?}", transaction.get_signature_source_hash());
 	    }
 
