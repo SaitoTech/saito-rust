@@ -1,6 +1,5 @@
 use saito_rust::consensus;
 use tokio::signal;
-use tracing_subscriber;
 
 #[tokio::main]
 pub async fn main() -> saito_rust::Result<()> {

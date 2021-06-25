@@ -27,6 +27,7 @@ https://trello.com/b/gWPiQFZ1/saito-rust-project-management
 
 ```
 rustup component add rustfmt
+rustup component add clippy
 ```
 
 ### Run the node
@@ -56,6 +57,14 @@ cargo fmt
 ```
 
 Format code according to the [Rust style Guide](https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/guide.md).
+
+### Code linting
+
+```
+cargo clippy
+```
+
+[Clippy](https://github.com/rust-lang/rust-clippy) is a collection of lints to catch common mistakes and improve your Rust code.
 
 ### Benchmarks
 

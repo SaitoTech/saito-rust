@@ -3,9 +3,8 @@ use sha2::{Digest, Sha256};
 use std::convert::TryInto;
 use base58::ToBase58;
 use hex::{decode_to_slice};
-//
-// forward-looking flexibility
-//
+
+
 pub type SaitoHash = [u8; 32];
 pub type SaitoPublicKey = [u8; 33];
 pub type SaitoPrivateKey = [u8; 32]; // 256-bit key
@@ -70,6 +69,4 @@ pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> boo
     let s = Signature::from_compact(&sig).unwrap();
     SECP256K1.verify(&m, &s, &p).is_ok()
 }
-
-
 
