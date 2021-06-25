@@ -38,6 +38,9 @@ impl Mempool {
                 return false;
             }
         }
+
+println!("adding block to mempool queue");
+
         self.blocks.push(block);
         return true;
     }
@@ -62,8 +65,8 @@ impl Mempool {
     pub async fn generate_block(
         &mut self,
         blockchain_lock: Arc<RwLock<Blockchain>>,
-        creator_publickey: SaitoPublicKey,
-        creator_privatekey: SaitoPrivateKey,
+        _creator_publickey: SaitoPublicKey,
+        _creator_privatekey: SaitoPrivateKey,
     ) -> Block {
 
 	let blockchain = blockchain_lock.read().await;
@@ -75,9 +78,7 @@ impl Mempool {
         block.set_previous_block_hash(previous_block_hash);
         block.set_hash();
 
-        for i in 0..1000 {
-
-            println!("Creating Transaction {:?}", i);
+        for _i in 0..1000 {
 
             let mut transaction = Transaction::default();
 
@@ -182,7 +183,6 @@ pub async fn run(
                     }
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
                         let mut _mempool = mempool_lock.write().await;
-                        println!("NEW TRANSACTION IN MEMPOOL");
                     },
                 }
             }
