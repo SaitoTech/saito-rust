@@ -1,11 +1,6 @@
 use crate::{
-    block::Block,
-    blockchain::Blockchain,
-    consensus::SaitoMessage,
-    crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey},
-    slip::Slip,
-    transaction::Transaction,
-    wallet::Wallet,
+    block::Block, blockchain::Blockchain, consensus::SaitoMessage, crypto::SaitoHash, slip::Slip,
+    transaction::Transaction, wallet::Wallet,
 };
 use std::{sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
@@ -23,12 +18,16 @@ pub enum MempoolMessage {
 /// the `Blockchain`
 pub struct Mempool {
     blocks: Vec<Block>,
+    _wallet: Arc<RwLock<Wallet>>,
 }
 
 impl Mempool {
     #[allow(clippy::clippy::new_without_default)]
-    pub fn new() -> Self {
-        Mempool { blocks: vec![] }
+    pub fn new(wallet: Arc<RwLock<Wallet>>) -> Self {
+        Mempool {
+            blocks: vec![],
+            _wallet: wallet,
+        }
     }
 
     pub fn add_block(&mut self, block: Block) -> bool {
@@ -63,12 +62,7 @@ impl Mempool {
         return None;
     }
 
-    pub async fn generate_block(
-        &mut self,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-        _creator_publickey: SaitoPublicKey,
-        _creator_privatekey: SaitoPrivateKey,
-    ) -> Block {
+    pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
@@ -106,7 +100,6 @@ impl Mempool {
 pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    wallet_lock: Arc<RwLock<Wallet>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
@@ -143,12 +136,8 @@ pub async fn run(
                     MempoolMessage::GenerateBlock => {
 
                         let mut mempool = mempool_lock.write().await;
-                        let wallet = wallet_lock.read().await;
 
-            let creator_publickey = wallet.get_publickey();
-            let creator_privatekey = wallet.get_privatekey();
-
-                        let block = mempool.generate_block(blockchain_lock.clone(), creator_publickey, creator_privatekey).await;
+                        let block = mempool.generate_block(blockchain_lock.clone()).await;
             mempool.add_block(block);
                     },
 
