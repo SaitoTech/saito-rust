@@ -212,7 +212,7 @@ impl Block {
 
     pub fn validate(&self) -> bool {
 
-        let transactions_valid = &self.transactions
+        let _transactions_valid = &self.transactions
             .par_iter()
             .all(|tx| tx.validate());
 

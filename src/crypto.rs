@@ -67,3 +67,6 @@ pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> boo
     let s = Signature::from_compact(&sig).unwrap();
     SECP256K1.verify(&m, &s, &p).is_ok()
 }
+
+
+

@@ -68,7 +68,8 @@ impl Default for TransactionCore {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Transaction {
     core: TransactionCore,
-    merkle_hash: SaitoHash,		// hash used to generate merkle_root
+    // hash used for merkle_root (does not include signature), and slip uuid
+    hash_presig: SaitoHash,
 }
 
 
@@ -76,7 +77,7 @@ impl Transaction {
     pub fn new(core: TransactionCore) -> Self {
         Self { 
 	    core,
-	    merkle_hash: [0;32],
+	    hash_presig: [0;32],
 	}
     }
 
@@ -128,9 +129,14 @@ impl Transaction {
         self.core.signature = sig;
     }
 
+    pub fn set_hash_presig(&mut self, hash : SaitoHash) {
+        self.hash_presig = hash;
+    }
+
     pub fn sign(&mut self, privatekey : SaitoPrivateKey) {
         let hash_to_sign = hash(&self.serialize_for_signature());
 	self.set_signature(sign(&hash_to_sign, privatekey));
+	self.set_hash_presig(hash_to_sign);
     }
 
     pub fn serialize_for_signature(&self) -> Vec<u8> {
@@ -144,17 +150,6 @@ impl Transaction {
                 for output in &self.core.outputs { vbytes.extend(&output.serialize_for_signature()); }
                 vbytes.extend(&(self.core.transaction_type as u32).to_be_bytes());
                 vbytes.extend(&self.core.message);
-
-	return vbytes;
-
-    }
-    pub fn serialize_for_merkle_hash(&self) -> Vec<u8> {
-
-        //
-        // fastest known way that isn't bincode ??
-        //
-        let mut vbytes : Vec<u8> = self.serialize_for_signature();
-                vbytes.extend(&self.core.signature);
 
 	return vbytes;
 
