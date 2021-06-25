@@ -23,7 +23,7 @@ impl Blockchain {
             block.get_hash()
         );
 
-	println!("Validates? {:?}", block.validate());
+        println!("Validates? {:?}", block.validate());
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {

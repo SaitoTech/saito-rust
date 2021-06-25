@@ -153,8 +153,8 @@ impl Block {
         self.core.creator = creator;
     }
 
-    pub fn set_merkle_root(&mut self, merkle_root : SaitoHash) {
-	self.core.merkle_root = merkle_root;
+    pub fn set_merkle_root(&mut self, merkle_root: SaitoHash) {
+        self.core.merkle_root = merkle_root;
     }
 
     // TODO - signature needs to be generated from consensus vars
@@ -172,11 +172,9 @@ impl Block {
         self.core.difficulty = difficulty;
     }
 
-    pub fn set_hash(&mut self, hash : SaitoHash) {
-	self.hash = hash;
+    pub fn set_hash(&mut self, hash: SaitoHash) {
+        self.hash = hash;
     }
-
-
 
     // TODO
     //
@@ -187,39 +185,32 @@ impl Block {
     // for blockchain functions.
     //
     pub fn generate_hash(&mut self) -> SaitoHash {
-
         //
         // fastest known way that isn't bincode ??
         //
-        let mut vbytes : Vec<u8> = vec![];
-                vbytes.extend(&self.core.id.to_be_bytes());
-                vbytes.extend(&self.core.timestamp.to_be_bytes());
-                vbytes.extend(&self.core.previous_block_hash);
-                vbytes.extend(&self.core.creator);
-                vbytes.extend(&self.core.merkle_root);
-                vbytes.extend(&self.core.signature);
-                vbytes.extend(&self.core.treasury.to_be_bytes());
-                vbytes.extend(&self.core.burnfee.to_be_bytes());
-                vbytes.extend(&self.core.difficulty.to_be_bytes());
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.core.id.to_be_bytes());
+        vbytes.extend(&self.core.timestamp.to_be_bytes());
+        vbytes.extend(&self.core.previous_block_hash);
+        vbytes.extend(&self.core.creator);
+        vbytes.extend(&self.core.merkle_root);
+        vbytes.extend(&self.core.signature);
+        vbytes.extend(&self.core.treasury.to_be_bytes());
+        vbytes.extend(&self.core.burnfee.to_be_bytes());
+        vbytes.extend(&self.core.difficulty.to_be_bytes());
 
-	hash(&vbytes)
-
+        hash(&vbytes[..])
     }
+
     pub fn generate_merkle_root(&mut self) -> SaitoHash {
-	[0;32]
+        [0; 32]
     }
-
 
     pub fn validate(&self) -> bool {
-
-        let _transactions_valid = &self.transactions
-            .par_iter()
-            .all(|tx| tx.validate());
+        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
 
         return true;
-
     }
-
 }
 
 impl Default for Block {
