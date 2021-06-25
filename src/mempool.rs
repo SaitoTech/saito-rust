@@ -1,14 +1,15 @@
 use crate::{
-    block::Block, blockchain::Blockchain, consensus::SaitoMessage, crypto::SaitoHash, slip::Slip,
+    block::Block, blockchain::Blockchain, consensus::SaitoMessage, crypto::{SaitoPublicKey,SaitoPrivateKey,SaitoHash}, slip::Slip,
     transaction::Transaction,
+    wallet::Wallet,
 };
-use ahash::AHashMap;
 use std::{sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
 #[derive(Clone, Debug)]
 pub enum MempoolMessage {
-    TryBundle,
+    GenerateBlock,
+    AddBlockToBlockchain,
 }
 
 /// The `Mempool` holds unprocessed blocks and transactions and is in control of
@@ -17,51 +18,65 @@ pub enum MempoolMessage {
 /// received over the network are queued in the `Mempool` before being added to
 /// the `Blockchain`
 pub struct Mempool {
-    blocks: AHashMap<SaitoHash, Block>,
+    blocks: Vec<Block>,
 }
 
 impl Mempool {
+
     #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         Mempool {
-            blocks: AHashMap::new(),
+    	    blocks: vec![],
         }
     }
 
-    pub fn add_block(&mut self, block: Block) {
-        // adds block if it doesn't already exist,
-        // else it ignores attempt to add block to AHashMap
-        self.blocks.entry(block.get_hash()).or_insert(block);
+
+    pub fn add_block(&mut self, block: Block) -> bool {
+        let hash_to_insert = block.get_hash();
+        for blk in &self.blocks {
+            if blk.get_hash() == hash_to_insert {
+                return false;
+            }
+        }
+        self.blocks.push(block);
+        return true;
     }
 
     pub fn take_block(&mut self, hash: SaitoHash) -> Option<Block> {
-        self.blocks.remove(&hash)
-    }
-
-    pub fn can_bundle_block(&self, _previous_block: Option<&Block>) -> bool {
-        true
-    }
-
-    pub fn bundle_block(&mut self, previous_block: Option<&Block>) -> Block {
-        let mut block = self.generate_block_from_mempool_transactions(previous_block);
-        block.set_hash();
-        block
-    }
-
-    pub fn generate_block_from_mempool_transactions(
-        &mut self,
-        previous_block: Option<&Block>,
-    ) -> Block {
-        let mut block = Block::default();
-
-        if let Some(previous_block) = previous_block {
-            block.set_id(previous_block.get_id());
-            block.set_previous_block_hash(previous_block.get_hash());
+        let mut block_found = false;
+        let mut block_idx = 0;
+        for i in 0..self.blocks.len() {
+            if self.blocks[0].get_hash() == hash {
+                block_idx = i;
+                block_found = true;
+                break;
+            }
         }
+        if block_found {
+            let block = self.blocks.remove(block_idx);
+            return Some(block);
+        }
+        return None;
+    }
 
+    pub async fn generate_block(
+        &mut self,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+        creator_publickey: SaitoPublicKey,
+        creator_privatekey: SaitoPrivateKey,
+    ) -> Block {
+
+	let blockchain = blockchain_lock.read().await;
+        let previous_block_id = blockchain.get_latest_block_id();
+        let previous_block_hash = blockchain.get_latest_block_hash();
+
+	let mut block = Block::default();
+        block.set_id(previous_block_id);
+        block.set_previous_block_hash(previous_block_hash);
         block.set_hash();
 
         for i in 0..1000 {
+
             println!("Creating Transaction {:?}", i);
 
             let mut transaction = Transaction::default();
@@ -91,47 +106,68 @@ impl Mempool {
 pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    wallet_lock: Arc<RwLock<Wallet>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
+
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
 
-    let try_bundle_sender = mempool_channel_sender.clone();
-
-    // loops to trigger messages
+    let generate_block_sender = mempool_channel_sender.clone();
     tokio::spawn(async move {
         loop {
-            try_bundle_sender
-                .send(MempoolMessage::TryBundle)
+            generate_block_sender
+                .send(MempoolMessage::GenerateBlock)
                 .await
-                .expect("error: TryBundle message failed to send");
+                .expect("error: GenerateBlock message failed to send");
+            sleep(Duration::from_millis(5000));
+        }
+    });
+
+
+    let add_block_to_blockchain_sender = mempool_channel_sender.clone();
+    tokio::spawn(async move {
+        loop {
+            add_block_to_blockchain_sender
+                .send(MempoolMessage::AddBlockToBlockchain)
+                .await
+                .expect("error: AddBlockToBlockchain message failed to send");
             sleep(Duration::from_millis(1000));
         }
     });
+
 
     loop {
         tokio::select! {
             Some(message) = mempool_channel_receiver.recv() => {
                 match message {
-                    // the dominant local message is TryBundle, which triggrs
-                    // periodic attempts to analyze the state of the mempool
-                    // and make blocks if appropriate.
-                    MempoolMessage::TryBundle => {
-                        let mempool_read = mempool_lock.read().await;
-                        let blockchain_read = blockchain_lock.read().await;
+                    // GenerateBlock makes periodic attempts to analyse the state of 
+		    // the mempool and produce blocks if possible.
+                    MempoolMessage::GenerateBlock => {
 
-                        let previous_block = blockchain_read.get_latest_block();
+                        let mut mempool = mempool_lock.write().await;
+                        let wallet = wallet_lock.read().await;
 
-                        if mempool_read.can_bundle_block(previous_block) {
-                            let mut mempool = mempool_lock.write().await;
-                            let block = mempool.bundle_block(previous_block);
+			let creator_publickey = wallet.get_publickey();
+			let creator_privatekey = wallet.get_privatekey();
 
-                            let mut blockchain = blockchain_lock.write().await;
-                            blockchain.add_block(block);
-                        }
+                        let block = mempool.generate_block(blockchain_lock.clone(), creator_publickey, creator_privatekey).await;
+			mempool.add_block(block);
+                    },
+
+                    // AddBlockToBlockchain periodically checks the block queue to see
+		    // if we should announce the existence of new blocks to the blockchain
+		    MempoolMessage::AddBlockToBlockchain => {
+                        let mempool = mempool_lock.read().await;
+			if mempool.blocks.len() > 0 {
+			    broadcast_channel_sender
+                        	.send(SaitoMessage::MempoolNewBlock { hash: mempool.blocks[0].get_hash() })
+                                .expect("error: MempoolNewBlock message failed to send");
+			}
                     },
                 }
             }
+
 
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
@@ -163,12 +199,8 @@ mod tests {
     }
 
     #[test]
-    fn mempool_can_bundle_block_test() {
+    fn mempool_generate_block_test() {
         assert_eq!(true, true);
     }
 
-    #[test]
-    fn mempool_bundle_block_test() {
-        assert_eq!(true, true);
-    }
 }

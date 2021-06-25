@@ -77,8 +77,9 @@ impl Consensus {
 
         tokio::select! {
             res = crate::mempool::run(
-                mempool_lock,
-                blockchain_lock,
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+                wallet_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_receiver
             ) => {
@@ -95,7 +96,7 @@ impl Consensus {
                 }
             }
             res = crate::wallet::run(
-                wallet_lock,
+                wallet_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
