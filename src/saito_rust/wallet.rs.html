@@ -132,24 +132,9 @@
 <span id="129">129</span>
 <span id="130">130</span>
 <span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::consensus::SaitoMessage</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">Keypair</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">Keypair</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>};
 <span class="kw">use</span> <span class="ident">::std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 
@@ -162,21 +147,18 @@
 <span class="doccomment">/// The `Wallet` manages the public and private keypair of the node and holds the</span>
 <span class="doccomment">/// slips that are used to form transactions on the network.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Wallet</span> {
-
     <span class="ident">broadcast_channel_sender</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">wallet_channel_sender</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">WalletMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="ident">keypair</span>: <span class="ident">Keypair</span>,
-
 }
 
 <span class="kw">impl</span> <span class="ident">Wallet</span> {
-
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">Wallet</span> {
             <span class="ident">broadcast_channel_sender</span>: <span class="prelude-val">None</span>,
             <span class="ident">wallet_channel_sender</span>: <span class="prelude-val">None</span>,
-	    <span class="ident">keypair</span>: <span class="ident">Keypair::new</span>(),
+            <span class="ident">keypair</span>: <span class="ident">Keypair::new</span>(),
         }
     }
 
@@ -188,22 +170,13 @@
         <span class="self">self</span>.<span class="ident">keypair</span>.<span class="ident">get_privatekey</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_broadcast_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bcs</span> : <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>) {
-      <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bcs</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_broadcast_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bcs</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bcs</span>);
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_wallet_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">wcs</span> : <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">WalletMessage</span><span class="op">&gt;</span>) {
-      <span class="self">self</span>.<span class="ident">wallet_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">wcs</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_wallet_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">wcs</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span><span class="ident">WalletMessage</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">wallet_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">wcs</span>);
     }
-
 }
-
-
-
-
-
-
-
-
 
 <span class="comment">//</span>
 <span class="comment">// This function is called on initialization to setup the sending</span>
@@ -217,7 +190,7 @@
     <span class="kw">let</span> (<span class="ident">wallet_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">wallet_channel_receiver</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
 
     <span class="comment">//</span>
-    <span class="comment">// pass clones of our broadcast sender channels into Wallet so it </span>
+    <span class="comment">// pass clones of our broadcast sender channels into Wallet so it</span>
     <span class="comment">// can broadcast into the world as well...</span>
     <span class="comment">//</span>
     {
@@ -239,42 +212,41 @@
         }
     });
 
-
     <span class="kw">loop</span> {
         <span class="macro">tokio::select!</span> {
 
-      	    <span class="comment">//</span>
-	    <span class="comment">// local messages</span>
-	    <span class="comment">//</span>
+              <span class="comment">//</span>
+        <span class="comment">// local messages</span>
+        <span class="comment">//</span>
             <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">wallet_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">match</span> <span class="ident">message</span> {
-		    <span class="comment">//</span>
-		    <span class="comment">// TestMessage</span>
-		    <span class="comment">//</span>
-		    <span class="comment">// test if our local broadcast loop is working by printing</span>
-		    <span class="comment">// a confirmation message when we receive a WalletMessage::</span>
-		    <span class="comment">// TestMessage.</span>
-		    <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">// TestMessage</span>
+            <span class="comment">//</span>
+            <span class="comment">// test if our local broadcast loop is working by printing</span>
+            <span class="comment">// a confirmation message when we receive a WalletMessage::</span>
+            <span class="comment">// TestMessage.</span>
+            <span class="comment">//</span>
                     <span class="ident">WalletMessage::TestMessage</span> <span class="op">=</span><span class="op">&gt;</span> {
-			<span class="macro">println!</span>(<span class="string">&quot;Wallet has received local TestMessage broadcast&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;Wallet has received local TestMessage broadcast&quot;</span>);
                     },
-		    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
                 }
             }
 
 
-      	    <span class="comment">//</span>
-	    <span class="comment">// system-wide messages</span>
-	    <span class="comment">//</span>
+              <span class="comment">//</span>
+        <span class="comment">// system-wide messages</span>
+        <span class="comment">//</span>
             <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">match</span> <span class="ident">message</span> {
-		    <span class="comment">//</span>
-		    <span class="comment">// BlockchainAddBlock</span>
-		    <span class="comment">//</span>
-		    <span class="comment">// triggered when the blockchain has validated and added </span>
-		    <span class="comment">// a new block. This examines the block for any transactions</span>
-		    <span class="comment">// relevant to our wallet.</span>
-		    <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">// BlockchainAddBlock</span>
+            <span class="comment">//</span>
+            <span class="comment">// triggered when the blockchain has validated and added</span>
+            <span class="comment">// a new block. This examines the block for any transactions</span>
+            <span class="comment">// relevant to our wallet.</span>
+            <span class="comment">//</span>
                     <span class="comment">//SaitoMessage::MempoolNewBlock { hash } =&gt; {</span>
                     <span class="comment">//}</span>
                     <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
@@ -291,9 +263,7 @@
     <span class="kw">fn</span> <span class="ident">wallet_new_test</span>() {
         <span class="macro">assert_eq!</span>(<span class="bool-val">true</span>, <span class="bool-val">true</span>);
     }
-
 }
-
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>
