@@ -34,7 +34,7 @@ impl Blockchain {
     pub fn get_latest_block_hash(&self) -> SaitoHash {
         match self.last_block_hash {
             Some(hash) => self.blocks.get(&hash).unwrap().get_hash(),
-            None => [0;32],
+            None => [0; 32],
         }
     }
 

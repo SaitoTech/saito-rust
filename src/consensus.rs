@@ -1,11 +1,9 @@
 use crate::crypto::SaitoHash;
-use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use crate::wallet::Wallet;
+use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use std::{future::Future, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
-
-
 
 /// The consensus state which exposes a run method
 /// initializes Saito state
@@ -14,7 +12,6 @@ struct Consensus {
     _shutdown_complete_rx: mpsc::Receiver<()>,
     _shutdown_complete_tx: mpsc::Sender<()>,
 }
-
 
 /// The types of messages broadcast over the main
 /// broadcast channel in normal operations.

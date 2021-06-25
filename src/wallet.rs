@@ -1,5 +1,5 @@
 use crate::consensus::SaitoMessage;
-use crate::crypto::{SaitoPublicKey, SaitoPrivateKey, Keypair};
+use crate::crypto::{Keypair, SaitoPrivateKey, SaitoPublicKey};
 use ::std::{sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -12,21 +12,18 @@ pub enum WalletMessage {
 /// The `Wallet` manages the public and private keypair of the node and holds the
 /// slips that are used to form transactions on the network.
 pub struct Wallet {
-
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
     wallet_channel_sender: Option<mpsc::Sender<WalletMessage>>,
 
     keypair: Keypair,
-
 }
 
 impl Wallet {
-
     pub fn new() -> Self {
         Wallet {
             broadcast_channel_sender: None,
             wallet_channel_sender: None,
-	    keypair: Keypair::new(),
+            keypair: Keypair::new(),
         }
     }
 
@@ -38,22 +35,13 @@ impl Wallet {
         self.keypair.get_privatekey()
     }
 
-    pub fn set_broadcast_channel_sender(&mut self, bcs : broadcast::Sender<SaitoMessage>) {
-      self.broadcast_channel_sender = Some(bcs);
+    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
+        self.broadcast_channel_sender = Some(bcs);
     }
-    pub fn set_wallet_channel_sender(&mut self, wcs : mpsc::Sender<WalletMessage>) {
-      self.wallet_channel_sender = Some(wcs);
+    pub fn set_wallet_channel_sender(&mut self, wcs: mpsc::Sender<WalletMessage>) {
+        self.wallet_channel_sender = Some(wcs);
     }
-
 }
-
-
-
-
-
-
-
-
 
 //
 // This function is called on initialization to setup the sending
@@ -67,7 +55,7 @@ pub async fn run(
     let (wallet_channel_sender, mut wallet_channel_receiver) = mpsc::channel(4);
 
     //
-    // pass clones of our broadcast sender channels into Wallet so it 
+    // pass clones of our broadcast sender channels into Wallet so it
     // can broadcast into the world as well...
     //
     {
@@ -89,42 +77,41 @@ pub async fn run(
         }
     });
 
-
     loop {
         tokio::select! {
 
-      	    //
-	    // local messages
-	    //
+              //
+        // local messages
+        //
             Some(message) = wallet_channel_receiver.recv() => {
                 match message {
-		    //
-		    // TestMessage
-		    //
-		    // test if our local broadcast loop is working by printing
-		    // a confirmation message when we receive a WalletMessage::
-		    // TestMessage.
-		    //
+            //
+            // TestMessage
+            //
+            // test if our local broadcast loop is working by printing
+            // a confirmation message when we receive a WalletMessage::
+            // TestMessage.
+            //
                     WalletMessage::TestMessage => {
-			println!("Wallet has received local TestMessage broadcast");
+            println!("Wallet has received local TestMessage broadcast");
                     },
-		    _ => {}
+            _ => {}
                 }
             }
 
 
-      	    //
-	    // system-wide messages
-	    //
+              //
+        // system-wide messages
+        //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
-		    //
-		    // BlockchainAddBlock
-		    //
-		    // triggered when the blockchain has validated and added 
-		    // a new block. This examines the block for any transactions
-		    // relevant to our wallet.
-		    //
+            //
+            // BlockchainAddBlock
+            //
+            // triggered when the blockchain has validated and added
+            // a new block. This examines the block for any transactions
+            // relevant to our wallet.
+            //
                     //SaitoMessage::MempoolNewBlock { hash } => {
                     //}
                     _ => {}
@@ -141,6 +128,4 @@ mod tests {
     fn wallet_new_test() {
         assert_eq!(true, true);
     }
-
 }
-

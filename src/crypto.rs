@@ -1,15 +1,13 @@
-pub use secp256k1::{Message, SecretKey, PublicKey, Signature, SECP256K1};
+use base58::ToBase58;
+use hex::decode_to_slice;
+pub use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
 use sha2::{Digest, Sha256};
 use std::convert::TryInto;
-use base58::ToBase58;
-use hex::{decode_to_slice};
-
 
 pub type SaitoHash = [u8; 32];
 pub type SaitoPublicKey = [u8; 33];
 pub type SaitoPrivateKey = [u8; 32]; // 256-bit key
 pub type SaitoSignature = [u8; 64];
-
 
 //
 // The Keypair is a crypto-class object that holds the secp256k1 private
@@ -18,13 +16,13 @@ pub type SaitoSignature = [u8; 64];
 // and never touch a keypair.
 //
 pub struct Keypair {
-  privatekey: SecretKey,
-  publickey: PublicKey,
+    privatekey: SecretKey,
+    publickey: PublicKey,
 }
 impl Keypair {
-
     pub fn new() -> Keypair {
-        let (mut secret_key, mut public_key) = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
+        let (mut secret_key, mut public_key) =
+            SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
         while public_key.serialize().to_base58().len() != 44 {
             // sometimes secp256k1 address is too big to store in 44 base-58 digits
             let keypair_tuple = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
@@ -33,21 +31,22 @@ impl Keypair {
         }
 
         Keypair {
-	    publickey: public_key,
-	    privatekey: secret_key,
+            publickey: public_key,
+            privatekey: secret_key,
         }
     }
 
     pub fn get_privatekey(&self) -> SaitoPrivateKey {
         let mut secret_bytes = [0u8; 32];
-	for i in 0..32 { secret_bytes[i] = self.privatekey[i]; }
+        for i in 0..32 {
+            secret_bytes[i] = self.privatekey[i];
+        }
         return secret_bytes;
     }
 
     pub fn get_publickey(&self) -> SaitoPublicKey {
-	self.publickey.serialize()
+        self.publickey.serialize()
     }
-
 }
 
 pub fn hash(data: &Vec<u8>) -> SaitoHash {
@@ -69,4 +68,3 @@ pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> boo
     let s = Signature::from_compact(&sig).unwrap();
     SECP256K1.verify(&m, &s, &p).is_ok()
 }
-
