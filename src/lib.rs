@@ -23,14 +23,13 @@ dev@saito.tech
 */
 pub mod block;
 pub mod blockchain;
-pub mod crypto;
 pub mod consensus;
+pub mod crypto;
 pub mod mempool;
 pub mod network;
 pub mod slip;
 pub mod time;
 pub mod transaction;
-
 
 extern crate lazy_static;
 
