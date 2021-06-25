@@ -2,7 +2,7 @@ use crate::{
     block::Block,
     blockchain::Blockchain,
     consensus::SaitoMessage,
-    crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey},
+    crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey, hash, verify},
     slip::Slip,
     transaction::Transaction,
     wallet::Wallet,
@@ -66,8 +66,8 @@ impl Mempool {
     pub async fn generate_block(
         &mut self,
         blockchain_lock: Arc<RwLock<Blockchain>>,
-        _creator_publickey: SaitoPublicKey,
-        _creator_privatekey: SaitoPrivateKey,
+        creator_publickey: SaitoPublicKey,
+        creator_privatekey: SaitoPrivateKey,
     ) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
@@ -76,7 +76,10 @@ impl Mempool {
         let mut block = Block::default();
         block.set_id(previous_block_id);
         block.set_previous_block_hash(previous_block_hash);
-        block.set_hash();
+        let block_hash = block.generate_hash();
+	block.set_hash(block_hash);
+        let block_merkle_root = block.generate_merkle_root();
+	block.set_merkle_root(block_merkle_root);
 
         for _i in 0..1000 {
             let mut transaction = Transaction::default();
@@ -95,6 +98,19 @@ impl Mempool {
 
             transaction.add_input(input1);
             transaction.add_output(output1);
+
+	    // sign ...
+            transaction.sign(creator_privatekey);
+            let tx_sig = transaction.get_signature();
+
+   	    // ... and verify
+            let vbytes = transaction.serialize_for_signature();
+            let hash = hash(&vbytes);
+            let v = verify(&hash, tx_sig, creator_publickey);
+	    if !v {
+println!("Transaction does not Validate: {:?}", v);
+	    }
+
         }
 
         block

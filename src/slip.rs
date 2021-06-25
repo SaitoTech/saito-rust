@@ -109,9 +109,13 @@ impl Slip {
         vbytes.extend(&self.core.uuid);
         vbytes.extend(&self.core.amount.to_be_bytes());
         vbytes.extend(&(self.core.slip_type as u32).to_be_bytes());
-
         vbytes
     }
+
+    pub fn validate(&self) -> bool {
+        return true;
+    }
+
 }
 
 impl Default for Slip {

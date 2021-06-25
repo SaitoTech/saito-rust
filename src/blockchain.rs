@@ -22,6 +22,8 @@ impl Blockchain {
             "Received block in blockchain.add_block: {:?}",
             block.get_hash()
         );
+
+	println!("Validates? {:?}", block.validate());
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {

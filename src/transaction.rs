@@ -1,4 +1,4 @@
-use crate::{crypto::SaitoSignature, slip::Slip, time::create_timestamp};
+use crate::{crypto::{SaitoHash, SaitoPublicKey, SaitoPrivateKey, SaitoSignature, hash, sign, verify}, slip::Slip, time::create_timestamp};
 use serde::{Deserialize, Serialize};
 
 /// TransactionType is a human-readable indicator of the type of
@@ -68,11 +68,16 @@ impl Default for TransactionCore {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Transaction {
     core: TransactionCore,
+    merkle_hash: SaitoHash,		// hash used to generate merkle_root
 }
+
 
 impl Transaction {
     pub fn new(core: TransactionCore) -> Self {
-        Self { core }
+        Self { 
+	    core,
+	    merkle_hash: [0;32],
+	}
     }
 
     pub fn add_input(&mut self, input_slip: Slip) {
@@ -122,6 +127,68 @@ impl Transaction {
     pub fn set_signature(&mut self, sig : SaitoSignature) {
         self.core.signature = sig;
     }
+
+    pub fn sign(&mut self, privatekey : SaitoPrivateKey) {
+        let hash_to_sign = hash(&self.serialize_for_signature());
+	self.set_signature(sign(&hash_to_sign, privatekey));
+    }
+
+    pub fn serialize_for_signature(&self) -> Vec<u8> {
+
+        //
+        // fastest known way that isn't bincode ??
+        //
+        let mut vbytes : Vec<u8> = vec![];
+                vbytes.extend(&self.core.timestamp.to_be_bytes());
+                for input in &self.core.inputs { vbytes.extend(&input.serialize_for_signature()); }
+                for output in &self.core.outputs { vbytes.extend(&output.serialize_for_signature()); }
+                vbytes.extend(&(self.core.transaction_type as u32).to_be_bytes());
+                vbytes.extend(&self.core.message);
+
+	return vbytes;
+
+    }
+    pub fn serialize_for_merkle_hash(&self) -> Vec<u8> {
+
+        //
+        // fastest known way that isn't bincode ??
+        //
+        let mut vbytes : Vec<u8> = self.serialize_for_signature();
+                vbytes.extend(&self.core.signature);
+
+	return vbytes;
+
+    }
+
+
+    pub fn validate(&self) -> bool {
+
+        //
+        // validate sigs
+        //
+        let msg : SaitoHash = hash(&self.serialize_for_signature());
+        let sig : SaitoSignature = self.get_signature();
+        let mut publickey : SaitoPublicKey = [0;33];
+        if self.core.inputs.len() > 0 { publickey = self.core.inputs[0].get_publickey(); }
+
+        if !verify(&msg, sig, publickey) {
+            println!("message verifies not");
+            return false;
+        }
+
+
+        //
+        // UTXO validate inputs
+        //
+        for input in &self.core.inputs {
+            if !input.validate() {
+                return false;
+            }
+        }
+        return true;
+
+    }
+
 }
 
 impl Default for Transaction {
