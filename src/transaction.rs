@@ -28,7 +28,7 @@ pub struct TransactionCore {
     message: Vec<u8>,
     transaction_type: TransactionType,
     #[serde_as(as = "[_; 64]")]
-    signature: SaitoSignature,
+    signature: SaitoSignature, // compact signatures are 64 bytes; DER signatures are 68-72 bytes
 }
 
 impl TransactionCore {
@@ -38,6 +38,7 @@ impl TransactionCore {
         outputs: Vec<Slip>,
         message: Vec<u8>,
         transaction_type: TransactionType,
+        signature: SaitoSignature,
     ) -> Self {
         Self {
             timestamp,
@@ -45,6 +46,7 @@ impl TransactionCore {
             outputs,
             message,
             transaction_type,
+            signature,
         }
     }
 }
@@ -57,6 +59,7 @@ impl Default for TransactionCore {
             vec![],
             vec![],
             TransactionType::Normal,
+            [0;64],
         )
     }
 }
@@ -65,13 +68,11 @@ impl Default for TransactionCore {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Transaction {
     core: TransactionCore,
-    #[serde_as(as = "[_; 64]")]
-    signature: [u8; 64], // compact signatures are 64 bytes; DER signatures are 68-72 bytes
 }
 
 impl Transaction {
-    pub fn new(core: TransactionCore, signature: [u8; 64]) -> Self {
-        Self { core, signature }
+    pub fn new(core: TransactionCore) -> Self {
+        Self { core }
     }
 
     pub fn add_input(&mut self, input_slip: Slip) {
@@ -103,7 +104,7 @@ impl Transaction {
     }
 
     pub fn get_signature(&self) -> [u8; 64] {
-        self.signature
+        self.core.signature
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
@@ -118,16 +119,14 @@ impl Transaction {
         self.core.message = message;
     }
 
-    // TODO - this is just a stub
-
-    pub fn set_signature(&self) -> SaitoSignature {
-        [0; 64]
+    pub fn set_signature(&mut self, sig : SaitoSignature) {
+        self.core.signature = sig;
     }
 }
 
 impl Default for Transaction {
     fn default() -> Self {
-        Self::new(TransactionCore::default(), [0; 64])
+        Self::new(TransactionCore::default())
     }
 }
 
@@ -149,13 +148,13 @@ mod tests {
     #[test]
     fn transaction_core_new_test() {
         let timestamp = create_timestamp();
-        let tx_core =
-            TransactionCore::new(timestamp, vec![], vec![], vec![], TransactionType::Normal);
+        let tx_core = TransactionCore::new(timestamp, vec![], vec![], vec![], TransactionType::Normal, [0;64]);
         assert_eq!(tx_core.timestamp, timestamp);
         assert_eq!(tx_core.inputs, vec![]);
         assert_eq!(tx_core.outputs, vec![]);
         assert_eq!(tx_core.message, Vec::<u8>::new());
         assert_eq!(tx_core.transaction_type, TransactionType::Normal);
+        assert_eq!(tx_core.signature, [0;64]);
     }
 
     #[test]
@@ -167,19 +166,19 @@ mod tests {
         assert_eq!(tx.core.outputs, vec![]);
         assert_eq!(tx.core.message, Vec::<u8>::new());
         assert_eq!(tx.core.transaction_type, TransactionType::Normal);
-        assert_eq!(tx.signature, [0; 64]);
+        assert_eq!(tx.core.signature, [0; 64]);
     }
 
     #[test]
     fn transaction_new_test() {
         let timestamp = create_timestamp();
         let tx_core = TransactionCore::default();
-        let tx = Transaction::new(tx_core, [0; 64]);
+        let tx = Transaction::new(tx_core);
         assert_eq!(tx.core.timestamp, timestamp);
         assert_eq!(tx.core.inputs, vec![]);
         assert_eq!(tx.core.outputs, vec![]);
         assert_eq!(tx.core.message, Vec::<u8>::new());
         assert_eq!(tx.core.transaction_type, TransactionType::Normal);
-        assert_eq!(tx.signature, [0; 64]);
+        assert_eq!(tx.core.signature, [0; 64]);
     }
 }

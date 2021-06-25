@@ -1,5 +1,4 @@
 use base58::ToBase58;
-use hex::decode_to_slice;
 pub use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
 use sha2::{Digest, Sha256};
 use std::convert::TryInto;
