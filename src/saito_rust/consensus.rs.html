@@ -114,6 +114,7 @@
 <span id="111">111</span>
 <span id="112">112</span>
 <span id="113">113</span>
+<span id="114">114</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">transaction::Transaction</span>};
@@ -194,8 +195,9 @@
 
         <span class="macro">tokio::select!</span> {
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::mempool::run</span>(
-                <span class="ident">mempool_lock</span>,
-                <span class="ident">blockchain_lock</span>,
+                <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_receiver</span>
             ) <span class="op">=</span><span class="op">&gt;</span> {
@@ -212,7 +214,7 @@
                 }
             }
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::wallet::run</span>(
-                <span class="ident">wallet_lock</span>,
+                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {
