@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Block",""],["BlockCore",""]]});
+initSidebarItems({"struct":[["Block",""],["BlockCore","BlockCore is a self-contained object containing only the minimum information needed about a block. It exists to simplify block serialization and deserialization until we have custom functions and to."]]});
