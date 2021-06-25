@@ -1,3 +1,4 @@
+
 use crate::{
     block::Block, blockchain::Blockchain, consensus::SaitoMessage, crypto::{SaitoPublicKey,SaitoPrivateKey,SaitoHash}, slip::Slip,
     transaction::Transaction,
@@ -55,12 +56,14 @@ println!("adding block to mempool queue");
                 break;
             }
         }
+
         if block_found {
             let block = self.blocks.remove(block_idx);
             return Some(block);
         }
         return None;
     }
+
 
     pub async fn generate_block(
         &mut self,
@@ -113,6 +116,7 @@ pub async fn run(
 ) -> crate::Result<()> {
 
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
+
 
     let generate_block_sender = mempool_channel_sender.clone();
     tokio::spawn(async move {

@@ -40,8 +40,8 @@ impl Keypair {
 
     pub fn get_privatekey(&self) -> SaitoPrivateKey {
         let mut secret_bytes = [0u8; 32];
-        let _res = decode_to_slice(self.privatekey.as_ref(), &mut secret_bytes as &mut [u8]);
-	secret_bytes
+	for i in 0..32 { secret_bytes[i] = self.privatekey[i]; }
+        return secret_bytes;
     }
 
     pub fn get_publickey(&self) -> SaitoPublicKey {
@@ -56,6 +56,12 @@ pub fn hash(data: &Vec<u8>) -> SaitoHash {
     hasher.finalize().as_slice().try_into().unwrap()
 }
 
+pub fn sign(message_bytes: &[u8], privatekey: SaitoPrivateKey) -> SaitoSignature {
+    let msg = Message::from_slice(message_bytes).unwrap();
+    let secret = SecretKey::from_slice(&privatekey).unwrap();
+    let sig = SECP256K1.sign(&msg, &secret);
+    return sig.serialize_compact();
+}
 
 pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> bool {
     let m = Message::from_slice(msg).unwrap();

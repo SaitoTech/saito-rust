@@ -27,6 +27,8 @@ pub struct TransactionCore {
     #[serde(with = "serde_bytes")]
     message: Vec<u8>,
     transaction_type: TransactionType,
+    #[serde_as(as = "[_; 64]")]
+    signature: SaitoSignature,
 }
 
 impl TransactionCore {
@@ -117,6 +119,7 @@ impl Transaction {
     }
 
     // TODO - this is just a stub
+
     pub fn set_signature(&self) -> SaitoSignature {
         [0; 64]
     }
