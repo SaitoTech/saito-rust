@@ -248,6 +248,9 @@
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
         }
+
+<span class="macro">println!</span>(<span class="string">&quot;adding block to mempool queue&quot;</span>);
+
         <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">push</span>(<span class="ident">block</span>);
         <span class="kw">return</span> <span class="bool-val">true</span>;
     }
@@ -272,8 +275,8 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">generate_block</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">creator_publickey</span>: <span class="ident">SaitoPublicKey</span>,
-        <span class="ident">creator_privatekey</span>: <span class="ident">SaitoPrivateKey</span>,
+        <span class="ident">_creator_publickey</span>: <span class="ident">SaitoPublicKey</span>,
+        <span class="ident">_creator_privatekey</span>: <span class="ident">SaitoPrivateKey</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
 
 	<span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
@@ -285,9 +288,7 @@
         <span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>(<span class="ident">previous_block_hash</span>);
         <span class="ident">block</span>.<span class="ident">set_hash</span>();
 
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">1000</span> {
-
-            <span class="macro">println!</span>(<span class="string">&quot;Creating Transaction {:?}&quot;</span>, <span class="ident">i</span>);
+        <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">1000</span> {
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::default</span>();
 
@@ -392,7 +393,6 @@
                     }
                     <span class="ident">SaitoMessage::MempoolNewTransaction</span> { <span class="ident">transaction</span>: <span class="ident">_transaction</span> } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">_mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                        <span class="macro">println!</span>(<span class="string">&quot;NEW TRANSACTION IN MEMPOOL&quot;</span>);
                     },
                 }
             }
