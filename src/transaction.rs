@@ -59,7 +59,7 @@ impl Default for TransactionCore {
             vec![],
             vec![],
             TransactionType::Normal,
-            [0;64],
+            [0; 64],
         )
     }
 }
@@ -119,7 +119,7 @@ impl Transaction {
         self.core.message = message;
     }
 
-    pub fn set_signature(&mut self, sig : SaitoSignature) {
+    pub fn set_signature(&mut self, sig: SaitoSignature) {
         self.core.signature = sig;
     }
 }
@@ -148,13 +148,20 @@ mod tests {
     #[test]
     fn transaction_core_new_test() {
         let timestamp = create_timestamp();
-        let tx_core = TransactionCore::new(timestamp, vec![], vec![], vec![], TransactionType::Normal, [0;64]);
+        let tx_core = TransactionCore::new(
+            timestamp,
+            vec![],
+            vec![],
+            vec![],
+            TransactionType::Normal,
+            [0; 64],
+        );
         assert_eq!(tx_core.timestamp, timestamp);
         assert_eq!(tx_core.inputs, vec![]);
         assert_eq!(tx_core.outputs, vec![]);
         assert_eq!(tx_core.message, Vec::<u8>::new());
         assert_eq!(tx_core.transaction_type, TransactionType::Normal);
-        assert_eq!(tx_core.signature, [0;64]);
+        assert_eq!(tx_core.signature, [0; 64]);
     }
 
     #[test]
