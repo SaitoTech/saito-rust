@@ -44,7 +44,7 @@
 <span id="41">41</span>
 <span id="42">42</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">sign</span>, <span class="ident">Keypair</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">sign</span>, <span class="ident">generate_keys</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>};
 
 <span class="doccomment">/// The `Wallet` manages the public and private keypair of the node and holds the</span>
 <span class="doccomment">/// slips that are used to form transactions on the network.</span>
@@ -58,10 +58,10 @@
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">clippy</span>::<span class="ident">new_without_default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-	<span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">Keypair</span>::<span class="ident">new</span>();
+	<span class="kw">let</span> (<span class="ident">publickey</span> , <span class="ident">privatekey</span>) <span class="op">=</span> <span class="ident">generate_keys</span>();
         <span class="ident">Wallet</span> {
-            <span class="ident">publickey</span>: <span class="ident">keypair</span>.<span class="ident">get_publickey</span>(),
-            <span class="ident">privatekey</span>: <span class="ident">keypair</span>.<span class="ident">get_privatekey</span>(),
+            <span class="ident">publickey</span>: <span class="ident">publickey</span>,
+            <span class="ident">privatekey</span>: <span class="ident">privatekey</span>,
         }
     }
 
