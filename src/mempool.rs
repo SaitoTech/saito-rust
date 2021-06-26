@@ -24,15 +24,15 @@ pub enum AddBlockResult {
 /// the `Blockchain`
 pub struct Mempool {
     blocks: VecDeque<Block>,
-    _wallet: Arc<RwLock<Wallet>>,
+    wallet_lock: Arc<RwLock<Wallet>>,
 }
 
 impl Mempool {
     #[allow(clippy::clippy::new_without_default)]
-    pub fn new(wallet: Arc<RwLock<Wallet>>) -> Self {
+    pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Mempool {
             blocks: VecDeque::new(),
-            _wallet: wallet,
+            wallet_lock: wallet_lock,
         }
     }
 
@@ -53,8 +53,6 @@ impl Mempool {
     pub async fn generate_block(
         &mut self,
         blockchain_lock: Arc<RwLock<Blockchain>>,
-        creator_publickey: SaitoPublicKey,
-        creator_privatekey: SaitoPrivateKey,
     ) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
@@ -63,6 +61,8 @@ impl Mempool {
         let mut block = Block::default();
         block.set_id(previous_block_id);
         block.set_previous_block_hash(previous_block_hash);
+
+	let wallet = self.wallet_lock.read().await;
 
         for _i in 0..1000 {
 
@@ -84,13 +84,13 @@ impl Mempool {
             transaction.add_output(output1);
 
             // sign ...
-            transaction.sign(creator_privatekey);
+            transaction.sign(wallet.get_privatekey());
             let tx_sig = transaction.get_signature();
 
             // ... and verify
             let vbytes = transaction.serialize_for_signature();
-            let hash = hash(&vbytes[..]);
-            let v = verify(&hash, tx_sig, creator_publickey);
+            let hash = hash(&vbytes);
+            let v = verify(&hash, tx_sig, wallet.get_publickey());
             if !v {
                 println!("Transaction does not Validate: {:?}", v);
             }

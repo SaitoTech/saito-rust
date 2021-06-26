@@ -200,7 +200,7 @@ impl Block {
         vbytes.extend(&self.core.burnfee.to_be_bytes());
         vbytes.extend(&self.core.difficulty.to_be_bytes());
 
-        hash(&vbytes[..])
+        hash(&vbytes)
     }
 
     pub fn generate_merkle_root(&mut self) -> SaitoHash {

@@ -14,6 +14,7 @@ pub const PARALLEL_HASH_BYTE_THRESHOLD: usize = 128_000;
 /// and publickey. Not all external functions hold both private and public
 /// keys. On the blockchain most publickeys are stored in byte-array format
 /// and never touch a keypair.
+#[derive(Clone, Debug)]
 pub struct Keypair {
     privatekey: SecretKey,
     publickey: PublicKey,
@@ -41,14 +42,17 @@ impl Keypair {
         self.publickey.serialize()
     }
 
-    pub fn sign(&self, message_bytes: &[u8]) -> SaitoSignature {
-        let msg = Message::from_slice(message_bytes).unwrap();
-        let sig = SECP256K1.sign(&msg, &self.privatekey);
-        sig.serialize_compact()
+    pub fn get_privatekey(&self) -> SaitoPrivateKey {
+        let mut secret_bytes = [0u8; 32];
+        for i in 0..32 {
+            secret_bytes[i] = self.privatekey[i];
+        }
+        return secret_bytes;
     }
+
 }
 
-pub fn hash(data: &[u8]) -> SaitoHash {
+pub fn hash(data: &Vec<u8>) -> SaitoHash {
     let mut hasher = Hasher::new();
     // Hashing in parallel can be faster if large enough
     // TODO: Blake3 has benchmarked 128 kb as the cutoff,
@@ -61,9 +65,17 @@ pub fn hash(data: &[u8]) -> SaitoHash {
     hasher.finalize().into()
 }
 
+pub fn sign(message_bytes: &[u8], privatekey: SaitoPrivateKey) -> SaitoSignature {
+    let msg = Message::from_slice(message_bytes).unwrap();
+    let secret = SecretKey::from_slice(&privatekey).unwrap();
+    let sig = SECP256K1.sign(&msg, &secret);
+    return sig.serialize_compact();
+}
+
 pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> bool {
     let m = Message::from_slice(msg).unwrap();
     let p = PublicKey::from_slice(&publickey).unwrap();
     let s = Signature::from_compact(&sig).unwrap();
     SECP256K1.verify(&m, &s, &p).is_ok()
 }
+
