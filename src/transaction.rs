@@ -1,8 +1,4 @@
-use crate::{
-    crypto::{hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature},
-    slip::Slip,
-    time::create_timestamp,
-};
+use crate::{big_array::BigArray, crypto::{hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature}, slip::Slip, time::create_timestamp};
 use serde::{Deserialize, Serialize};
 
 /// TransactionType is a human-readable indicator of the type of
@@ -31,7 +27,7 @@ pub struct TransactionCore {
     #[serde(with = "serde_bytes")]
     message: Vec<u8>,
     transaction_type: TransactionType,
-    #[serde_as(as = "[_; 64]")]
+    #[serde(with = "BigArray")]
     signature: SaitoSignature, // compact signatures are 64 bytes; DER signatures are 68-72 bytes
 }
 

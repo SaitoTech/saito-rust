@@ -1,4 +1,5 @@
 use crate::{
+    big_array::BigArray,
     crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature},
     time::create_timestamp,
     transaction::Transaction,
@@ -22,10 +23,10 @@ pub struct BlockCore {
     id: u64,
     timestamp: u64,
     previous_block_hash: SaitoHash,
-    #[serde_as(as = "[_; 33]")]
+    #[serde(with = "BigArray")]
     creator: SaitoPublicKey, // public key of block creator
     merkle_root: SaitoHash, // merkle root of txs
-    #[serde_as(as = "[_; 64]")]
+    #[serde(with = "BigArray")]
     signature: SaitoSignature, // signature of block creator
     treasury: u64,
     burnfee: u64,
