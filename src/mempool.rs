@@ -2,7 +2,7 @@ use crate::{
     block::Block,
     blockchain::Blockchain,
     consensus::SaitoMessage,
-    crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey, hash, verify},
+    crypto::{hash, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey},
     slip::Slip,
     transaction::Transaction,
     wallet::Wallet,
@@ -77,9 +77,9 @@ impl Mempool {
         block.set_id(previous_block_id);
         block.set_previous_block_hash(previous_block_hash);
         let block_hash = block.generate_hash();
-	block.set_hash(block_hash);
+        block.set_hash(block_hash);
         let block_merkle_root = block.generate_merkle_root();
-	block.set_merkle_root(block_merkle_root);
+        block.set_merkle_root(block_merkle_root);
 
         for _i in 0..1000 {
             let mut transaction = Transaction::default();
@@ -99,24 +99,23 @@ impl Mempool {
             transaction.add_input(input1);
             transaction.add_output(output1);
 
-	    // sign ...
+            // sign ...
             transaction.sign(creator_privatekey);
             let tx_sig = transaction.get_signature();
 
-   	    // ... and verify
+            // ... and verify
             let vbytes = transaction.serialize_for_signature();
-            let hash = hash(&vbytes);
+            let hash = hash(&vbytes[..]);
             let v = verify(&hash, tx_sig, creator_publickey);
-	    if !v {
-println!("Transaction does not Validate: {:?}", v);
-	    }
-
+            if !v {
+                println!("Transaction does not Validate: {:?}", v);
+            }
         }
 
         block
     }
 }
- 
+
 // This function is called on initialization to setup the sending
 // and receiving channels for asynchronous loops or message checks
 pub async fn run(

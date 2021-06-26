@@ -1,4 +1,8 @@
-use crate::{crypto::{SaitoHash, SaitoPublicKey, SaitoPrivateKey, SaitoSignature, hash, sign, verify}, slip::Slip, time::create_timestamp};
+use crate::{
+    crypto::{hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature},
+    slip::Slip,
+    time::create_timestamp,
+};
 use serde::{Deserialize, Serialize};
 
 /// TransactionType is a human-readable indicator of the type of
@@ -59,7 +63,7 @@ impl Default for TransactionCore {
             vec![],
             vec![],
             TransactionType::Normal,
-            [0;64],
+            [0; 64],
         )
     }
 }
@@ -72,13 +76,12 @@ pub struct Transaction {
     hash_presig: SaitoHash,
 }
 
-
 impl Transaction {
     pub fn new(core: TransactionCore) -> Self {
-        Self { 
-	    core,
-	    hash_presig: [0;32],
-	}
+        Self {
+            core,
+            hash_presig: [0; 32],
+        }
     }
 
     pub fn add_input(&mut self, input_slip: Slip) {
@@ -125,52 +128,53 @@ impl Transaction {
         self.core.message = message;
     }
 
-    pub fn set_signature(&mut self, sig : SaitoSignature) {
+    pub fn set_signature(&mut self, sig: SaitoSignature) {
         self.core.signature = sig;
     }
 
-    pub fn set_hash_presig(&mut self, hash : SaitoHash) {
+    pub fn set_hash_presig(&mut self, hash: SaitoHash) {
         self.hash_presig = hash;
     }
 
-    pub fn sign(&mut self, privatekey : SaitoPrivateKey) {
+    pub fn sign(&mut self, privatekey: SaitoPrivateKey) {
         let hash_to_sign = hash(&self.serialize_for_signature());
-	self.set_signature(sign(&hash_to_sign, privatekey));
-	self.set_hash_presig(hash_to_sign);
+        self.set_signature(sign(&hash_to_sign, privatekey));
+        self.set_hash_presig(hash_to_sign);
     }
 
     pub fn serialize_for_signature(&self) -> Vec<u8> {
-
         //
         // fastest known way that isn't bincode ??
         //
-        let mut vbytes : Vec<u8> = vec![];
-                vbytes.extend(&self.core.timestamp.to_be_bytes());
-                for input in &self.core.inputs { vbytes.extend(&input.serialize_for_signature()); }
-                for output in &self.core.outputs { vbytes.extend(&output.serialize_for_signature()); }
-                vbytes.extend(&(self.core.transaction_type as u32).to_be_bytes());
-                vbytes.extend(&self.core.message);
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.core.timestamp.to_be_bytes());
+        for input in &self.core.inputs {
+            vbytes.extend(&input.serialize_for_signature());
+        }
+        for output in &self.core.outputs {
+            vbytes.extend(&output.serialize_for_signature());
+        }
+        vbytes.extend(&(self.core.transaction_type as u32).to_be_bytes());
+        vbytes.extend(&self.core.message);
 
-	return vbytes;
-
+        vbytes
     }
 
-
     pub fn validate(&self) -> bool {
-
         //
         // validate sigs
         //
-        let msg : SaitoHash = hash(&self.serialize_for_signature());
-        let sig : SaitoSignature = self.get_signature();
-        let mut publickey : SaitoPublicKey = [0;33];
-        if self.core.inputs.len() > 0 { publickey = self.core.inputs[0].get_publickey(); }
+        let msg: SaitoHash = hash(&self.serialize_for_signature());
+        let sig: SaitoSignature = self.get_signature();
+        let mut publickey: SaitoPublicKey = [0; 33];
+        if self.core.inputs.len() > 0 {
+            publickey = self.core.inputs[0].get_publickey();
+        }
 
         if !verify(&msg, sig, publickey) {
             println!("message verifies not");
             return false;
         }
-
 
         //
         // UTXO validate inputs
@@ -181,9 +185,7 @@ impl Transaction {
             }
         }
         return true;
-
     }
-
 }
 
 impl Default for Transaction {
@@ -210,13 +212,20 @@ mod tests {
     #[test]
     fn transaction_core_new_test() {
         let timestamp = create_timestamp();
-        let tx_core = TransactionCore::new(timestamp, vec![], vec![], vec![], TransactionType::Normal, [0;64]);
+        let tx_core = TransactionCore::new(
+            timestamp,
+            vec![],
+            vec![],
+            vec![],
+            TransactionType::Normal,
+            [0; 64],
+        );
         assert_eq!(tx_core.timestamp, timestamp);
         assert_eq!(tx_core.inputs, vec![]);
         assert_eq!(tx_core.outputs, vec![]);
         assert_eq!(tx_core.message, Vec::<u8>::new());
         assert_eq!(tx_core.transaction_type, TransactionType::Normal);
-        assert_eq!(tx_core.signature, [0;64]);
+        assert_eq!(tx_core.signature, [0; 64]);
     }
 
     #[test]

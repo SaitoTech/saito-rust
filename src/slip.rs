@@ -115,7 +115,6 @@ impl Slip {
     pub fn validate(&self) -> bool {
         return true;
     }
-
 }
 
 impl Default for Slip {
