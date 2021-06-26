@@ -21,6 +21,7 @@ The Saito Team
 dev@saito.tech
 
 */
+pub mod big_array;
 pub mod block;
 pub mod blockchain;
 pub mod consensus;
