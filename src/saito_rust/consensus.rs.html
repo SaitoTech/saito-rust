@@ -102,16 +102,6 @@
 <span id="99"> 99</span>
 <span id="100">100</span>
 <span id="101">101</span>
-<span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-<span id="107">107</span>
-<span id="108">108</span>
-<span id="109">109</span>
-<span id="110">110</span>
-<span id="111">111</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">wallet</span>::<span class="ident">Wallet</span>;
@@ -183,15 +173,14 @@
         <span class="comment">// whether the channels exist and unwrapping them when sending</span>
         <span class="comment">// messages, as well as setters.</span>
         <span class="comment">//</span>
-        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Blockchain</span>::<span class="ident">new</span>()));
-        <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Mempool</span>::<span class="ident">new</span>()));
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Wallet</span>::<span class="ident">new</span>()));
+        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Blockchain</span>::<span class="ident">new</span>()));
+        <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Mempool</span>::<span class="ident">new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
 
         <span class="ident">tokio</span>::<span class="macro">select</span><span class="macro">!</span> {
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span>::<span class="ident">mempool</span>::<span class="ident">run</span>(
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_receiver</span>
             ) <span class="op">=</span><span class="op">&gt;</span> {
@@ -200,15 +189,6 @@
                 }
             },
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span>::<span class="ident">network</span>::<span class="ident">run</span>(
-                <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
-                <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
-            ) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                    <span class="macro">eprintln</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
-                }
-            }
-            <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span>::<span class="ident">wallet</span>::<span class="ident">run</span>(
-                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {

@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["WalletMessage",""]],"fn":[["run",""]],"struct":[["Wallet","The `Wallet` manages the public and private keypair of the node and holds the slips that are used to form transactions on the network."]]});
+initSidebarItems({"struct":[["Wallet","The `Wallet` manages the public and private keypair of the node and holds the slips that are used to form transactions on the network."]]});
