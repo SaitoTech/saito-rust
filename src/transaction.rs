@@ -73,14 +73,14 @@ impl Default for TransactionCore {
 pub struct Transaction {
     core: TransactionCore,
     // hash used for merkle_root (does not include signature), and slip uuid
-    hash_presig: SaitoHash,
+    hash_for_signature: SaitoHash,
 }
 
 impl Transaction {
     pub fn new(core: TransactionCore) -> Self {
         Self {
             core,
-            hash_presig: [0; 32],
+            hash_for_signature: [0; 32],
         }
     }
 
@@ -132,14 +132,14 @@ impl Transaction {
         self.core.signature = sig;
     }
 
-    pub fn set_hash_presig(&mut self, hash: SaitoHash) {
-        self.hash_presig = hash;
+    pub fn set_hash_for_signature(&mut self, hash: SaitoHash) {
+        self.hash_for_signature = hash;
     }
 
     pub fn sign(&mut self, privatekey: SaitoPrivateKey) {
-        let hash_to_sign = hash(&self.serialize_for_signature());
-        self.set_signature(sign(&hash_to_sign, privatekey));
-        self.set_hash_presig(hash_to_sign);
+        let hash_for_signature = hash(&self.serialize_for_signature());
+        self.set_signature(sign(&hash_for_signature, privatekey));
+        self.set_hash_for_signature(hash_for_signature);
     }
 
     pub fn serialize_for_signature(&self) -> Vec<u8> {

@@ -76,12 +76,9 @@ impl Mempool {
         let mut block = Block::default();
         block.set_id(previous_block_id);
         block.set_previous_block_hash(previous_block_hash);
-        let block_hash = block.generate_hash();
-        block.set_hash(block_hash);
-        let block_merkle_root = block.generate_merkle_root();
-        block.set_merkle_root(block_merkle_root);
 
         for _i in 0..1000 {
+
             let mut transaction = Transaction::default();
 
             transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
@@ -110,7 +107,13 @@ impl Mempool {
             if !v {
                 println!("Transaction does not Validate: {:?}", v);
             }
+
         }
+
+        let block_merkle_root = block.generate_merkle_root();
+        block.set_merkle_root(block_merkle_root);
+        let block_hash = block.generate_hash();
+        block.set_hash(block_hash);
 
         block
     }
