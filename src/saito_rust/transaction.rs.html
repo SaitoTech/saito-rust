@@ -193,7 +193,7 @@
 <span id="190">190</span>
 <span id="191">191</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">crypto</span>::<span class="ident">SaitoSignature</span>, <span class="ident">slip</span>::<span class="ident">Slip</span>, <span class="ident">time</span>::<span class="ident">create_timestamp</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">big_array</span>::<span class="ident">BigArray</span>, <span class="ident">crypto</span>::<span class="ident">SaitoSignature</span>, <span class="ident">slip</span>::<span class="ident">Slip</span>, <span class="ident">time</span>::<span class="ident">create_timestamp</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="doccomment">/// TransactionType is a human-readable indicator of the type of</span>
@@ -222,7 +222,7 @@
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;serde_bytes&quot;</span>)]</span>
     <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="ident">transaction_type</span>: <span class="ident">TransactionType</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 64]&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;BigArray&quot;</span>)]</span>
     <span class="ident">signature</span>: <span class="ident">SaitoSignature</span>, <span class="comment">// compact signatures are 64 bytes; DER signatures are 68-72 bytes</span>
 }
 

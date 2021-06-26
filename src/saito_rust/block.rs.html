@@ -291,8 +291,10 @@
 <span id="288">288</span>
 <span id="289">289</span>
 <span id="290">290</span>
+<span id="291">291</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">big_array</span>::<span class="ident">BigArray</span>,
     <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>},
     <span class="ident">time</span>::<span class="ident">create_timestamp</span>,
     <span class="ident">transaction</span>::<span class="ident">Transaction</span>,
@@ -313,10 +315,10 @@
     <span class="ident">id</span>: <span class="ident">u64</span>,
     <span class="ident">timestamp</span>: <span class="ident">u64</span>,
     <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 33]&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;BigArray&quot;</span>)]</span>
     <span class="ident">creator</span>: <span class="ident">SaitoPublicKey</span>, <span class="comment">// public key of block creator</span>
     <span class="ident">merkle_root</span>: <span class="ident">SaitoHash</span>, <span class="comment">// merkle root of txs</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 64]&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;BigArray&quot;</span>)]</span>
     <span class="ident">signature</span>: <span class="ident">SaitoSignature</span>, <span class="comment">// signature of block creator</span>
     <span class="ident">treasury</span>: <span class="ident">u64</span>,
     <span class="ident">burnfee</span>: <span class="ident">u64</span>,
