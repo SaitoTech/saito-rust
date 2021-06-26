@@ -9,47 +9,18 @@ pub type SaitoSignature = [u8; 64];
 
 pub const PARALLEL_HASH_BYTE_THRESHOLD: usize = 128_000;
 
-//
-/// The Keypair is a crypto-class object that holds the secp256k1 private
-/// and publickey. Not all external functions hold both private and public
-/// keys. On the blockchain most publickeys are stored in byte-array format
-/// and never touch a keypair.
-#[derive(Clone, Debug)]
-pub struct Keypair {
-    privatekey: SecretKey,
-    publickey: PublicKey,
-}
 
-impl Keypair {
-    #[allow(clippy::clippy::new_without_default)]
-    pub fn new() -> Keypair {
-        let (mut secret_key, mut public_key) =
-            SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
-        while public_key.serialize().to_base58().len() != 44 {
-            // sometimes secp256k1 address is too big to store in 44 base-58 digits
-            let keypair_tuple = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
-            secret_key = keypair_tuple.0;
-            public_key = keypair_tuple.1;
-        }
-
-        Keypair {
-            publickey: public_key,
-            privatekey: secret_key,
-        }
+pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
+    let (mut secret_key, mut public_key) = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
+    while public_key.serialize().to_base58().len() != 44 {
+        // sometimes secp256k1 address is too big to store in 44 base-58 digits
+        let keypair_tuple = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
+        secret_key = keypair_tuple.0;
+        public_key = keypair_tuple.1;
     }
-
-    pub fn get_publickey(&self) -> SaitoPublicKey {
-        self.publickey.serialize()
-    }
-
-    pub fn get_privatekey(&self) -> SaitoPrivateKey {
-        let mut secret_bytes = [0u8; 32];
-        for i in 0..32 {
-            secret_bytes[i] = self.privatekey[i];
-        }
-        return secret_bytes;
-    }
-
+    let mut secret_bytes = [0u8; 32];
+    for i in 0..32 { secret_bytes[i] = secret_key[i]; }
+    return (public_key.serialize() , secret_bytes);
 }
 
 pub fn hash(data: &Vec<u8>) -> SaitoHash {
