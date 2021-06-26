@@ -6,7 +6,7 @@ pub async fn run(
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
     while let Ok(_message) = broadcast_channel_receiver.recv().await {
-        println!("NEW BLOCK!");
+        //println!("NEW BLOCK!");
     }
 
     Ok(())
