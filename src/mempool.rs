@@ -1,11 +1,6 @@
 use crate::{
-    block::Block,
-    blockchain::Blockchain,
-    consensus::SaitoMessage,
-    crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey},
-    slip::Slip,
-    transaction::Transaction,
-    wallet::Wallet,
+    block::Block, blockchain::Blockchain, consensus::SaitoMessage, crypto::SaitoHash, slip::Slip,
+    transaction::Transaction, wallet::Wallet,
 };
 use std::{collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
@@ -29,13 +24,15 @@ pub enum AddBlockResult {
 /// the `Blockchain`
 pub struct Mempool {
     blocks: VecDeque<Block>,
+    _wallet: Arc<RwLock<Wallet>>,
 }
 
 impl Mempool {
     #[allow(clippy::clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(wallet: Arc<RwLock<Wallet>>) -> Self {
         Mempool {
             blocks: VecDeque::new(),
+            _wallet: wallet,
         }
     }
 
@@ -53,11 +50,7 @@ impl Mempool {
         }
     }
 
-    pub async fn generate_block(
-        &mut self,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-        _wallet_lock: Arc<RwLock<Wallet>>,
-    ) -> Block {
+    pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
@@ -95,7 +88,6 @@ impl Mempool {
 pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    wallet_lock: Arc<RwLock<Wallet>>,
     _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
@@ -120,7 +112,7 @@ pub async fn run(
                     // the mempool and produce blocks if possible.
                     MempoolMessage::GenerateBlock => {
                         let mut mempool = mempool_lock.write().await;
-                        let block = mempool.generate_block(blockchain_lock.clone(), wallet_lock.clone()).await;
+                        let block = mempool.generate_block(blockchain_lock.clone()).await;
                         if AddBlockResult::Accepted == mempool.add_block(block) {
                             mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
                         }

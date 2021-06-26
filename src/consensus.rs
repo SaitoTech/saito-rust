@@ -68,15 +68,14 @@ impl Consensus {
         // whether the channels exist and unwrapping them when sending
         // messages, as well as setters.
         //
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new()));
-        let mempool_lock = Arc::new(RwLock::new(Mempool::new()));
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
 
         tokio::select! {
             res = crate::mempool::run(
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
-                wallet_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_receiver
             ) => {
@@ -85,15 +84,6 @@ impl Consensus {
                 }
             },
             res = crate::network::run(
-                broadcast_channel_sender.clone(),
-                broadcast_channel_sender.subscribe()
-            ) => {
-                if let Err(err) = res {
-                    eprintln!("{:?}", err)
-                }
-            }
-            res = crate::wallet::run(
-                wallet_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
