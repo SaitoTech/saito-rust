@@ -6,6 +6,9 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+extern crate rayon;
+use rayon::prelude::*;
+
 /// BlockCore is a self-contained object containing only the minimum
 /// information needed about a block. It exists to simplify block
 /// serialization and deserialization until we have custom functions
@@ -151,8 +154,9 @@ impl Block {
         self.core.creator = creator;
     }
 
-    // TODO - merkle root needs to be generated from the transactions
-    pub fn set_merkle_root(&mut self) {}
+    pub fn set_merkle_root(&mut self, merkle_root: SaitoHash) {
+        self.core.merkle_root = merkle_root;
+    }
 
     // TODO - signature needs to be generated from consensus vars
     pub fn set_signature(&mut self) {}
@@ -169,6 +173,10 @@ impl Block {
         self.core.difficulty = difficulty;
     }
 
+    pub fn set_hash(&mut self, hash: SaitoHash) {
+        self.hash = hash;
+    }
+
     // TODO
     //
     // hash is nor being serialized from the right data - requires
@@ -177,18 +185,32 @@ impl Block {
     // id -- it exists so each block will still have a unique hash
     // for blockchain functions.
     //
-    pub fn set_hash(&mut self) -> SaitoHash {
-        let mut data: Vec<u8> = vec![];
+    pub fn generate_hash(&mut self) -> SaitoHash {
+        //
+        // fastest known way that isn't bincode ??
+        //
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.core.id.to_be_bytes());
+        vbytes.extend(&self.core.timestamp.to_be_bytes());
+        vbytes.extend(&self.core.previous_block_hash);
+        vbytes.extend(&self.core.creator);
+        vbytes.extend(&self.core.merkle_root);
+        vbytes.extend(&self.core.signature);
+        vbytes.extend(&self.core.treasury.to_be_bytes());
+        vbytes.extend(&self.core.burnfee.to_be_bytes());
+        vbytes.extend(&self.core.difficulty.to_be_bytes());
 
-        let id_bytes: [u8; 8] = self.core.id.to_be_bytes();
-        let ts_bytes: [u8; 8] = self.core.timestamp.to_be_bytes();
+        hash(&vbytes[..])
+    }
 
-        data.extend(&id_bytes);
-        data.extend(&ts_bytes);
+    pub fn generate_merkle_root(&mut self) -> SaitoHash {
+        [0; 32]
+    }
 
-        self.hash = hash(&data);
+    pub fn validate(&self) -> bool {
+        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
 
-        self.hash
+        return true;
     }
 }
 

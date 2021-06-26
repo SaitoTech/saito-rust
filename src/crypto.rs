@@ -1,18 +1,19 @@
 use base58::ToBase58;
+use blake3::{join::RayonJoin, Hasher};
 pub use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
-use sha2::{Digest, Sha256};
-use std::convert::TryInto;
 
 pub type SaitoHash = [u8; 32];
 pub type SaitoPublicKey = [u8; 33];
 pub type SaitoPrivateKey = [u8; 32]; // 256-bit key
 pub type SaitoSignature = [u8; 64];
 
+pub const PARALLEL_HASH_BYTE_THRESHOLD: usize = 128_000;
+
+//
 /// The Keypair is a crypto-class object that holds the secp256k1 private
 /// and publickey. Not all external functions hold both private and public
 /// keys. On the blockchain most publickeys are stored in byte-array format
 /// and never touch a keypair.
-#[derive(Clone, Debug)]
 pub struct Keypair {
     privatekey: SecretKey,
     publickey: PublicKey,
@@ -47,10 +48,17 @@ impl Keypair {
     }
 }
 
-pub fn hash(data: &Vec<u8>) -> SaitoHash {
-    let mut hasher = Sha256::new();
-    hasher.update(data);
-    hasher.finalize().as_slice().try_into().unwrap()
+pub fn hash(data: &[u8]) -> SaitoHash {
+    let mut hasher = Hasher::new();
+    // Hashing in parallel can be faster if large enough
+    // TODO: Blake3 has benchmarked 128 kb as the cutoff,
+    // the benchmark should be redone for Saito's needs
+    if data.len() > PARALLEL_HASH_BYTE_THRESHOLD {
+        hasher.update(data);
+    } else {
+        hasher.update_with_join::<RayonJoin>(data);
+    }
+    hasher.finalize().into()
 }
 
 pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> bool {

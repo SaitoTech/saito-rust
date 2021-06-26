@@ -1,4 +1,4 @@
-use crate::{big_array::BigArray, crypto::SaitoSignature, slip::Slip, time::create_timestamp};
+use crate::{big_array::BigArray, crypto::{hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature}, slip::Slip, time::create_timestamp};
 use serde::{Deserialize, Serialize};
 
 /// TransactionType is a human-readable indicator of the type of
@@ -68,11 +68,16 @@ impl Default for TransactionCore {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Transaction {
     core: TransactionCore,
+    // hash used for merkle_root (does not include signature), and slip uuid
+    hash_for_signature: SaitoHash,
 }
 
 impl Transaction {
     pub fn new(core: TransactionCore) -> Self {
-        Self { core }
+        Self {
+            core,
+            hash_for_signature: [0; 32],
+        }
     }
 
     pub fn add_input(&mut self, input_slip: Slip) {
@@ -121,6 +126,61 @@ impl Transaction {
 
     pub fn set_signature(&mut self, sig: SaitoSignature) {
         self.core.signature = sig;
+    }
+
+    pub fn set_hash_for_signature(&mut self, hash: SaitoHash) {
+        self.hash_for_signature = hash;
+    }
+
+    pub fn sign(&mut self, privatekey: SaitoPrivateKey) {
+        let hash_for_signature = hash(&self.serialize_for_signature());
+        self.set_signature(sign(&hash_for_signature, privatekey));
+        self.set_hash_for_signature(hash_for_signature);
+    }
+
+    pub fn serialize_for_signature(&self) -> Vec<u8> {
+        //
+        // fastest known way that isn't bincode ??
+        //
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.core.timestamp.to_be_bytes());
+        for input in &self.core.inputs {
+            vbytes.extend(&input.serialize_for_signature());
+        }
+        for output in &self.core.outputs {
+            vbytes.extend(&output.serialize_for_signature());
+        }
+        vbytes.extend(&(self.core.transaction_type as u32).to_be_bytes());
+        vbytes.extend(&self.core.message);
+
+        vbytes
+    }
+
+    pub fn validate(&self) -> bool {
+        //
+        // validate sigs
+        //
+        let msg: SaitoHash = hash(&self.serialize_for_signature());
+        let sig: SaitoSignature = self.get_signature();
+        let mut publickey: SaitoPublicKey = [0; 33];
+        if self.core.inputs.len() > 0 {
+            publickey = self.core.inputs[0].get_publickey();
+        }
+
+        if !verify(&msg, sig, publickey) {
+            println!("message verifies not");
+            return false;
+        }
+
+        //
+        // UTXO validate inputs
+        //
+        for input in &self.core.inputs {
+            if !input.validate() {
+                return false;
+            }
+        }
+        return true;
     }
 }
 

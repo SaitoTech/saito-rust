@@ -1,5 +1,5 @@
 use crate::{
-    block::Block, blockchain::Blockchain, consensus::SaitoMessage, crypto::SaitoHash, slip::Slip,
+    block::Block, blockchain::Blockchain, consensus::SaitoMessage, crypto::{hash, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey}, slip::Slip,
     transaction::Transaction, wallet::Wallet,
 };
 use std::{collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
@@ -50,7 +50,12 @@ impl Mempool {
         }
     }
 
-    pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
+    pub async fn generate_block(
+        &mut self,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+        creator_publickey: SaitoPublicKey,
+        creator_privatekey: SaitoPrivateKey,
+    ) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
@@ -58,9 +63,9 @@ impl Mempool {
         let mut block = Block::default();
         block.set_id(previous_block_id);
         block.set_previous_block_hash(previous_block_hash);
-        block.set_hash();
 
         for _i in 0..1000 {
+
             let mut transaction = Transaction::default();
 
             transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
@@ -77,7 +82,25 @@ impl Mempool {
 
             transaction.add_input(input1);
             transaction.add_output(output1);
+
+            // sign ...
+            transaction.sign(creator_privatekey);
+            let tx_sig = transaction.get_signature();
+
+            // ... and verify
+            let vbytes = transaction.serialize_for_signature();
+            let hash = hash(&vbytes[..]);
+            let v = verify(&hash, tx_sig, creator_publickey);
+            if !v {
+                println!("Transaction does not Validate: {:?}", v);
+            }
+
         }
+
+        let block_merkle_root = block.generate_merkle_root();
+        block.set_merkle_root(block_merkle_root);
+        let block_hash = block.generate_hash();
+        block.set_hash(block_hash);
 
         block
     }

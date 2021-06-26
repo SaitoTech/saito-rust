@@ -8,6 +8,8 @@ pub struct Blockchain {
     last_block_hash: Option<SaitoHash>,
 }
 
+
+
 impl Blockchain {
     #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
@@ -22,6 +24,8 @@ impl Blockchain {
             "Received block in blockchain.add_block: {:?}",
             block.get_hash()
         );
+
+        println!("Validates? {:?}", block.validate());
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
