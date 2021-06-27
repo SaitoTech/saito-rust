@@ -4,8 +4,8 @@ use crate::{
     time::create_timestamp,
     transaction::Transaction,
 };
-use serde::{Deserialize, Serialize};
 use ahash::AHashMap;
+use serde::{Deserialize, Serialize};
 
 extern crate rayon;
 use rayon::prelude::*;
@@ -147,7 +147,7 @@ impl Block {
         self.core.id = id;
     }
 
-    pub fn set_lc(&mut self, lc : bool) {
+    pub fn set_lc(&mut self, lc: bool) {
         self.lc = lc;
     }
 
@@ -216,15 +216,16 @@ impl Block {
         [0; 32]
     }
 
-    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<SaitoUTXOSetKey, u64>, longest_chain : bool) -> bool {
-
+    pub fn on_chain_reorganization(
+        &self,
+        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
+        longest_chain: bool,
+    ) -> bool {
         for tx in &self.transactions {
             tx.on_chain_reorganization(utxoset, longest_chain, self.get_id());
         }
         return true;
-
     }
-
 
     pub fn validate(&self) -> bool {
         let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());

@@ -1,6 +1,11 @@
 use crate::{
-    block::Block, blockchain::Blockchain, consensus::SaitoMessage, crypto::{hash, verify}, slip::Slip,
-    transaction::Transaction, wallet::Wallet,
+    block::Block,
+    blockchain::Blockchain,
+    consensus::SaitoMessage,
+    crypto::{hash, verify},
+    slip::Slip,
+    transaction::Transaction,
+    wallet::Wallet,
 };
 use std::{collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
@@ -50,24 +55,19 @@ impl Mempool {
         }
     }
 
-    pub async fn generate_block(
-        &mut self,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-    ) -> Block {
-
+    pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
 
         let mut block = Block::default();
 
-        block.set_id(previous_block_id+1);
+        block.set_id(previous_block_id + 1);
         block.set_previous_block_hash(previous_block_hash);
 
-	let wallet = self.wallet_lock.read().await;
+        let wallet = self.wallet_lock.read().await;
 
         for _i in 0..1000 {
-
             let mut transaction = Transaction::default();
 
             transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
@@ -96,7 +96,6 @@ impl Mempool {
             if !v {
                 println!("Transaction does not Validate: {:?}", v);
             }
-
         }
 
         let block_merkle_root = block.generate_merkle_root();

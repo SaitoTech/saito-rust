@@ -1,6 +1,14 @@
-use crate::{big_array::BigArray, crypto::{hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey}, slip::Slip, time::create_timestamp};
-use serde::{Deserialize, Serialize};
+use crate::{
+    big_array::BigArray,
+    crypto::{
+        hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
+        SaitoUTXOSetKey,
+    },
+    slip::Slip,
+    time::create_timestamp,
+};
 use ahash::AHashMap;
+use serde::{Deserialize, Serialize};
 
 /// TransactionType is a human-readable indicator of the type of
 /// transaction such as a normal user-initiated transaction, a
@@ -157,9 +165,12 @@ impl Transaction {
         vbytes
     }
 
-
-    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<SaitoUTXOSetKey, u64>, longest_chain : bool, block_id : u64) {
-
+    pub fn on_chain_reorganization(
+        &self,
+        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
+        longest_chain: bool,
+        block_id: u64,
+    ) {
         if longest_chain {
             for input in self.get_inputs() {
                 input.on_chain_reorganization(utxoset, longest_chain, block_id);
@@ -174,11 +185,8 @@ impl Transaction {
             for output in self.get_outputs() {
                 output.on_chain_reorganization(utxoset, longest_chain, 0);
             }
-
-
         }
     }
-
 
     pub fn validate(&self) -> bool {
         //

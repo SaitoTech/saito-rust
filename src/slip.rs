@@ -115,25 +115,23 @@ impl Slip {
         vbytes
     }
 
-
-    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<SaitoUTXOSetKey, u64>, _lc : bool , slip_value : u64) {
-
+    pub fn on_chain_reorganization(
+        &self,
+        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
+        _lc: bool,
+        slip_value: u64,
+    ) {
         let slip_key = self.get_utxoset_key();
         utxoset.entry(slip_key).or_insert(slip_value);
-
-
     }
 
     pub fn get_utxoset_key(&self) -> SaitoUTXOSetKey {
-
-        let mut res:Vec<u8> = vec![];
+        let mut res: Vec<u8> = vec![];
         res.extend(&self.get_publickey());
         res.extend(&self.get_uuid());
         res.extend(&self.get_amount().to_be_bytes());
         return res;
-
     }
-
 
     pub fn validate(&self) -> bool {
         return true;

@@ -10,9 +10,9 @@ pub type SaitoSignature = [u8; 64];
 
 pub const PARALLEL_HASH_BYTE_THRESHOLD: usize = 128_000;
 
-
 pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
-    let (mut secret_key, mut public_key) = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
+    let (mut secret_key, mut public_key) =
+        SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
     while public_key.serialize().to_base58().len() != 44 {
         // sometimes secp256k1 address is too big to store in 44 base-58 digits
         let keypair_tuple = SECP256K1.generate_keypair(&mut secp256k1::rand::thread_rng());
@@ -20,8 +20,10 @@ pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
         public_key = keypair_tuple.1;
     }
     let mut secret_bytes = [0u8; 32];
-    for i in 0..32 { secret_bytes[i] = secret_key[i]; }
-    return (public_key.serialize() , secret_bytes);
+    for i in 0..32 {
+        secret_bytes[i] = secret_key[i];
+    }
+    return (public_key.serialize(), secret_bytes);
 }
 
 pub fn hash(data: &Vec<u8>) -> SaitoHash {
@@ -50,4 +52,3 @@ pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> boo
     let s = Signature::from_compact(&sig).unwrap();
     SECP256K1.verify(&m, &s, &p).is_ok()
 }
-
