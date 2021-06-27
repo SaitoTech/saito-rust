@@ -88,6 +88,9 @@ GH Actions are located here: [.github/workflows](.github/workflows)
 - [Convco](https://convco.github.io/check/) commit format check (**required**)  
   Check all commits or range for errors against [the convention](CONTRIBUTING.md#commit-format)
 
+- [Clippy](https://github.com/rust-lang/rust-clippy) code linting  
+  A collection of lints to catch common mistakes and improve your Rust code
+
 ### VSCode
 
 Extensions:
