@@ -116,7 +116,7 @@ impl Slip {
     }
 
 
-    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<SaitoUTXOSetKey, u64>, longest_chain : bool , slip_value : u64) {
+    pub fn on_chain_reorganization(&self, utxoset : &mut AHashMap<SaitoUTXOSetKey, u64>, _lc : bool , slip_value : u64) {
 
         let slip_key = self.get_utxoset_key();
         utxoset.entry(slip_key).or_insert(slip_value);

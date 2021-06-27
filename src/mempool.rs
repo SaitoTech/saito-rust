@@ -54,12 +54,14 @@ impl Mempool {
         &mut self,
         blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Block {
+
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
 
         let mut block = Block::default();
-        block.set_id(previous_block_id);
+
+        block.set_id(previous_block_id+1);
         block.set_previous_block_hash(previous_block_hash);
 
 	let wallet = self.wallet_lock.read().await;

@@ -92,9 +92,8 @@ println!(" ... add_block start: {:?}", create_timestamp());
 	}
 
 
-
         //
-        // now find the shared ancestor
+        // find shared ancestor of new_block with old_chain
         //
         let mut new_chain: Vec<[u8;32]> = Vec::new();
         let mut old_chain: Vec<[u8;32]> = Vec::new();
@@ -102,10 +101,6 @@ println!(" ... add_block start: {:?}", create_timestamp());
         let mut new_chain_hash = block_hash;
         let mut old_chain_hash = previous_block_hash;
 
-
-        //
-        // find the shared ancestor of our proposed chain
-        //
         while !shared_ancestor_found {
             if self.blocks.contains_key(&new_chain_hash) {
                 new_chain.push(new_chain_hash);
@@ -122,7 +117,7 @@ println!(" ... add_block start: {:?}", create_timestamp());
 
 
         //
-        // and fill in the old_chain if it exists
+        // and get existing current chain for comparison
         //
         if shared_ancestor_found {
             loop {
@@ -144,8 +139,8 @@ println!(" ... add_block start: {:?}", create_timestamp());
             }
         }
 
-println!("new chain: {:?}", new_chain);
-println!("old chain: {:?}", old_chain);
+//println!("new chain: {:?}", new_chain);
+//println!("old chain: {:?}", old_chain);
 
         //
         // at this point we should have a shared ancestor
@@ -153,7 +148,6 @@ println!("old chain: {:?}", old_chain);
 	// find out whether this new block is claiming to require chain-validation
 	//
         let am_i_the_longest_chain = self.is_new_chain_the_longest_chain(&new_chain, &old_chain);
-
 
 
 	//
@@ -168,27 +162,17 @@ println!(" ... start validate:  {:?}", create_timestamp());
             let does_new_chain_validate = self.validate(new_chain, old_chain);
 println!(" ... finish validate: {:?}", create_timestamp());
             if does_new_chain_validate {
-println!("SUCCESS");
                 self.add_block_success(block_hash);
             } else {
-println!("FAILURE 1");
                 self.add_block_failure();
             }
-println!("does the new chain validate: {}", does_new_chain_validate);
         } else {
-println!("FAILURE 2");
             self.add_block_failure();
         }
 
+println!("TOTAL INDEX OF BLOCKS");
+self.blockring.print_lc();
 
-
-
-
-
-println!("is this the longest chain: {:?}", am_i_the_longest_chain);
-
-
-//        println!("Validates? {:?}", block.validate());
     }
 
 
@@ -196,6 +180,8 @@ println!("is this the longest chain: {:?}", am_i_the_longest_chain);
 
     pub fn add_block_success(&mut self, block_hash: SaitoHash) {
 
+	//
+	// TODO - 
         //
         // block is longest-chain
         //
@@ -243,7 +229,7 @@ println!("is this the longest chain: {:?}", am_i_the_longest_chain);
 	//
 	// new chain must have more accumulated work AND be longer
 	//
-        if old_chain.len() < new_chain.len() && old_bf < new_bf {
+        if old_chain.len() < new_chain.len() && old_bf <= new_bf {
             return true;
         }
 
@@ -271,12 +257,17 @@ println!("is this the longest chain: {:?}", am_i_the_longest_chain);
         let does_block_validate = block.validate();
 
         if does_block_validate {
+
             block.on_chain_reorganization(&mut self.utxoset, true);
+            self.blockring.on_chain_reorganization(block.get_id(), block.get_hash(), true);
+
             if current_wind_index == (new_chain.len()-1) {
                 if wind_failure { return false }
                 return true;
             }
+
             return self.wind_chain(new_chain, old_chain, current_wind_index+1, false);
+
         } else {
 
             //
@@ -315,17 +306,18 @@ println!("is this the longest chain: {:?}", am_i_the_longest_chain);
         let block = &self.blocks[&old_chain[current_unwind_index]];
 
         block.on_chain_reorganization(&mut self.utxoset, false);
+	self.blockring.on_chain_reorganization(block.get_id(), block.get_hash(), false);
 
         if current_unwind_index == 0 {
             //
             // start winding new chain
             //
-            return self.wind_chain(new_chain, old_chain, 0, false);
+            return self.wind_chain(new_chain, old_chain, 0, wind_failure);
         } else {
             //
             // continue unwinding
             //
-            return self.unwind_chain(new_chain, old_chain, current_unwind_index-1, false);
+            return self.unwind_chain(new_chain, old_chain, current_unwind_index-1, wind_failure);
         }
 
     }

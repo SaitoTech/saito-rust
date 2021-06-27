@@ -119,6 +119,16 @@ impl BlockRing {
         }
     }
 
+
+pub fn print_lc(&self) {
+    for i in 0..EPOCH_LENGTH { 
+        if self.block_ring[(i as usize)].block_hashes.len() > 0 {
+	    println!("Block {:?}: {:?}", i, self.get_longest_chain_block_hash_by_block_id(i));
+	}
+    }
+}
+
+
     pub fn contains_block_hash_at_block_id(&mut self, block_id : u64 , block_hash : SaitoHash) -> bool {
 	let insert_pos = block_id % RING_BUFFER_LENGTH;
 	return self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash);	
@@ -146,6 +156,7 @@ impl BlockRing {
     }
 
     pub fn get_longest_chain_block_hash(&self) -> SaitoHash {
+	if self.block_ring_lc_pos == usize::MAX { return [0; 32]; }
 	if self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX { return [0; 32]; }
 	let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
 	if lc_pos != usize::MAX {
@@ -156,6 +167,7 @@ impl BlockRing {
     }
 
     pub fn get_longest_chain_block_id(&self) -> u64 {
+	if self.block_ring_lc_pos == usize::MAX { return 0; }
 	if self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX { return 0; }
 	let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
 	if lc_pos != usize::MAX {
