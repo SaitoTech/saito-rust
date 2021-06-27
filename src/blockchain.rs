@@ -8,8 +8,6 @@ pub struct Blockchain {
     last_block_hash: Option<SaitoHash>,
 }
 
-
-
 impl Blockchain {
     #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {

@@ -1,4 +1,9 @@
-use crate::{big_array::BigArray, crypto::{hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature}, slip::Slip, time::create_timestamp};
+use crate::{
+    big_array::BigArray,
+    crypto::{hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature},
+    slip::Slip,
+    time::create_timestamp,
+};
 use serde::{Deserialize, Serialize};
 
 /// TransactionType is a human-readable indicator of the type of

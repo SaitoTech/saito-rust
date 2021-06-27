@@ -23,7 +23,6 @@ pub enum SaitoMessage {
 
 /// Run the Saito consensus runtime
 pub async fn run(shutdown: impl Future) -> crate::Result<()> {
-
     //
     // handle shutdown messages using broadcast channel
     //
