@@ -1,9 +1,12 @@
 use crate::block::Block;
+use crate::blockring::BlockRing;
 use crate::crypto::SaitoHash;
+
 use ahash::AHashMap;
 
 #[derive(Debug)]
 pub struct Blockchain {
+    blockring: BlockRing,
     blocks: AHashMap<SaitoHash, Block>,
     last_block_hash: Option<SaitoHash>,
 }
@@ -14,6 +17,7 @@ impl Blockchain {
     #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         Blockchain {
+    	    blockring: BlockRing::new(),
             blocks: AHashMap::new(),
             last_block_hash: None,
         }

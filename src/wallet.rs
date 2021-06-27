@@ -39,4 +39,6 @@ mod tests {
     fn wallet_new_test() {
         assert_eq!(true, true);
     }
+
+
 }
