@@ -3,6 +3,7 @@ use blake3::{join::RayonJoin, Hasher};
 pub use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
 
 pub type SaitoHash = [u8; 32];
+pub type SaitoUTXOSetKey = Vec<u8>;
 pub type SaitoPublicKey = [u8; 33];
 pub type SaitoPrivateKey = [u8; 32]; // 256-bit key
 pub type SaitoSignature = [u8; 64];

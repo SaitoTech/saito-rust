@@ -31,6 +31,11 @@ impl RingItem {
         }
     }
 
+    pub fn contains_block_hash(&mut self, hash : SaitoHash) -> bool {
+        if self.block_hashes.iter().any(|&i| i == hash) { return true; }
+	return false;
+    }
+
     pub fn add_block(&mut self, block_id : u64, hash : SaitoHash) {
 	self.block_hashes.push(hash);
 	self.block_ids.push(block_id);
@@ -114,7 +119,12 @@ impl BlockRing {
         }
     }
 
-    pub fn add_block(&mut self, block: Block) {
+    pub fn contains_block_hash_at_block_id(&mut self, block_id : u64 , block_hash : SaitoHash) -> bool {
+	let insert_pos = block_id % RING_BUFFER_LENGTH;
+	return self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash);	
+    }
+
+    pub fn add_block(&mut self, block: &Block) {
 	let insert_pos = block.get_id() % RING_BUFFER_LENGTH;
 	self.block_ring[(insert_pos as usize)].add_block(block.get_id(), block.get_hash());	
     }
@@ -142,6 +152,16 @@ impl BlockRing {
 	    return self.block_ring[self.block_ring_lc_pos].block_hashes[lc_pos];
 	} else {
 	    return [0; 32];
+	}
+    }
+
+    pub fn get_longest_chain_block_id(&self) -> u64 {
+	if self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX { return 0; }
+	let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
+	if lc_pos != usize::MAX {
+	    return self.block_ring[self.block_ring_lc_pos].block_ids[lc_pos];
+	} else {
+	    return 0;
 	}
     }
 
