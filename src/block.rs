@@ -227,9 +227,14 @@ impl Block {
         return true;
     }
 
-    pub fn validate(&self) -> bool {
-        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
+    pub fn validate(&mut self) -> bool {
 
+	//
+	// we validate transactions before generating the merkle_root
+	// and calculating the block hashes, as we need to be able to 
+	// generate the tx_sigs
+	//
+        let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate());
         return true;
     }
 }

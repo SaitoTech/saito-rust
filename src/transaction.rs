@@ -188,21 +188,32 @@ impl Transaction {
         }
     }
 
-    pub fn validate(&self) -> bool {
+    pub fn validate(&mut self) -> bool {
+
         //
         // validate sigs
         //
-        let msg: SaitoHash = hash(&self.serialize_for_signature());
+        let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         let sig: SaitoSignature = self.get_signature();
         let mut publickey: SaitoPublicKey = [0; 33];
         if self.core.inputs.len() > 0 {
             publickey = self.core.inputs[0].get_publickey();
         }
 
-        if !verify(&msg, sig, publickey) {
+        if !verify(&hash_for_signature, sig, publickey) {
             println!("message verifies not");
             return false;
         }
+
+	//
+	// if we have received the transaction over the network we
+	// may not have the tx's signature_for_hash actually saved
+	// locally, which we will need in order to generate the 
+	// merkle_root and the slip UUIDs. so save here:
+	//
+	self.set_hash_for_signature(hash_for_signature);
+	
+
 
         //
         // UTXO validate inputs

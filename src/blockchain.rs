@@ -248,7 +248,10 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-        let block = &self.blocks[&new_chain[current_wind_index]];
+
+        let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+
+//        let block = &mut self.blocks[&new_chain[current_wind_index]];
 
         //
         // validate the block
