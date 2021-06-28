@@ -67,7 +67,9 @@ impl Mempool {
 
         let wallet = self.wallet_lock.read().await;
 
-        for _i in 0..1000 {
+        for _i in 0..10000 {
+            println!("creating tx {:?}", _i);
+
             let mut transaction = Transaction::default();
 
             transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());

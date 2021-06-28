@@ -1,7 +1,6 @@
 use std::convert::TryInto;
 
 use crate::{
-    big_array::BigArray,
     crypto::{
         hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
         SaitoUTXOSetKey,
@@ -41,7 +40,7 @@ pub struct TransactionCore {
     #[serde(with = "serde_bytes")]
     message: Vec<u8>,
     transaction_type: TransactionType,
-    #[serde(with = "BigArray")]
+    #[serde_as(as = "[_; 64]")]
     signature: SaitoSignature, // compact signatures are 64 bytes; DER signatures are 68-72 bytes
 }
 
@@ -216,6 +215,7 @@ impl Transaction {
             signature,
         ))
     }
+
     /// Serialize a Transaction for transport or disk.
     /// [len of inputs - 4 bytes - u32]
     /// [len of outputs - 4 bytes - u32]
@@ -228,9 +228,9 @@ impl Transaction {
     /// [message]
     pub fn serialize_for_net(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend((self.core.inputs.iter().len() as u32).to_be_bytes());
-        vbytes.extend((self.core.outputs.iter().len() as u32).to_be_bytes());
-        vbytes.extend((self.core.message.len() as u32).to_be_bytes());
+        vbytes.extend(&(self.core.inputs.len() as u32).to_be_bytes());
+        vbytes.extend(&(self.core.outputs.len() as u32).to_be_bytes());
+        vbytes.extend(&(self.core.message.len() as u32).to_be_bytes());
         vbytes.extend(&self.core.signature);
         vbytes.extend(&self.core.timestamp.to_be_bytes());
         vbytes.extend(&(self.core.transaction_type as u8).to_be_bytes());
@@ -266,21 +266,30 @@ impl Transaction {
             }
         }
     }
-    pub fn validate(&self) -> bool {
+
+    pub fn validate(&mut self) -> bool {
         //
         // validate sigs
         //
-        let msg: SaitoHash = hash(&self.serialize_for_signature());
+        let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         let sig: SaitoSignature = self.get_signature();
         let mut publickey: SaitoPublicKey = [0; 33];
         if self.core.inputs.len() > 0 {
             publickey = self.core.inputs[0].get_publickey();
         }
 
-        if !verify(&msg, sig, publickey) {
+        if !verify(&hash_for_signature, sig, publickey) {
             println!("message verifies not");
             return false;
         }
+
+        //
+        // if we have received the transaction over the network we
+        // may not have the tx's signature_for_hash actually saved
+        // locally, which we will need in order to generate the
+        // merkle_root and the slip UUIDs. so save here:
+        //
+        self.set_hash_for_signature(hash_for_signature);
 
         //
         // UTXO validate inputs

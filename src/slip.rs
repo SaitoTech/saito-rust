@@ -1,4 +1,3 @@
-use crate::big_array::BigArray;
 use crate::crypto::{SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
 use serde::{Deserialize, Serialize};
 
@@ -30,9 +29,9 @@ pub enum SlipType {
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct SlipCore {
-    #[serde(with = "BigArray")]
+    #[serde_as(as = "[_; 33]")]
     publickey: SaitoPublicKey,
-    #[serde(with = "BigArray")]
+    #[serde_as(as = "[_; 64]")]
     uuid: SaitoSignature,
     amount: u64,
     slip_ordinal: u8,
