@@ -4,12 +4,19 @@ use serde::{Deserialize, Serialize};
 
 use ahash::AHashMap;
 
+use enum_variant_count_derive::TryFromByte;
+use std::convert::{TryFrom, TryInto};
+
+/// The size of a serilized slip in bytes.
+pub const SLIP_SIZE: usize = 107;
+
 /// SlipType is a human-readable indicator of the slip-type, such
 /// as in a normal transaction, a VIP-transaction, a rebroadcast
 /// transaction or a golden ticket, etc.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq, TryFromByte)]
 pub enum SlipType {
     Normal,
+    Other, // need more than one value for TryFromBytes
 }
 
 /// SlipCore is a self-contained object containing only the minimal
@@ -136,6 +143,24 @@ impl Slip {
     pub fn validate(&self) -> bool {
         return true;
     }
+    pub fn deserialize_from_net(bytes: Vec<u8>) -> Slip {
+        let tx_id: SaitoPublicKey = bytes[..33].try_into().unwrap();
+        let uuid: SaitoSignature = bytes[33..97].try_into().unwrap();
+        let amount: u64 = u64::from_be_bytes(bytes[97..105].try_into().unwrap());
+        let slip_ordinal: u8 = bytes[105];
+        let slip_type: SlipType = SlipType::try_from(bytes[SLIP_SIZE - 1]).unwrap();
+        //u64::from_be_bytes(bytes[32..40].try_into().unwrap());
+        Slip::new(SlipCore::new(tx_id, uuid, amount, slip_ordinal, slip_type))
+    }
+    pub fn serialize_for_net(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.core.publickey);
+        vbytes.extend(&self.core.uuid);
+        vbytes.extend(&self.core.amount.to_be_bytes());
+        vbytes.extend(&self.core.slip_ordinal.to_be_bytes());
+        vbytes.extend(&(self.core.slip_type as u8).to_be_bytes());
+        vbytes
+    }
 }
 
 impl Default for Slip {
@@ -182,5 +207,14 @@ mod tests {
         assert_eq!(slip.core.uuid, [0; 64]);
         assert_eq!(slip.core.amount, 0);
         assert_eq!(slip.core.slip_type, SlipType::Normal);
+    }
+
+    #[test]
+    fn slip_serialization_for_net_test() {
+        let slip = Slip::new(SlipCore::default());
+        let serialized_slip = slip.serialize_for_net();
+        assert_eq!(serialized_slip.len(), 107);
+        let deserilialized_slip = Slip::deserialize_from_net(serialized_slip);
+        assert_eq!(slip, deserilialized_slip);
     }
 }
