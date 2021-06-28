@@ -314,13 +314,34 @@
 <span id="311">311</span>
 <span id="312">312</span>
 <span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">big_array</span>::<span class="ident">BigArray</span>,
-    <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>},
+    <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>},
     <span class="ident">time</span>::<span class="ident">create_timestamp</span>,
     <span class="ident">transaction</span>::<span class="ident">Transaction</span>,
 };
+<span class="kw">use</span> <span class="ident">ahash</span>::<span class="ident">AHashMap</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">rayon</span>;
@@ -419,6 +440,10 @@
         <span class="self">self</span>.<span class="ident">hash</span>
     }
 
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_lc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">lc</span>
+    }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">id</span>
     }
@@ -427,7 +452,7 @@
         <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">timestamp</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">previous_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_previous_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
         <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">previous_block_hash</span>
     }
 
@@ -457,6 +482,10 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_id</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) {
         <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_lc</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lc</span>: <span class="ident">bool</span>) {
+        <span class="self">self</span>.<span class="ident">lc</span> <span class="op">=</span> <span class="ident">lc</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_timestamp</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">timestamp</span>: <span class="ident">u64</span>) {
@@ -522,6 +551,17 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_merkle_root</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
         [<span class="number">0</span>; <span class="number">32</span>]
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_chain_reorganization</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoUTXOSetKey</span>, <span class="ident">u64</span><span class="op">&gt;</span>,
+        <span class="ident">longest_chain</span>: <span class="ident">bool</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span> {
+            <span class="ident">tx</span>.<span class="ident">on_chain_reorganization</span>(<span class="ident">utxoset</span>, <span class="ident">longest_chain</span>, <span class="self">self</span>.<span class="ident">get_id</span>());
+        }
+        <span class="kw">return</span> <span class="bool-val">true</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {

@@ -192,10 +192,16 @@
 <span id="189">189</span>
 <span id="190">190</span>
 <span id="191">191</span>
+<span id="192">192</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">block</span>::<span class="ident">Block</span>, <span class="ident">blockchain</span>::<span class="ident">Blockchain</span>, <span class="ident">consensus</span>::<span class="ident">SaitoMessage</span>, <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">verify</span>}, <span class="ident">slip</span>::<span class="ident">Slip</span>,
-    <span class="ident">transaction</span>::<span class="ident">Transaction</span>, <span class="ident">wallet</span>::<span class="ident">Wallet</span>,
+    <span class="ident">block</span>::<span class="ident">Block</span>,
+    <span class="ident">blockchain</span>::<span class="ident">Blockchain</span>,
+    <span class="ident">consensus</span>::<span class="ident">SaitoMessage</span>,
+    <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">verify</span>},
+    <span class="ident">slip</span>::<span class="ident">Slip</span>,
+    <span class="ident">transaction</span>::<span class="ident">Transaction</span>,
+    <span class="ident">wallet</span>::<span class="ident">Wallet</span>,
 };
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections</span>::<span class="ident">VecDeque</span>, <span class="ident">sync</span>::<span class="ident">Arc</span>, <span class="ident">thread</span>::<span class="ident">sleep</span>, <span class="ident">time</span>::<span class="ident">Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio</span>::<span class="ident">sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
@@ -245,22 +251,19 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">generate_block</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">generate_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">previous_block_id</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>();
         <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">default</span>();
-        <span class="ident">block</span>.<span class="ident">set_id</span>(<span class="ident">previous_block_id</span>);
+
+        <span class="ident">block</span>.<span class="ident">set_id</span>(<span class="ident">previous_block_id</span> <span class="op">+</span> <span class="number">1</span>);
         <span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>(<span class="ident">previous_block_hash</span>);
 
-	<span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
 
         <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">1000</span> {
-
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">default</span>();
 
             <span class="ident">transaction</span>.<span class="ident">set_message</span>((<span class="number">0</span>..<span class="number">1024</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">rand</span>::<span class="ident">random</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>()).<span class="ident">collect</span>());
@@ -289,7 +292,6 @@
             <span class="kw">if</span> <span class="op">!</span><span class="ident">v</span> {
                 <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Transaction does not Validate: {:?}&quot;</span>, <span class="ident">v</span>);
             }
-
         }
 
         <span class="kw">let</span> <span class="ident">block_merkle_root</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_merkle_root</span>();
