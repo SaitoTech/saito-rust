@@ -1,5 +1,4 @@
 use crate::{
-    big_array::BigArray,
     crypto::{
         hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
         SaitoUTXOSetKey,
@@ -36,7 +35,7 @@ pub struct TransactionCore {
     #[serde(with = "serde_bytes")]
     message: Vec<u8>,
     transaction_type: TransactionType,
-    #[serde(with = "BigArray")]
+    #[serde_as(as = "[_; 64]")]
     signature: SaitoSignature, // compact signatures are 64 bytes; DER signatures are 68-72 bytes
 }
 
@@ -189,7 +188,6 @@ impl Transaction {
     }
 
     pub fn validate(&mut self) -> bool {
-
         //
         // validate sigs
         //
@@ -205,15 +203,13 @@ impl Transaction {
             return false;
         }
 
-	//
-	// if we have received the transaction over the network we
-	// may not have the tx's signature_for_hash actually saved
-	// locally, which we will need in order to generate the 
-	// merkle_root and the slip UUIDs. so save here:
-	//
-	self.set_hash_for_signature(hash_for_signature);
-	
-
+        //
+        // if we have received the transaction over the network we
+        // may not have the tx's signature_for_hash actually saved
+        // locally, which we will need in order to generate the
+        // merkle_root and the slip UUIDs. so save here:
+        //
+        self.set_hash_for_signature(hash_for_signature);
 
         //
         // UTXO validate inputs
