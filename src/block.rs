@@ -1,9 +1,10 @@
 use crate::{
     big_array::BigArray,
-    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature},
+    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
     time::create_timestamp,
     transaction::Transaction,
 };
+use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
 
 extern crate rayon;
@@ -102,6 +103,10 @@ impl Block {
         self.hash
     }
 
+    pub fn get_lc(&self) -> bool {
+        self.lc
+    }
+
     pub fn get_id(&self) -> u64 {
         self.core.id
     }
@@ -110,7 +115,7 @@ impl Block {
         self.core.timestamp
     }
 
-    pub fn previous_block_hash(&self) -> SaitoHash {
+    pub fn get_previous_block_hash(&self) -> SaitoHash {
         self.core.previous_block_hash
     }
 
@@ -140,6 +145,10 @@ impl Block {
 
     pub fn set_id(&mut self, id: u64) {
         self.core.id = id;
+    }
+
+    pub fn set_lc(&mut self, lc: bool) {
+        self.lc = lc;
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
@@ -205,6 +214,17 @@ impl Block {
 
     pub fn generate_merkle_root(&mut self) -> SaitoHash {
         [0; 32]
+    }
+
+    pub fn on_chain_reorganization(
+        &self,
+        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
+        longest_chain: bool,
+    ) -> bool {
+        for tx in &self.transactions {
+            tx.on_chain_reorganization(utxoset, longest_chain, self.get_id());
+        }
+        return true;
     }
 
     pub fn validate(&self) -> bool {

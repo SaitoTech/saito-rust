@@ -1,4 +1,4 @@
-use crate::crypto::{sign, generate_keys, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
+use crate::crypto::{generate_keys, sign, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
 
 /// The `Wallet` manages the public and private keypair of the node and holds the
 /// slips that are used to form transactions on the network.
@@ -9,10 +9,9 @@ pub struct Wallet {
 }
 
 impl Wallet {
-
     #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
-	let (publickey , privatekey) = generate_keys();
+        let (publickey, privatekey) = generate_keys();
         Wallet {
             publickey: publickey,
             privatekey: privatekey,

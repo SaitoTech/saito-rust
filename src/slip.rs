@@ -1,6 +1,8 @@
 use crate::big_array::BigArray;
-use crate::crypto::{SaitoPublicKey, SaitoSignature};
+use crate::crypto::{SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
 use serde::{Deserialize, Serialize};
+
+use ahash::AHashMap;
 
 /// SlipType is a human-readable indicator of the slip-type, such
 /// as in a normal transaction, a VIP-transaction, a rebroadcast
@@ -111,6 +113,24 @@ impl Slip {
         vbytes.extend(&self.core.amount.to_be_bytes());
         vbytes.extend(&(self.core.slip_type as u32).to_be_bytes());
         vbytes
+    }
+
+    pub fn on_chain_reorganization(
+        &self,
+        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
+        _lc: bool,
+        slip_value: u64,
+    ) {
+        let slip_key = self.get_utxoset_key();
+        utxoset.entry(slip_key).or_insert(slip_value);
+    }
+
+    pub fn get_utxoset_key(&self) -> SaitoUTXOSetKey {
+        let mut res: Vec<u8> = vec![];
+        res.extend(&self.get_publickey());
+        res.extend(&self.get_uuid());
+        res.extend(&self.get_amount().to_be_bytes());
+        return res;
     }
 
     pub fn validate(&self) -> bool {
