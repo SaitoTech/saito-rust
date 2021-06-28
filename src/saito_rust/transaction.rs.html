@@ -291,25 +291,127 @@
 <span id="288">288</span>
 <span id="289">289</span>
 <span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
 </pre><div class="example-wrap"><pre class="rust ">
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryInto</span>;
+
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">crypto</span>::{
         <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">verify</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>,
         <span class="ident">SaitoUTXOSetKey</span>,
     },
-    <span class="ident">slip</span>::<span class="ident">Slip</span>,
+    <span class="ident">slip</span>::{<span class="ident">Slip</span>, <span class="ident">SLIP_SIZE</span>},
     <span class="ident">time</span>::<span class="ident">create_timestamp</span>,
 };
 <span class="kw">use</span> <span class="ident">ahash</span>::<span class="ident">AHashMap</span>;
+<span class="kw">use</span> <span class="ident">enum_variant_count_derive</span>::<span class="ident">TryFromByte</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
 
 <span class="doccomment">/// TransactionType is a human-readable indicator of the type of</span>
 <span class="doccomment">/// transaction such as a normal user-initiated transaction, a</span>
 <span class="doccomment">/// golden ticket transaction, a VIP-transaction or a rebroadcast</span>
 <span class="doccomment">/// transaction created by a block creator, etc.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">TryFromByte</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TransactionType</span> {
     <span class="ident">Normal</span>,
+    <span class="ident">Other</span>,
 }
 
 <span class="doccomment">/// TransactionCore is a self-contained object containing only the core</span>
@@ -457,7 +559,82 @@
 
         <span class="ident">vbytes</span>
     }
+    <span class="doccomment">/// Deserialize from bytes to a Transaction.</span>
+    <span class="doccomment">/// [len of inputs - 4 bytes - u32]</span>
+    <span class="doccomment">/// [len of outputs - 4 bytes - u32]</span>
+    <span class="doccomment">/// [len of message - 4 bytes - u32]</span>
+    <span class="doccomment">/// [signature - 64 bytes - SECP256K1]</span>
+    <span class="doccomment">/// [timestamp - 8 bytes - u64]</span>
+    <span class="doccomment">/// [transaction type - 1 byte]</span>
+    <span class="doccomment">/// [input][input][input]...</span>
+    <span class="doccomment">/// [output][output][output]...</span>
+    <span class="doccomment">/// [message]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_from_net</span>(<span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
+        <span class="kw">let</span> <span class="ident">inputs_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">u32</span>::<span class="ident">from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">0</span>..<span class="number">4</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
+        <span class="kw">let</span> <span class="ident">outputs_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">u32</span>::<span class="ident">from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">4</span>..<span class="number">8</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
+        <span class="kw">let</span> <span class="ident">message_len</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">u32</span>::<span class="ident">from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">8</span>..<span class="number">12</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>()) <span class="kw">as</span> <span class="ident">usize</span>;
+        <span class="kw">let</span> <span class="ident">signature</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">12</span>..<span class="number">76</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
 
+        <span class="kw">let</span> <span class="ident">timestamp</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64</span>::<span class="ident">from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">76</span>..<span class="number">84</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
+        <span class="kw">let</span> <span class="ident">transaction_type</span>: <span class="ident">TransactionType</span> <span class="op">=</span> <span class="ident">TransactionType</span>::<span class="ident">try_from</span>(<span class="ident">bytes</span>[<span class="number">84</span>]).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">start_of_inputs</span> <span class="op">=</span> <span class="number">85</span>;
+        <span class="kw">let</span> <span class="ident">start_of_outputs</span> <span class="op">=</span> <span class="ident">start_of_inputs</span> <span class="op">+</span> <span class="ident">inputs_len</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>;
+        <span class="kw">let</span> <span class="ident">start_of_message</span> <span class="op">=</span> <span class="ident">start_of_outputs</span> <span class="op">+</span> <span class="ident">outputs_len</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
+        <span class="kw">for</span> <span class="ident">n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">inputs_len</span> {
+            <span class="kw">let</span> <span class="ident">start_of_data</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">start_of_inputs</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">+</span> <span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>;
+            <span class="kw">let</span> <span class="ident">end_of_data</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">start_of_data</span> <span class="op">+</span> <span class="ident">SLIP_SIZE</span>;
+            <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">deserialize_from_net</span>(<span class="ident">bytes</span>[<span class="ident">start_of_data</span>..<span class="ident">end_of_data</span>].<span class="ident">to_vec</span>());
+            <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="ident">input</span>);
+        }
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
+        <span class="kw">for</span> <span class="ident">n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">outputs_len</span> {
+            <span class="kw">let</span> <span class="ident">start_of_data</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">start_of_outputs</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">+</span> <span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>;
+            <span class="kw">let</span> <span class="ident">end_of_data</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">start_of_data</span> <span class="op">+</span> <span class="ident">SLIP_SIZE</span>;
+            <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">deserialize_from_net</span>(<span class="ident">bytes</span>[<span class="ident">start_of_data</span>..<span class="ident">end_of_data</span>].<span class="ident">to_vec</span>());
+            <span class="ident">outputs</span>.<span class="ident">push</span>(<span class="ident">output</span>);
+        }
+        <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="ident">start_of_message</span>..<span class="ident">start_of_message</span> <span class="op">+</span> <span class="ident">message_len</span>]
+            .<span class="ident">try_into</span>()
+            .<span class="ident">unwrap</span>();
+        <span class="ident">Transaction</span>::<span class="ident">new</span>(<span class="ident">TransactionCore</span>::<span class="ident">new</span>(
+            <span class="ident">timestamp</span>,
+            <span class="ident">inputs</span>,
+            <span class="ident">outputs</span>,
+            <span class="ident">message</span>,
+            <span class="ident">transaction_type</span>,
+            <span class="ident">signature</span>,
+        ))
+    }
+
+    <span class="doccomment">/// Serialize a Transaction for transport or disk.</span>
+    <span class="doccomment">/// [len of inputs - 4 bytes - u32]</span>
+    <span class="doccomment">/// [len of outputs - 4 bytes - u32]</span>
+    <span class="doccomment">/// [len of message - 4 bytes - u32]</span>
+    <span class="doccomment">/// [signature - 64 bytes - SECP256K1]</span>
+    <span class="doccomment">/// [timestamp - 8 bytes - u64]</span>
+    <span class="doccomment">/// [transaction type - 1 byte]</span>
+    <span class="doccomment">/// [input][input][input]...</span>
+    <span class="doccomment">/// [output][output][output]...</span>
+    <span class="doccomment">/// [message]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_net</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">core</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">core</span>.<span class="ident">message</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">signature</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">timestamp</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">core</span>.<span class="ident">transaction_type</span> <span class="kw">as</span> <span class="ident">u8</span>).<span class="ident">to_be_bytes</span>());
+        <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">inputs</span> {
+            <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">serialize_for_net</span>());
+        }
+        <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span> {
+            <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>.<span class="ident">serialize_for_net</span>());
+        }
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">message</span>);
+        <span class="ident">vbytes</span>
+    }
+    <span class="doccomment">/// Serialize a Transaction for transport or disk.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_chain_reorganization</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoUTXOSetKey</span>, <span class="ident">u64</span><span class="op">&gt;</span>,
@@ -580,6 +757,23 @@
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">message</span>, <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>::<span class="ident">new</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">transaction_type</span>, <span class="ident">TransactionType</span>::<span class="ident">Normal</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">tx</span>.<span class="ident">core</span>.<span class="ident">signature</span>, [<span class="number">0</span>; <span class="number">64</span>]);
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">serialize_for_net_test</span>() {
+        <span class="kw">let</span> <span class="ident">mock_tx</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">new</span>(<span class="ident">TransactionCore</span>::<span class="ident">new</span>(
+            <span class="ident">create_timestamp</span>(),
+            <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="number">104</span>, <span class="number">101</span>, <span class="number">108</span>, <span class="number">108</span>, <span class="number">111</span>],
+            <span class="ident">TransactionType</span>::<span class="ident">Normal</span>,
+            [<span class="number">1</span>; <span class="number">64</span>],
+        ));
+        <span class="kw">let</span> <span class="ident">serialized_tx</span> <span class="op">=</span> <span class="ident">mock_tx</span>.<span class="ident">serialize_for_net</span>();
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;LENGHT: {}&quot;</span>, <span class="ident">serialized_tx</span>.<span class="ident">len</span>());
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">serialized_tx</span>);
+        <span class="kw">let</span> <span class="ident">deserialized_tx</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">deserialize_from_net</span>(<span class="ident">serialized_tx</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">mock_tx</span>, <span class="ident">deserialized_tx</span>);
     }
 }
 </pre></div>
