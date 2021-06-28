@@ -337,11 +337,8 @@
 <span id="334">334</span>
 <span id="335">335</span>
 <span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">big_array</span>::<span class="ident">BigArray</span>,
     <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>},
     <span class="ident">time</span>::<span class="ident">create_timestamp</span>,
     <span class="ident">transaction</span>::<span class="ident">Transaction</span>,
@@ -366,10 +363,10 @@
     <span class="ident">id</span>: <span class="ident">u64</span>,
     <span class="ident">timestamp</span>: <span class="ident">u64</span>,
     <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;BigArray&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 33]&quot;</span>)]</span>
     <span class="ident">creator</span>: <span class="ident">SaitoPublicKey</span>, <span class="comment">// public key of block creator</span>
     <span class="ident">merkle_root</span>: <span class="ident">SaitoHash</span>, <span class="comment">// merkle root of txs</span>
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;BigArray&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 64]&quot;</span>)]</span>
     <span class="ident">signature</span>: <span class="ident">SaitoSignature</span>, <span class="comment">// signature of block creator</span>
     <span class="ident">treasury</span>: <span class="ident">u64</span>,
     <span class="ident">burnfee</span>: <span class="ident">u64</span>,
@@ -570,12 +567,11 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-
-	<span class="comment">//</span>
-	<span class="comment">// we validate transactions before generating the merkle_root</span>
-	<span class="comment">// and calculating the block hashes, as we need to be able to </span>
-	<span class="comment">// generate the tx_sigs</span>
-	<span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// we validate transactions before generating the merkle_root</span>
+        <span class="comment">// and calculating the block hashes, as we need to be able to</span>
+        <span class="comment">// generate the tx_sigs</span>
+        <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">_transactions_valid</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">par_iter_mut</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>());
         <span class="kw">return</span> <span class="bool-val">true</span>;
     }

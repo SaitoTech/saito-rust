@@ -186,9 +186,7 @@
 <span id="183">183</span>
 <span id="184">184</span>
 <span id="185">185</span>
-<span id="186">186</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">big_array</span>::<span class="ident">BigArray</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
@@ -213,9 +211,9 @@
 <span class="attribute">#[<span class="ident">serde_with</span>::<span class="ident">serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SlipCore</span> {
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;BigArray&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 33]&quot;</span>)]</span>
     <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;BigArray&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 64]&quot;</span>)]</span>
     <span class="ident">uuid</span>: <span class="ident">SaitoSignature</span>,
     <span class="ident">amount</span>: <span class="ident">u64</span>,
     <span class="ident">slip_ordinal</span>: <span class="ident">u8</span>,

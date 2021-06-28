@@ -291,13 +291,8 @@
 <span id="288">288</span>
 <span id="289">289</span>
 <span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">big_array</span>::<span class="ident">BigArray</span>,
     <span class="ident">crypto</span>::{
         <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">verify</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>,
         <span class="ident">SaitoUTXOSetKey</span>,
@@ -334,7 +329,7 @@
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;serde_bytes&quot;</span>)]</span>
     <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="ident">transaction_type</span>: <span class="ident">TransactionType</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;BigArray&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 64]&quot;</span>)]</span>
     <span class="ident">signature</span>: <span class="ident">SaitoSignature</span>, <span class="comment">// compact signatures are 64 bytes; DER signatures are 68-72 bytes</span>
 }
 
@@ -487,7 +482,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-
         <span class="comment">//</span>
         <span class="comment">// validate sigs</span>
         <span class="comment">//</span>
@@ -503,15 +497,13 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-	<span class="comment">//</span>
-	<span class="comment">// if we have received the transaction over the network we</span>
-	<span class="comment">// may not have the tx&#39;s signature_for_hash actually saved</span>
-	<span class="comment">// locally, which we will need in order to generate the </span>
-	<span class="comment">// merkle_root and the slip UUIDs. so save here:</span>
-	<span class="comment">//</span>
-	<span class="self">self</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
-	
-
+        <span class="comment">//</span>
+        <span class="comment">// if we have received the transaction over the network we</span>
+        <span class="comment">// may not have the tx&#39;s signature_for_hash actually saved</span>
+        <span class="comment">// locally, which we will need in order to generate the</span>
+        <span class="comment">// merkle_root and the slip UUIDs. so save here:</span>
+        <span class="comment">//</span>
+        <span class="self">self</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
 
         <span class="comment">//</span>
         <span class="comment">// UTXO validate inputs</span>
