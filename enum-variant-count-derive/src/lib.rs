@@ -2,7 +2,6 @@ use proc_macro::{self, TokenStream};
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput};
 
-
 // This also allows some_u8.try_into()
 #[proc_macro_derive(TryFromByte)]
 pub fn try_from_byte(input: TokenStream) -> TokenStream {
@@ -11,7 +10,7 @@ pub fn try_from_byte(input: TokenStream) -> TokenStream {
         syn::Data::Enum(enum_item) => enum_item.variants.len(),
         _ => panic!("TryFromByte only works on Enums"),
     };
-    
+
     let output = quote! {
         impl TryFrom<u8> for #ident {
             type Error = &'static str;
