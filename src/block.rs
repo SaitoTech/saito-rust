@@ -1,5 +1,4 @@
 use crate::{
-    big_array::BigArray,
     crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
     time::create_timestamp,
     transaction::Transaction,
@@ -24,10 +23,10 @@ pub struct BlockCore {
     id: u64,
     timestamp: u64,
     previous_block_hash: SaitoHash,
-    #[serde(with = "BigArray")]
+    #[serde_as(as = "[_; 33]")]
     creator: SaitoPublicKey, // public key of block creator
     merkle_root: SaitoHash, // merkle root of txs
-    #[serde(with = "BigArray")]
+    #[serde_as(as = "[_; 64]")]
     signature: SaitoSignature, // signature of block creator
     treasury: u64,
     burnfee: u64,
@@ -228,12 +227,11 @@ impl Block {
     }
 
     pub fn validate(&mut self) -> bool {
-
-	//
-	// we validate transactions before generating the merkle_root
-	// and calculating the block hashes, as we need to be able to 
-	// generate the tx_sigs
-	//
+        //
+        // we validate transactions before generating the merkle_root
+        // and calculating the block hashes, as we need to be able to
+        // generate the tx_sigs
+        //
         let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate());
         return true;
     }
