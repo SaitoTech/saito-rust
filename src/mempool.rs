@@ -56,6 +56,7 @@ impl Mempool {
     }
 
     pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
+
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
@@ -67,7 +68,10 @@ impl Mempool {
 
         let wallet = self.wallet_lock.read().await;
 
-        for _i in 0..1000 {
+        for _i in 0..10000 {
+
+println!("creating tx {:?}", _i);
+
             let mut transaction = Transaction::default();
 
             transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
