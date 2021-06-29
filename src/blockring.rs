@@ -188,7 +188,6 @@ impl BlockRing {
 
 #[cfg(test)]
 mod test {
-    use super::*;
 
     #[test]
     fn longest_chain_queue_test() {
