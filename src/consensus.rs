@@ -1,4 +1,5 @@
 use crate::crypto::SaitoHash;
+use crate::storage::Storage;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use std::{future::Future, sync::Arc};
@@ -71,7 +72,8 @@ impl Consensus {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-
+        let storage = Storage::new();
+        storage.load_blocks_from_disk(blockchain_lock.clone()).await;
         tokio::select! {
             res = crate::mempool::run(
                 mempool_lock.clone(),

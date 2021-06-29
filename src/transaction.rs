@@ -13,6 +13,8 @@ use enum_variant_count_derive::TryFromByte;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
+pub const TRANSACTION_SIZE: usize = 85;
+
 /// TransactionType is a human-readable indicator of the type of
 /// transaction such as a normal user-initiated transaction, a
 /// golden ticket transaction, a VIP-transaction or a rebroadcast
@@ -176,7 +178,7 @@ impl Transaction {
     /// [len of inputs - 4 bytes - u32]
     /// [len of outputs - 4 bytes - u32]
     /// [len of message - 4 bytes - u32]
-    /// [signature - 64 bytes - SECP256K1]
+    /// [signature - 64 bytes - Secp25k1 sig]
     /// [timestamp - 8 bytes - u64]
     /// [transaction type - 1 byte]
     /// [input][input][input]...
@@ -190,7 +192,7 @@ impl Transaction {
 
         let timestamp: u64 = u64::from_be_bytes(bytes[76..84].try_into().unwrap());
         let transaction_type: TransactionType = TransactionType::try_from(bytes[84]).unwrap();
-        let start_of_inputs = 85;
+        let start_of_inputs = TRANSACTION_SIZE;
         let start_of_outputs = start_of_inputs + inputs_len as usize * SLIP_SIZE;
         let start_of_message = start_of_outputs + outputs_len as usize * SLIP_SIZE;
         let mut inputs: Vec<Slip> = vec![];
@@ -224,7 +226,7 @@ impl Transaction {
     /// [len of inputs - 4 bytes - u32]
     /// [len of outputs - 4 bytes - u32]
     /// [len of message - 4 bytes - u32]
-    /// [signature - 64 bytes - SECP256K1]
+    /// [signature - 64 bytes - Secp25k1 sig]
     /// [timestamp - 8 bytes - u64]
     /// [transaction type - 1 byte]
     /// [input][input][input]...
@@ -315,6 +317,8 @@ impl Default for Transaction {
 
 #[cfg(test)]
 mod tests {
+    use crate::slip::SlipCore;
+
     use super::*;
 
     #[test]
@@ -374,17 +378,17 @@ mod tests {
 
     #[test]
     fn serialize_for_net_test() {
+        let mock_input = Slip::new(SlipCore::default());
+        let mock_output = Slip::new(SlipCore::default());
         let mock_tx = Transaction::new(TransactionCore::new(
             create_timestamp(),
-            vec![],
-            vec![],
+            vec![mock_input],
+            vec![mock_output],
             vec![104, 101, 108, 108, 111],
             TransactionType::Normal,
             [1; 64],
         ));
         let serialized_tx = mock_tx.serialize_for_net();
-        println!("LENGHT: {}", serialized_tx.len());
-        println!("{:?}", serialized_tx);
         let deserialized_tx = Transaction::deserialize_from_net(serialized_tx);
         assert_eq!(mock_tx, deserialized_tx);
     }
