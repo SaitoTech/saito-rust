@@ -1,4 +1,8 @@
-use std::{fs::{self, File}, io::{Read, Write}, sync::Arc};
+use std::{
+    fs::{self, File},
+    io::{Read, Write},
+    sync::Arc,
+};
 
 use tokio::sync::RwLock;
 
@@ -16,8 +20,7 @@ impl Storage {
     }
 
     pub fn write_block_to_disk(&self, block: &Block) {
-
-        let mut filename = self.blocks_dir_path.clone();    
+        let mut filename = self.blocks_dir_path.clone();
         filename.push_str(&hex::encode(block.get_timestamp().to_be_bytes()));
         filename.push_str(&String::from("-"));
         filename.push_str(&hex::encode(&block.generate_hash()));
@@ -28,12 +31,19 @@ impl Storage {
         let byte_array: Vec<u8> = block.serialize_for_net();
         buffer.write_all(&byte_array[..]).unwrap();
     }
-    pub async fn load_blocks_from_disk(&self, blockchain_lock: Arc<RwLock<Blockchain>>, ) {
-        let mut paths: Vec<_> = fs::read_dir(self.blocks_dir_path.clone()).unwrap().map(|r| r.unwrap()).collect();
+    pub async fn load_blocks_from_disk(&self, blockchain_lock: Arc<RwLock<Blockchain>>) {
+        let mut paths: Vec<_> = fs::read_dir(self.blocks_dir_path.clone())
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
         paths.sort_by(|a, b| {
             let a_metadata = fs::metadata(a.path()).unwrap();
             let b_metadata = fs::metadata(b.path()).unwrap();
-            a_metadata.modified().unwrap().partial_cmp(&b_metadata.modified().unwrap()).unwrap()
+            a_metadata
+                .modified()
+                .unwrap()
+                .partial_cmp(&b_metadata.modified().unwrap())
+                .unwrap()
         });
         for (pos, path) in paths.iter().enumerate() {
             if path.path().to_str().unwrap() != self.blocks_dir_path.clone() + "empty" {

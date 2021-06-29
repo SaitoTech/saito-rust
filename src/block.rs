@@ -1,16 +1,15 @@
 use crate::{
-    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    crypto::{
+        hash, MerkleTree, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey, SHA256,
+    },
     slip::SLIP_SIZE,
     time::create_timestamp,
     transaction::{Transaction, TRANSACTION_SIZE},
 };
 use ahash::AHashMap;
-use serde::{Deserialize, Serialize};
-
-use std::convert::TryInto;
-
-extern crate rayon;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 
 /// BlockCore is a self-contained object containing only the minimum
 /// information needed about a block. It exists to simplify block
@@ -101,6 +100,10 @@ impl Block {
         }
     }
 
+    pub fn get_transactions(&self) -> &Vec<Transaction> {
+        &self.transactions
+    }
+
     pub fn get_hash(&self) -> SaitoHash {
         self.hash
     }
@@ -143,6 +146,10 @@ impl Block {
 
     pub fn get_difficulty(&self) -> u64 {
         self.core.difficulty
+    }
+
+    pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
+        self.transactions = transactions.to_vec();
     }
 
     pub fn set_id(&mut self, id: u64) {
@@ -188,9 +195,6 @@ impl Block {
         self.hash = hash;
     }
 
-    pub fn set_transactions(&mut self, transactions: Vec<Transaction>) {
-        self.transactions = transactions;
-    }
     // TODO
     //
     // hash is nor being serialized from the right data - requires
@@ -216,6 +220,7 @@ impl Block {
 
         hash(&vbytes)
     }
+
     /// Serialize a Block for transport or disk.
     /// [len of transactions - 4 bytes - u32]
     /// [id - 8 bytes - u64]
@@ -230,7 +235,7 @@ impl Block {
     /// [transaction][transaction][transaction]...
     pub fn serialize_for_net(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend((self.transactions.iter().len() as u32).to_be_bytes());
+        vbytes.extend(&(self.transactions.iter().len() as u32).to_be_bytes());
         vbytes.extend(&self.core.id.to_be_bytes());
         vbytes.extend(&self.core.timestamp.to_be_bytes());
         vbytes.extend(&self.core.previous_block_hash);
@@ -310,11 +315,21 @@ impl Block {
             burnfee,
             difficulty,
         ));
-        block.set_transactions(transactions);
+        block.set_transactions(&mut transactions);
         block
     }
-    pub fn generate_merkle_root(&mut self) -> SaitoHash {
-        [0; 32]
+
+    pub fn generate_merkle_root(&self) -> SaitoHash {
+        let tx_sig_hashes: Vec<[u8; 32]> = self
+            .transactions
+            .iter()
+            .map(|tx| tx.get_hash_for_signature())
+            .collect();
+        let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
+        mt.root_hash()
+            .clone()
+            .try_into()
+            .expect("Faiiled to unwrao merkle root")
     }
 
     pub fn on_chain_reorganization(
@@ -325,7 +340,7 @@ impl Block {
         for tx in &self.transactions {
             tx.on_chain_reorganization(utxoset, longest_chain, self.get_id());
         }
-        return true;
+        true
     }
 
     pub fn validate(&mut self) -> bool {
@@ -335,7 +350,13 @@ impl Block {
         // generate the tx_sigs
         //
         let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate());
-        return true;
+
+        // Verify merkle root
+        if self.core.merkle_root != self.generate_merkle_root() {
+            return false;
+        }
+
+        true
     }
 }
 
@@ -374,6 +395,7 @@ mod tests {
         slip::{Slip, SlipCore},
         time::create_timestamp,
         transaction::{TransactionCore, TransactionType},
+        wallet::Wallet,
     };
 
     #[test]
@@ -440,6 +462,7 @@ mod tests {
         assert_eq!(block.core.burnfee, 0);
         assert_eq!(block.core.difficulty, 0);
     }
+
     #[test]
     fn block_serialize_for_net_test() {
         let mock_input = Slip::new(SlipCore::default());
@@ -464,7 +487,7 @@ mod tests {
         let mut block = Block::new(BlockCore::new(
             1, timestamp, [1; 32], [2; 33], [3; 32], [4; 64], 1, 2, 3,
         ));
-        block.set_transactions(vec![mock_tx, mock_tx2]);
+        block.set_transactions(&mut vec![mock_tx, mock_tx2]);
         let serialized_block = block.serialize_for_net();
         let deserialized_block = Block::deserialize_for_net(serialized_block);
         assert_eq!(block, deserialized_block);
@@ -477,5 +500,24 @@ mod tests {
         assert_eq!(deserialized_block.get_treasury(), 1);
         assert_eq!(deserialized_block.get_burnfee(), 2);
         assert_eq!(deserialized_block.get_difficulty(), 3);
+    }
+
+    #[test]
+    fn block_merkle_root_test() {
+        let mut block = Block::default();
+        let wallet = Wallet::new();
+
+        let mut transactions = (0..5)
+            .into_iter()
+            .map(|_| {
+                let mut transaction = Transaction::default();
+                transaction.sign(wallet.get_privatekey());
+                transaction
+            })
+            .collect();
+
+        block.set_transactions(&mut transactions);
+
+        assert!(block.generate_merkle_root().len() == 32);
     }
 }

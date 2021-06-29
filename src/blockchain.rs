@@ -194,18 +194,15 @@ impl Blockchain {
 
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_longest_chain_block_hash();
-        if self.blocks.contains_key(&block_hash) {
-            return self.blocks.get(&block_hash);
-        }
-        return None;
+        self.blocks.get(&block_hash)
     }
 
     pub fn get_latest_block_hash(&self) -> SaitoHash {
-        return self.blockring.get_longest_chain_block_hash();
+        self.blockring.get_longest_chain_block_hash()
     }
 
     pub fn get_latest_block_id(&self) -> u64 {
-        return self.blockring.get_longest_chain_block_id();
+        self.blockring.get_longest_chain_block_id()
     }
 
     pub fn is_new_chain_the_longest_chain(
@@ -229,20 +226,17 @@ impl Blockchain {
         //
         // new chain must have more accumulated work AND be longer
         //
-        if old_chain.len() < new_chain.len() && old_bf <= new_bf {
-            return true;
-        }
-
-        return false;
+        old_chain.len() < new_chain.len() && old_bf <= new_bf
     }
 
     pub fn validate(&mut self, new_chain: Vec<[u8; 32]>, old_chain: Vec<[u8; 32]>) -> bool {
-        if old_chain.len() > 0 {
-            return self.unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, false);
-        } else if new_chain.len() > 0 {
-            return self.wind_chain(&new_chain, &old_chain, 0, false);
+        if !old_chain.is_empty() {
+            self.unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, false)
+        } else if !new_chain.is_empty() {
+            self.wind_chain(&new_chain, &old_chain, 0, false)
+        } else {
+            true
         }
-        return true;
     }
 
     pub fn wind_chain(
@@ -273,7 +267,7 @@ impl Blockchain {
                 return true;
             }
 
-            return self.wind_chain(new_chain, old_chain, current_wind_index + 1, false);
+            self.wind_chain(new_chain, old_chain, current_wind_index + 1, false)
         } else {
             //
             // tough luck, go back to the old chain
@@ -292,18 +286,13 @@ impl Blockchain {
                 //
                 // true -> force -> we had issues, is failure
                 //
-                return self.wind_chain(old_chain, new_chain, 0, true);
+                self.wind_chain(old_chain, new_chain, 0, true)
             } else {
                 let mut chain_to_unwind: Vec<[u8; 32]> = vec![];
-                for i in current_wind_index..new_chain.len() {
-                    chain_to_unwind.push(new_chain[i].clone());
+                for hash in new_chain.iter().skip(current_wind_index) {
+                    chain_to_unwind.push(*hash);
                 }
-                return self.unwind_chain(
-                    old_chain,
-                    &chain_to_unwind,
-                    chain_to_unwind.len() - 1,
-                    true,
-                );
+                self.unwind_chain(old_chain, &chain_to_unwind, chain_to_unwind.len() - 1, true)
             }
         }
     }
@@ -325,12 +314,12 @@ impl Blockchain {
             //
             // start winding new chain
             //
-            return self.wind_chain(new_chain, old_chain, 0, wind_failure);
+            self.wind_chain(new_chain, old_chain, 0, wind_failure)
         } else {
             //
             // continue unwinding
             //
-            return self.unwind_chain(new_chain, old_chain, current_unwind_index - 1, wind_failure);
+            self.unwind_chain(new_chain, old_chain, current_unwind_index - 1, wind_failure)
         }
     }
 }
