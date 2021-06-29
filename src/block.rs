@@ -1,12 +1,10 @@
 use crate::{
-    crypto::{
-        hash, MerkleTree, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey, SHA256,
-    },
+    blockchain::UtxoSet,
+    crypto::{hash, MerkleTree, SaitoHash, SaitoPublicKey, SaitoSignature, SHA256},
     slip::SLIP_SIZE,
     time::create_timestamp,
     transaction::{Transaction, TRANSACTION_SIZE},
 };
-use ahash::AHashMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -332,11 +330,7 @@ impl Block {
             .expect("Faiiled to unwrao merkle root")
     }
 
-    pub fn on_chain_reorganization(
-        &self,
-        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
-        longest_chain: bool,
-    ) -> bool {
+    pub fn on_chain_reorganization(&self, utxoset: &mut UtxoSet, longest_chain: bool) -> bool {
         for tx in &self.transactions {
             tx.on_chain_reorganization(utxoset, longest_chain, self.get_id());
         }

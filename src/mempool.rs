@@ -148,7 +148,7 @@ pub async fn run(
                         let mut mempool = mempool_lock.write().await;
                         let mut blockchain = blockchain_lock.write().await;
                         while let Some(block) = mempool.blocks.pop_front() {
-                            blockchain.add_block(block);
+                            blockchain.add_block(block).await;
                         }
                     },
                 }

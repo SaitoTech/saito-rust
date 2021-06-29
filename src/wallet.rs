@@ -1,4 +1,10 @@
-use crate::crypto::{generate_keys, sign, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
+use crate::{
+    crypto::{
+        generate_keys, sign, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
+    },
+    slip::Slip,
+};
+use std::collections::HashMap;
 
 /// The `Wallet` manages the public and private keypair of the node and holds the
 /// slips that are used to form transactions on the network.
@@ -6,6 +12,7 @@ use crate::crypto::{generate_keys, sign, SaitoPrivateKey, SaitoPublicKey, SaitoS
 pub struct Wallet {
     publickey: SaitoPublicKey,
     privatekey: SaitoPrivateKey,
+    slips: HashMap<SaitoUTXOSetKey, Slip>,
 }
 
 impl Wallet {
@@ -15,6 +22,7 @@ impl Wallet {
         Wallet {
             publickey,
             privatekey,
+            slips: HashMap::new(),
         }
     }
 
@@ -28,6 +36,14 @@ impl Wallet {
 
     pub fn sign(&self, message_bytes: &[u8]) -> SaitoSignature {
         sign(message_bytes, self.privatekey)
+    }
+
+    pub fn add_slip(&mut self, slip: Slip) {
+        self.slips.insert(slip.get_utxoset_key(), slip);
+    }
+
+    pub fn remove_slip(&mut self, slip: &Slip) {
+        self.slips.remove(&slip.get_utxoset_key());
     }
 }
 

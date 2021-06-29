@@ -1,14 +1,11 @@
 use std::convert::TryInto;
 
 use crate::{
-    crypto::{
-        hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
-        SaitoUTXOSetKey,
-    },
+    blockchain::UtxoSet,
+    crypto::{hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature},
     slip::{Slip, SLIP_SIZE},
     time::create_timestamp,
 };
-use ahash::AHashMap;
 use enum_variant_count_derive::TryFromByte;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -249,27 +246,29 @@ impl Transaction {
         vbytes.extend(&self.core.message);
         vbytes
     }
-    /// Serialize a Transaction for transport or disk.
+
     pub fn on_chain_reorganization(
         &self,
-        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
+        utxoset: &mut UtxoSet,
         longest_chain: bool,
         block_id: u64,
     ) {
+        let input_slip_value;
+        let output_slip_value;
+
         if longest_chain {
-            for input in self.get_inputs() {
-                input.on_chain_reorganization(utxoset, longest_chain, block_id);
-            }
-            for output in self.get_outputs() {
-                output.on_chain_reorganization(utxoset, longest_chain, 1);
-            }
+            input_slip_value = block_id;
+            output_slip_value = 1;
         } else {
-            for input in self.get_inputs() {
-                input.on_chain_reorganization(utxoset, longest_chain, 1);
-            }
-            for output in self.get_outputs() {
-                output.on_chain_reorganization(utxoset, longest_chain, 0);
-            }
+            input_slip_value = 1;
+            output_slip_value = 0
+        }
+
+        for input in self.get_inputs() {
+            input.on_chain_reorganization(utxoset, longest_chain, input_slip_value);
+        }
+        for output in self.get_outputs() {
+            output.on_chain_reorganization(utxoset, longest_chain, output_slip_value);
         }
     }
 

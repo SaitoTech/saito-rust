@@ -55,7 +55,7 @@ impl Storage {
                 println!("get lock...");
                 let mut blockchain = blockchain_lock.write().await;
                 println!("adding...");
-                blockchain.add_block(block);
+                blockchain.add_block(block).await;
                 println!("Loaded block {} of {}", pos, paths.len() - 1);
             }
         }

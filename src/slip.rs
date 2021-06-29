@@ -1,9 +1,9 @@
-use crate::crypto::{SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
-use serde::{Deserialize, Serialize};
-
-use ahash::AHashMap;
-
+use crate::{
+    blockchain::UtxoSet,
+    crypto::{SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+};
 use enum_variant_count_derive::TryFromByte;
+use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 
 /// The size of a serilized slip in bytes.
@@ -27,7 +27,7 @@ pub enum SlipType {
 /// should be handled through getters and setters in the block which
 /// surrounds it.
 #[serde_with::serde_as]
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Copy, Clone)]
 pub struct SlipCore {
     #[serde_as(as = "[_; 33]")]
     publickey: SaitoPublicKey,
@@ -62,7 +62,7 @@ impl Default for SlipCore {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Clone, Copy)]
 pub struct Slip {
     core: SlipCore,
 }
@@ -121,12 +121,7 @@ impl Slip {
         vbytes
     }
 
-    pub fn on_chain_reorganization(
-        &self,
-        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
-        _lc: bool,
-        slip_value: u64,
-    ) {
+    pub fn on_chain_reorganization(&self, utxoset: &mut UtxoSet, _lc: bool, slip_value: u64) {
         let slip_key = self.get_utxoset_key();
         utxoset.entry(slip_key).or_insert(slip_value);
     }

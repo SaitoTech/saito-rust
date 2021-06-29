@@ -3,27 +3,35 @@ use crate::blockring::BlockRing;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::storage::Storage;
 use crate::time::create_timestamp;
+use crate::wallet::Wallet;
+
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use ahash::AHashMap;
 
+pub type UtxoSet = AHashMap<SaitoUTXOSetKey, u64>;
+
 #[derive(Debug)]
 pub struct Blockchain {
-    utxoset: AHashMap<SaitoUTXOSetKey, u64>,
+    utxoset: UtxoSet,
     blockring: BlockRing,
     blocks: AHashMap<SaitoHash, Block>,
+    wallet_lock: Arc<RwLock<Wallet>>,
 }
 
 impl Blockchain {
     #[allow(clippy::clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Blockchain {
             utxoset: AHashMap::new(),
             blockring: BlockRing::new(),
             blocks: AHashMap::new(),
+            wallet_lock,
         }
     }
 
-    pub fn add_block(&mut self, block: Block) {
+    pub async fn add_block(&mut self, block: Block) {
         println!(" ... add_block start: {:?}", create_timestamp());
 
         //
@@ -163,7 +171,7 @@ impl Blockchain {
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             println!(" ... finish validate: {:?}", create_timestamp());
             if does_new_chain_validate {
-                self.add_block_success(block_hash);
+                self.add_block_success(block_hash).await;
             } else {
                 self.add_block_failure();
             }
@@ -175,7 +183,7 @@ impl Blockchain {
         self.blockring.print_lc();
     }
 
-    pub fn add_block_success(&mut self, block_hash: SaitoHash) {
+    pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         //
         // TODO -
         //
@@ -185,8 +193,26 @@ impl Blockchain {
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
+        let block = self.blocks.get_mut(&block_hash).unwrap();
+        block.set_lc(true);
 
-        self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+        // add and remove slips from wallet
+        // self.add_slips_to_wallet(&block).await;
+        let mut wallet = self.wallet_lock.write().await;
+        let public_key = wallet.get_publickey();
+        block.get_transactions().iter().for_each(|tx| {
+            tx.get_inputs().iter().for_each(|slip| {
+                if slip.get_publickey() == public_key {
+                    wallet.remove_slip(slip)
+                };
+            });
+            tx.get_outputs().into_iter().for_each(|slip| {
+                if slip.get_publickey() == public_key {
+                    wallet.add_slip(*slip)
+                }
+            });
+        });
+
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
     }
@@ -248,14 +274,10 @@ impl Blockchain {
     ) -> bool {
         let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
-        //        let block = &mut self.blocks[&new_chain[current_wind_index]];
-
         //
         // validate the block
         //
-        let does_block_validate = block.validate();
-
-        if does_block_validate {
+        if block.validate() {
             block.on_chain_reorganization(&mut self.utxoset, true);
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
