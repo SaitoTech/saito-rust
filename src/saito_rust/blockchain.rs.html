@@ -322,11 +322,6 @@
 <span id="319">319</span>
 <span id="320">320</span>
 <span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">blockring</span>::<span class="ident">BlockRing</span>;
@@ -593,7 +588,7 @@
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
 
-            <span class="kw">return</span> <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_wind_index</span> <span class="op">+</span> <span class="number">1</span>, <span class="bool-val">false</span>);
+            <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_wind_index</span> <span class="op">+</span> <span class="number">1</span>, <span class="bool-val">false</span>)
         } <span class="kw">else</span> {
             <span class="comment">//</span>
             <span class="comment">// tough luck, go back to the old chain</span>
@@ -612,18 +607,13 @@
                 <span class="comment">//</span>
                 <span class="comment">// true -&gt; force -&gt; we had issues, is failure</span>
                 <span class="comment">//</span>
-                <span class="kw">return</span> <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">old_chain</span>, <span class="ident">new_chain</span>, <span class="number">0</span>, <span class="bool-val">true</span>);
+                <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">old_chain</span>, <span class="ident">new_chain</span>, <span class="number">0</span>, <span class="bool-val">true</span>)
             } <span class="kw">else</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chain_to_unwind</span>: <span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
-                <span class="kw">for</span> <span class="ident">hash</span> <span class="kw">in</span> <span class="ident">new_chain</span>.<span class="ident">into_iter</span>().<span class="ident">skip</span>(<span class="ident">current_wind_index</span>) {
+                <span class="kw">for</span> <span class="ident">hash</span> <span class="kw">in</span> <span class="ident">new_chain</span>.<span class="ident">iter</span>().<span class="ident">skip</span>(<span class="ident">current_wind_index</span>) {
                     <span class="ident">chain_to_unwind</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">hash</span>);
                 }
-                <span class="self">self</span>.<span class="ident">unwind_chain</span>(
-                    <span class="ident">old_chain</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">chain_to_unwind</span>,
-                    <span class="ident">chain_to_unwind</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>,
-                    <span class="bool-val">true</span>,
-                )
+                <span class="self">self</span>.<span class="ident">unwind_chain</span>(<span class="ident">old_chain</span>, <span class="kw-2">&amp;</span><span class="ident">chain_to_unwind</span>, <span class="ident">chain_to_unwind</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">true</span>)
             }
         }
     }
@@ -645,12 +635,12 @@
             <span class="comment">//</span>
             <span class="comment">// start winding new chain</span>
             <span class="comment">//</span>
-            <span class="kw">return</span> <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="number">0</span>, <span class="ident">wind_failure</span>);
+            <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="number">0</span>, <span class="ident">wind_failure</span>)
         } <span class="kw">else</span> {
             <span class="comment">//</span>
             <span class="comment">// continue unwinding</span>
             <span class="comment">//</span>
-            <span class="kw">return</span> <span class="self">self</span>.<span class="ident">unwind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_unwind_index</span> <span class="op">-</span> <span class="number">1</span>, <span class="ident">wind_failure</span>);
+            <span class="self">self</span>.<span class="ident">unwind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_unwind_index</span> <span class="op">-</span> <span class="number">1</span>, <span class="ident">wind_failure</span>)
         }
     }
 }
