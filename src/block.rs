@@ -199,7 +199,7 @@ impl Block {
     // id -- it exists so each block will still have a unique hash
     // for blockchain functions.
     //
-    pub fn generate_hash(&mut self) -> SaitoHash {
+    pub fn generate_hash(&self) -> SaitoHash {
         //
         // fastest known way that isn't bincode ??
         //
