@@ -13,8 +13,8 @@ impl Wallet {
     pub fn new() -> Self {
         let (publickey, privatekey) = generate_keys();
         Wallet {
-            publickey: publickey,
-            privatekey: privatekey,
+            publickey,
+            privatekey,
         }
     }
 
