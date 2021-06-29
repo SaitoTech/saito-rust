@@ -322,10 +322,15 @@
 <span id="319">319</span>
 <span id="320">320</span>
 <span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">block</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">blockring</span>::<span class="ident">BlockRing</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoUTXOSetKey</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">storage</span>::<span class="ident">Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">time</span>::<span class="ident">create_timestamp</span>;
 
 <span class="kw">use</span> <span class="ident">ahash</span>::<span class="ident">AHashMap</span>;
@@ -509,7 +514,10 @@
         <span class="comment">// manually checked that the entry exists in order to pull</span>
         <span class="comment">// this trick. we did this check before validating.</span>
         <span class="comment">//</span>
+
         <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>().<span class="ident">set_lc</span>(<span class="bool-val">true</span>);
+        <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage</span>::<span class="ident">new</span>();
+        <span class="ident">storage</span>.<span class="ident">write_block_to_disk</span>(<span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>());
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_block_failure</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {}
 

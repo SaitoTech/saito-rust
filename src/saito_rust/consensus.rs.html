@@ -102,8 +102,11 @@
 <span id="99"> 99</span>
 <span id="100">100</span>
 <span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">crypto</span>::<span class="ident">SaitoHash</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">storage</span>::<span class="ident">Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">wallet</span>::<span class="ident">Wallet</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">blockchain</span>::<span class="ident">Blockchain</span>, <span class="ident">mempool</span>::<span class="ident">Mempool</span>, <span class="ident">transaction</span>::<span class="ident">Transaction</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">future</span>::<span class="ident">Future</span>, <span class="ident">sync</span>::<span class="ident">Arc</span>};
@@ -176,7 +179,8 @@
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Wallet</span>::<span class="ident">new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Blockchain</span>::<span class="ident">new</span>()));
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">Mempool</span>::<span class="ident">new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-
+        <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage</span>::<span class="ident">new</span>();
+        <span class="ident">storage</span>.<span class="ident">load_blocks_from_disk</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
         <span class="ident">tokio</span>::<span class="macro">select</span><span class="macro">!</span> {
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span>::<span class="ident">mempool</span>::<span class="ident">run</span>(
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),

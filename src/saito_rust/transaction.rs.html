@@ -392,6 +392,10 @@
 <span id="389">389</span>
 <span id="390">390</span>
 <span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryInto</span>;
 
@@ -407,6 +411,8 @@
 <span class="kw">use</span> <span class="ident">enum_variant_count_derive</span>::<span class="ident">TryFromByte</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryFrom</span>;
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TRANSACTION_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">85</span>;
 
 <span class="doccomment">/// TransactionType is a human-readable indicator of the type of</span>
 <span class="doccomment">/// transaction such as a normal user-initiated transaction, a</span>
@@ -571,7 +577,7 @@
     <span class="doccomment">/// [len of inputs - 4 bytes - u32]</span>
     <span class="doccomment">/// [len of outputs - 4 bytes - u32]</span>
     <span class="doccomment">/// [len of message - 4 bytes - u32]</span>
-    <span class="doccomment">/// [signature - 64 bytes - SECP256K1]</span>
+    <span class="doccomment">/// [signature - 64 bytes - Secp25k1 sig]</span>
     <span class="doccomment">/// [timestamp - 8 bytes - u64]</span>
     <span class="doccomment">/// [transaction type - 1 byte]</span>
     <span class="doccomment">/// [input][input][input]...</span>
@@ -585,7 +591,7 @@
 
         <span class="kw">let</span> <span class="ident">timestamp</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64</span>::<span class="ident">from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">76</span>..<span class="number">84</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
         <span class="kw">let</span> <span class="ident">transaction_type</span>: <span class="ident">TransactionType</span> <span class="op">=</span> <span class="ident">TransactionType</span>::<span class="ident">try_from</span>(<span class="ident">bytes</span>[<span class="number">84</span>]).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">start_of_inputs</span> <span class="op">=</span> <span class="number">85</span>;
+        <span class="kw">let</span> <span class="ident">start_of_inputs</span> <span class="op">=</span> <span class="ident">TRANSACTION_SIZE</span>;
         <span class="kw">let</span> <span class="ident">start_of_outputs</span> <span class="op">=</span> <span class="ident">start_of_inputs</span> <span class="op">+</span> <span class="ident">inputs_len</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>;
         <span class="kw">let</span> <span class="ident">start_of_message</span> <span class="op">=</span> <span class="ident">start_of_outputs</span> <span class="op">+</span> <span class="ident">outputs_len</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[];
@@ -619,7 +625,7 @@
     <span class="doccomment">/// [len of inputs - 4 bytes - u32]</span>
     <span class="doccomment">/// [len of outputs - 4 bytes - u32]</span>
     <span class="doccomment">/// [len of message - 4 bytes - u32]</span>
-    <span class="doccomment">/// [signature - 64 bytes - SECP256K1]</span>
+    <span class="doccomment">/// [signature - 64 bytes - Secp25k1 sig]</span>
     <span class="doccomment">/// [timestamp - 8 bytes - u64]</span>
     <span class="doccomment">/// [transaction type - 1 byte]</span>
     <span class="doccomment">/// [input][input][input]...</span>
@@ -710,6 +716,8 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
+    <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">slip</span>::<span class="ident">SlipCore</span>;
+
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -769,17 +777,17 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">serialize_for_net_test</span>() {
+        <span class="kw">let</span> <span class="ident">mock_input</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">new</span>(<span class="ident">SlipCore</span>::<span class="ident">default</span>());
+        <span class="kw">let</span> <span class="ident">mock_output</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">new</span>(<span class="ident">SlipCore</span>::<span class="ident">default</span>());
         <span class="kw">let</span> <span class="ident">mock_tx</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">new</span>(<span class="ident">TransactionCore</span>::<span class="ident">new</span>(
             <span class="ident">create_timestamp</span>(),
-            <span class="macro">vec</span><span class="macro">!</span>[],
-            <span class="macro">vec</span><span class="macro">!</span>[],
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">mock_input</span>],
+            <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">mock_output</span>],
             <span class="macro">vec</span><span class="macro">!</span>[<span class="number">104</span>, <span class="number">101</span>, <span class="number">108</span>, <span class="number">108</span>, <span class="number">111</span>],
             <span class="ident">TransactionType</span>::<span class="ident">Normal</span>,
             [<span class="number">1</span>; <span class="number">64</span>],
         ));
         <span class="kw">let</span> <span class="ident">serialized_tx</span> <span class="op">=</span> <span class="ident">mock_tx</span>.<span class="ident">serialize_for_net</span>();
-        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;LENGHT: {}&quot;</span>, <span class="ident">serialized_tx</span>.<span class="ident">len</span>());
-        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">serialized_tx</span>);
         <span class="kw">let</span> <span class="ident">deserialized_tx</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">deserialize_from_net</span>(<span class="ident">serialized_tx</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">mock_tx</span>, <span class="ident">deserialized_tx</span>);
     }
