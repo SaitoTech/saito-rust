@@ -242,7 +242,7 @@ impl Block {
         for tx in &self.transactions {
             tx.on_chain_reorganization(utxoset, longest_chain, self.get_id());
         }
-        return true;
+        true
     }
 
     pub fn validate(&mut self) -> bool {
