@@ -29,6 +29,7 @@ pub mod crypto;
 pub mod mempool;
 pub mod network;
 pub mod slip;
+pub mod storage;
 pub mod time;
 pub mod transaction;
 pub mod wallet;

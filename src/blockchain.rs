@@ -1,6 +1,7 @@
 use crate::block::Block;
 use crate::blockring::BlockRing;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
+use crate::storage::Storage;
 use crate::time::create_timestamp;
 
 use ahash::AHashMap;
@@ -184,7 +185,10 @@ impl Blockchain {
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
+
         self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+        let storage = Storage::new();
+        storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
     }
     pub fn add_block_failure(&mut self) {}
 
