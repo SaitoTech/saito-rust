@@ -563,7 +563,7 @@
         <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span> {
             <span class="ident">tx</span>.<span class="ident">on_chain_reorganization</span>(<span class="ident">utxoset</span>, <span class="ident">longest_chain</span>, <span class="self">self</span>.<span class="ident">get_id</span>());
         }
-        <span class="kw">return</span> <span class="bool-val">true</span>;
+        <span class="bool-val">true</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -573,7 +573,7 @@
         <span class="comment">// generate the tx_sigs</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">_transactions_valid</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">par_iter_mut</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>());
-        <span class="kw">return</span> <span class="bool-val">true</span>;
+        <span class="bool-val">true</span>
     }
 }
 

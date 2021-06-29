@@ -58,8 +58,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> (<span class="ident">publickey</span>, <span class="ident">privatekey</span>) <span class="op">=</span> <span class="ident">generate_keys</span>();
         <span class="ident">Wallet</span> {
-            <span class="ident">publickey</span>: <span class="ident">publickey</span>,
-            <span class="ident">privatekey</span>: <span class="ident">privatekey</span>,
+            <span class="ident">publickey</span>,
+            <span class="ident">privatekey</span>,
         }
     }
 
