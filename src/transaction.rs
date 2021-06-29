@@ -278,7 +278,7 @@ impl Transaction {
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         let sig: SaitoSignature = self.get_signature();
         let mut publickey: SaitoPublicKey = [0; 33];
-        if self.core.inputs.len() > 0 {
+        if !self.core.inputs.is_empty() {
             publickey = self.core.inputs[0].get_publickey();
         }
 
@@ -303,7 +303,7 @@ impl Transaction {
                 return false;
             }
         }
-        return true;
+        true
     }
 }
 

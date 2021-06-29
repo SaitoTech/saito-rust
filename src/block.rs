@@ -258,7 +258,7 @@ impl Block {
             return false;
         }
 
-        return true;
+        true
     }
 }
 

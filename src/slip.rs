@@ -136,11 +136,11 @@ impl Slip {
         res.extend(&self.get_publickey());
         res.extend(&self.get_uuid());
         res.extend(&self.get_amount().to_be_bytes());
-        return res;
+        res
     }
 
     pub fn validate(&self) -> bool {
-        return true;
+        true
     }
     pub fn deserialize_from_net(bytes: Vec<u8>) -> Slip {
         let tx_id: SaitoPublicKey = bytes[..33].try_into().unwrap();

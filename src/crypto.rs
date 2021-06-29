@@ -26,7 +26,7 @@ pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
     for i in 0..32 {
         secret_bytes[i] = secret_key[i];
     }
-    return (public_key.serialize(), secret_bytes);
+    (public_key.serialize(), secret_bytes)
 }
 
 pub fn hash(data: &Vec<u8>) -> SaitoHash {
@@ -46,7 +46,7 @@ pub fn sign(message_bytes: &[u8], privatekey: SaitoPrivateKey) -> SaitoSignature
     let msg = Message::from_slice(message_bytes).unwrap();
     let secret = SecretKey::from_slice(&privatekey).unwrap();
     let sig = SECP256K1.sign(&msg, &secret);
-    return sig.serialize_compact();
+    sig.serialize_compact()
 }
 
 pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> bool {
