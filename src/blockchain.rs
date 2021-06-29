@@ -292,12 +292,7 @@ impl Blockchain {
                 for hash in new_chain.into_iter().skip(current_wind_index) {
                     chain_to_unwind.push(*hash);
                 }
-                self.unwind_chain(
-                    old_chain,
-                    &chain_to_unwind,
-                    chain_to_unwind.len() - 1,
-                    true,
-                )
+                self.unwind_chain(old_chain, &chain_to_unwind, chain_to_unwind.len() - 1, true)
             }
         }
     }

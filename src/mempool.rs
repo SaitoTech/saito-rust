@@ -181,7 +181,7 @@ pub async fn run(
 mod tests {
 
     use super::*;
-    use crate::{wallet::Wallet, block::Block};
+    use crate::{block::Block, wallet::Wallet};
 
     use std::sync::Arc;
     use tokio::sync::RwLock;
