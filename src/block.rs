@@ -230,7 +230,7 @@ impl Block {
     /// [transaction][transaction][transaction]...
     pub fn serialize_for_net(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend((self.transactions.iter().len() as u32).to_be_bytes());
+        vbytes.extend(&(self.transactions.iter().len() as u32).to_be_bytes());
         vbytes.extend(&self.core.id.to_be_bytes());
         vbytes.extend(&self.core.timestamp.to_be_bytes());
         vbytes.extend(&self.core.previous_block_hash);

@@ -37,7 +37,7 @@ impl Mempool {
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Mempool {
             blocks: VecDeque::new(),
-            wallet_lock: wallet_lock,
+            wallet_lock,
         }
     }
 
