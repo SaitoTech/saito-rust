@@ -1,12 +1,14 @@
 use crate::{
-    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    crypto::{
+        hash, MerkleTree, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey, SHA256,
+    },
     time::create_timestamp,
     transaction::Transaction,
 };
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 
-extern crate rayon;
 use rayon::prelude::*;
 
 /// BlockCore is a self-contained object containing only the minimum
@@ -98,6 +100,10 @@ impl Block {
         }
     }
 
+    pub fn get_transactions(&self) -> &Vec<Transaction> {
+        &self.transactions
+    }
+
     pub fn get_hash(&self) -> SaitoHash {
         self.hash
     }
@@ -140,6 +146,10 @@ impl Block {
 
     pub fn get_difficulty(&self) -> u64 {
         self.core.difficulty
+    }
+
+    pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
+        self.transactions = transactions.to_vec();
     }
 
     pub fn set_id(&mut self, id: u64) {
@@ -211,8 +221,17 @@ impl Block {
         hash(&vbytes)
     }
 
-    pub fn generate_merkle_root(&mut self) -> SaitoHash {
-        [0; 32]
+    pub fn generate_merkle_root(&self) -> SaitoHash {
+        let tx_sig_hashes: Vec<[u8; 32]> = self
+            .transactions
+            .iter()
+            .map(|tx| tx.get_hash_for_signature())
+            .collect();
+        let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
+        mt.root_hash()
+            .clone()
+            .try_into()
+            .expect("Faiiled to unwrao merkle root")
     }
 
     pub fn on_chain_reorganization(
@@ -233,6 +252,12 @@ impl Block {
         // generate the tx_sigs
         //
         let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate());
+
+        // Verify merkle root
+        if self.core.merkle_root != self.generate_merkle_root() {
+            return false;
+        }
+
         true
     }
 }
@@ -267,7 +292,7 @@ impl Into<Vec<u8>> for Block {
 
 mod tests {
     use super::*;
-    use crate::time::create_timestamp;
+    use crate::{time::create_timestamp, wallet::Wallet};
 
     #[test]
     fn block_core_new_test() {
@@ -332,5 +357,24 @@ mod tests {
         assert_eq!(block.core.treasury, 0);
         assert_eq!(block.core.burnfee, 0);
         assert_eq!(block.core.difficulty, 0);
+    }
+
+    #[test]
+    fn block_merkle_root_test() {
+        let mut block = Block::default();
+        let wallet = Wallet::new();
+
+        let mut transactions = (0..5)
+            .into_iter()
+            .map(|_| {
+                let mut transaction = Transaction::default();
+                transaction.sign(wallet.get_privatekey());
+                transaction
+            })
+            .collect();
+
+        block.set_transactions(&mut transactions);
+
+        assert!(block.generate_merkle_root().len() == 32);
     }
 }

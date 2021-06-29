@@ -263,7 +263,7 @@ impl Blockchain {
                 return true;
             }
 
-            return self.wind_chain(new_chain, old_chain, current_wind_index + 1, false);
+            self.wind_chain(new_chain, old_chain, current_wind_index + 1, false)
         } else {
             //
             // tough luck, go back to the old chain
@@ -282,18 +282,13 @@ impl Blockchain {
                 //
                 // true -> force -> we had issues, is failure
                 //
-                return self.wind_chain(old_chain, new_chain, 0, true);
+                self.wind_chain(old_chain, new_chain, 0, true)
             } else {
                 let mut chain_to_unwind: Vec<[u8; 32]> = vec![];
-                for hash in new_chain.into_iter().skip(current_wind_index) {
+                for hash in new_chain.iter().skip(current_wind_index) {
                     chain_to_unwind.push(*hash);
                 }
-                self.unwind_chain(
-                    old_chain,
-                    &chain_to_unwind,
-                    chain_to_unwind.len() - 1,
-                    true,
-                )
+                self.unwind_chain(old_chain, &chain_to_unwind, chain_to_unwind.len() - 1, true)
             }
         }
     }
@@ -315,12 +310,12 @@ impl Blockchain {
             //
             // start winding new chain
             //
-            return self.wind_chain(new_chain, old_chain, 0, wind_failure);
+            self.wind_chain(new_chain, old_chain, 0, wind_failure)
         } else {
             //
             // continue unwinding
             //
-            return self.unwind_chain(new_chain, old_chain, current_unwind_index - 1, wind_failure);
+            self.unwind_chain(new_chain, old_chain, current_unwind_index - 1, wind_failure)
         }
     }
 }

@@ -1,6 +1,9 @@
 use base58::ToBase58;
 use blake3::{join::RayonJoin, Hasher};
+use ring::digest::{Algorithm, SHA256 as sha256};
 pub use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
+pub static SHA256: &Algorithm = &sha256;
+pub use merkle::MerkleTree;
 
 pub type SaitoHash = [u8; 32];
 pub type SaitoUTXOSetKey = Vec<u8>;
@@ -23,7 +26,7 @@ pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
     for i in 0..32 {
         secret_bytes[i] = secret_key[i];
     }
-    return (public_key.serialize(), secret_bytes);
+    (public_key.serialize(), secret_bytes)
 }
 
 pub fn hash(data: &Vec<u8>) -> SaitoHash {
@@ -43,7 +46,7 @@ pub fn sign(message_bytes: &[u8], privatekey: SaitoPrivateKey) -> SaitoSignature
     let msg = Message::from_slice(message_bytes).unwrap();
     let secret = SecretKey::from_slice(&privatekey).unwrap();
     let sig = SECP256K1.sign(&msg, &secret);
-    return sig.serialize_compact();
+    sig.serialize_compact()
 }
 
 pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> bool {

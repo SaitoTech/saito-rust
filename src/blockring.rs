@@ -94,6 +94,7 @@ pub struct BlockRing {
 
 impl BlockRing {
     /// Create new `BlockRing`
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         //
         // initialize the block-ring
@@ -154,9 +155,9 @@ impl BlockRing {
     }
 
     pub fn get_longest_chain_block_hash(&self) -> SaitoHash {
-        if self.block_ring_lc_pos == usize::MAX {
-            [0; 32]
-        } else if self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX {
+        if self.block_ring_lc_pos == usize::MAX
+            || self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX
+        {
             [0; 32]
         } else {
             let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
@@ -169,10 +170,10 @@ impl BlockRing {
     }
 
     pub fn get_longest_chain_block_id(&self) -> u64 {
-        if self.block_ring_lc_pos == usize::MAX {
-            return 0;
-        } else if self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX {
-            return 0;
+        if self.block_ring_lc_pos == usize::MAX
+            || self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX
+        {
+            0
         } else {
             let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
             if lc_pos != usize::MAX {

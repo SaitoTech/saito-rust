@@ -21,6 +21,8 @@ secp256k1 = { version = "0.20.3", features = ["global-context", "serde"] }
 blake3 = { version = "0.3.8", features = ["rayon"] }
 base58 = "0.1.0"
 hex = "0.4.3"
+merkle = "1.11.0"
+ring = "0.16.20"
 jemallocator = "0.1.9"
 jemalloc-ctl = "0.2.0"
 lazy_static = "1.4.0"

@@ -125,6 +125,10 @@ impl Transaction {
         self.core.signature
     }
 
+    pub fn get_hash_for_signature(&self) -> [u8; 32] {
+        self.hash_for_signature
+    }
+
     pub fn set_timestamp(&mut self, timestamp: u64) {
         self.core.timestamp = timestamp;
     }
@@ -274,7 +278,7 @@ impl Transaction {
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         let sig: SaitoSignature = self.get_signature();
         let mut publickey: SaitoPublicKey = [0; 33];
-        if self.core.inputs.len() > 0 {
+        if !self.core.inputs.is_empty() {
             publickey = self.core.inputs[0].get_publickey();
         }
 
@@ -299,7 +303,7 @@ impl Transaction {
                 return false;
             }
         }
-        return true;
+        true
     }
 }
 
