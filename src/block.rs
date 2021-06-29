@@ -325,7 +325,7 @@ impl Block {
         for tx in &self.transactions {
             tx.on_chain_reorganization(utxoset, longest_chain, self.get_id());
         }
-        return true;
+        true
     }
 
     pub fn validate(&mut self) -> bool {
@@ -335,7 +335,7 @@ impl Block {
         // generate the tx_sigs
         //
         let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate());
-        return true;
+        true
     }
 }
 

@@ -20,6 +20,7 @@ pub struct RingItem {
 }
 
 impl RingItem {
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             lc_pos: usize::MAX,
@@ -29,10 +30,7 @@ impl RingItem {
     }
 
     pub fn contains_block_hash(&mut self, hash: SaitoHash) -> bool {
-        if self.block_hashes.iter().any(|&i| i == hash) {
-            return true;
-        }
-        return false;
+        self.block_hashes.iter().any(|&i| i == hash)
     }
 
     pub fn add_block(&mut self, block_id: u64, hash: SaitoHash) {
@@ -113,7 +111,7 @@ impl BlockRing {
 
     pub fn print_lc(&self) {
         for i in 0..EPOCH_LENGTH {
-            if self.block_ring[(i as usize)].block_hashes.len() > 0 {
+            if !self.block_ring[(i as usize)].block_hashes.is_empty() {
                 println!(
                     "Block {:?}: {:?}",
                     i,
@@ -129,7 +127,7 @@ impl BlockRing {
         block_hash: SaitoHash,
     ) -> bool {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
-        return self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash);
+        self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash)
     }
 
     pub fn add_block(&mut self, block: &Block) {
@@ -149,46 +147,45 @@ impl BlockRing {
         let insert_pos = id % RING_BUFFER_LENGTH;
         let lc_pos = self.block_ring[(insert_pos as usize)].lc_pos;
         if lc_pos != usize::MAX {
-            return self.block_ring[(insert_pos as usize)].block_hashes[lc_pos];
+            self.block_ring[(insert_pos as usize)].block_hashes[lc_pos]
         } else {
-            return [0; 32];
+            [0; 32]
         }
     }
 
     pub fn get_longest_chain_block_hash(&self) -> SaitoHash {
         if self.block_ring_lc_pos == usize::MAX {
-            return [0; 32];
-        }
-        if self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX {
-            return [0; 32];
-        }
-        let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
-        if lc_pos != usize::MAX {
-            return self.block_ring[self.block_ring_lc_pos].block_hashes[lc_pos];
+            [0; 32]
+        } else if self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX {
+            [0; 32]
         } else {
-            return [0; 32];
+            let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
+            if lc_pos != usize::MAX {
+                self.block_ring[self.block_ring_lc_pos].block_hashes[lc_pos]
+            } else {
+                [0; 32]
+            }
         }
     }
 
     pub fn get_longest_chain_block_id(&self) -> u64 {
         if self.block_ring_lc_pos == usize::MAX {
             return 0;
-        }
-        if self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX {
+        } else if self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX {
             return 0;
-        }
-        let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
-        if lc_pos != usize::MAX {
-            return self.block_ring[self.block_ring_lc_pos].block_ids[lc_pos];
         } else {
-            return 0;
+            let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
+            if lc_pos != usize::MAX {
+                self.block_ring[self.block_ring_lc_pos].block_ids[lc_pos]
+            } else {
+                0
+            }
         }
     }
 }
 
 #[cfg(test)]
 mod test {
-
     #[test]
     fn longest_chain_queue_test() {
         assert_eq!(1, 1);
