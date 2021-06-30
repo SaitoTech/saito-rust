@@ -210,7 +210,6 @@
 <span id="207">207</span>
 <span id="208">208</span>
 <span id="209">209</span>
-<span id="210">210</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block</span>::<span class="ident">Block</span>,
@@ -282,8 +281,7 @@
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
 
         <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
-
-<span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;creating tx {:?}&quot;</span>, <span class="ident">_i</span>);
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;creating tx {:?}&quot;</span>, <span class="ident">_i</span>);
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">default</span>();
 

@@ -544,10 +544,6 @@
 <span id="541">541</span>
 <span id="542">542</span>
 <span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::<span class="ident">Blockchain</span>,
@@ -578,7 +574,6 @@
     <span class="ident">burnfee</span>: <span class="ident">u64</span>,
     <span class="ident">difficulty</span>: <span class="ident">u64</span>,
 }
-
 
 <span class="kw">impl</span> <span class="ident">BlockCore</span> {
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">too_many_arguments</span>)]</span>
@@ -865,11 +860,14 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_merkle_root</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
-        <span class="kw">let</span> <span class="ident">tx_sig_hashes</span>: <span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
+        <span class="kw">let</span> <span class="ident">tx_sig_hashes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">transactions</span>
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">get_hash_for_signature</span>())
             .<span class="ident">collect</span>();
+
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;merkle_root_hashes: {:?}&quot;</span>, <span class="ident">tx_sig_hashes</span>);
+
         <span class="kw">let</span> <span class="ident">mt</span> <span class="op">=</span> <span class="ident">MerkleTree</span>::<span class="ident">from_vec</span>(<span class="ident">SHA256</span>, <span class="ident">tx_sig_hashes</span>);
         <span class="ident">mt</span>.<span class="ident">root_hash</span>()
             .<span class="ident">clone</span>()
@@ -888,48 +886,42 @@
         <span class="bool-val">true</span>
     }
 
-
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_pre_calculations</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
-
-        <span class="kw">let</span> <span class="ident">_transactions_valid</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">par_iter_mut</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate_pre_calculations</span>());
-
+        <span class="kw">let</span> <span class="ident">_transactions_valid</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>
+            .<span class="ident">transactions</span>
+            .<span class="ident">par_iter_mut</span>()
+            .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate_pre_calculations</span>());
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blockchain</span> : <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-
-	<span class="comment">//</span>
-	<span class="comment">// validate the burn fee</span>
-	<span class="comment">//</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blockchain</span>: <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="comment">//</span>
+        <span class="comment">// validate the burn fee</span>
+        <span class="comment">//</span>
         {
             <span class="kw">let</span> <span class="ident">previous_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_previous_block_hash</span>());
-	    <span class="kw">if</span> <span class="op">!</span><span class="ident">previous_block</span>.<span class="ident">is_none</span>() {
-<span class="comment">//		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );</span>
-<span class="comment">//		let previous_burnfee = previous_block.unwrap().get_burnfee();</span>
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">previous_block</span>.<span class="ident">is_none</span>() {
+                <span class="comment">//		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );</span>
+                <span class="comment">//		let previous_burnfee = previous_block.unwrap().get_burnfee();</span>
+            }
+        }
 
-	    }
-	}
-
-      <span class="comment">//</span>
-      <span class="comment">// verify merkle root</span>
-      <span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// verify merkle root</span>
+        <span class="comment">//</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">merkle_root</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_merkle_root</span>() {
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
+        <span class="comment">//</span>
+        <span class="comment">// validate fee-transaction</span>
+        <span class="comment">//</span>
 
-	<span class="comment">//</span>
-	<span class="comment">// validate fee-transaction </span>
-	<span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// validate miner/staker outbound-payments</span>
+        <span class="comment">//</span>
 
-
-
-	<span class="comment">//</span>
-	<span class="comment">// validate miner/staker outbound-payments</span>
-	<span class="comment">//</span>
-
-
-	<span class="comment">//</span>
-	<span class="comment">// VALIDATE transactions</span>
-	<span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// VALIDATE transactions</span>
+        <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">_transactions_valid</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">par_iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>());
         <span class="kw">return</span> <span class="bool-val">true</span>;
     }

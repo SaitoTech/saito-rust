@@ -437,8 +437,6 @@
 <span id="434">434</span>
 <span id="435">435</span>
 <span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">convert</span>::<span class="ident">TryInto</span>;
 
@@ -547,9 +545,7 @@
         <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span>.<span class="ident">push</span>(<span class="ident">output_slip</span>);
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">calculate_work</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span> : <span class="ident">Block</span>) {
-
-    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">calculate_work</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {}
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_timestamp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">timestamp</span>
@@ -722,17 +718,15 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_pre_calculations</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-
-	<span class="comment">//</span>
-	<span class="comment">// and save the hash_for_signature so we can use it later...</span>
-	<span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// and save the hash_for_signature so we can use it later...</span>
+        <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">serialize_for_signature</span>());
-	<span class="self">self</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
+        <span class="self">self</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
 
-	<span class="bool-val">true</span>
+        <span class="bool-val">true</span>
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-
         <span class="comment">//</span>
         <span class="comment">// VALIDATE signature valid</span>
         <span class="comment">//</span>
@@ -748,39 +742,41 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-	<span class="comment">//</span>
-	<span class="comment">// VALIDATE min one sender and receiver</span>
-	<span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// VALIDATE min one sender and receiver</span>
+        <span class="comment">//</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_inputs</span>().<span class="ident">len</span>() <span class="op">&lt;</span> <span class="number">1</span> {
-	    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 582039: less than 1 input in transaction&quot;</span>);
-	    <span class="kw">return</span> <span class="bool-val">false</span>
-	}
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 582039: less than 1 input in transaction&quot;</span>);
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_outputs</span>().<span class="ident">len</span>() <span class="op">&lt;</span> <span class="number">1</span> {
-	    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 582039: less than 1 output in transaction&quot;</span>);
-	    <span class="kw">return</span> <span class="bool-val">false</span> 
-	}
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 582039: less than 1 output in transaction&quot;</span>);
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
 
-
-	<span class="comment">//</span>
-	<span class="comment">// VALIDATE no negative payments</span>
-	<span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// VALIDATE no negative payments</span>
+        <span class="comment">//</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_in</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_out</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">inputs</span> { <span class="ident">nolan_in</span> <span class="op">+</span><span class="op">=</span> <span class="ident">input</span>.<span class="ident">get_amount</span>(); }
-        <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span> { <span class="ident">nolan_out</span> <span class="op">+</span><span class="op">=</span> <span class="ident">output</span>.<span class="ident">get_amount</span>(); }
-	<span class="kw">if</span> <span class="ident">nolan_in</span> <span class="op">&lt;</span> <span class="number">0</span> {
-	    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 672939: negative payment in transaction from slip&quot;</span>);
-	    <span class="kw">return</span> <span class="bool-val">false</span>;
-	}
-	<span class="kw">if</span> <span class="ident">nolan_out</span> <span class="op">&lt;</span> <span class="number">0</span> {
-	    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 672940: negative payment in transaction to slip&quot;</span>);
-	    <span class="kw">return</span> <span class="bool-val">false</span>;
-	}
-	<span class="kw">if</span> <span class="ident">nolan_out</span> <span class="op">&gt;</span> <span class="ident">nolan_in</span> {
-	    <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 672941: transaction spends more than it has available&quot;</span>);
-	    <span class="kw">return</span> <span class="bool-val">false</span>;
-	}
-
+        <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">inputs</span> {
+            <span class="ident">nolan_in</span> <span class="op">+</span><span class="op">=</span> <span class="ident">input</span>.<span class="ident">get_amount</span>();
+        }
+        <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span> {
+            <span class="ident">nolan_out</span> <span class="op">+</span><span class="op">=</span> <span class="ident">output</span>.<span class="ident">get_amount</span>();
+        }
+        <span class="kw">if</span> <span class="ident">nolan_in</span> <span class="op">&lt;</span> <span class="number">0</span> {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 672939: negative payment in transaction from slip&quot;</span>);
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+        <span class="kw">if</span> <span class="ident">nolan_out</span> <span class="op">&lt;</span> <span class="number">0</span> {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 672940: negative payment in transaction to slip&quot;</span>);
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+        <span class="kw">if</span> <span class="ident">nolan_out</span> <span class="op">&gt;</span> <span class="ident">nolan_in</span> {
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;ERROR 672941: transaction spends more than it has available&quot;</span>);
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
 
         <span class="comment">//</span>
         <span class="comment">// VALIDATE UTXO inputs</span>
