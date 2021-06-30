@@ -282,6 +282,8 @@ impl Transaction {
         let mut publickey: SaitoPublicKey = [0; 33];
         if !self.core.inputs.is_empty() {
             publickey = self.core.inputs[0].get_publickey();
+        } else {
+            panic!("transaction must have at least 1 input");
         }
 
         if !verify(&hash_for_signature, sig, publickey) {

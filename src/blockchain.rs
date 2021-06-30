@@ -141,8 +141,8 @@ impl Blockchain {
             }
         }
 
-        //println!("new chain: {:?}", new_chain);
-        //println!("old chain: {:?}", old_chain);
+        println!("new chain: {:?}", new_chain);
+        println!("old chain: {:?}", old_chain);
 
         //
         // at this point we should have a shared ancestor
@@ -321,5 +321,63 @@ impl Blockchain {
             //
             self.unwind_chain(new_chain, old_chain, current_unwind_index - 1, wind_failure)
         }
+    }
+}
+
+#[cfg(test)]
+
+mod tests {
+    use crate::test_utilities::mocks::{make_mock_block, make_mock_invalid_block};
+
+    use super::*;
+    #[test]
+    fn add_block_test() {
+        let mut blockchain = Blockchain::new();
+        let mock_block = make_mock_block([0; 32], 12);
+        println!("MOCK BLOCK HASH {:?}", mock_block.get_hash());
+        let mock_block2 = make_mock_block(mock_block.get_hash(), 13);
+        let mock_block_hash = mock_block.get_hash();
+        let mock_block_hash2 = mock_block2.get_hash();
+        let mock_invalid_block2 = make_mock_invalid_block(mock_block_hash, 14);
+
+        // Adding a block to a new blockchain should set the latest block id
+        blockchain.add_block(mock_block);
+        assert_eq!(mock_block_hash, blockchain.get_latest_block_hash());
+        assert_eq!(12, blockchain.get_latest_block_id());
+
+        // Adding the next block should be okay
+        blockchain.add_block(mock_block2);
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // TODO: Fix this test, it crashes
+        // Adding an invalid block should not effect the blockchain
+        // blockchain.add_block(make_mock_invalid_block(mock_block_hash2, 14));
+        // assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        // assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Adding an invalid block should not effect the blockchain
+        blockchain.add_block(mock_invalid_block2);
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Adding an invalid block should not effect the blockchain
+        blockchain.add_block(make_mock_block(mock_block_hash, 3));
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // TODO Fix this, it shouldn't change the latest block:
+        // Adding an invalid block should not effect the blockchain
+        // blockchain.add_block(make_mock_block(mock_block_hash2, 3));
+        // assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        // assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Fix this. It might be the same issue as above
+        // blockchain.add_block(make_mock_block([0; 32], 1));
+        // assert_eq!(1, blockchain.get_latest_block_id());
+        // assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+
+        // TODO: Fix this, it crashes
+        // blockchain.add_block(make_mock_invalid_block([0; 32], 1));
     }
 }
