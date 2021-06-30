@@ -25,6 +25,7 @@ impl Blockchain {
 
     pub fn add_block(&mut self, block: Block) {
         println!(" ... add_block start: {:?}", create_timestamp());
+        println!(" ... txs in block: {:?}", block.transactions.len());
 
         //
         // start by extracting some variables that we will use

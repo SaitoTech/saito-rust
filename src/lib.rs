@@ -27,6 +27,7 @@ pub mod blockring;
 pub mod consensus;
 pub mod crypto;
 pub mod mempool;
+pub mod merkle;
 pub mod network;
 pub mod slip;
 pub mod storage;
