@@ -38,10 +38,10 @@ impl RingItem {
         self.block_ids.push(block_id);
     }
 
-    pub fn on_chain_reorganization(&mut self, hash: SaitoHash, lc: bool) {
+    pub fn on_chain_reorganization(&mut self, hash: SaitoHash, lc: bool) -> bool {
         if !lc {
             self.lc_pos = usize::MAX;
-        } else {
+       } else {
             //
             // update new longest-chain
             //
@@ -54,7 +54,7 @@ impl RingItem {
 	    //
 	    // this hash does not exist
 	    //
-	    if self.block_ids.len() < self.lc_pos { return; }
+	    if self.block_ids.len() < self.lc_pos { return false; }
 
             //
             // remove any old indices
@@ -75,7 +75,10 @@ impl RingItem {
 
             self.block_hashes = new_block_hashes;
             self.block_ids = new_block_ids;
+
         }
+
+	true
     }
 }
 
@@ -141,12 +144,31 @@ impl BlockRing {
         self.block_ring[(insert_pos as usize)].add_block(block.get_id(), block.get_hash());
     }
 
-    pub fn on_chain_reorganization(&mut self, block_id: u64, hash: SaitoHash, lc: bool) {
+    pub fn on_chain_reorganization(&mut self, block_id: u64, hash: SaitoHash, lc: bool) -> bool {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
-        self.block_ring[(insert_pos as usize)].on_chain_reorganization(hash, lc);
+        if !self.block_ring[(insert_pos as usize)].on_chain_reorganization(hash, lc) { 
+	    return false;
+	}
         if lc {
             self.block_ring_lc_pos = insert_pos as usize;
-        }
+        } else {
+	    let mut previous_block_idx = self.block_ring_lc_pos-1;
+
+	    // reset to lc_pos to unknown
+	    self.block_ring_lc_pos = usize::MAX;
+
+	    // but try to find it
+	    if previous_block_idx < 0 { previous_block_idx = RING_BUFFER_LENGTH as usize - 1; }
+	    let previous_block_idx_lc_pos = self.block_ring[previous_block_idx as usize].lc_pos;
+	    if previous_block_idx_lc_pos != usize::MAX {
+	        if self.block_ring[previous_block_idx].block_ids.len() > previous_block_idx_lc_pos {
+	            if self.block_ring[previous_block_idx].block_ids[previous_block_idx_lc_pos] == block_id-1 {
+			self.block_ring_lc_pos = previous_block_idx;
+		    }
+		}
+	    }
+	}
+	true
     }
 
     pub fn get_longest_chain_block_hash_by_block_id(&self, id: u64) -> SaitoHash {
@@ -240,6 +262,13 @@ mod test {
 	blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
 
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
+	// reorg in the wrong location
+	blockring.on_chain_reorganization(532, block_5_2.get_hash(), false);
+        assert_eq!(blockring.get_longest_chain_block_id(), 0);
+
+	blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
+        assert_eq!(blockring.get_longest_chain_block_id(), 5);
+
 
     }
 }
