@@ -68,7 +68,7 @@ impl Mempool {
 
         let wallet = self.wallet_lock.read().await;
 
-        for _i in 0..10000 {
+        for _i in 0..10 {
 
 println!("creating tx {:?}", _i);
 

@@ -1,5 +1,6 @@
 use crate::{
     big_array::BigArray,
+    block::Block,
     crypto::{
         hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
         SaitoUTXOSetKey,
@@ -76,6 +77,7 @@ impl Default for TransactionCore {
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Transaction {
+    // the bulk of the consensus transaction data
     core: TransactionCore,
     // hash used for merkle_root (does not include signature), and slip uuid
     hash_for_signature: SaitoHash,
@@ -97,6 +99,10 @@ impl Transaction {
         self.core.outputs.push(output_slip);
     }
 
+    pub fn calculate_work(&mut self, block : Block) {
+
+    }
+
     pub fn get_timestamp(&self) -> u64 {
         self.core.timestamp
     }
@@ -115,6 +121,10 @@ impl Transaction {
 
     pub fn get_message(&self) -> &Vec<u8> {
         &self.core.message
+    }
+
+    pub fn get_hash_for_signature(&self) -> SaitoHash {
+        self.hash_for_signature
     }
 
     pub fn get_signature(&self) -> [u8; 64] {
@@ -188,12 +198,22 @@ impl Transaction {
         }
     }
 
-    pub fn validate(&mut self) -> bool {
+    pub fn validate_pre_calculations(&mut self) -> bool {
+
+	//
+	// and save the hash_for_signature so we can use it later...
+	//
+        let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
+	self.set_hash_for_signature(hash_for_signature);
+
+	true
+    }
+    pub fn validate(&self) -> bool {
 
         //
-        // validate sigs
+        // VALIDATE signature valid
         //
-        let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
+        let hash_for_signature: SaitoHash = self.get_hash_for_signature();
         let sig: SaitoSignature = self.get_signature();
         let mut publickey: SaitoPublicKey = [0; 33];
         if self.core.inputs.len() > 0 {
@@ -205,24 +225,50 @@ impl Transaction {
             return false;
         }
 
+
 	//
-	// if we have received the transaction over the network we
-	// may not have the tx's signature_for_hash actually saved
-	// locally, which we will need in order to generate the 
-	// merkle_root and the slip UUIDs. so save here:
+	// VALIDATE min one sender and receiver
 	//
-	self.set_hash_for_signature(hash_for_signature);
-	
+        if self.get_inputs().len() < 1 {
+	    println!("ERROR 582039: less than 1 input in transaction");
+	    return false
+	}
+        if self.get_outputs().len() < 1 {
+	    println!("ERROR 582039: less than 1 output in transaction");
+	    return false 
+	}
+
+
+	//
+	// VALIDATE no negative payments
+	//
+        let mut nolan_in: u64 = 0;
+        let mut nolan_out: u64 = 0;
+        for input in &self.core.inputs { nolan_in += input.get_amount(); }
+        for output in &self.core.outputs { nolan_out += output.get_amount(); }
+	if nolan_in < 0 {
+	    println!("ERROR 672939: negative payment in transaction from slip");
+	    return false;
+	}
+	if nolan_out < 0 {
+	    println!("ERROR 672940: negative payment in transaction to slip");
+	    return false;
+	}
+	if nolan_out > nolan_in {
+	    println!("ERROR 672941: transaction spends more than it has available");
+	    return false;
+	}
 
 
         //
-        // UTXO validate inputs
+        // VALIDATE UTXO inputs
         //
         for input in &self.core.inputs {
             if !input.validate() {
                 return false;
             }
         }
+
         return true;
     }
 }
