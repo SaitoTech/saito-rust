@@ -137,10 +137,6 @@ impl Transaction {
         self.core.signature
     }
 
-    pub fn get_hash_for_signature(&self) -> [u8; 32] {
-        self.hash_for_signature
-    }
-
     pub fn set_timestamp(&mut self, timestamp: u64) {
         self.core.timestamp = timestamp;
     }
