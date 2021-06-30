@@ -11,26 +11,6 @@ use serde::{Deserialize, Serialize};
 extern crate rayon;
 use rayon::prelude::*;
 
-/// BlockConsensus is a self-contained object containing the information
-/// a block needs to contain that is generated from the previous blocks
-/// in the blockchain.
-///
-#[serde_with::serde_as]
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct BlockConsensus {
-    id: u64,
-    timestamp: u64,
-    previous_block_hash: SaitoHash,
-    #[serde(with = "BigArray")]
-    creator: SaitoPublicKey, // public key of block creator
-    merkle_root: SaitoHash, // merkle root of txs
-    #[serde(with = "BigArray")]
-    signature: SaitoSignature, // signature of block creator
-    treasury: u64,
-    burnfee: u64,
-    difficulty: u64,
-}
-
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BlockCore {
@@ -250,16 +230,30 @@ impl Block {
     pub fn validate(&self, blockchain : &Blockchain) -> bool {
 
 	//
-	// print blockchain info in validation
+	// validate the burn fee
 	//
-println!("Fetching Blockchain info in Validate: {:?}", blockchain.get_latest_block_hash());
+        {
+            let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
+	    if !previous_block.is_none() {
+//		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );
+//		let previous_burnfee = previous_block.unwrap().get_burnfee();
+
+	    }
+	}
+
+	//
+	// validate fee-transaction 
+	//
+
+
+
+	//
+	// validate miner/staker outbound-payments
+	//
+
 
 	//
 	// VALIDATE transactions
-	//
-	// we validate transactions before generating the merkle_root
-	// and calculating the block hashes, as we need to be able to 
-	// generate the tx_sigs
 	//
         let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
         return true;
