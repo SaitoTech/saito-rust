@@ -35,10 +35,15 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_longest_chain_block_hash();
 
+
         //
         // sanity checks
         //
-        //println!("Block Hash: {:?}", block.get_hash());
+        if self.blocks.contains_key(&block_hash) {
+            println!("ERROR: block exists in blockchain {:?}", block.get_hash());
+	    return;
+	}
+
 
         //
         // pre-validation
@@ -87,6 +92,7 @@ impl Blockchain {
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
         }
+
 
         //
         // find shared ancestor of new_block with old_chain
@@ -185,8 +191,7 @@ impl Blockchain {
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
-
-        self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+	let mut block = self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
     }
@@ -210,12 +215,18 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
+
         if old_chain.len() > new_chain.len() {
             return false;
         }
 
+	if self.blockring.get_longest_chain_block_id() >= self.blocks.get(&new_chain[new_chain.len()-1]).unwrap().get_id() {
+            return false;
+	}
+
         let mut old_bf = 0;
         let mut new_bf = 0;
+
         for hash in old_chain.iter() {
             old_bf += self.blocks.get(hash).unwrap().get_burnfee();
         }
@@ -246,6 +257,15 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
+
+	//
+	// if we are winding a non-existent chain with a wind_failure it
+	// means our wind attempt failed and we should move directly into
+	// add_block_failure() by returning false.
+	//
+	if wind_failure == true && new_chain.len() == 0 { return false; }
+
+
         let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
         //        let block = &mut self.blocks[&new_chain[current_wind_index]];
@@ -332,6 +352,7 @@ mod tests {
     use super::*;
     #[test]
     fn add_block_test() {
+
         let mut blockchain = Blockchain::new();
         let mock_block = make_mock_block([0; 32], 12);
         println!("MOCK BLOCK HASH {:?}", mock_block.get_hash());
@@ -340,44 +361,49 @@ mod tests {
         let mock_block_hash2 = mock_block2.get_hash();
         let mock_invalid_block2 = make_mock_invalid_block(mock_block_hash, 14);
 
+
         // Adding a block to a new blockchain should set the latest block id
         blockchain.add_block(mock_block);
         assert_eq!(mock_block_hash, blockchain.get_latest_block_hash());
         assert_eq!(12, blockchain.get_latest_block_id());
+
 
         // Adding the next block should be okay
         blockchain.add_block(mock_block2);
         assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
 
-        // TODO: Fix this test, it crashes
+
         // Adding an invalid block should not effect the blockchain
-        // blockchain.add_block(make_mock_invalid_block(mock_block_hash2, 14));
-        // assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
-        // assert_eq!(13, blockchain.get_latest_block_id());
+        blockchain.add_block(make_mock_invalid_block(mock_block_hash2, 14));
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
 
         // Adding an invalid block should not effect the blockchain
         blockchain.add_block(mock_invalid_block2);
         assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
 
+
         // Adding an invalid block should not effect the blockchain
         blockchain.add_block(make_mock_block(mock_block_hash, 3));
         assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
 
+
         // TODO Fix this, it shouldn't change the latest block:
         // Adding an invalid block should not effect the blockchain
-        // blockchain.add_block(make_mock_block(mock_block_hash2, 3));
-        // assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
-        // assert_eq!(13, blockchain.get_latest_block_id());
+        blockchain.add_block(make_mock_block(mock_block_hash2, 3));
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
 
         // Fix this. It might be the same issue as above
-        // blockchain.add_block(make_mock_block([0; 32], 1));
-        // assert_eq!(1, blockchain.get_latest_block_id());
-        // assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        blockchain.add_block(make_mock_block([0; 32], 1));
+        assert_ne!(1, blockchain.get_latest_block_id());
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
 
         // TODO: Fix this, it crashes
-        // blockchain.add_block(make_mock_invalid_block([0; 32], 1));
+        blockchain.add_block(make_mock_invalid_block([0; 32], 1));
     }
 }

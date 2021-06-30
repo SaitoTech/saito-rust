@@ -352,6 +352,10 @@ impl Block {
         let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate());
 
         // Verify merkle root
+	if self.core.merkle_root == [0; 32] {
+println!("failing because merkle root is bad");
+		return false; 
+	}
         if self.core.merkle_root != self.generate_merkle_root() {
             return false;
         }
