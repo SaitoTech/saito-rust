@@ -420,14 +420,20 @@ impl Block {
         //            }
         //        }
 
+	//
+        // verify merkle root
+	//
+	if self.core.merkle_root == [0; 32] {
+	    println!("failing because merkle root is bad");
+	    return false; 
+	}
+
         //
         // verify merkle root
         //
-        println!(" ... start merkle: {:?}", create_timestamp());
         if self.core.merkle_root != self.generate_merkle_root() {
             return false;
         }
-        println!(" ... stop merkle:  {:?}", create_timestamp());
 
         //
         // validate fee-transaction
