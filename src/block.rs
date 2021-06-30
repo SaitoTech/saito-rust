@@ -1,8 +1,7 @@
 use crate::{
     blockchain::Blockchain,
-    crypto::{
-        hash, MerkleTree, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey, SHA256,
-    },
+    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    merkle::MerkleTreeLayer,
     slip::SLIP_SIZE,
     time::create_timestamp,
     transaction::{Transaction, TRANSACTION_SIZE},
@@ -76,7 +75,7 @@ pub struct Block {
     /// Consensus Level Variables
     core: BlockCore,
     /// Transactions
-    transactions: Vec<Transaction>,
+    pub transactions: Vec<Transaction>,
     /// Self-Calculated / Validated
     hash: SaitoHash,
     /// Is Block on longest chain
@@ -186,6 +185,10 @@ impl Block {
 
     pub fn set_hash(&mut self, hash: SaitoHash) {
         self.hash = hash;
+    }
+
+    pub fn add_transaction(&mut self, tx: Transaction) {
+        self.transactions.push(tx);
     }
 
     // TODO
@@ -319,13 +322,81 @@ impl Block {
             .map(|tx| tx.get_hash_for_signature())
             .collect();
 
-        println!("merkle_root_hashes: {:?}", tx_sig_hashes);
+        /***
+                let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
+                mt.root_hash()
+                    .clone()
+                    .try_into()
+                    .expect("Failed to unwrao merkle root")
+        ****/
 
-        let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
-        mt.root_hash()
-            .clone()
-            .try_into()
-            .expect("Faiiled to unwrao merkle root")
+        let mut mrv: Vec<MerkleTreeLayer> = vec![];
+
+        //
+        // or let's try another approach
+        //
+        let tsh_len = tx_sig_hashes.len();
+        let mut leaf_depth = 0;
+
+        for i in 0..tsh_len {
+            if (i + 1) < tsh_len {
+                mrv.push(MerkleTreeLayer::new(
+                    tx_sig_hashes[i],
+                    tx_sig_hashes[i + 1],
+                    leaf_depth,
+                ));
+            } else {
+                mrv.push(MerkleTreeLayer::new(tx_sig_hashes[i], [0; 32], leaf_depth));
+            }
+        }
+
+        let mut start_point = 0;
+        let mut start_point_old = 0;
+        let mut stop_point = mrv.len();
+        let mut keep_looping = true;
+
+        while keep_looping {
+            //println!("looping in merkle tree generation");
+            //println!("Start Point and Stop Point: {:?} {:?}", start_point, stop_point);
+
+            // processing new layer
+            leaf_depth += 1;
+
+            // hash the parent in parallel
+            mrv[start_point..stop_point]
+                .par_iter_mut()
+                .all(|leaf| leaf.hash());
+
+            start_point_old = start_point;
+            start_point = mrv.len();
+
+            for i in (start_point_old..stop_point).step_by(2) {
+                //println!("looping in hash loop with {:?}", i);
+                if (i + 1) < stop_point {
+                    mrv.push(MerkleTreeLayer::new(
+                        mrv[i].get_hash(),
+                        mrv[i + 1].get_hash(),
+                        leaf_depth,
+                    ));
+                } else {
+                    mrv.push(MerkleTreeLayer::new(mrv[i].get_hash(), [0; 32], leaf_depth));
+                }
+            }
+
+            stop_point = mrv.len();
+            keep_looping = (start_point < stop_point - 1);
+
+            //println!("Start Point and Stop Point: {:?} {:?}", start_point, stop_point);
+            //println!("kl: {:?}", keep_looping);
+        }
+
+        //
+        // hash the final leaf
+        //
+        mrv[start_point].hash();
+        //println!("{:?}", mrv);
+        //println!("returning parent hash -- top leaf at position: {:?} {:?}", mrv.len(), mrv[start_point].get_hash());
+        mrv[start_point].get_hash()
     }
 
     pub fn on_chain_reorganization(
@@ -349,20 +420,22 @@ impl Block {
         //
         // validate the burn fee
         //
-        {
-            let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
-            if !previous_block.is_none() {
-                //		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );
-                //		let previous_burnfee = previous_block.unwrap().get_burnfee();
-            }
-        }
+        //        {
+        //            let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
+        //            if !previous_block.is_none() {
+        //		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );
+        //		let previous_burnfee = previous_block.unwrap().get_burnfee();
+        //            }
+        //        }
 
         //
         // verify merkle root
         //
+        println!(" ... start merkle: {:?}", create_timestamp());
         if self.core.merkle_root != self.generate_merkle_root() {
             return false;
         }
+        println!(" ... stop merkle:  {:?}", create_timestamp());
 
         //
         // validate fee-transaction

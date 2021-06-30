@@ -325,14 +325,18 @@ impl Transaction {
         for output in &self.core.outputs {
             nolan_out += output.get_amount();
         }
-        if nolan_in < 0 {
-            println!("ERROR 672939: negative payment in transaction from slip");
-            return false;
-        }
-        if nolan_out < 0 {
-            println!("ERROR 672940: negative payment in transaction to slip");
-            return false;
-        }
+
+        //
+        // Rust Types prevent these variables being < 0
+        //
+        //        if nolan_in < 0 {
+        //            println!("ERROR 672939: negative payment in transaction from slip");
+        //            return false;
+        //        }
+        //        if nolan_out < 0 {
+        //            println!("ERROR 672940: negative payment in transaction to slip");
+        //            return false;
+        //        }
         if nolan_out > nolan_in {
             println!("ERROR 672941: transaction spends more than it has available");
             return false;

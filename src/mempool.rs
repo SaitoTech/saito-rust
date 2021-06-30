@@ -67,7 +67,7 @@ impl Mempool {
 
         let wallet = self.wallet_lock.read().await;
 
-        for _i in 0..10 {
+        for _i in 0..10000 {
             println!("creating tx {:?}", _i);
 
             let mut transaction = Transaction::default();
@@ -75,12 +75,12 @@ impl Mempool {
             transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
 
             let mut input1 = Slip::default();
-            input1.set_publickey([1; 33]);
+            input1.set_publickey(wallet.get_publickey());
             input1.set_amount(1000000);
             input1.set_uuid([1; 64]);
 
             let mut output1 = Slip::default();
-            output1.set_publickey([1; 33]);
+            output1.set_publickey(wallet.get_publickey());
             output1.set_amount(1000000);
             output1.set_uuid([1; 64]);
 
@@ -98,6 +98,8 @@ impl Mempool {
             if !v {
                 println!("Transaction does not Validate: {:?}", v);
             }
+
+            block.add_transaction(transaction);
         }
 
         let block_merkle_root = block.generate_merkle_root();
@@ -126,7 +128,7 @@ pub async fn run(
                 .send(MempoolMessage::GenerateBlock)
                 .await
                 .expect("error: GenerateBlock message failed to send");
-            sleep(Duration::from_millis(5000));
+            sleep(Duration::from_millis(20000));
         }
     });
 
