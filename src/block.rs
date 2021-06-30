@@ -322,13 +322,13 @@ impl Block {
             .map(|tx| tx.get_hash_for_signature())
             .collect();
 
-        /***
+        /*** KEEPING FOR SPEED REFERENCE TESTS ***
                 let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
                 mt.root_hash()
                     .clone()
                     .try_into()
                     .expect("Failed to unwrao merkle root")
-        ****/
+        *****************************************/
 
         let mut mrv: Vec<MerkleTreeLayer> = vec![];
 
@@ -351,14 +351,10 @@ impl Block {
         }
 
         let mut start_point = 0;
-        let mut start_point_old = 0;
         let mut stop_point = mrv.len();
         let mut keep_looping = true;
 
         while keep_looping {
-            //println!("looping in merkle tree generation");
-            //println!("Start Point and Stop Point: {:?} {:?}", start_point, stop_point);
-
             // processing new layer
             leaf_depth += 1;
 
@@ -367,7 +363,7 @@ impl Block {
                 .par_iter_mut()
                 .all(|leaf| leaf.hash());
 
-            start_point_old = start_point;
+            let start_point_old = start_point;
             start_point = mrv.len();
 
             for i in (start_point_old..stop_point).step_by(2) {
@@ -384,18 +380,14 @@ impl Block {
             }
 
             stop_point = mrv.len();
-            keep_looping = (start_point < stop_point - 1);
-
-            //println!("Start Point and Stop Point: {:?} {:?}", start_point, stop_point);
-            //println!("kl: {:?}", keep_looping);
+            keep_looping = start_point < stop_point - 1;
         }
+
 
         //
         // hash the final leaf
         //
         mrv[start_point].hash();
-        //println!("{:?}", mrv);
-        //println!("returning parent hash -- top leaf at position: {:?} {:?}", mrv.len(), mrv[start_point].get_hash());
         mrv[start_point].get_hash()
     }
 
@@ -416,7 +408,7 @@ impl Block {
             .par_iter_mut()
             .all(|tx| tx.validate_pre_calculations());
     }
-    pub fn validate(&self, blockchain: &Blockchain) -> bool {
+    pub fn validate(&self, _blockchain: &Blockchain) -> bool {
         //
         // validate the burn fee
         //
@@ -449,7 +441,8 @@ impl Block {
         // VALIDATE transactions
         //
         let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
-        return true;
+
+	true
     }
 }
 

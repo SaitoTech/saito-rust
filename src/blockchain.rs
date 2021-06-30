@@ -254,9 +254,11 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-        let mut does_block_validate = false;
+
 
         {
+	    // yes, there is a warning here, but we need the mutable borrow to set the 
+	    // tx.hash_for_signature information inside AFAICT
             let mut block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
             //
@@ -266,7 +268,7 @@ impl Blockchain {
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        does_block_validate = block.validate(self);
+        let does_block_validate = block.validate(self);
 
         if does_block_validate {
             block.on_chain_reorganization(&mut self.utxoset, true);

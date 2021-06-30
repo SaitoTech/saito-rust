@@ -1,7 +1,6 @@
 use std::convert::TryInto;
 
 use crate::{
-    block::Block,
     crypto::{
         hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
         SaitoUTXOSetKey,
@@ -104,8 +103,6 @@ impl Transaction {
     pub fn add_output(&mut self, output_slip: Slip) {
         self.core.outputs.push(output_slip);
     }
-
-    pub fn calculate_work(&mut self, block: Block) {}
 
     pub fn get_timestamp(&self) -> u64 {
         self.core.timestamp

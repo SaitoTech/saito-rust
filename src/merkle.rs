@@ -1,5 +1,4 @@
 use crate::crypto::{hash, SaitoHash};
-use rayon::prelude::*;
 
 //
 // MerkleTreeLayer is a short implementation that uses the default
