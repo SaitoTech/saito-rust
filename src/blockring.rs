@@ -152,20 +152,26 @@ impl BlockRing {
         if lc {
             self.block_ring_lc_pos = insert_pos as usize;
         } else {
-	    let mut previous_block_idx = self.block_ring_lc_pos-1;
 
-	    // reset to lc_pos to unknown
-	    self.block_ring_lc_pos = usize::MAX;
+	    //
+	    // only adjust longest_chain if this is it
+	    //
+	    if self.block_ring_lc_pos == insert_pos as usize {
+	        let mut previous_block_idx = self.block_ring_lc_pos-1;
 
-	    // but try to find it
-	    if previous_block_idx < 0 { previous_block_idx = RING_BUFFER_LENGTH as usize - 1; }
-	    let previous_block_idx_lc_pos = self.block_ring[previous_block_idx as usize].lc_pos;
-	    if previous_block_idx_lc_pos != usize::MAX {
-	        if self.block_ring[previous_block_idx].block_ids.len() > previous_block_idx_lc_pos {
-	            if self.block_ring[previous_block_idx].block_ids[previous_block_idx_lc_pos] == block_id-1 {
-			self.block_ring_lc_pos = previous_block_idx;
+	        // reset to lc_pos to unknown
+	        self.block_ring_lc_pos = usize::MAX;
+
+	        // but try to find it
+	        if previous_block_idx < 0 { previous_block_idx = RING_BUFFER_LENGTH as usize - 1; }
+	        let previous_block_idx_lc_pos = self.block_ring[previous_block_idx as usize].lc_pos;
+	        if previous_block_idx_lc_pos != usize::MAX {
+	            if self.block_ring[previous_block_idx].block_ids.len() > previous_block_idx_lc_pos {
+	                if self.block_ring[previous_block_idx].block_ids[previous_block_idx_lc_pos] == block_id-1 {
+			    self.block_ring_lc_pos = previous_block_idx;
+		        }
 		    }
-		}
+	        }
 	    }
 	}
 	true
@@ -264,7 +270,7 @@ mod test {
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
 	// reorg in the wrong location
 	blockring.on_chain_reorganization(532, block_5_2.get_hash(), false);
-        assert_eq!(blockring.get_longest_chain_block_id(), 0);
+        assert_eq!(blockring.get_longest_chain_block_id(), 5);
 
 	blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
