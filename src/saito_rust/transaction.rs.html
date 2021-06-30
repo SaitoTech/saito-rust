@@ -438,14 +438,10 @@
 <span id="435">435</span>
 <span id="436">436</span>
 <span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">block::Block</span>,
     <span class="ident">crypto</span>::{
         <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">verify</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>,
         <span class="ident">SaitoUTXOSetKey</span>,
@@ -548,8 +544,6 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_output</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">output_slip</span>: <span class="ident">Slip</span>) {
         <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span>.<span class="ident">push</span>(<span class="ident">output_slip</span>);
     }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">calculate_work</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {}
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_timestamp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">timestamp</span>

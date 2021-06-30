@@ -610,13 +610,6 @@
 <span id="607">607</span>
 <span id="608">608</span>
 <span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
@@ -942,13 +935,13 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">get_hash_for_signature</span>())
             .<span class="ident">collect</span>();
 
-        <span class="comment">/***
+        <span class="comment">/*** KEEPING FOR SPEED REFERENCE TESTS ***
                 let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
                 mt.root_hash()
                     .clone()
                     .try_into()
                     .expect(&quot;Failed to unwrao merkle root&quot;)
-        ****/</span>
+        *****************************************/</span>
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mrv</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MerkleTreeLayer</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
@@ -971,14 +964,10 @@
         }
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">start_point</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">start_point_old</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stop_point</span> <span class="op">=</span> <span class="ident">mrv</span>.<span class="ident">len</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">keep_looping</span> <span class="op">=</span> <span class="bool-val">true</span>;
 
         <span class="kw">while</span> <span class="ident">keep_looping</span> {
-            <span class="comment">//println!(&quot;looping in merkle tree generation&quot;);</span>
-            <span class="comment">//println!(&quot;Start Point and Stop Point: {:?} {:?}&quot;, start_point, stop_point);</span>
-
             <span class="comment">// processing new layer</span>
             <span class="ident">leaf_depth</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
 
@@ -987,7 +976,7 @@
                 .<span class="ident">par_iter_mut</span>()
                 .<span class="ident">all</span>(<span class="op">|</span><span class="ident">leaf</span><span class="op">|</span> <span class="ident">leaf</span>.<span class="ident">hash</span>());
 
-            <span class="ident">start_point_old</span> <span class="op">=</span> <span class="ident">start_point</span>;
+            <span class="kw">let</span> <span class="ident">start_point_old</span> <span class="op">=</span> <span class="ident">start_point</span>;
             <span class="ident">start_point</span> <span class="op">=</span> <span class="ident">mrv</span>.<span class="ident">len</span>();
 
             <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="ident">start_point_old</span>..<span class="ident">stop_point</span>).<span class="ident">step_by</span>(<span class="number">2</span>) {
@@ -1004,18 +993,14 @@
             }
 
             <span class="ident">stop_point</span> <span class="op">=</span> <span class="ident">mrv</span>.<span class="ident">len</span>();
-            <span class="ident">keep_looping</span> <span class="op">=</span> (<span class="ident">start_point</span> <span class="op">&lt;</span> <span class="ident">stop_point</span> <span class="op">-</span> <span class="number">1</span>);
-
-            <span class="comment">//println!(&quot;Start Point and Stop Point: {:?} {:?}&quot;, start_point, stop_point);</span>
-            <span class="comment">//println!(&quot;kl: {:?}&quot;, keep_looping);</span>
+            <span class="ident">keep_looping</span> <span class="op">=</span> <span class="ident">start_point</span> <span class="op">&lt;</span> <span class="ident">stop_point</span> <span class="op">-</span> <span class="number">1</span>;
         }
+
 
         <span class="comment">//</span>
         <span class="comment">// hash the final leaf</span>
         <span class="comment">//</span>
         <span class="ident">mrv</span>[<span class="ident">start_point</span>].<span class="ident">hash</span>();
-        <span class="comment">//println!(&quot;{:?}&quot;, mrv);</span>
-        <span class="comment">//println!(&quot;returning parent hash -- top leaf at position: {:?} {:?}&quot;, mrv.len(), mrv[start_point].get_hash());</span>
         <span class="ident">mrv</span>[<span class="ident">start_point</span>].<span class="ident">get_hash</span>()
     }
 
@@ -1036,7 +1021,7 @@
             .<span class="ident">par_iter_mut</span>()
             .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate_pre_calculations</span>());
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blockchain</span>: <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_blockchain</span>: <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="comment">//</span>
         <span class="comment">// validate the burn fee</span>
         <span class="comment">//</span>
@@ -1069,7 +1054,8 @@
         <span class="comment">// VALIDATE transactions</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">_transactions_valid</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">par_iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>());
-        <span class="kw">return</span> <span class="bool-val">true</span>;
+
+	<span class="bool-val">true</span>
     }
 }
 
