@@ -383,7 +383,6 @@ impl Block {
             keep_looping = start_point < stop_point - 1;
         }
 
-
         //
         // hash the final leaf
         //
@@ -420,13 +419,13 @@ impl Block {
         //            }
         //        }
 
-	//
+        //
         // verify merkle root
-	//
-	if self.core.merkle_root == [0; 32] {
-	    println!("failing because merkle root is bad");
-	    return false; 
-	}
+        //
+        if self.core.merkle_root == [0; 32] {
+            println!("failing because merkle root is bad");
+            return false;
+        }
 
         //
         // verify merkle root
@@ -448,7 +447,7 @@ impl Block {
         //
         let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
 
-	true
+        true
     }
 }
 

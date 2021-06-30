@@ -36,15 +36,13 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_longest_chain_block_hash();
 
-
         //
         // sanity checks
         //
         if self.blocks.contains_key(&block_hash) {
             println!("ERROR: block exists in blockchain {:?}", block.get_hash());
-	    return;
-	}
-
+            return;
+        }
 
         //
         // pre-validation
@@ -93,7 +91,6 @@ impl Blockchain {
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
         }
-
 
         //
         // find shared ancestor of new_block with old_chain
@@ -199,7 +196,7 @@ impl Blockchain {
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
-	let mut block = self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+        let mut block = self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
     }
@@ -223,14 +220,19 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
-
         if old_chain.len() > new_chain.len() {
             return false;
         }
 
-	if self.blockring.get_longest_chain_block_id() >= self.blocks.get(&new_chain[new_chain.len()-1]).unwrap().get_id() {
+        if self.blockring.get_longest_chain_block_id()
+            >= self
+                .blocks
+                .get(&new_chain[new_chain.len() - 1])
+                .unwrap()
+                .get_id()
+        {
             return false;
-	}
+        }
 
         let mut old_bf = 0;
         let mut new_bf = 0;
@@ -265,19 +267,20 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-
-	//
-	// if we are winding a non-existent chain with a wind_failure it
-	// means our wind attempt failed and we should move directly into
-	// add_block_failure() by returning false.
-	//
-	if wind_failure == true && new_chain.len() == 0 { return false; }
+        //
+        // if we are winding a non-existent chain with a wind_failure it
+        // means our wind attempt failed and we should move directly into
+        // add_block_failure() by returning false.
+        //
+        if wind_failure == true && new_chain.len() == 0 {
+            return false;
+        }
 
         let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
         {
-	    // yes, there is a warning here, but we need the mutable borrow to set the 
-	    // tx.hash_for_signature information inside AFAICT
+            // yes, there is a warning here, but we need the mutable borrow to set the
+            // tx.hash_for_signature information inside AFAICT
             let mut block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
             //
@@ -366,25 +369,22 @@ mod tests {
     use super::*;
     #[test]
     fn add_block_test() {
-
         let mut blockchain = Blockchain::new();
 
-	//
-	// Good Blocks
-	//
+        //
+        // Good Blocks
+        //
         let good_block_12 = make_mock_block([0; 32], 12);
         let good_block_12_hash = good_block_12.get_hash();
         let good_block_13 = make_mock_block(good_block_12_hash, 13);
         let good_block_13_hash = good_block_13.get_hash();
 
-
-	//
-	// "Bad" Blocks
-	//
+        //
+        // "Bad" Blocks
+        //
         let bad_block_13 = make_mock_invalid_block(good_block_13_hash, 13);
         let bad_block_14 = make_mock_invalid_block(good_block_12_hash, 14);
-	let good_block_3 = make_mock_block([0; 32], 3);
-
+        let good_block_3 = make_mock_block([0; 32], 3);
 
         // Add our first block #12
         blockchain.add_block(good_block_12);
@@ -410,6 +410,5 @@ mod tests {
         blockchain.add_block(good_block_3);
         assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
-
     }
 }

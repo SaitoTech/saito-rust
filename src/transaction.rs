@@ -22,6 +22,7 @@ pub const TRANSACTION_SIZE: usize = 85;
 #[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone, TryFromByte)]
 pub enum TransactionType {
     Normal,
+    GoldenTicket,
     Other,
 }
 

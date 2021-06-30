@@ -11,6 +11,8 @@ pub type SaitoPublicKey = [u8; 33];
 pub type SaitoPrivateKey = [u8; 32]; // 256-bit key
 pub type SaitoSignature = [u8; 64];
 
+use rayon::prelude::*;
+
 pub const PARALLEL_HASH_BYTE_THRESHOLD: usize = 128_000;
 
 pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
@@ -54,4 +56,11 @@ pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> boo
     let p = PublicKey::from_slice(&publickey).unwrap();
     let s = Signature::from_compact(&sig).unwrap();
     SECP256K1.verify(&m, &s, &p).is_ok()
+}
+
+pub fn generate_random_data(len: usize) -> Vec<u8> {
+    (0..len)
+        .into_par_iter()
+        .map(|_| rand::random::<u8>())
+        .collect()
 }
