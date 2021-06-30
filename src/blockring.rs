@@ -51,6 +51,11 @@ impl RingItem {
                 }
             }
 
+	    //
+	    // this hash does not exist
+	    //
+	    if self.block_ids.len() < self.lc_pos { return; }
+
             //
             // remove any old indices
             //
@@ -187,8 +192,54 @@ impl BlockRing {
 
 #[cfg(test)]
 mod test {
+    use crate::test_utilities::mocks::{make_mock_block, make_mock_invalid_block};
+
+    use super::*;
     #[test]
-    fn longest_chain_queue_test() {
-        assert_eq!(1, 1);
+    fn add_block_test() {
+
+        let mut blockring = BlockRing::new();
+
+        //
+        // Good Blocks
+        //
+        let block_1 = make_mock_block([0; 32], 1);
+        let block_2 = make_mock_block(block_1.get_hash(), 2);
+        let block_3 = make_mock_block(block_2.get_hash(), 3);
+        let block_4 = make_mock_block(block_3.get_hash(), 4);
+        let block_3_2 = make_mock_block(block_2.get_hash(), 3);
+        let block_4_2 = make_mock_block(block_3.get_hash(), 4);
+        let block_5_2 = make_mock_block(block_4.get_hash(), 5);
+
+	blockring.add_block(&block_1);
+	blockring.add_block(&block_2);
+	blockring.add_block(&block_3);
+	blockring.add_block(&block_4);
+	blockring.add_block(&block_3_2);
+	blockring.add_block(&block_4_2);
+	blockring.add_block(&block_5_2);
+
+        // do we contain these block hashes?
+        assert_eq!(blockring.contains_block_hash_at_block_id(1, block_1.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(2, block_2.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(3, block_3.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(4, block_4.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(3, block_3_2.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(4, block_4_2.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(5, block_5_2.get_hash()), true);
+
+	// reorganize longest chain
+	blockring.on_chain_reorganization(1, block_1.get_hash(), true);
+	blockring.on_chain_reorganization(2, block_2.get_hash(), true);
+	blockring.on_chain_reorganization(3, block_3.get_hash(), true);
+	blockring.on_chain_reorganization(4, block_4.get_hash(), true);
+	blockring.on_chain_reorganization(4, block_4.get_hash(), false);
+	blockring.on_chain_reorganization(3, block_3.get_hash(), false);
+	blockring.on_chain_reorganization(3, block_3_2.get_hash(), true);
+	blockring.on_chain_reorganization(4, block_4_2.get_hash(), true);
+	blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
+
+        assert_eq!(blockring.get_longest_chain_block_id(), 5);
+
     }
 }
