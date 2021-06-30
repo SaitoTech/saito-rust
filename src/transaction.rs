@@ -105,9 +105,7 @@ impl Transaction {
         self.core.outputs.push(output_slip);
     }
 
-    pub fn calculate_work(&mut self, block : Block) {
-
-    }
+    pub fn calculate_work(&mut self, block: Block) {}
 
     pub fn get_timestamp(&self) -> u64 {
         self.core.timestamp
@@ -280,17 +278,15 @@ impl Transaction {
     }
 
     pub fn validate_pre_calculations(&mut self) -> bool {
-
-	//
-	// and save the hash_for_signature so we can use it later...
-	//
+        //
+        // and save the hash_for_signature so we can use it later...
+        //
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
-	self.set_hash_for_signature(hash_for_signature);
+        self.set_hash_for_signature(hash_for_signature);
 
-	true
+        true
     }
     pub fn validate(&self) -> bool {
-
         //
         // VALIDATE signature valid
         //
@@ -306,39 +302,41 @@ impl Transaction {
             return false;
         }
 
-	//
-	// VALIDATE min one sender and receiver
-	//
+        //
+        // VALIDATE min one sender and receiver
+        //
         if self.get_inputs().len() < 1 {
-	    println!("ERROR 582039: less than 1 input in transaction");
-	    return false
-	}
+            println!("ERROR 582039: less than 1 input in transaction");
+            return false;
+        }
         if self.get_outputs().len() < 1 {
-	    println!("ERROR 582039: less than 1 output in transaction");
-	    return false 
-	}
+            println!("ERROR 582039: less than 1 output in transaction");
+            return false;
+        }
 
-
-	//
-	// VALIDATE no negative payments
-	//
+        //
+        // VALIDATE no negative payments
+        //
         let mut nolan_in: u64 = 0;
         let mut nolan_out: u64 = 0;
-        for input in &self.core.inputs { nolan_in += input.get_amount(); }
-        for output in &self.core.outputs { nolan_out += output.get_amount(); }
-	if nolan_in < 0 {
-	    println!("ERROR 672939: negative payment in transaction from slip");
-	    return false;
-	}
-	if nolan_out < 0 {
-	    println!("ERROR 672940: negative payment in transaction to slip");
-	    return false;
-	}
-	if nolan_out > nolan_in {
-	    println!("ERROR 672941: transaction spends more than it has available");
-	    return false;
-	}
-
+        for input in &self.core.inputs {
+            nolan_in += input.get_amount();
+        }
+        for output in &self.core.outputs {
+            nolan_out += output.get_amount();
+        }
+        if nolan_in < 0 {
+            println!("ERROR 672939: negative payment in transaction from slip");
+            return false;
+        }
+        if nolan_out < 0 {
+            println!("ERROR 672940: negative payment in transaction to slip");
+            return false;
+        }
+        if nolan_out > nolan_in {
+            println!("ERROR 672941: transaction spends more than it has available");
+            return false;
+        }
 
         //
         // VALIDATE UTXO inputs

@@ -158,13 +158,13 @@ impl Blockchain {
         //
         // validate
         //
-	// blockchain validate "validates" the new_chain by unwinding the old
-	// and winding the new, which calling validate on any new previously-
-	// unvalidated blocks. When the longest-chain status of blocks changes
-	// the function on_chain_reorganization is triggered in blocks and 
-	// with the BlockRing. We fail if the newly-preferred chain is not
-	// viable.
-	//
+        // blockchain validate "validates" the new_chain by unwinding the old
+        // and winding the new, which calling validate on any new previously-
+        // unvalidated blocks. When the longest-chain status of blocks changes
+        // the function on_chain_reorganization is triggered in blocks and
+        // with the BlockRing. We fail if the newly-preferred chain is not
+        // viable.
+        //
         if am_i_the_longest_chain {
             println!(" ... start validate:  {:?}", create_timestamp());
             let does_new_chain_validate = self.validate(new_chain, old_chain);
@@ -253,10 +253,9 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-
         let mut does_block_validate = false;
 
-	{
+        {
             let mut block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
             //
@@ -265,9 +264,8 @@ impl Blockchain {
             block.validate_pre_calculations();
         }
 
-
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-	does_block_validate = block.validate(self);
+        does_block_validate = block.validate(self);
 
         if does_block_validate {
             block.on_chain_reorganization(&mut self.utxoset, true);

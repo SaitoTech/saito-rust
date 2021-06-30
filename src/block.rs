@@ -28,7 +28,6 @@ pub struct BlockCore {
     difficulty: u64,
 }
 
-
 impl BlockCore {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -314,11 +313,14 @@ impl Block {
     }
 
     pub fn generate_merkle_root(&self) -> SaitoHash {
-        let tx_sig_hashes: Vec<[u8; 32]> = self
+        let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
             .map(|tx| tx.get_hash_for_signature())
             .collect();
+
+        println!("merkle_root_hashes: {:?}", tx_sig_hashes);
+
         let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
         mt.root_hash()
             .clone()
@@ -337,48 +339,42 @@ impl Block {
         true
     }
 
-
     pub fn validate_pre_calculations(&mut self) {
-
-        let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate_pre_calculations());
-
+        let _transactions_valid = &self
+            .transactions
+            .par_iter_mut()
+            .all(|tx| tx.validate_pre_calculations());
     }
-    pub fn validate(&self, blockchain : &Blockchain) -> bool {
-
-	//
-	// validate the burn fee
-	//
+    pub fn validate(&self, blockchain: &Blockchain) -> bool {
+        //
+        // validate the burn fee
+        //
         {
             let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
-	    if !previous_block.is_none() {
-//		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );
-//		let previous_burnfee = previous_block.unwrap().get_burnfee();
+            if !previous_block.is_none() {
+                //		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );
+                //		let previous_burnfee = previous_block.unwrap().get_burnfee();
+            }
+        }
 
-	    }
-	}
-
-      //
-      // verify merkle root
-      //
+        //
+        // verify merkle root
+        //
         if self.core.merkle_root != self.generate_merkle_root() {
             return false;
         }
 
+        //
+        // validate fee-transaction
+        //
 
-	//
-	// validate fee-transaction 
-	//
+        //
+        // validate miner/staker outbound-payments
+        //
 
-
-
-	//
-	// validate miner/staker outbound-payments
-	//
-
-
-	//
-	// VALIDATE transactions
-	//
+        //
+        // VALIDATE transactions
+        //
         let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
         return true;
     }
