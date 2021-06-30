@@ -1,23 +1,29 @@
+use std::convert::TryInto;
+
 use crate::{
-    big_array::BigArray,
     block::Block,
     crypto::{
         hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
         SaitoUTXOSetKey,
     },
-    slip::Slip,
+    slip::{Slip, SLIP_SIZE},
     time::create_timestamp,
 };
 use ahash::AHashMap;
+use enum_variant_count_derive::TryFromByte;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
+
+pub const TRANSACTION_SIZE: usize = 85;
 
 /// TransactionType is a human-readable indicator of the type of
 /// transaction such as a normal user-initiated transaction, a
 /// golden ticket transaction, a VIP-transaction or a rebroadcast
 /// transaction created by a block creator, etc.
-#[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone, TryFromByte)]
 pub enum TransactionType {
     Normal,
+    Other,
 }
 
 /// TransactionCore is a self-contained object containing only the core
@@ -37,7 +43,7 @@ pub struct TransactionCore {
     #[serde(with = "serde_bytes")]
     message: Vec<u8>,
     transaction_type: TransactionType,
-    #[serde(with = "BigArray")]
+    #[serde_as(as = "[_; 64]")]
     signature: SaitoSignature, // compact signatures are 64 bytes; DER signatures are 68-72 bytes
 }
 
@@ -131,6 +137,10 @@ impl Transaction {
         self.core.signature
     }
 
+    pub fn get_hash_for_signature(&self) -> [u8; 32] {
+        self.hash_for_signature
+    }
+
     pub fn set_timestamp(&mut self, timestamp: u64) {
         self.core.timestamp = timestamp;
     }
@@ -174,7 +184,82 @@ impl Transaction {
 
         vbytes
     }
+    /// Deserialize from bytes to a Transaction.
+    /// [len of inputs - 4 bytes - u32]
+    /// [len of outputs - 4 bytes - u32]
+    /// [len of message - 4 bytes - u32]
+    /// [signature - 64 bytes - Secp25k1 sig]
+    /// [timestamp - 8 bytes - u64]
+    /// [transaction type - 1 byte]
+    /// [input][input][input]...
+    /// [output][output][output]...
+    /// [message]
+    pub fn deserialize_from_net(bytes: Vec<u8>) -> Transaction {
+        let inputs_len: u32 = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
+        let outputs_len: u32 = u32::from_be_bytes(bytes[4..8].try_into().unwrap());
+        let message_len: usize = u32::from_be_bytes(bytes[8..12].try_into().unwrap()) as usize;
+        let signature: SaitoSignature = bytes[12..76].try_into().unwrap();
 
+        let timestamp: u64 = u64::from_be_bytes(bytes[76..84].try_into().unwrap());
+        let transaction_type: TransactionType = TransactionType::try_from(bytes[84]).unwrap();
+        let start_of_inputs = TRANSACTION_SIZE;
+        let start_of_outputs = start_of_inputs + inputs_len as usize * SLIP_SIZE;
+        let start_of_message = start_of_outputs + outputs_len as usize * SLIP_SIZE;
+        let mut inputs: Vec<Slip> = vec![];
+        for n in 0..inputs_len {
+            let start_of_data: usize = start_of_inputs as usize + n as usize * SLIP_SIZE;
+            let end_of_data: usize = start_of_data + SLIP_SIZE;
+            let input = Slip::deserialize_from_net(bytes[start_of_data..end_of_data].to_vec());
+            inputs.push(input);
+        }
+        let mut outputs: Vec<Slip> = vec![];
+        for n in 0..outputs_len {
+            let start_of_data: usize = start_of_outputs as usize + n as usize * SLIP_SIZE;
+            let end_of_data: usize = start_of_data + SLIP_SIZE;
+            let output = Slip::deserialize_from_net(bytes[start_of_data..end_of_data].to_vec());
+            outputs.push(output);
+        }
+        let message = bytes[start_of_message..start_of_message + message_len]
+            .try_into()
+            .unwrap();
+        Transaction::new(TransactionCore::new(
+            timestamp,
+            inputs,
+            outputs,
+            message,
+            transaction_type,
+            signature,
+        ))
+    }
+
+    /// Serialize a Transaction for transport or disk.
+    /// [len of inputs - 4 bytes - u32]
+    /// [len of outputs - 4 bytes - u32]
+    /// [len of message - 4 bytes - u32]
+    /// [signature - 64 bytes - Secp25k1 sig]
+    /// [timestamp - 8 bytes - u64]
+    /// [transaction type - 1 byte]
+    /// [input][input][input]...
+    /// [output][output][output]...
+    /// [message]
+    pub fn serialize_for_net(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&(self.core.inputs.len() as u32).to_be_bytes());
+        vbytes.extend(&(self.core.outputs.len() as u32).to_be_bytes());
+        vbytes.extend(&(self.core.message.len() as u32).to_be_bytes());
+        vbytes.extend(&self.core.signature);
+        vbytes.extend(&self.core.timestamp.to_be_bytes());
+        vbytes.extend(&(self.core.transaction_type as u8).to_be_bytes());
+        for input in &self.core.inputs {
+            vbytes.extend(&input.serialize_for_net());
+        }
+        for output in &self.core.outputs {
+            vbytes.extend(&output.serialize_for_net());
+        }
+        vbytes.extend(&self.core.message);
+        vbytes
+    }
+    /// Serialize a Transaction for transport or disk.
     pub fn on_chain_reorganization(
         &self,
         utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
@@ -216,7 +301,7 @@ impl Transaction {
         let hash_for_signature: SaitoHash = self.get_hash_for_signature();
         let sig: SaitoSignature = self.get_signature();
         let mut publickey: SaitoPublicKey = [0; 33];
-        if self.core.inputs.len() > 0 {
+        if !self.core.inputs.is_empty() {
             publickey = self.core.inputs[0].get_publickey();
         }
 
@@ -224,7 +309,6 @@ impl Transaction {
             println!("message verifies not");
             return false;
         }
-
 
 	//
 	// VALIDATE min one sender and receiver
@@ -268,8 +352,7 @@ impl Transaction {
                 return false;
             }
         }
-
-        return true;
+        true
     }
 }
 
@@ -281,6 +364,8 @@ impl Default for Transaction {
 
 #[cfg(test)]
 mod tests {
+    use crate::slip::SlipCore;
+
     use super::*;
 
     #[test]
@@ -336,5 +421,22 @@ mod tests {
         assert_eq!(tx.core.message, Vec::<u8>::new());
         assert_eq!(tx.core.transaction_type, TransactionType::Normal);
         assert_eq!(tx.core.signature, [0; 64]);
+    }
+
+    #[test]
+    fn serialize_for_net_test() {
+        let mock_input = Slip::new(SlipCore::default());
+        let mock_output = Slip::new(SlipCore::default());
+        let mock_tx = Transaction::new(TransactionCore::new(
+            create_timestamp(),
+            vec![mock_input],
+            vec![mock_output],
+            vec![104, 101, 108, 108, 111],
+            TransactionType::Normal,
+            [1; 64],
+        ));
+        let serialized_tx = mock_tx.serialize_for_net();
+        let deserialized_tx = Transaction::deserialize_from_net(serialized_tx);
+        assert_eq!(mock_tx, deserialized_tx);
     }
 }

@@ -1,15 +1,16 @@
 use crate::{
-    big_array::BigArray,
     blockchain::Blockchain,
-    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    crypto::{
+        hash, MerkleTree, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey, SHA256,
+    },
+    slip::SLIP_SIZE,
     time::create_timestamp,
-    transaction::Transaction,
+    transaction::{Transaction, TRANSACTION_SIZE},
 };
 use ahash::AHashMap;
-use serde::{Deserialize, Serialize};
-
-extern crate rayon;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -17,10 +18,10 @@ pub struct BlockCore {
     id: u64,
     timestamp: u64,
     previous_block_hash: SaitoHash,
-    #[serde(with = "BigArray")]
+    #[serde_as(as = "[_; 33]")]
     creator: SaitoPublicKey, // public key of block creator
     merkle_root: SaitoHash, // merkle root of txs
-    #[serde(with = "BigArray")]
+    #[serde_as(as = "[_; 64]")]
     signature: SaitoSignature, // signature of block creator
     treasury: u64,
     burnfee: u64,
@@ -93,6 +94,10 @@ impl Block {
         }
     }
 
+    pub fn get_transactions(&self) -> &Vec<Transaction> {
+        &self.transactions
+    }
+
     pub fn get_hash(&self) -> SaitoHash {
         self.hash
     }
@@ -135,6 +140,10 @@ impl Block {
 
     pub fn get_difficulty(&self) -> u64 {
         self.core.difficulty
+    }
+
+    pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
+        self.transactions = transactions.to_vec();
     }
 
     pub fn set_id(&mut self, id: u64) {
@@ -188,7 +197,7 @@ impl Block {
     // id -- it exists so each block will still have a unique hash
     // for blockchain functions.
     //
-    pub fn generate_hash(&mut self) -> SaitoHash {
+    pub fn generate_hash(&self) -> SaitoHash {
         //
         // fastest known way that isn't bincode ??
         //
@@ -206,8 +215,115 @@ impl Block {
         hash(&vbytes)
     }
 
-    pub fn generate_merkle_root(&mut self) -> SaitoHash {
-        [0; 32]
+    /// Serialize a Block for transport or disk.
+    /// [len of transactions - 4 bytes - u32]
+    /// [id - 8 bytes - u64]
+    /// [timestamp - 8 bytes - u64]
+    /// [previous_block_hash - 32 bytes - SHA 256 hash]
+    /// [creator - 33 bytes - Secp25k1 pubkey compact format]
+    /// [merkle_root - 32 bytes - SHA 256 hash
+    /// [signature - 64 bytes - Secp25k1 sig]
+    /// [treasury - 8 bytes - u64]
+    /// [burnfee - 8 bytes - u64]
+    /// [difficulty - 8 bytes - u64]
+    /// [transaction][transaction][transaction]...
+    pub fn serialize_for_net(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&(self.transactions.iter().len() as u32).to_be_bytes());
+        vbytes.extend(&self.core.id.to_be_bytes());
+        vbytes.extend(&self.core.timestamp.to_be_bytes());
+        vbytes.extend(&self.core.previous_block_hash);
+        vbytes.extend(&self.core.creator);
+        vbytes.extend(&self.core.merkle_root);
+        vbytes.extend(&self.core.signature);
+        vbytes.extend(&self.core.treasury.to_be_bytes());
+        vbytes.extend(&self.core.burnfee.to_be_bytes());
+        vbytes.extend(&self.core.difficulty.to_be_bytes());
+        let mut serialized_txs = vec![];
+        self.transactions.iter().for_each(|transaction| {
+            serialized_txs.extend(transaction.serialize_for_net());
+        });
+        vbytes.extend(serialized_txs);
+        vbytes
+    }
+    /// Deserialize from bytes to a Block.
+    /// [len of transactions - 4 bytes - u32]
+    /// [id - 8 bytes - u64]
+    /// [timestamp - 8 bytes - u64]
+    /// [previous_block_hash - 32 bytes - SHA 256 hash]
+    /// [creator - 33 bytes - Secp25k1 pubkey compact format]
+    /// [merkle_root - 32 bytes - SHA 256 hash
+    /// [signature - 64 bytes - Secp25k1 sig]
+    /// [treasury - 8 bytes - u64]
+    /// [burnfee - 8 bytes - u64]
+    /// [difficulty - 8 bytes - u64]
+    /// [transaction][transaction][transaction]...
+    pub fn deserialize_for_net(bytes: Vec<u8>) -> Block {
+        let transactions_len: u32 = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
+        let id: u64 = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
+        let timestamp: u64 = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
+        let previous_block_hash: SaitoHash = bytes[20..52].try_into().unwrap();
+        let creator: SaitoPublicKey = bytes[52..85].try_into().unwrap();
+        let merkle_root: SaitoHash = bytes[85..117].try_into().unwrap();
+        let signature: SaitoSignature = bytes[117..181].try_into().unwrap();
+
+        let treasury: u64 = u64::from_be_bytes(bytes[181..189].try_into().unwrap());
+        let burnfee: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
+        let difficulty: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
+        let mut transactions = vec![];
+        let mut start_of_transaction_data = 205;
+        for _n in 0..transactions_len {
+            let inputs_len: u32 = u32::from_be_bytes(
+                bytes[start_of_transaction_data..start_of_transaction_data + 4]
+                    .try_into()
+                    .unwrap(),
+            );
+            let outputs_len: u32 = u32::from_be_bytes(
+                bytes[start_of_transaction_data + 4..start_of_transaction_data + 8]
+                    .try_into()
+                    .unwrap(),
+            );
+            let message_len: usize = u32::from_be_bytes(
+                bytes[start_of_transaction_data + 8..start_of_transaction_data + 12]
+                    .try_into()
+                    .unwrap(),
+            ) as usize;
+            let end_of_transaction_data = start_of_transaction_data
+                + TRANSACTION_SIZE
+                + ((inputs_len + outputs_len) as usize * SLIP_SIZE)
+                + message_len;
+            let transaction = Transaction::deserialize_from_net(
+                bytes[start_of_transaction_data..end_of_transaction_data].to_vec(),
+            );
+            transactions.push(transaction);
+            start_of_transaction_data = end_of_transaction_data;
+        }
+        let mut block = Block::new(BlockCore::new(
+            id,
+            timestamp,
+            previous_block_hash,
+            creator,
+            merkle_root,
+            signature,
+            treasury,
+            burnfee,
+            difficulty,
+        ));
+        block.set_transactions(&mut transactions);
+        block
+    }
+
+    pub fn generate_merkle_root(&self) -> SaitoHash {
+        let tx_sig_hashes: Vec<[u8; 32]> = self
+            .transactions
+            .iter()
+            .map(|tx| tx.get_hash_for_signature())
+            .collect();
+        let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
+        mt.root_hash()
+            .clone()
+            .try_into()
+            .expect("Faiiled to unwrao merkle root")
     }
 
     pub fn on_chain_reorganization(
@@ -218,7 +334,7 @@ impl Block {
         for tx in &self.transactions {
             tx.on_chain_reorganization(utxoset, longest_chain, self.get_id());
         }
-        return true;
+        true
     }
 
 
@@ -240,6 +356,14 @@ impl Block {
 
 	    }
 	}
+
+      //
+      // verify merkle root
+      //
+        if self.core.merkle_root != self.generate_merkle_root() {
+            return false;
+        }
+
 
 	//
 	// validate fee-transaction 
@@ -289,8 +413,14 @@ impl Into<Vec<u8>> for Block {
 #[cfg(test)]
 
 mod tests {
+
     use super::*;
-    use crate::time::create_timestamp;
+    use crate::{
+        slip::{Slip, SlipCore},
+        time::create_timestamp,
+        transaction::{TransactionCore, TransactionType},
+        wallet::Wallet,
+    };
 
     #[test]
     fn block_core_new_test() {
@@ -355,5 +485,63 @@ mod tests {
         assert_eq!(block.core.treasury, 0);
         assert_eq!(block.core.burnfee, 0);
         assert_eq!(block.core.difficulty, 0);
+    }
+
+    #[test]
+    fn block_serialize_for_net_test() {
+        let mock_input = Slip::new(SlipCore::default());
+        let mock_output = Slip::new(SlipCore::default());
+        let mock_tx = Transaction::new(TransactionCore::new(
+            create_timestamp(),
+            vec![mock_input.clone()],
+            vec![mock_output.clone()],
+            vec![104, 101, 108, 108, 111],
+            TransactionType::Normal,
+            [1; 64],
+        ));
+        let mock_tx2 = Transaction::new(TransactionCore::new(
+            create_timestamp(),
+            vec![mock_input.clone()],
+            vec![mock_output.clone()],
+            vec![],
+            TransactionType::Normal,
+            [2; 64],
+        ));
+        let timestamp = create_timestamp();
+        let mut block = Block::new(BlockCore::new(
+            1, timestamp, [1; 32], [2; 33], [3; 32], [4; 64], 1, 2, 3,
+        ));
+        block.set_transactions(&mut vec![mock_tx, mock_tx2]);
+        let serialized_block = block.serialize_for_net();
+        let deserialized_block = Block::deserialize_for_net(serialized_block);
+        assert_eq!(block, deserialized_block);
+        assert_eq!(deserialized_block.get_id(), 1);
+        assert_eq!(deserialized_block.get_timestamp(), timestamp);
+        assert_eq!(deserialized_block.get_previous_block_hash(), [1; 32]);
+        assert_eq!(deserialized_block.get_creator(), [2; 33]);
+        assert_eq!(deserialized_block.get_merkle_root(), [3; 32]);
+        assert_eq!(deserialized_block.get_signature(), [4; 64]);
+        assert_eq!(deserialized_block.get_treasury(), 1);
+        assert_eq!(deserialized_block.get_burnfee(), 2);
+        assert_eq!(deserialized_block.get_difficulty(), 3);
+    }
+
+    #[test]
+    fn block_merkle_root_test() {
+        let mut block = Block::default();
+        let wallet = Wallet::new();
+
+        let mut transactions = (0..5)
+            .into_iter()
+            .map(|_| {
+                let mut transaction = Transaction::default();
+                transaction.sign(wallet.get_privatekey());
+                transaction
+            })
+            .collect();
+
+        block.set_transactions(&mut transactions);
+
+        assert!(block.generate_merkle_root().len() == 32);
     }
 }

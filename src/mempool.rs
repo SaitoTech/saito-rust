@@ -37,7 +37,7 @@ impl Mempool {
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Mempool {
             blocks: VecDeque::new(),
-            wallet_lock: wallet_lock,
+            wallet_lock,
         }
     }
 
@@ -56,7 +56,6 @@ impl Mempool {
     }
 
     pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
-
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
@@ -184,13 +183,28 @@ pub async fn run(
 #[cfg(test)]
 mod tests {
 
+    use super::*;
+    use crate::{block::Block, wallet::Wallet};
+
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
     #[test]
     fn mempool_new_test() {
-        assert_eq!(true, true);
+        let wallet = Wallet::new();
+        let mempool = Mempool::new(Arc::new(RwLock::new(wallet)));
+        assert_eq!(mempool.blocks, VecDeque::new());
     }
 
     #[test]
-    fn mempool_generate_block_test() {
-        assert_eq!(true, true);
+    fn mempool_add_block_test() {
+        let wallet = Wallet::new();
+        let mut mempool = Mempool::new(Arc::new(RwLock::new(wallet)));
+
+        let block = Block::default();
+
+        mempool.add_block(block.clone());
+
+        assert_eq!(Some(block), mempool.blocks.pop_front())
     }
 }

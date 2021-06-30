@@ -21,7 +21,6 @@ The Saito Team
 dev@saito.tech
 
 */
-pub mod big_array;
 pub mod block;
 pub mod blockchain;
 pub mod blockring;
@@ -30,6 +29,7 @@ pub mod crypto;
 pub mod mempool;
 pub mod network;
 pub mod slip;
+pub mod storage;
 pub mod time;
 pub mod transaction;
 pub mod wallet;
