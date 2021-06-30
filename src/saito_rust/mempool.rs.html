@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/mempool.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mempool.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings"></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../saito_rust/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
+<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../saito_rust/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
                 <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
@@ -210,18 +210,20 @@
 <span id="207">207</span>
 <span id="208">208</span>
 <span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">block</span>::<span class="ident">Block</span>,
-    <span class="ident">blockchain</span>::<span class="ident">Blockchain</span>,
-    <span class="ident">consensus</span>::<span class="ident">SaitoMessage</span>,
+    <span class="ident">block::Block</span>,
+    <span class="ident">blockchain::Blockchain</span>,
+    <span class="ident">consensus::SaitoMessage</span>,
     <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">verify</span>},
-    <span class="ident">slip</span>::<span class="ident">Slip</span>,
-    <span class="ident">transaction</span>::<span class="ident">Transaction</span>,
-    <span class="ident">wallet</span>::<span class="ident">Wallet</span>,
+    <span class="ident">slip::Slip</span>,
+    <span class="ident">transaction::Transaction</span>,
+    <span class="ident">wallet::Wallet</span>,
 };
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections</span>::<span class="ident">VecDeque</span>, <span class="ident">sync</span>::<span class="ident">Arc</span>, <span class="ident">thread</span>::<span class="ident">sleep</span>, <span class="ident">time</span>::<span class="ident">Duration</span>};
-<span class="kw">use</span> <span class="ident">tokio</span>::<span class="ident">sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::VecDeque</span>, <span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
+<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MempoolMessage</span> {
@@ -246,10 +248,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Mempool</span> {
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy</span>::<span class="ident">clippy</span>::<span class="ident">new_without_default</span>)]</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::clippy::new_without_default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">Mempool</span> {
-            <span class="ident">blocks</span>: <span class="ident">VecDeque</span>::<span class="ident">new</span>(),
+            <span class="ident">blocks</span>: <span class="ident">VecDeque::new</span>(),
             <span class="ident">wallet_lock</span>,
         }
     }
@@ -261,10 +263,10 @@
             .<span class="ident">iter</span>()
             .<span class="ident">any</span>(<span class="op">|</span><span class="ident">block</span><span class="op">|</span> <span class="ident">block</span>.<span class="ident">get_hash</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">hash_to_insert</span>)
         {
-            <span class="ident">AddBlockResult</span>::<span class="ident">Exists</span>
+            <span class="ident">AddBlockResult::Exists</span>
         } <span class="kw">else</span> {
             <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">push_back</span>(<span class="ident">block</span>);
-            <span class="ident">AddBlockResult</span>::<span class="ident">Accepted</span>
+            <span class="ident">AddBlockResult::Accepted</span>
         }
     }
 
@@ -273,27 +275,27 @@
         <span class="kw">let</span> <span class="ident">previous_block_id</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>();
         <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::default</span>();
 
         <span class="ident">block</span>.<span class="ident">set_id</span>(<span class="ident">previous_block_id</span> <span class="op">+</span> <span class="number">1</span>);
         <span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>(<span class="ident">previous_block_hash</span>);
 
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
 
-        <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
-            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;creating tx {:?}&quot;</span>, <span class="ident">_i</span>);
+        <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10000</span> {
+            <span class="macro">println!</span>(<span class="string">&quot;creating tx {:?}&quot;</span>, <span class="ident">_i</span>);
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction</span>::<span class="ident">default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::default</span>();
 
-            <span class="ident">transaction</span>.<span class="ident">set_message</span>((<span class="number">0</span>..<span class="number">1024</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">rand</span>::<span class="ident">random</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>()).<span class="ident">collect</span>());
+            <span class="ident">transaction</span>.<span class="ident">set_message</span>((<span class="number">0</span>..<span class="number">1024</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">rand::random</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>()).<span class="ident">collect</span>());
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">default</span>();
-            <span class="ident">input1</span>.<span class="ident">set_publickey</span>([<span class="number">1</span>; <span class="number">33</span>]);
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
+            <span class="ident">input1</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
             <span class="ident">input1</span>.<span class="ident">set_amount</span>(<span class="number">1000000</span>);
             <span class="ident">input1</span>.<span class="ident">set_uuid</span>([<span class="number">1</span>; <span class="number">64</span>]);
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip</span>::<span class="ident">default</span>();
-            <span class="ident">output1</span>.<span class="ident">set_publickey</span>([<span class="number">1</span>; <span class="number">33</span>]);
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
+            <span class="ident">output1</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
             <span class="ident">output1</span>.<span class="ident">set_amount</span>(<span class="number">1000000</span>);
             <span class="ident">output1</span>.<span class="ident">set_uuid</span>([<span class="number">1</span>; <span class="number">64</span>]);
 
@@ -309,8 +311,10 @@
             <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">vbytes</span>);
             <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>, <span class="ident">tx_sig</span>, <span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
             <span class="kw">if</span> <span class="op">!</span><span class="ident">v</span> {
-                <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;Transaction does not Validate: {:?}&quot;</span>, <span class="ident">v</span>);
+                <span class="macro">println!</span>(<span class="string">&quot;Transaction does not Validate: {:?}&quot;</span>, <span class="ident">v</span>);
             }
+
+            <span class="ident">block</span>.<span class="ident">add_transaction</span>(<span class="ident">transaction</span>);
         }
 
         <span class="kw">let</span> <span class="ident">block_merkle_root</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_merkle_root</span>();
@@ -327,39 +331,39 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">_broadcast_channel_sender</span>: <span class="ident">broadcast</span>::<span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
-    <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast</span>::<span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="kw">let</span> (<span class="ident">mempool_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">mempool_channel_receiver</span>) <span class="op">=</span> <span class="ident">mpsc</span>::<span class="ident">channel</span>(<span class="number">4</span>);
+    <span class="ident">_broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
+    <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">let</span> (<span class="ident">mempool_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">mempool_channel_receiver</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
 
     <span class="kw">let</span> <span class="ident">generate_block_sender</span> <span class="op">=</span> <span class="ident">mempool_channel_sender</span>.<span class="ident">clone</span>();
-    <span class="ident">tokio</span>::<span class="ident">spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
+    <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">loop</span> {
             <span class="ident">generate_block_sender</span>
-                .<span class="ident">send</span>(<span class="ident">MempoolMessage</span>::<span class="ident">GenerateBlock</span>)
+                .<span class="ident">send</span>(<span class="ident">MempoolMessage::GenerateBlock</span>)
                 .<span class="kw">await</span>
                 .<span class="ident">expect</span>(<span class="string">&quot;error: GenerateBlock message failed to send&quot;</span>);
-            <span class="ident">sleep</span>(<span class="ident">Duration</span>::<span class="ident">from_millis</span>(<span class="number">5000</span>));
+            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">20000</span>));
         }
     });
 
     <span class="kw">loop</span> {
-        <span class="ident">tokio</span>::<span class="macro">select</span><span class="macro">!</span> {
+        <span class="macro">tokio::select!</span> {
             <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">mempool_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">match</span> <span class="ident">message</span> {
                     <span class="comment">// GenerateBlock makes periodic attempts to analyse the state of</span>
                     <span class="comment">// the mempool and produce blocks if possible.</span>
-                    <span class="ident">MempoolMessage</span>::<span class="ident">GenerateBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">MempoolMessage::GenerateBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">generate_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
-                        <span class="kw">if</span> <span class="ident">AddBlockResult</span>::<span class="ident">Accepted</span> <span class="op">=</span><span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>) {
-                            <span class="ident">mempool_channel_sender</span>.<span class="ident">send</span>(<span class="ident">MempoolMessage</span>::<span class="ident">ProcessBlocks</span>).<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to send ProcessBlocks message&quot;</span>)
+                        <span class="kw">if</span> <span class="ident">AddBlockResult::Accepted</span> <span class="op">=</span><span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>) {
+                            <span class="ident">mempool_channel_sender</span>.<span class="ident">send</span>(<span class="ident">MempoolMessage::ProcessBlocks</span>).<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to send ProcessBlocks message&quot;</span>)
                         }
                     },
 
                     <span class="comment">// ProcessBlocks will add blocks FIFO from the queue</span>
                     <span class="comment">// into blockchain</span>
-                    <span class="ident">MempoolMessage</span>::<span class="ident">ProcessBlocks</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">MempoolMessage::ProcessBlocks</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">blocks</span>.<span class="ident">pop_front</span>() {
@@ -374,16 +378,16 @@
                 <span class="kw">match</span> <span class="ident">message</span> {
                     <span class="comment">// triggered when a block is received over the network and</span>
                     <span class="comment">// will be added to the `Blockchain`</span>
-                    <span class="ident">SaitoMessage</span>::<span class="ident">MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SaitoMessage::MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="comment">// TODO: there is still an open question about how blocks</span>
                         <span class="comment">// over the network will be placed into the mempool queue</span>
                         <span class="comment">//</span>
                         <span class="comment">// For now, let&#39;s assume that the network has a reference</span>
                         <span class="comment">// to mempool and is adding the block through that reference</span>
                         <span class="comment">// then calls mempool to process the blocks in the queue</span>
-                        <span class="ident">mempool_channel_sender</span>.<span class="ident">send</span>(<span class="ident">MempoolMessage</span>::<span class="ident">ProcessBlocks</span>).<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to send ProcessBlocks message&quot;</span>)
+                        <span class="ident">mempool_channel_sender</span>.<span class="ident">send</span>(<span class="ident">MempoolMessage::ProcessBlocks</span>).<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to send ProcessBlocks message&quot;</span>)
                     }
-                    <span class="ident">SaitoMessage</span>::<span class="ident">MempoolNewTransaction</span> { <span class="ident">transaction</span>: <span class="ident">_transaction</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SaitoMessage::MempoolNewTransaction</span> { <span class="ident">transaction</span>: <span class="ident">_transaction</span> } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">_mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                     },
                 }
@@ -396,30 +400,30 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">block</span>::<span class="ident">Block</span>, <span class="ident">wallet</span>::<span class="ident">Wallet</span>};
+    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">block::Block</span>, <span class="ident">wallet::Wallet</span>};
 
-    <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
-    <span class="kw">use</span> <span class="ident">tokio</span>::<span class="ident">sync</span>::<span class="ident">RwLock</span>;
+    <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+    <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">mempool_new_test</span>() {
-        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet</span>::<span class="ident">new</span>();
-        <span class="kw">let</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool</span>::<span class="ident">new</span>(<span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">wallet</span>)));
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">mempool</span>.<span class="ident">blocks</span>, <span class="ident">VecDeque</span>::<span class="ident">new</span>());
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
+        <span class="kw">let</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool::new</span>(<span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">wallet</span>)));
+        <span class="macro">assert_eq!</span>(<span class="ident">mempool</span>.<span class="ident">blocks</span>, <span class="ident">VecDeque::new</span>());
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">mempool_add_block_test</span>() {
-        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet</span>::<span class="ident">new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool</span>::<span class="ident">new</span>(<span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">wallet</span>)));
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool::new</span>(<span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">wallet</span>)));
 
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::default</span>();
 
         <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
 
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="prelude-val">Some</span>(<span class="ident">block</span>), <span class="ident">mempool</span>.<span class="ident">blocks</span>.<span class="ident">pop_front</span>())
+        <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(<span class="ident">block</span>), <span class="ident">mempool</span>.<span class="ident">blocks</span>.<span class="ident">pop_front</span>())
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-js="../../search-index.js"></div>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>
