@@ -1,7 +1,7 @@
 use crate::{
-    crypto::{
-        hash, MerkleTree, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey, SHA256,
-    },
+    blockchain::Blockchain,
+    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    merkle::MerkleTreeLayer,
     slip::SLIP_SIZE,
     time::create_timestamp,
     transaction::{Transaction, TRANSACTION_SIZE},
@@ -11,14 +11,6 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
-/// BlockCore is a self-contained object containing only the minimum
-/// information needed about a block. It exists to simplify block
-/// serialization and deserialization until we have custom functions
-/// and to.
-///
-/// This is a private variable. Access to variables within the BlockCore
-/// should be handled through getters and setters in the block which
-/// surrounds it.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BlockCore {
@@ -83,7 +75,7 @@ pub struct Block {
     /// Consensus Level Variables
     core: BlockCore,
     /// Transactions
-    transactions: Vec<Transaction>,
+    pub transactions: Vec<Transaction>,
     /// Self-Calculated / Validated
     hash: SaitoHash,
     /// Is Block on longest chain
@@ -193,6 +185,10 @@ impl Block {
 
     pub fn set_hash(&mut self, hash: SaitoHash) {
         self.hash = hash;
+    }
+
+    pub fn add_transaction(&mut self, tx: Transaction) {
+        self.transactions.push(tx);
     }
 
     // TODO
@@ -320,16 +316,79 @@ impl Block {
     }
 
     pub fn generate_merkle_root(&self) -> SaitoHash {
-        let tx_sig_hashes: Vec<[u8; 32]> = self
+        let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
             .map(|tx| tx.get_hash_for_signature())
             .collect();
-        let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
-        mt.root_hash()
-            .clone()
-            .try_into()
-            .expect("Faiiled to unwrao merkle root")
+
+        /*** KEEPING FOR SPEED REFERENCE TESTS ***
+                let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
+                mt.root_hash()
+                    .clone()
+                    .try_into()
+                    .expect("Failed to unwrao merkle root")
+        *****************************************/
+
+        let mut mrv: Vec<MerkleTreeLayer> = vec![];
+
+        //
+        // or let's try another approach
+        //
+        let tsh_len = tx_sig_hashes.len();
+        let mut leaf_depth = 0;
+
+        for i in 0..tsh_len {
+            if (i + 1) < tsh_len {
+                mrv.push(MerkleTreeLayer::new(
+                    tx_sig_hashes[i],
+                    tx_sig_hashes[i + 1],
+                    leaf_depth,
+                ));
+            } else {
+                mrv.push(MerkleTreeLayer::new(tx_sig_hashes[i], [0; 32], leaf_depth));
+            }
+        }
+
+        let mut start_point = 0;
+        let mut stop_point = mrv.len();
+        let mut keep_looping = true;
+
+        while keep_looping {
+            // processing new layer
+            leaf_depth += 1;
+
+            // hash the parent in parallel
+            mrv[start_point..stop_point]
+                .par_iter_mut()
+                .all(|leaf| leaf.hash());
+
+            let start_point_old = start_point;
+            start_point = mrv.len();
+
+            for i in (start_point_old..stop_point).step_by(2) {
+                //println!("looping in hash loop with {:?}", i);
+                if (i + 1) < stop_point {
+                    mrv.push(MerkleTreeLayer::new(
+                        mrv[i].get_hash(),
+                        mrv[i + 1].get_hash(),
+                        leaf_depth,
+                    ));
+                } else {
+                    mrv.push(MerkleTreeLayer::new(mrv[i].get_hash(), [0; 32], leaf_depth));
+                }
+            }
+
+            stop_point = mrv.len();
+            keep_looping = start_point < stop_point - 1;
+        }
+
+
+        //
+        // hash the final leaf
+        //
+        mrv[start_point].hash();
+        mrv[start_point].get_hash()
     }
 
     pub fn on_chain_reorganization(
@@ -343,24 +402,53 @@ impl Block {
         true
     }
 
-    pub fn validate(&mut self) -> bool {
+    pub fn validate_pre_calculations(&mut self) {
+        let _transactions_valid = &self
+            .transactions
+            .par_iter_mut()
+            .all(|tx| tx.validate_pre_calculations());
+    }
+    pub fn validate(&self, _blockchain: &Blockchain) -> bool {
         //
-        // we validate transactions before generating the merkle_root
-        // and calculating the block hashes, as we need to be able to
-        // generate the tx_sigs
+        // validate the burn fee
         //
-        let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate());
+        //        {
+        //            let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
+        //            if !previous_block.is_none() {
+        //		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );
+        //		let previous_burnfee = previous_block.unwrap().get_burnfee();
+        //            }
+        //        }
 
-        // Verify merkle root
+	//
+        // verify merkle root
+	//
 	if self.core.merkle_root == [0; 32] {
-println!("failing because merkle root is bad");
-		return false; 
+	    println!("failing because merkle root is bad");
+	    return false; 
 	}
+
+        //
+        // verify merkle root
+        //
         if self.core.merkle_root != self.generate_merkle_root() {
             return false;
         }
 
-        true
+        //
+        // validate fee-transaction
+        //
+
+        //
+        // validate miner/staker outbound-payments
+        //
+
+        //
+        // VALIDATE transactions
+        //
+        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
+
+	true
     }
 }
 
