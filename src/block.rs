@@ -1,4 +1,5 @@
 use crate::{
+    blockchain::Blockchain,
     crypto::{
         hash, MerkleTree, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey, SHA256,
     },
@@ -11,14 +12,6 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
-/// BlockCore is a self-contained object containing only the minimum
-/// information needed about a block. It exists to simplify block
-/// serialization and deserialization until we have custom functions
-/// and to.
-///
-/// This is a private variable. Access to variables within the BlockCore
-/// should be handled through getters and setters in the block which
-/// surrounds it.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct BlockCore {
@@ -34,6 +27,7 @@ pub struct BlockCore {
     burnfee: u64,
     difficulty: u64,
 }
+
 
 impl BlockCore {
     #[allow(clippy::too_many_arguments)]
@@ -343,20 +337,50 @@ impl Block {
         true
     }
 
-    pub fn validate(&mut self) -> bool {
-        //
-        // we validate transactions before generating the merkle_root
-        // and calculating the block hashes, as we need to be able to
-        // generate the tx_sigs
-        //
-        let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate());
 
-        // Verify merkle root
+    pub fn validate_pre_calculations(&mut self) {
+
+        let _transactions_valid = &self.transactions.par_iter_mut().all(|tx| tx.validate_pre_calculations());
+
+    }
+    pub fn validate(&self, blockchain : &Blockchain) -> bool {
+
+	//
+	// validate the burn fee
+	//
+        {
+            let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
+	    if !previous_block.is_none() {
+//		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );
+//		let previous_burnfee = previous_block.unwrap().get_burnfee();
+
+	    }
+	}
+
+      //
+      // verify merkle root
+      //
         if self.core.merkle_root != self.generate_merkle_root() {
             return false;
         }
 
-        true
+
+	//
+	// validate fee-transaction 
+	//
+
+
+
+	//
+	// validate miner/staker outbound-payments
+	//
+
+
+	//
+	// VALIDATE transactions
+	//
+        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
+        return true;
     }
 }
 

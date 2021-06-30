@@ -8,9 +8,9 @@ use ahash::AHashMap;
 
 #[derive(Debug)]
 pub struct Blockchain {
-    utxoset: AHashMap<SaitoUTXOSetKey, u64>,
-    blockring: BlockRing,
-    blocks: AHashMap<SaitoHash, Block>,
+    pub utxoset: AHashMap<SaitoUTXOSetKey, u64>,
+    pub blockring: BlockRing,
+    pub blocks: AHashMap<SaitoHash, Block>,
 }
 
 impl Blockchain {
@@ -158,6 +158,13 @@ impl Blockchain {
         //
         // validate
         //
+	// blockchain validate "validates" the new_chain by unwinding the old
+	// and winding the new, which calling validate on any new previously-
+	// unvalidated blocks. When the longest-chain status of blocks changes
+	// the function on_chain_reorganization is triggered in blocks and 
+	// with the BlockRing. We fail if the newly-preferred chain is not
+	// viable.
+	//
         if am_i_the_longest_chain {
             println!(" ... start validate:  {:?}", create_timestamp());
             let does_new_chain_validate = self.validate(new_chain, old_chain);
@@ -246,14 +253,21 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-        let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
-        //        let block = &mut self.blocks[&new_chain[current_wind_index]];
+        let mut does_block_validate = false;
 
-        //
-        // validate the block
-        //
-        let does_block_validate = block.validate();
+	{
+            let mut block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+
+            //
+            // validate the block
+            //
+            block.validate_pre_calculations();
+        }
+
+
+        let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
+	does_block_validate = block.validate(self);
 
         if does_block_validate {
             block.on_chain_reorganization(&mut self.utxoset, true);
