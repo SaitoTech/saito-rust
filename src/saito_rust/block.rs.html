@@ -614,7 +614,6 @@
 <span id="611">611</span>
 <span id="612">612</span>
 <span id="613">613</span>
-<span id="614">614</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
@@ -1001,7 +1000,6 @@
             <span class="ident">keep_looping</span> <span class="op">=</span> <span class="ident">start_point</span> <span class="op">&lt;</span> <span class="ident">stop_point</span> <span class="op">-</span> <span class="number">1</span>;
         }
 
-
         <span class="comment">//</span>
         <span class="comment">// hash the final leaf</span>
         <span class="comment">//</span>
@@ -1065,7 +1063,7 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">_transactions_valid</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">par_iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>());
 
-	<span class="bool-val">true</span>
+        <span class="bool-val">true</span>
     }
 }
 
