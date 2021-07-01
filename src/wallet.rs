@@ -23,7 +23,20 @@ impl Wallet {
         }
     }
 
-    pub fn add_slip(&mut self, block : Block , transaction : Transaction, slip : Slip, lc : bool) {
+    pub fn add_block(&mut self, block : &Block) {
+
+        for tx in &block.transactions {
+            for input in tx.get_inputs() {
+		self.delete_slip(input);
+            }
+            for output in tx.get_outputs() {
+		self.add_slip(block, tx, output, block.get_lc());
+            }
+        }
+
+    }
+
+    pub fn add_slip(&mut self, block : &Block , transaction : &Transaction, slip : &Slip, lc : bool) {
 
 	let mut wallet_slip = WalletSlip::new();
 
@@ -36,6 +49,11 @@ impl Wallet {
 
         self.slips.push(WalletSlip::new());
     }
+
+    pub fn delete_slip(&mut self, slip : &Slip) {
+	self.slips.retain(|x| x.get_uuid() != slip.get_uuid() && x.get_slip_ordinal() != slip.get_slip_ordinal());
+    }
+
 
     pub fn get_privatekey(&self) -> SaitoPrivateKey {
         self.privatekey
@@ -62,6 +80,7 @@ pub struct WalletSlip {
     block_id: u64,
     block_hash: SaitoHash,
     lc: bool,
+    slip_ordinal: u8,
 }
 impl WalletSlip {
 
@@ -73,7 +92,36 @@ impl WalletSlip {
 	    block_id: 0,
 	    block_hash: [0; 32],
 	    lc: true,
+	    slip_ordinal: 0,
 	}
+    }
+
+    pub fn get_uuid(&self) -> SaitoHash {
+	self.uuid
+    }
+
+    pub fn get_utxokey(&self) -> &SaitoUTXOSetKey {
+	&self.utxokey
+    }
+
+    pub fn get_amount(&self) -> u64 {
+	self.amount
+    }
+
+    pub fn get_block_id(&self) -> u64 {
+	self.block_id
+    }
+
+    pub fn get_block_hash(&self) -> SaitoHash {
+	self.block_hash
+    }
+
+    pub fn get_lc(&self) -> bool {
+	self.lc
+    }
+
+    pub fn get_slip_ordinal(&self) -> u8 {
+	self.slip_ordinal
     }
 
     pub fn set_uuid(&mut self, hash : SaitoHash) {
@@ -98,6 +146,10 @@ impl WalletSlip {
 
     pub fn set_lc(&mut self, lc : bool) {
 	self.lc = lc;
+    }
+
+    pub fn set_slip_ordinal(&mut self, slip_ordinal : u8) {
+	self.slip_ordinal = slip_ordinal;
     }
 
 }
