@@ -304,6 +304,7 @@
 <span id="301">301</span>
 <span id="302">302</span>
 <span id="303">303</span>
+<span id="304">304</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -442,6 +443,7 @@
         <span class="ident">block</span>.<span class="ident">set_id</span>(<span class="ident">previous_block_id</span> <span class="op">+</span> <span class="number">1</span>);
         <span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>(<span class="ident">previous_block_hash</span>);
         <span class="ident">block</span>.<span class="ident">set_burnfee</span>(<span class="ident">new_burnfee</span>);
+        <span class="ident">block</span>.<span class="ident">set_timestamp</span>(<span class="ident">current_timestamp</span>);
 
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
 

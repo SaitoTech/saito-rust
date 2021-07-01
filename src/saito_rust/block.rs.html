@@ -616,9 +616,23 @@
 <span id="613">613</span>
 <span id="614">614</span>
 <span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
+    <span class="ident">burnfee::BurnFee</span>,
     <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>},
     <span class="ident">merkle::MerkleTreeLayer</span>,
     <span class="ident">slip::SLIP_SIZE</span>,
@@ -1026,17 +1040,29 @@
             .<span class="ident">par_iter_mut</span>()
             .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate_pre_calculations</span>());
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_blockchain</span>: <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blockchain</span>: <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+
         <span class="comment">//</span>
-        <span class="comment">// validate the burn fee</span>
+        <span class="comment">// validate burn fee</span>
         <span class="comment">//</span>
-        <span class="comment">//        {</span>
-        <span class="comment">//            let previous_block = blockchain.blocks.get(&amp;self.get_previous_block_hash());</span>
-        <span class="comment">//            if !previous_block.is_none() {</span>
-        <span class="comment">//		let expected_burnfee = Miner::calculate_burnfee(previous_block.unwrap().get_burnfee(), );</span>
-        <span class="comment">//		let previous_burnfee = previous_block.unwrap().get_burnfee();</span>
-        <span class="comment">//            }</span>
-        <span class="comment">//        }</span>
+        {
+            <span class="kw">let</span> <span class="ident">previous_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_previous_block_hash</span>());
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">previous_block</span>.<span class="ident">is_none</span>() {
+        	<span class="kw">let</span> <span class="ident">new_burnfee</span>: <span class="ident">u64</span> <span class="op">=</span>
+            	    <span class="ident">BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan</span>(
+                	<span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_burnfee</span>(),
+                	<span class="self">self</span>.<span class="ident">get_timestamp</span>(),
+                	<span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_timestamp</span>(),
+            	    );
+		<span class="kw">if</span> <span class="ident">new_burnfee</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_burnfee</span>() {
+		    <span class="macro">println!</span>(<span class="string">&quot;ERROR: burn fee does not validate, expected: {}&quot;</span>, <span class="ident">new_burnfee</span>);
+		    <span class="kw">return</span> <span class="bool-val">false</span>;
+		} <span class="kw">else</span> {
+		    <span class="macro">println!</span>(<span class="string">&quot;Burn Fee validates...&quot;</span>);
+		}
+            }
+	}
 
         <span class="comment">//</span>
         <span class="comment">// verify merkle root</span>

@@ -477,6 +477,7 @@
 <span id="474">474</span>
 <span id="475">475</span>
 <span id="476">476</span>
+<span id="477">477</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -911,7 +912,8 @@
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_test</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">Blockchain::new</span>();
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
 
         <span class="comment">//</span>
         <span class="comment">// Good Blocks</span>
