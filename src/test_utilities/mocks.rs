@@ -21,15 +21,7 @@ impl MockTimestampGenerator {
     }
 }
 
-pub fn make_mock_block(previous_block_hash: SaitoHash, block_id: u64) -> Block {
-    // let mock_input =     pub fn new(
-    //     publickey: [u8; 33],
-    //     uuid: [u8; 64],
-    //     amount: u64,
-    //     slip_ordinal: u8,
-    //     slip_type: SlipType,
-    // ) -> Self {
-
+pub fn make_mock_block(time_stamp: u64, previous_block_hash: SaitoHash, block_id: u64) -> Block {
     let wallet = Wallet::new();
     let mock_input = Slip::new(SlipCore::new(
         wallet.get_publickey(),
@@ -46,7 +38,7 @@ pub fn make_mock_block(previous_block_hash: SaitoHash, block_id: u64) -> Block {
         SlipType::Normal,
     ));
     let mut transaction = Transaction::new(TransactionCore::new(
-        create_timestamp(),
+        time_stamp,
         vec![mock_input],
         vec![mock_output],
         vec![],
@@ -56,7 +48,7 @@ pub fn make_mock_block(previous_block_hash: SaitoHash, block_id: u64) -> Block {
     transaction.sign(wallet.get_privatekey());
     let mock_core = BlockCore::new(
         block_id,
-        create_timestamp(),
+        time_stamp,
         previous_block_hash,
         wallet.get_publickey(),
         [2; 32],
@@ -71,8 +63,8 @@ pub fn make_mock_block(previous_block_hash: SaitoHash, block_id: u64) -> Block {
     block.set_hash(block.generate_hash());
     block
 }
-pub fn make_mock_invalid_block(previous_block_hash: SaitoHash, block_id: u64) -> Block {
-    let mut mock_block = make_mock_block(previous_block_hash, block_id);
+pub fn make_mock_invalid_block(time_stamp: u64, previous_block_hash: SaitoHash, block_id: u64) -> Block {
+    let mut mock_block = make_mock_block(time_stamp, previous_block_hash, block_id);
     mock_block.set_merkle_root([0; 32]);
     mock_block
 }

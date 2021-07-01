@@ -163,7 +163,6 @@ impl Blockchain {
                 return;
             }
         }
-
         //
         // at this point we should have a shared ancestor or not
         //
@@ -186,9 +185,7 @@ impl Blockchain {
         // viable.
         //
         if am_i_the_longest_chain {
-            println!(" ... start validate:  {:?}", create_timestamp());
             let does_new_chain_validate = self.validate(new_chain, old_chain);
-            println!(" ... finish validate: {:?}", create_timestamp());
             if does_new_chain_validate {
                 self.add_block_success(block_hash).await;
             } else {
@@ -307,7 +304,6 @@ impl Blockchain {
         for hash in new_chain.iter() {
             new_bf += self.blocks.get(hash).unwrap().get_burnfee();
         }
-
         //
         // new chain must have more accumulated work AND be longer
         //
@@ -426,28 +422,28 @@ impl Blockchain {
 #[cfg(test)]
 
 mod tests {
-    use crate::test_utilities::mocks::{make_mock_block, make_mock_invalid_block};
+    use crate::test_utilities::mocks::{make_mock_block, make_mock_invalid_block, MockTimestampGenerator};
 
     use super::*;
     #[tokio::test]
     async fn add_block_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mut blockchain = Blockchain::new(wallet_lock.clone());
-
+        let mut timestamp_generator = MockTimestampGenerator::new();
         //
         // Good Blocks
         //
-        let good_block_12 = make_mock_block([0; 32], 12);
+        let good_block_12 = make_mock_block(timestamp_generator.next(), [0; 32], 12);
         let good_block_12_hash = good_block_12.get_hash();
-        let good_block_13 = make_mock_block(good_block_12_hash, 13);
+        let good_block_13 = make_mock_block(timestamp_generator.next(), good_block_12_hash, 13);
         let good_block_13_hash = good_block_13.get_hash();
 
         //
         // "Bad" Blocks
         //
-        let bad_block_13 = make_mock_invalid_block(good_block_13_hash, 13);
-        let bad_block_14 = make_mock_invalid_block(good_block_12_hash, 14);
-        let good_block_3 = make_mock_block([0; 32], 3);
+        let bad_block_13 = make_mock_invalid_block(timestamp_generator.next(), good_block_13_hash, 13);
+        let bad_block_14 = make_mock_invalid_block(timestamp_generator.next(), good_block_12_hash, 14);
+        let good_block_3 = make_mock_block(timestamp_generator.next(), [0; 32], 3);
 
         // Add our first block #12
         blockchain.add_block(good_block_12).await;
@@ -473,5 +469,104 @@ mod tests {
         blockchain.add_block(good_block_3).await;
         assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
+    }
+
+    #[tokio::test]
+    async fn add_block_test_2() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mut blockchain = Blockchain::new(wallet_lock.clone());
+        let mut timestamp_generator = MockTimestampGenerator::new();
+
+        let mock_block = make_mock_block(timestamp_generator.next(), [0; 32], 12);
+        println!("MOCK BLOCK HASH {:?}", mock_block.get_hash());
+        let mock_block2 = make_mock_block(timestamp_generator.next(), mock_block.get_hash(), 13);
+        let mock_block_hash = mock_block.get_hash();
+        let mock_block_hash2 = mock_block2.get_hash();
+        let mock_invalid_block2 = make_mock_invalid_block(timestamp_generator.next(), mock_block_hash, 14);
+
+        // Adding a block to a new blockchain should set the latest block id
+        blockchain.add_block(mock_block).await;
+        assert_eq!(mock_block_hash, blockchain.get_latest_block_hash());
+        assert_eq!(12, blockchain.get_latest_block_id());
+
+        // Adding the next block should be okay
+        blockchain.add_block(mock_block2).await;
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // TODO: Fix this test, it crashes
+        // Adding an invalid block should not effect the blockchain
+        blockchain.add_block(make_mock_invalid_block(timestamp_generator.next(), mock_block_hash2, 14)).await;
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Adding an invalid block should not effect the blockchain
+        blockchain.add_block(mock_invalid_block2).await;
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Adding an invalid block should not effect the blockchain
+        blockchain.add_block(make_mock_block(timestamp_generator.next(), mock_block_hash, 3)).await;
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Adding an invalid block should not effect the blockchain
+        blockchain.add_block(make_mock_block(timestamp_generator.next(), mock_block_hash2, 3)).await;
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Fix this. It might be the same issue as above
+        blockchain.add_block(make_mock_block(timestamp_generator.next(), [0; 32], 1)).await;
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        blockchain.add_block(make_mock_invalid_block(timestamp_generator.next(), [0; 32], 1)).await;
+        assert_eq!(mock_block_hash2, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+    }
+
+    #[tokio::test]
+    async fn add_fork_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mut blockchain = Blockchain::new(wallet_lock.clone());
+        let mut timestamp_generator = MockTimestampGenerator::new();
+        let first_block = make_mock_block(timestamp_generator.next(), [0; 32], 1);
+        let mut prev_block_hash = first_block.get_hash();
+        let mut prev_block_id = first_block.get_id();
+        blockchain.add_block(first_block.clone()).await;
+        for _n in 0..5 {
+            let next_block = make_mock_block(timestamp_generator.next(), prev_block_hash, prev_block_id + 1);
+            prev_block_hash = next_block.get_hash();
+            prev_block_id = next_block.get_id();
+            blockchain.add_block(next_block).await;
+        }
+
+        // assert_eq!(prev_block_hash, blockchain.get_latest_block_hash());
+        assert_eq!(6, blockchain.get_latest_block_id());
+        // println!("block 100 hash {:?}", prev_block_hash);
+        prev_block_hash = first_block.get_hash();
+        prev_block_id = first_block.get_id();
+        for _n in 0..12 {
+            let next_block = make_mock_block(timestamp_generator.next(), prev_block_hash, prev_block_id + 1);
+            prev_block_hash = next_block.get_hash();
+            prev_block_id = next_block.get_id();
+            blockchain.add_block(next_block).await;
+        }
+        assert_eq!(13, blockchain.get_latest_block_id());
+    }
+    #[tokio::test]
+    async fn add_block_test_3() {
+
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mut blockchain = Blockchain::new(wallet_lock.clone());
+        let mut timestamp_generator = MockTimestampGenerator::new();
+        let first_block = make_mock_block(timestamp_generator.next(), [0; 32], 0);
+        let prev_block_hash = first_block.get_hash();
+        let prev_block_id = first_block.get_id();
+        blockchain.add_block(first_block.clone()).await;
+        let next_block = make_mock_block(timestamp_generator.next(), prev_block_hash, prev_block_id + 1);
+        blockchain.add_block(next_block).await;
+        assert_eq!(1, blockchain.get_latest_block_id());
     }
 }
