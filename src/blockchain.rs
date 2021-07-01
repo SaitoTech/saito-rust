@@ -148,9 +148,6 @@ impl Blockchain {
             }
         }
 
-        println!("new chain: {:?}", new_chain);
-        println!("old chain: {:?}", old_chain);
-
         //
         // at this point we should have a shared ancestor
         //
@@ -186,7 +183,6 @@ impl Blockchain {
         }
 
         println!("TOTAL INDEX OF BLOCKS");
-        self.blockring.print_lc();
     }
 
     pub fn add_block_success(&mut self, block_hash: SaitoHash) {
