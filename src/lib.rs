@@ -24,6 +24,7 @@ dev@saito.tech
 pub mod block;
 pub mod blockchain;
 pub mod blockring;
+pub mod burnfee;
 pub mod consensus;
 pub mod crypto;
 pub mod mempool;

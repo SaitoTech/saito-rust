@@ -205,6 +205,24 @@ impl Blockchain {
         self.blocks.get(&block_hash)
     }
 
+    pub fn get_latest_block_burnfee(&self) -> f64 {
+	let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block = self.blocks.get(&block_hash);
+	match block {
+	    Some(block) => { return block.get_burnfee(); }
+	    None => { return 0.0; }
+	}
+    }
+
+    pub fn get_latest_block_timestamp(&self) -> u64 {
+	let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block = self.blocks.get(&block_hash);
+	match block {
+	    Some(block) => { return block.get_timestamp(); }
+	    None => { return 0; }
+	}
+    }
+
     pub fn get_latest_block_hash(&self) -> SaitoHash {
         self.blockring.get_longest_chain_block_hash()
     }
@@ -222,8 +240,8 @@ impl Blockchain {
             return false;
         }
 
-        let mut old_bf = 0;
-        let mut new_bf = 0;
+        let mut old_bf :f64 = 0.0;
+        let mut new_bf :f64 = 0.0;
         for hash in old_chain.iter() {
             old_bf += self.blocks.get(hash).unwrap().get_burnfee();
         }
