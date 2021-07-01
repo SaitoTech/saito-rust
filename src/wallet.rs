@@ -1,4 +1,5 @@
-use crate::crypto::{generate_keys, sign, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
+use crate::crypto::{generate_keys, sign, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
+
 
 /// The `Wallet` manages the public and private keypair of the node and holds the
 /// slips that are used to form transactions on the network.
@@ -29,6 +30,18 @@ impl Wallet {
     pub fn sign(&self, message_bytes: &[u8]) -> SaitoSignature {
         sign(message_bytes, self.privatekey)
     }
+}
+
+
+/// The `WalletSlip` stores the essential information needed to track which
+/// slips are spendable and managing them as they move onto and off of the 
+/// longest-chain.
+pub struct WalletSlip {
+    uuid: SaitoSignature,
+    utxokey: SaitoUTXOSetKey,
+    amount: u64,
+    block_id: u64,
+    block_hash: SaitoHash,
 }
 
 #[cfg(test)]
