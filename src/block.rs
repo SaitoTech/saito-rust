@@ -424,7 +424,6 @@ impl Block {
         // verify merkle root
 	//
 	if self.core.merkle_root == [0; 32] {
-	    println!("failing because merkle root is bad");
 	    return false; 
 	}
 
