@@ -205,6 +205,32 @@ impl Blockchain {
         self.blocks.get(&block_hash)
     }
 
+    pub fn get_latest_block_burnfee(&self) -> u64 {
+        let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block = self.blocks.get(&block_hash);
+        match block {
+            Some(block) => {
+                return block.get_burnfee();
+            }
+            None => {
+                return 0;
+            }
+        }
+    }
+
+    pub fn get_latest_block_timestamp(&self) -> u64 {
+        let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block = self.blocks.get(&block_hash);
+        match block {
+            Some(block) => {
+                return block.get_timestamp();
+            }
+            None => {
+                return 0;
+            }
+        }
+    }
+
     pub fn get_latest_block_hash(&self) -> SaitoHash {
         self.blockring.get_longest_chain_block_hash()
     }
@@ -222,13 +248,13 @@ impl Blockchain {
         if old_chain.len() > new_chain.len() {
             return false;
         }
-
-	if self.blockring.get_longest_chain_block_id() >= self.blocks.get(&new_chain[new_chain.len()-1]).unwrap().get_id() {
+      
+      	if self.blockring.get_longest_chain_block_id() >= self.blocks.get(&new_chain[new_chain.len()-1]).unwrap().get_id() {
             return false;
-	}
+	      }
 
-        let mut old_bf = 0;
-        let mut new_bf = 0;
+        let mut old_bf: u64 = 0;
+        let mut new_bf: u64 = 0;
 
         for hash in old_chain.iter() {
             old_bf += self.blocks.get(hash).unwrap().get_burnfee();
@@ -261,17 +287,17 @@ impl Blockchain {
         wind_failure: bool,
     ) -> bool {
 
-	//
-	// if we are winding a non-existent chain with a wind_failure it
-	// means our wind attempt failed and we should move directly into
-	// add_block_failure() by returning false.
-	//
-	if wind_failure == true && new_chain.len() == 0 { return false; }
+      	//
+	      // if we are winding a non-existent chain with a wind_failure it
+	      // means our wind attempt failed and we should move directly into
+	      // add_block_failure() by returning false.
+	      //
+	      if wind_failure == true && new_chain.len() == 0 { return false; }
 
         {
-	    // yes, there is a warning here, but we need the mutable borrow to set the 
-	    // tx.hash_for_signature information inside AFAICT
-            let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+            // yes, there is a warning here, but we need the mutable borrow to set the
+            // tx.hash_for_signature information inside AFAICT
+            let mut block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
             //
             // validate the block
