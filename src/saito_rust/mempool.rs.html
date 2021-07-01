@@ -428,9 +428,9 @@
         <span class="kw">let</span> <span class="ident">previous_block_timestamp</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_timestamp</span>();
         <span class="kw">let</span> <span class="ident">current_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
 
-        <span class="macro">println!</span>(<span class="string">&quot;BUILDING FROM BF: {}&quot;</span>, <span class="ident">previous_block_burnfee</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;BUILDING FROM TS: {}&quot;</span>, <span class="ident">previous_block_timestamp</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;BUILDING FROM ID: {}&quot;</span>, <span class="ident">previous_block_id</span>);
+        <span class="comment">//println!(&quot;BUILDING FROM BF: {}&quot;, previous_block_burnfee);</span>
+        <span class="comment">//println!(&quot;BUILDING FROM TS: {}&quot;, previous_block_timestamp);</span>
+        <span class="comment">//println!(&quot;BUILDING FROM ID: {}&quot;, previous_block_id);</span>
 
         <span class="kw">let</span> <span class="ident">new_burnfee</span>: <span class="ident">u64</span> <span class="op">=</span>
             <span class="ident">BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan</span>(
