@@ -70,9 +70,10 @@ impl Consensus {
         // messages, as well as setters.
         //
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let storage = Storage::new();
+
         storage.load_blocks_from_disk(blockchain_lock.clone()).await;
         tokio::select! {
             res = crate::mempool::run(
