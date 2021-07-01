@@ -23,7 +23,7 @@ impl Blockchain {
         }
     }
 
-    pub fn add_block(&mut self, block: Block) {
+    pub async fn add_block(&mut self, block: Block) {
         println!(" ... add_block start: {:?}", create_timestamp());
         println!(" ... txs in block: {:?}", block.transactions.len());
 
