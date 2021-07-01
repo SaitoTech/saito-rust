@@ -37,7 +37,7 @@ impl Wallet {
 /// slips are spendable and managing them as they move onto and off of the 
 /// longest-chain.
 pub struct WalletSlip {
-    uuid: SaitoSignature,
+    uuid: SaitoHash,
     utxokey: SaitoUTXOSetKey,
     amount: u64,
     block_id: u64,
