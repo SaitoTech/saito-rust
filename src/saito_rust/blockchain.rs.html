@@ -877,8 +877,8 @@
     <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::mocks</span>::{<span class="ident">make_mock_block</span>, <span class="ident">make_mock_invalid_block</span>};
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">add_block_test</span>() {
+    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">Blockchain::new</span>();
 
         <span class="comment">//</span>
@@ -897,27 +897,27 @@
         <span class="kw">let</span> <span class="ident">good_block_3</span> <span class="op">=</span> <span class="ident">make_mock_block</span>([<span class="number">0</span>; <span class="number">32</span>], <span class="number">3</span>);
 
         <span class="comment">// Add our first block #12</span>
-        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">good_block_12</span>);
+        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">good_block_12</span>).<span class="kw">await</span>;
         <span class="macro">assert_eq!</span>(<span class="ident">good_block_12_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
         <span class="macro">assert_eq!</span>(<span class="number">12</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
 
         <span class="comment">// Add our second block #13</span>
-        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">good_block_13</span>);
+        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">good_block_13</span>).<span class="kw">await</span>;
         <span class="macro">assert_eq!</span>(<span class="ident">good_block_13_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
         <span class="macro">assert_eq!</span>(<span class="number">13</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
 
         <span class="comment">// Add bad block in next block_id -- block should not affect the blockchain</span>
-        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">bad_block_14</span>);
+        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">bad_block_14</span>).<span class="kw">await</span>;
         <span class="macro">assert_eq!</span>(<span class="ident">good_block_13_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
         <span class="macro">assert_eq!</span>(<span class="number">13</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
 
         <span class="comment">// Add bad block in current block_id -- block should not affect the blockchain</span>
-        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">bad_block_13</span>);
+        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">bad_block_13</span>).<span class="kw">await</span>;
         <span class="macro">assert_eq!</span>(<span class="ident">good_block_13_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
         <span class="macro">assert_eq!</span>(<span class="number">13</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
 
         <span class="comment">// Add good block with earlier block_id --- block should not affect the blockchain</span>
-        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">good_block_3</span>);
+        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">good_block_3</span>).<span class="kw">await</span>;
         <span class="macro">assert_eq!</span>(<span class="ident">good_block_13_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
         <span class="macro">assert_eq!</span>(<span class="number">13</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
     }
