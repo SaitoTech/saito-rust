@@ -431,7 +431,8 @@ mod tests {
     use super::*;
     #[tokio::test]
     async fn add_block_test() {
-        let mut blockchain = Blockchain::new();
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mut blockchain = Blockchain::new(wallet_lock.clone());
 
         //
         // Good Blocks

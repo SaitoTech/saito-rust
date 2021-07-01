@@ -135,6 +135,7 @@ impl Mempool {
         block.set_id(previous_block_id + 1);
         block.set_previous_block_hash(previous_block_hash);
         block.set_burnfee(new_burnfee);
+        block.set_timestamp(current_timestamp);
 
         let wallet = self.wallet_lock.read().await;
 
