@@ -3,6 +3,7 @@ use crate::{
     crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
     merkle::MerkleTreeLayer,
     slip::SLIP_SIZE,
+    storage::Storage,
     time::create_timestamp,
     transaction::{Transaction, TRANSACTION_SIZE},
 };
@@ -10,6 +11,8 @@ use ahash::AHashMap;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
+
+pub const BLOCK_SIZE: usize = 205;
 
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -75,7 +78,8 @@ pub struct Block {
     /// Consensus Level Variables
     core: BlockCore,
     /// Transactions
-    pub transactions: Vec<Transaction>,
+    transactions: Option<Vec<Transaction>>,
+
     /// Self-Calculated / Validated
     hash: SaitoHash,
     /// Is Block on longest chain
@@ -86,16 +90,52 @@ impl Block {
     pub fn new(core: BlockCore) -> Block {
         Block {
             core,
-            transactions: vec![],
+            transactions: Some(vec![]),
             hash: [0; 32],
             lc: false,
         }
     }
 
-    pub fn get_transactions(&self) -> &Vec<Transaction> {
-        &self.transactions
+    pub fn get_transactions(&mut self) -> &Vec<Transaction> {
+        if self.transactions.is_none() {
+            self.load_transactions_from_disk();
+        }
+        self.transactions.as_ref().unwrap()
     }
-
+    fn load_transactions_from_disk(&mut self) {
+        let storage = Storage::new();
+        let bytes = storage.read_block_from_disk(&self);
+        let transactions_len: u32 = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
+        let mut transactions = vec![];
+        let mut start_of_transaction_data = BLOCK_SIZE;
+        for _n in 0..transactions_len {
+            let inputs_len: u32 = u32::from_be_bytes(
+                bytes[start_of_transaction_data..start_of_transaction_data + 4]
+                    .try_into()
+                    .unwrap(),
+            );
+            let outputs_len: u32 = u32::from_be_bytes(
+                bytes[start_of_transaction_data + 4..start_of_transaction_data + 8]
+                    .try_into()
+                    .unwrap(),
+            );
+            let message_len: usize = u32::from_be_bytes(
+                bytes[start_of_transaction_data + 8..start_of_transaction_data + 12]
+                    .try_into()
+                    .unwrap(),
+            ) as usize;
+            let end_of_transaction_data = start_of_transaction_data
+                + TRANSACTION_SIZE
+                + ((inputs_len + outputs_len) as usize * SLIP_SIZE)
+                + message_len;
+            let transaction = Transaction::deserialize_from_net(
+                bytes[start_of_transaction_data..end_of_transaction_data].to_vec(),
+            );
+            transactions.push(transaction);
+            start_of_transaction_data = end_of_transaction_data;
+        }
+        self.set_transactions(&mut transactions);
+    }
     pub fn get_hash(&self) -> SaitoHash {
         self.hash
     }
@@ -141,7 +181,7 @@ impl Block {
     }
 
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
-        self.transactions = transactions.to_vec();
+        self.transactions = Some(transactions.to_vec());
     }
 
     pub fn set_id(&mut self, id: u64) {
@@ -188,7 +228,7 @@ impl Block {
     }
 
     pub fn add_transaction(&mut self, tx: Transaction) {
-        self.transactions.push(tx);
+        self.transactions.as_mut().unwrap().push(tx);
     }
 
     // TODO
@@ -200,7 +240,6 @@ impl Block {
     // for blockchain functions.
     //
     pub fn generate_hash(&self) -> SaitoHash {
-
         //
         // fastest known way that isn't bincode ??
         //
@@ -243,9 +282,13 @@ impl Block {
         vbytes.extend(&self.core.burnfee.to_be_bytes());
         vbytes.extend(&self.core.difficulty.to_be_bytes());
         let mut serialized_txs = vec![];
-        self.transactions.iter().for_each(|transaction| {
-            serialized_txs.extend(transaction.serialize_for_net());
-        });
+        self.transactions
+            .as_ref()
+            .unwrap()
+            .iter()
+            .for_each(|transaction| {
+                serialized_txs.extend(transaction.serialize_for_net());
+            });
         vbytes.extend(serialized_txs);
         vbytes
     }
@@ -272,9 +315,9 @@ impl Block {
 
         let treasury: u64 = u64::from_be_bytes(bytes[181..189].try_into().unwrap());
         let burnfee: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
-        let difficulty: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
+        let difficulty: u64 = u64::from_be_bytes(bytes[197..BLOCK_SIZE].try_into().unwrap());
         let mut transactions = vec![];
-        let mut start_of_transaction_data = 205;
+        let mut start_of_transaction_data = BLOCK_SIZE;
         for _n in 0..transactions_len {
             let inputs_len: u32 = u32::from_be_bytes(
                 bytes[start_of_transaction_data..start_of_transaction_data + 4]
@@ -319,6 +362,8 @@ impl Block {
     pub fn generate_merkle_root(&self) -> SaitoHash {
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
+            .as_ref()
+            .unwrap()
             .iter()
             .map(|tx| tx.get_hash_for_signature())
             .collect();
@@ -396,15 +441,17 @@ impl Block {
         utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
         longest_chain: bool,
     ) -> bool {
-        for tx in &self.transactions {
+        for tx in self.transactions.as_ref().unwrap() {
             tx.on_chain_reorganization(utxoset, longest_chain, self.get_id());
         }
         true
     }
 
     pub fn validate_pre_calculations(&mut self) {
-        let _transactions_valid = &self
+        let _transactions_valid = self
             .transactions
+            .as_mut()
+            .unwrap()
             .par_iter_mut()
             .all(|tx| tx.validate_pre_calculations());
     }
@@ -447,7 +494,12 @@ impl Block {
         //
         // VALIDATE transactions
         //
-        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
+        let _transactions_valid = self
+            .transactions
+            .as_ref()
+            .unwrap()
+            .par_iter()
+            .all(|tx| tx.validate());
 
         true
     }

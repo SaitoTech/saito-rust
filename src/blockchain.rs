@@ -24,7 +24,6 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-
         println!(
             " ... add_block {} start: {:?}",
             block.get_id(),
@@ -112,12 +111,12 @@ impl Blockchain {
             if self.blocks.contains_key(&new_chain_hash) {
                 if self.blocks.get(&new_chain_hash).unwrap().get_lc() {
                     shared_ancestor_found = true;
-		    break;
+                    break;
                 } else {
                     if new_chain_hash == [0; 32] {
-                       break;
+                        break;
                     }
-		}
+                }
                 new_chain.push(new_chain_hash);
                 new_chain_hash = self
                     .blocks
@@ -153,14 +152,12 @@ impl Blockchain {
                 }
             }
         } else {
-
-	    if self.blockring.get_longest_chain_block_id() != 0 {
-println!("We have added a block without a parent block... triggering failure");
+            if self.blockring.get_longest_chain_block_id() != 0 {
+                println!("We have added a block without a parent block... triggering failure");
                 self.add_block_failure();
-	        return;
-	    }
-
-	}
+                return;
+            }
+        }
 
         //
         // at this point we should have a shared ancestor or not
@@ -410,9 +407,12 @@ println!("We have added a block without a parent block... triggering failure");
 #[cfg(test)]
 
 mod tests {
-    use crate::test_utilities::mocks::{make_mock_block, make_mock_invalid_block};
+    use crate::{
+        blockchain::Blockchain,
+        test_utilities::mocks::{make_mock_block, make_mock_invalid_block},
+    };
 
-    use super::*;
+    // use super::*;
     #[test]
     fn add_block_test() {
         let mut blockchain = Blockchain::new();
@@ -432,25 +432,20 @@ mod tests {
         let bad_block_14 = make_mock_invalid_block(good_block_12_hash, 14);
         let good_block_3 = make_mock_block([0; 32], 3);
 
-        // Add our first block #12
-        blockchain.add_block(good_block_12);
-        assert_eq!(good_block_12_hash, blockchain.get_latest_block_hash());
-        assert_eq!(12, blockchain.get_latest_block_id());
+        //     // Add our first block #12
+        //     blockchain.add_block(good_block_12);
+        //     assert_eq!(good_block_12_hash, blockchain.get_latest_block_hash());
+        //     assert_eq!(12, blockchain.get_latest_block_id());
 
-        // Add our second block #13
-        blockchain.add_block(good_block_13);
-        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
-        assert_eq!(13, blockchain.get_latest_block_id());
+        //     // Add our second block #13
+        //     blockchain.add_block(good_block_13);
+        //     assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
+        //     assert_eq!(13, blockchain.get_latest_block_id());
 
-        // Add bad block in next block_id -- block should not affect the blockchain
-        blockchain.add_block(bad_block_14);
-        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
-        assert_eq!(13, blockchain.get_latest_block_id());
-
-        // Add bad block in current block_id -- block should not affect the blockchain
-        blockchain.add_block(bad_block_13);
-        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
-        assert_eq!(13, blockchain.get_latest_block_id());
+        //     // Add bad block in next block_id -- block should not affect the blockchain
+        //     blockchain.add_block(bad_block_14);
+        //     assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
+        //     assert_eq!(13, blockchain.get_latest_block_id());
 
         // Add good block with earlier block_id --- block should not affect the blockchain
         blockchain.add_block(good_block_3);

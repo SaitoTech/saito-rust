@@ -30,6 +30,18 @@ impl Storage {
         let byte_array: Vec<u8> = block.serialize_for_net();
         buffer.write_all(&byte_array[..]).unwrap();
     }
+    pub fn read_block_from_disk(&self, block: &Block) -> Vec<u8> {
+        let mut filename = self.blocks_dir_path.clone();
+        filename.push_str(&hex::encode(block.get_timestamp().to_be_bytes()));
+        filename.push_str(&String::from("-"));
+        filename.push_str(&hex::encode(&block.generate_hash()));
+        filename.push_str(&".sai");
+        let mut f = File::open(filename).unwrap();
+        let mut encoded = Vec::<u8>::new();
+        f.read_to_end(&mut encoded).unwrap();
+        encoded
+    }
+
     pub async fn load_blocks_from_disk(&self, blockchain_lock: Arc<RwLock<Blockchain>>) {
         let mut paths: Vec<_> = fs::read_dir(self.blocks_dir_path.clone())
             .unwrap()
@@ -50,16 +62,16 @@ impl Storage {
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
                 let mut block = Block::deserialize_for_net(encoded);
-println!("loading block with hash: {:?}", block.get_hash());
+                println!("loading block with hash: {:?}", block.get_hash());
 
-	        //
-	        // the hash needs calculation separately after loading
-	        //
-	        if block.get_hash() == [0; 32] {
-	            let block_hash = block.generate_hash();
-	            block.set_hash(block_hash);
-	        }
-println!("loading block with hash: {:?}", block.get_hash());
+                //
+                // the hash needs calculation separately after loading
+                //
+                if block.get_hash() == [0; 32] {
+                    let block_hash = block.generate_hash();
+                    block.set_hash(block_hash);
+                }
+                println!("loading block with hash: {:?}", block.get_hash());
 
                 let mut blockchain = blockchain_lock.write().await;
                 blockchain.add_block(block).await;
