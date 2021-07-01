@@ -175,6 +175,7 @@ pub async fn run(
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
                         let mut _mempool = mempool_lock.write().await;
                     },
+                    _ => {}
                 }
             }
         }

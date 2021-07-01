@@ -202,6 +202,10 @@ impl Blockchain {
     }
     pub fn add_block_failure(&mut self) {}
 
+    pub fn get_block(&self, block_hash: &SaitoHash) -> Option<&Block> {
+        self.blocks.get(block_hash)
+    }
+
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_longest_chain_block_hash();
         self.blocks.get(&block_hash)

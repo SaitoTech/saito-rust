@@ -20,6 +20,7 @@ struct Consensus {
 pub enum SaitoMessage {
     MempoolNewBlock { hash: SaitoHash },
     MempoolNewTransaction { transaction: Transaction },
+    MinerNewTargetBlock { hash: SaitoHash },
 }
 
 /// Run the Saito consensus runtime

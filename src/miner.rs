@@ -11,27 +11,23 @@ use crate::{
 };
 
 use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::sync::{broadcast, mpsc, RwLock, RwLockReadGuard};
+
+pub enum MinerMessage {
+    StartMining,
+    StopMining,
+}
+
 pub struct Miner {
-    pub target: Option<Block>,
-    // pub wallet_lock: Arc<RwLock<Wallet>>,
     pub is_active: bool,
+    pub target: SaitoHash,
 }
 
 impl Miner {
     pub fn new() -> Self {
         Self {
-            target: None,
             is_active: false,
-        }
-    }
-
-    fn play(&mut self, previous_block: &Block, wallet: &Wallet) -> Option<Transaction> {
-        let solution = self.generate_random_solution();
-        if self.is_valid_solution(solution, previous_block) {
-            Some(self.generate_golden_ticket_transaction(solution, previous_block, wallet))
-        } else {
-            None
+            target: [0; 32],
         }
     }
 
@@ -51,7 +47,7 @@ impl Miner {
         &self,
         solution: SaitoHash,
         previous_block: &Block,
-        wallet: &Wallet,
+        wallet: RwLockReadGuard<Wallet>,
     ) -> Transaction {
         let publickey = wallet.get_publickey();
         let gt_solution = self.create_gt_solution(solution, previous_block.get_hash(), publickey);
@@ -120,30 +116,63 @@ impl Miner {
     ) -> GoldenTicket {
         return GoldenTicket::new(1, target, random, publickey);
     }
+
+    pub fn set_target(&mut self, target: SaitoHash) {
+        self.target = target;
+    }
+
+    pub fn set_is_active(&mut self, is_active: bool) {
+        self.is_active = is_active;
+    }
 }
 
 pub async fn run(
+    miner_lock: Arc<RwLock<Miner>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     wallet_lock: Arc<RwLock<Wallet>>,
-    _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-    let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
-    loop {
-        tokio::select! {
-            Some(message) = mempool_channel_receiver.recv() {
+    let miner_run_lock = miner_lock.clone();
+    tokio::spawn(async move {
+        loop {
+            let miner = miner_run_lock.read().await;
+            if miner.is_active {
+                let blockchain = blockchain_lock.read().await;
+                let block = blockchain.get_block(&miner.target).unwrap();
+                let solution = miner.generate_random_solution();
+                if miner.is_valid_solution(solution, block) {
+                    let wallet = wallet_lock.read().await;
+                    let golden_tx =
+                        miner.generate_golden_ticket_transaction(solution, block, wallet);
 
-            }
-
-            Ok(message) = broadcast_channel_receiver.recv() {
-                match message {
-                    SaitoMessage::NewTargetBlock { hash } => {
-
+                    {
+                        let mut miner_write = miner_run_lock.write().await;
+                        miner_write.set_is_active(false);
                     }
+
+                    broadcast_channel_sender
+                        .send(SaitoMessage::MempoolNewTransaction {
+                            transaction: golden_tx,
+                        })
+                        .unwrap();
                 }
             }
         }
+    });
+
+    while let Ok(message) = broadcast_channel_receiver.recv().await {
+        match message {
+            SaitoMessage::MinerNewTargetBlock { hash } => {
+                let mut miner = miner_lock.write().await;
+                miner.set_target(hash);
+                miner.set_is_active(true);
+            }
+            _ => {}
+        }
     }
+
+    Ok(())
 }
 
 mod test {}
