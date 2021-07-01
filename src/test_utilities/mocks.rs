@@ -33,14 +33,14 @@ pub fn make_mock_block(previous_block_hash: SaitoHash, block_id: u64) -> Block {
     let wallet = Wallet::new();
     let mock_input = Slip::new(SlipCore::new(
         wallet.get_publickey(),
-        [0; 64],
+        [0; 32],
         1,
         0,
         SlipType::Normal,
     ));
     let mock_output = Slip::new(SlipCore::new(
         wallet.get_publickey(),
-        [0; 64],
+        [0; 32],
         1,
         0,
         SlipType::Normal,

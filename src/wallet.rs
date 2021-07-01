@@ -1,4 +1,4 @@
-use crate::crypto::{generate_keys, sign, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
+use crate::crypto::{generate_keys, sign, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey, SaitoHash};
 
 
 /// The `Wallet` manages the public and private keypair of the node and holds the

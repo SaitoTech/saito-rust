@@ -1,4 +1,4 @@
-use crate::crypto::{SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
+use crate::crypto::{SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey, SaitoHash};
 use serde::{Deserialize, Serialize};
 
 use ahash::AHashMap;
@@ -57,7 +57,7 @@ impl SlipCore {
 
 impl Default for SlipCore {
     fn default() -> Self {
-        Self::new([0; 33], [0; 64], 0, 0, SlipType::Normal)
+        Self::new([0; 33], [0; 32], 0, 0, SlipType::Normal)
     }
 }
 
@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn slip_core_new_test() {
-        let slip_core = SlipCore::new([0; 33], [0; 64], 0, 0, SlipType::Normal);
+        let slip_core = SlipCore::new([0; 33], [0; 32], 0, 0, SlipType::Normal);
         assert_eq!(slip_core.publickey, [0; 33]);
         assert_eq!(slip_core.uuid, [0; 32]);
         assert_eq!(slip_core.amount, 0);
