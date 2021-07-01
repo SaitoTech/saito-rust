@@ -419,19 +419,19 @@ impl Block {
         //            }
         //        }
 
-	//
+        //
         // verify merkle root
-	//
-	if self.core.merkle_root == [0; 32] {
-println!("merkle root is false 1");
-	    return false; 
-	}
+        //
+        if self.core.merkle_root == [0; 32] {
+            println!("merkle root is false 1");
+            return false;
+        }
 
         //
         // verify merkle root
         //
         if self.core.merkle_root != self.generate_merkle_root() {
-println!("merkle root is false 2");
+            println!("merkle root is false 2");
             return false;
         }
 

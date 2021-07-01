@@ -17,7 +17,6 @@ impl BurnFee {
         current_block_timestamp: u64,
         previous_block_timestamp: u64,
     ) -> u64 {
-
         let elapsed_time = match current_block_timestamp - previous_block_timestamp {
             0 => 1,
             diff => diff,

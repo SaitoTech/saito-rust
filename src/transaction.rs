@@ -289,7 +289,6 @@ impl Transaction {
         //
         let hash_for_signature: SaitoHash = self.get_hash_for_signature();
         let sig: SaitoSignature = self.get_signature();
-        
 
         if self.core.inputs.is_empty() {
             panic!("transaction must have at least 1 input");
