@@ -280,6 +280,28 @@
 <span id="277">277</span>
 <span id="278">278</span>
 <span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
@@ -324,7 +346,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">lc</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="ident">lc</span> {
             <span class="self">self</span>.<span class="ident">lc_pos</span> <span class="op">=</span> <span class="ident">usize::MAX</span>;
-       } <span class="kw">else</span> {
+        } <span class="kw">else</span> {
             <span class="comment">//</span>
             <span class="comment">// update new longest-chain</span>
             <span class="comment">//</span>
@@ -334,10 +356,12 @@
                 }
             }
 
-	    <span class="comment">//</span>
-	    <span class="comment">// this hash does not exist</span>
-	    <span class="comment">//</span>
-	    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ids</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">lc_pos</span> { <span class="kw">return</span> <span class="bool-val">false</span>; }
+            <span class="comment">//</span>
+            <span class="comment">// this hash does not exist</span>
+            <span class="comment">//</span>
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ids</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">lc_pos</span> {
+                <span class="kw">return</span> <span class="bool-val">false</span>;
+            }
 
             <span class="comment">//</span>
             <span class="comment">// remove any old indices</span>
@@ -358,10 +382,9 @@
 
             <span class="self">self</span>.<span class="ident">block_hashes</span> <span class="op">=</span> <span class="ident">new_block_hashes</span>;
             <span class="self">self</span>.<span class="ident">block_ids</span> <span class="op">=</span> <span class="ident">new_block_ids</span>;
-
         }
 
-	<span class="bool-val">true</span>
+        <span class="bool-val">true</span>
     }
 }
 
@@ -429,34 +452,37 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>, <span class="ident">hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">lc</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="ident">insert_pos</span> <span class="op">=</span> <span class="ident">block_id</span> <span class="op">%</span> <span class="ident">RING_BUFFER_LENGTH</span>;
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">block_ring</span>[(<span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span>)].<span class="ident">on_chain_reorganization</span>(<span class="ident">hash</span>, <span class="ident">lc</span>) { 
-	    <span class="kw">return</span> <span class="bool-val">false</span>;
-	}
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">block_ring</span>[(<span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span>)].<span class="ident">on_chain_reorganization</span>(<span class="ident">hash</span>, <span class="ident">lc</span>) {
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
         <span class="kw">if</span> <span class="ident">lc</span> {
             <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span>;
         } <span class="kw">else</span> {
+            <span class="comment">//</span>
+            <span class="comment">// only adjust longest_chain if this is it</span>
+            <span class="comment">//</span>
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span> {
+                <span class="kw">let</span> <span class="ident">previous_block_idx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">-</span> <span class="number">1</span>;
 
-	    <span class="comment">//</span>
-	    <span class="comment">// only adjust longest_chain if this is it</span>
-	    <span class="comment">//</span>
-	    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span> {
-	        <span class="kw">let</span> <span class="ident">previous_block_idx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span><span class="op">-</span><span class="number">1</span>;
+                <span class="comment">// reset to lc_pos to unknown</span>
+                <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="ident">usize::MAX</span>;
 
-	        <span class="comment">// reset to lc_pos to unknown</span>
-	        <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="ident">usize::MAX</span>;
-
-	        <span class="comment">// but try to find it</span>
-	        <span class="kw">let</span> <span class="ident">previous_block_idx_lc_pos</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">lc_pos</span>;
-	        <span class="kw">if</span> <span class="ident">previous_block_idx_lc_pos</span> <span class="op">!</span><span class="op">=</span> <span class="ident">usize::MAX</span> {
-	            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span>].<span class="ident">block_ids</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">previous_block_idx_lc_pos</span> {
-	                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span>].<span class="ident">block_ids</span>[<span class="ident">previous_block_idx_lc_pos</span>] <span class="op">=</span><span class="op">=</span> <span class="ident">block_id</span><span class="op">-</span><span class="number">1</span> {
-			    <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="ident">previous_block_idx</span>;
-		        }
-		    }
-	        }
-	    }
-	}
-	<span class="bool-val">true</span>
+                <span class="comment">// but try to find it</span>
+                <span class="kw">let</span> <span class="ident">previous_block_idx_lc_pos</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">lc_pos</span>;
+                <span class="kw">if</span> <span class="ident">previous_block_idx_lc_pos</span> <span class="op">!</span><span class="op">=</span> <span class="ident">usize::MAX</span> {
+                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span>].<span class="ident">block_ids</span>.<span class="ident">len</span>()
+                        <span class="op">&gt;</span> <span class="ident">previous_block_idx_lc_pos</span>
+                    {
+                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span>].<span class="ident">block_ids</span>[<span class="ident">previous_block_idx_lc_pos</span>]
+                            <span class="op">=</span><span class="op">=</span> <span class="ident">block_id</span> <span class="op">-</span> <span class="number">1</span>
+                        {
+                            <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="ident">previous_block_idx</span>;
+                        }
+                    }
+                }
+            }
+        }
+        <span class="bool-val">true</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
@@ -502,12 +528,11 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test</span> {
-    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::mocks</span>::{<span class="ident">make_mock_block</span>};
+    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::mocks::make_mock_block</span>;
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">add_block_test</span>() {
-
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockring</span> <span class="op">=</span> <span class="ident">BlockRing::new</span>();
 
         <span class="comment">//</span>
@@ -521,43 +546,62 @@
         <span class="kw">let</span> <span class="ident">block_4_2</span> <span class="op">=</span> <span class="ident">make_mock_block</span>(<span class="ident">block_3</span>.<span class="ident">get_hash</span>(), <span class="number">4</span>);
         <span class="kw">let</span> <span class="ident">block_5_2</span> <span class="op">=</span> <span class="ident">make_mock_block</span>(<span class="ident">block_4</span>.<span class="ident">get_hash</span>(), <span class="number">5</span>);
 
-	<span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_1</span>);
-	<span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_2</span>);
-	<span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_3</span>);
-	<span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_4</span>);
-	<span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_3_2</span>);
-	<span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_4_2</span>);
-	<span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_5_2</span>);
+        <span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_1</span>);
+        <span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_2</span>);
+        <span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_3</span>);
+        <span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_4</span>);
+        <span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_3_2</span>);
+        <span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_4_2</span>);
+        <span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_5_2</span>);
 
         <span class="comment">// do we contain these block hashes?</span>
-        <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">1</span>, <span class="ident">block_1</span>.<span class="ident">get_hash</span>()), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">2</span>, <span class="ident">block_2</span>.<span class="ident">get_hash</span>()), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">3</span>, <span class="ident">block_3</span>.<span class="ident">get_hash</span>()), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">4</span>, <span class="ident">block_4</span>.<span class="ident">get_hash</span>()), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">3</span>, <span class="ident">block_3_2</span>.<span class="ident">get_hash</span>()), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">4</span>, <span class="ident">block_4_2</span>.<span class="ident">get_hash</span>()), <span class="bool-val">true</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">5</span>, <span class="ident">block_5_2</span>.<span class="ident">get_hash</span>()), <span class="bool-val">true</span>);
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">1</span>, <span class="ident">block_1</span>.<span class="ident">get_hash</span>()),
+            <span class="bool-val">true</span>
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">2</span>, <span class="ident">block_2</span>.<span class="ident">get_hash</span>()),
+            <span class="bool-val">true</span>
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">3</span>, <span class="ident">block_3</span>.<span class="ident">get_hash</span>()),
+            <span class="bool-val">true</span>
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">4</span>, <span class="ident">block_4</span>.<span class="ident">get_hash</span>()),
+            <span class="bool-val">true</span>
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">3</span>, <span class="ident">block_3_2</span>.<span class="ident">get_hash</span>()),
+            <span class="bool-val">true</span>
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">4</span>, <span class="ident">block_4_2</span>.<span class="ident">get_hash</span>()),
+            <span class="bool-val">true</span>
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">blockring</span>.<span class="ident">contains_block_hash_at_block_id</span>(<span class="number">5</span>, <span class="ident">block_5_2</span>.<span class="ident">get_hash</span>()),
+            <span class="bool-val">true</span>
+        );
 
-	<span class="comment">// reorganize longest chain</span>
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">1</span>, <span class="ident">block_1</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">2</span>, <span class="ident">block_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">3</span>, <span class="ident">block_3</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">4</span>, <span class="ident">block_4</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">4</span>, <span class="ident">block_4</span>.<span class="ident">get_hash</span>(), <span class="bool-val">false</span>);
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">3</span>, <span class="ident">block_3</span>.<span class="ident">get_hash</span>(), <span class="bool-val">false</span>);
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">3</span>, <span class="ident">block_3_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">4</span>, <span class="ident">block_4_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">5</span>, <span class="ident">block_5_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
+        <span class="comment">// reorganize longest chain</span>
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">1</span>, <span class="ident">block_1</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">2</span>, <span class="ident">block_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">3</span>, <span class="ident">block_3</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">4</span>, <span class="ident">block_4</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">4</span>, <span class="ident">block_4</span>.<span class="ident">get_hash</span>(), <span class="bool-val">false</span>);
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">3</span>, <span class="ident">block_3</span>.<span class="ident">get_hash</span>(), <span class="bool-val">false</span>);
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">3</span>, <span class="ident">block_3_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">4</span>, <span class="ident">block_4_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">5</span>, <span class="ident">block_5_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
 
         <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_id</span>(), <span class="number">5</span>);
-	<span class="comment">// reorg in the wrong location</span>
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">532</span>, <span class="ident">block_5_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">false</span>);
+        <span class="comment">// reorg in the wrong location</span>
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">532</span>, <span class="ident">block_5_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">false</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_id</span>(), <span class="number">5</span>);
 
-	<span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">5</span>, <span class="ident">block_5_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
+        <span class="ident">blockring</span>.<span class="ident">on_chain_reorganization</span>(<span class="number">5</span>, <span class="ident">block_5_2</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_id</span>(), <span class="number">5</span>);
-
-
     }
 }
 </pre></div>
