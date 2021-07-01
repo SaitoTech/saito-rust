@@ -124,16 +124,16 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="ident">::new</span>();
                 <span class="ident">f</span>.<span class="ident">read_to_end</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">encoded</span>).<span class="ident">unwrap</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="ident">encoded</span>);
-<span class="macro">println!</span>(<span class="string">&quot;loading block with hash: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_hash</span>());
+                <span class="macro">println!</span>(<span class="string">&quot;loading block with hash: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_hash</span>());
 
-	        <span class="comment">//</span>
-	        <span class="comment">// the hash needs calculation separately after loading</span>
-	        <span class="comment">//</span>
-	        <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_hash</span>() <span class="op">=</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>] {
-	            <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_hash</span>();
-	            <span class="ident">block</span>.<span class="ident">set_hash</span>(<span class="ident">block_hash</span>);
-	        }
-<span class="macro">println!</span>(<span class="string">&quot;loading block with hash: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_hash</span>());
+                <span class="comment">//</span>
+                <span class="comment">// the hash needs calculation separately after loading</span>
+                <span class="comment">//</span>
+                <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_hash</span>() <span class="op">=</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>] {
+                    <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_hash</span>();
+                    <span class="ident">block</span>.<span class="ident">set_hash</span>(<span class="ident">block_hash</span>);
+                }
+                <span class="macro">println!</span>(<span class="string">&quot;loading block with hash: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_hash</span>());
 
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                 <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;

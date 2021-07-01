@@ -455,12 +455,12 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
             <span class="ident">input1</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
             <span class="ident">input1</span>.<span class="ident">set_amount</span>(<span class="number">1000000</span>);
-            <span class="ident">input1</span>.<span class="ident">set_uuid</span>([<span class="number">1</span>; <span class="number">64</span>]);
+            <span class="ident">input1</span>.<span class="ident">set_uuid</span>([<span class="number">1</span>; <span class="number">32</span>]);
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
             <span class="ident">output1</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
             <span class="ident">output1</span>.<span class="ident">set_amount</span>(<span class="number">1000000</span>);
-            <span class="ident">output1</span>.<span class="ident">set_uuid</span>([<span class="number">1</span>; <span class="number">64</span>]);
+            <span class="ident">output1</span>.<span class="ident">set_uuid</span>([<span class="number">1</span>; <span class="number">32</span>]);
 
             <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">input1</span>);
             <span class="ident">transaction</span>.<span class="ident">add_output</span>(<span class="ident">output1</span>);

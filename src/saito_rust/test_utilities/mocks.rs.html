@@ -135,14 +135,14 @@
     <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
     <span class="kw">let</span> <span class="ident">mock_input</span> <span class="op">=</span> <span class="ident">Slip::new</span>(<span class="ident">SlipCore::new</span>(
         <span class="ident">wallet</span>.<span class="ident">get_publickey</span>(),
-        [<span class="number">0</span>; <span class="number">64</span>],
+        [<span class="number">0</span>; <span class="number">32</span>],
         <span class="number">1</span>,
         <span class="number">0</span>,
         <span class="ident">SlipType::Normal</span>,
     ));
     <span class="kw">let</span> <span class="ident">mock_output</span> <span class="op">=</span> <span class="ident">Slip::new</span>(<span class="ident">SlipCore::new</span>(
         <span class="ident">wallet</span>.<span class="ident">get_publickey</span>(),
-        [<span class="number">0</span>; <span class="number">64</span>],
+        [<span class="number">0</span>; <span class="number">32</span>],
         <span class="number">1</span>,
         <span class="number">0</span>,
         <span class="ident">SlipType::Normal</span>,
