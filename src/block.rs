@@ -200,6 +200,7 @@ impl Block {
     // for blockchain functions.
     //
     pub fn generate_hash(&self) -> SaitoHash {
+
         //
         // fastest known way that isn't bincode ??
         //

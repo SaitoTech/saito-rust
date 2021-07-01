@@ -24,15 +24,15 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
+
         println!(
             " ... add_block {} start: {:?}",
             block.get_id(),
             create_timestamp()
         );
-        //        println!(" ... hash: {:?}", block.get_hash());
-        println!(" ... txs in block: {:?}", block.transactions.len());
-
-        //println!("... from previous block hash: {:?}", block.get_previous_block_hash());
+        //println!(" ... hash: {:?}", block.get_hash());
+        //println!(" ... txs in block: {:?}", block.transactions.len());
+        //println!(" ... w/ prev bhsh: {:?}", block.get_previous_block_hash());
 
         //
         // start by extracting some variables that we will use
@@ -110,18 +110,20 @@ impl Blockchain {
 
         while !shared_ancestor_found {
             if self.blocks.contains_key(&new_chain_hash) {
+                if self.blocks.get(&new_chain_hash).unwrap().get_lc() {
+                    shared_ancestor_found = true;
+		    break;
+                } else {
+                    if new_chain_hash == [0; 32] {
+                       break;
+                    }
+		}
                 new_chain.push(new_chain_hash);
                 new_chain_hash = self
                     .blocks
                     .get(&new_chain_hash)
                     .unwrap()
                     .get_previous_block_hash();
-                if new_chain_hash == [0; 32] {
-                    break;
-                }
-                if self.blocks.get(&new_chain_hash).unwrap().get_lc() {
-                    shared_ancestor_found = true;
-                }
             } else {
                 break;
             }
@@ -150,10 +152,18 @@ impl Blockchain {
                     }
                 }
             }
-        }
+        } else {
+
+	    if self.blockring.get_longest_chain_block_id() != 0 {
+println!("We have added a block without a parent block... triggering failure");
+                self.add_block_failure();
+	        return;
+	    }
+
+	}
 
         //
-        // at this point we should have a shared ancestor
+        // at this point we should have a shared ancestor or not
         //
         // find out whether this new block is claiming to require chain-validation
         //
