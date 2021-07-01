@@ -206,21 +206,29 @@ impl Blockchain {
     }
 
     pub fn get_latest_block_burnfee(&self) -> u64 {
-	let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block_hash = self.blockring.get_longest_chain_block_hash();
         let block = self.blocks.get(&block_hash);
-	match block {
-	    Some(block) => { return block.get_burnfee(); }
-	    None => { return 0; }
-	}
+        match block {
+            Some(block) => {
+                return block.get_burnfee();
+            }
+            None => {
+                return 0;
+            }
+        }
     }
 
     pub fn get_latest_block_timestamp(&self) -> u64 {
-	let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block_hash = self.blockring.get_longest_chain_block_hash();
         let block = self.blocks.get(&block_hash);
-	match block {
-	    Some(block) => { return block.get_timestamp(); }
-	    None => { return 0; }
-	}
+        match block {
+            Some(block) => {
+                return block.get_timestamp();
+            }
+            None => {
+                return 0;
+            }
+        }
     }
 
     pub fn get_latest_block_hash(&self) -> SaitoHash {
@@ -240,8 +248,8 @@ impl Blockchain {
             return false;
         }
 
-        let mut old_bf :u64 = 0;
-        let mut new_bf :u64 = 0;
+        let mut old_bf: u64 = 0;
+        let mut new_bf: u64 = 0;
         for hash in old_chain.iter() {
             old_bf += self.blocks.get(hash).unwrap().get_burnfee();
         }
@@ -272,11 +280,9 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-
-
         {
-	    // yes, there is a warning here, but we need the mutable borrow to set the 
-	    // tx.hash_for_signature information inside AFAICT
+            // yes, there is a warning here, but we need the mutable borrow to set the
+            // tx.hash_for_signature information inside AFAICT
             let mut block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
             //

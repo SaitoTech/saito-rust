@@ -383,7 +383,6 @@ impl Block {
             keep_looping = start_point < stop_point - 1;
         }
 
-
         //
         // hash the final leaf
         //
@@ -442,7 +441,7 @@ impl Block {
         //
         let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
 
-	true
+        true
     }
 }
 

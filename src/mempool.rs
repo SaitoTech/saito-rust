@@ -5,7 +5,7 @@ use crate::{
     consensus::SaitoMessage,
     crypto::{hash, verify},
     slip::Slip,
-    time::{create_timestamp},
+    time::create_timestamp,
     transaction::Transaction,
     wallet::Wallet,
 };
@@ -58,75 +58,69 @@ impl Mempool {
         }
     }
 
-
     ///
     /// Calculates the work available in mempool to produce a block
     ///
     pub async fn calculate_work_available(&self) -> u64 {
-	return 2 * 100_000_000;
+        return 2 * 100_000_000;
     }
 
     //
     // Return work needed in Nolan
     //
     pub async fn calculate_work_needed(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> u64 {
-
-	let blockchain = blockchain_lock.read().await;
-	let previous_block_timestamp = blockchain.get_latest_block_timestamp();
+        let blockchain = blockchain_lock.read().await;
+        let previous_block_timestamp = blockchain.get_latest_block_timestamp();
         let current_timestamp = create_timestamp();
 
-	let previous_block_burnfee = blockchain.get_latest_block_burnfee();
+        let previous_block_burnfee = blockchain.get_latest_block_burnfee();
 
-        let work_needed : u64 = BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
+        let work_needed: u64 = BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
             previous_block_burnfee,
             current_timestamp,
             previous_block_timestamp,
         );
 
-	work_needed
+        work_needed
     }
 
     ///
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
     pub async fn can_bundle_block(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
-
         let work_available = self.calculate_work_available().await;
         let work_needed = self.calculate_work_needed(blockchain_lock).await;
 
-println!("WA: {:?} -- WN: {:?}", work_available, work_needed);
+        println!("WA: {:?} -- WN: {:?}", work_available, work_needed);
 
-	if work_available >= work_needed {
-	    return true;
-	}
+        if work_available >= work_needed {
+            return true;
+        }
 
-	return false;
-
+        return false;
     }
 
-
-
     pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
-
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
 
         let mut block = Block::default();
 
-	let previous_block_burnfee = blockchain.get_latest_block_burnfee();
+        let previous_block_burnfee = blockchain.get_latest_block_burnfee();
 
-	let previous_block_timestamp = blockchain.get_latest_block_timestamp();
+        let previous_block_timestamp = blockchain.get_latest_block_timestamp();
         let current_timestamp = create_timestamp();
 
-	let new_burnfee :u64 = BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-            previous_block_burnfee,
-            current_timestamp,
-            previous_block_timestamp,
-        );
+        let new_burnfee: u64 =
+            BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
+                previous_block_burnfee,
+                current_timestamp,
+                previous_block_timestamp,
+            );
 
-println!("setting this as the new burnfee: {}", new_burnfee);
-println!("{}", new_burnfee);
+        println!("setting this as the new burnfee: {}", new_burnfee);
+        println!("{}", new_burnfee);
 
         block.set_id(previous_block_id + 1);
         block.set_previous_block_hash(previous_block_hash);
@@ -186,19 +180,18 @@ pub async fn run(
     _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
     let generate_block_sender = mempool_channel_sender.clone();
 
     tokio::spawn(async move {
         loop {
-/**
-            generate_block_sender
-                .send(MempoolMessage::GenerateBlock)
-                .await
-                .expect("error: GenerateBlock message failed to send");
-            sleep(Duration::from_millis(20000));
-**/
+            /**
+                        generate_block_sender
+                            .send(MempoolMessage::GenerateBlock)
+                            .await
+                            .expect("error: GenerateBlock message failed to send");
+                        sleep(Duration::from_millis(20000));
+            **/
             generate_block_sender
                 .send(MempoolMessage::TryBundleBlock)
                 .await
@@ -213,16 +206,16 @@ pub async fn run(
                 match message {
 
                     // TryBundleBlock makes periodic attempts to produce blocks and does so
-		    // if the mempool can bundle blocks....
+            // if the mempool can bundle blocks....
                     MempoolMessage::TryBundleBlock => {
                         let mut mempool = mempool_lock.write().await;
-			let can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
-			if can_bundle {
+            let can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
+            if can_bundle {
                             let block = mempool.generate_block(blockchain_lock.clone()).await;
                             if AddBlockResult::Accepted == mempool.add_block(block) {
                                 mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
                             }
-			}
+            }
                     },
 
                     // GenerateBlock makes periodic attempts to analyse the state of
