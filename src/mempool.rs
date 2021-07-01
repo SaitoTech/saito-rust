@@ -121,9 +121,9 @@ impl Mempool {
         let previous_block_timestamp = blockchain.get_latest_block_timestamp();
         let current_timestamp = create_timestamp();
 
-        println!("BUILDING FROM BF: {}", previous_block_burnfee);
-        println!("BUILDING FROM TS: {}", previous_block_timestamp);
-        println!("BUILDING FROM ID: {}", previous_block_id);
+        //println!("BUILDING FROM BF: {}", previous_block_burnfee);
+        //println!("BUILDING FROM TS: {}", previous_block_timestamp);
+        //println!("BUILDING FROM ID: {}", previous_block_id);
 
         let new_burnfee: u64 =
             BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
