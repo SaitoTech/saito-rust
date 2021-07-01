@@ -31,7 +31,6 @@ pub enum SlipType {
 pub struct SlipCore {
     #[serde_as(as = "[_; 33]")]
     publickey: SaitoPublicKey,
-    #[serde_as(as = "[_; 64]")]
     uuid: SaitoHash,
     amount: u64,
     slip_ordinal: u8,
@@ -175,7 +174,7 @@ mod tests {
     fn slip_core_default_test() {
         let slip_core = SlipCore::default();
         assert_eq!(slip_core.publickey, [0; 33]);
-        assert_eq!(slip_core.uuid, [0; 64]);
+        assert_eq!(slip_core.uuid, [0; 32]);
         assert_eq!(slip_core.amount, 0);
         assert_eq!(slip_core.slip_type, SlipType::Normal);
     }
@@ -184,7 +183,7 @@ mod tests {
     fn slip_core_new_test() {
         let slip_core = SlipCore::new([0; 33], [0; 64], 0, 0, SlipType::Normal);
         assert_eq!(slip_core.publickey, [0; 33]);
-        assert_eq!(slip_core.uuid, [0; 64]);
+        assert_eq!(slip_core.uuid, [0; 32]);
         assert_eq!(slip_core.amount, 0);
         assert_eq!(slip_core.slip_type, SlipType::Normal);
     }
@@ -193,7 +192,7 @@ mod tests {
     fn slip_default_test() {
         let slip = Slip::default();
         assert_eq!(slip.core.publickey, [0; 33]);
-        assert_eq!(slip.core.uuid, [0; 64]);
+        assert_eq!(slip.core.uuid, [0; 32]);
         assert_eq!(slip.core.amount, 0);
         assert_eq!(slip.core.slip_type, SlipType::Normal);
     }
@@ -202,7 +201,7 @@ mod tests {
     fn slip_new_test() {
         let slip = Slip::new(SlipCore::default());
         assert_eq!(slip.core.publickey, [0; 33]);
-        assert_eq!(slip.core.uuid, [0; 64]);
+        assert_eq!(slip.core.uuid, [0; 32]);
         assert_eq!(slip.core.amount, 0);
         assert_eq!(slip.core.slip_type, SlipType::Normal);
     }
@@ -211,7 +210,7 @@ mod tests {
     fn slip_serialization_for_net_test() {
         let slip = Slip::new(SlipCore::default());
         let serialized_slip = slip.serialize_for_net();
-        assert_eq!(serialized_slip.len(), 107);
+        assert_eq!(serialized_slip.len(), 75);
         let deserilialized_slip = Slip::deserialize_from_net(serialized_slip);
         assert_eq!(slip, deserilialized_slip);
     }

@@ -76,12 +76,12 @@ impl Mempool {
             let mut input1 = Slip::default();
             input1.set_publickey(wallet.get_publickey());
             input1.set_amount(1000000);
-            input1.set_uuid([1; 64]);
+            input1.set_uuid([1; 32]);
 
             let mut output1 = Slip::default();
             output1.set_publickey(wallet.get_publickey());
             output1.set_amount(1000000);
-            output1.set_uuid([1; 64]);
+            output1.set_uuid([1; 32]);
 
             transaction.add_input(input1);
             transaction.add_output(output1);
