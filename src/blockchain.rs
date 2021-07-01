@@ -413,8 +413,8 @@ mod tests {
     use crate::test_utilities::mocks::{make_mock_block, make_mock_invalid_block};
 
     use super::*;
-    #[test]
-    fn add_block_test() {
+    #[tokio::test]
+    async fn add_block_test() {
         let mut blockchain = Blockchain::new();
 
         //
@@ -433,27 +433,27 @@ mod tests {
         let good_block_3 = make_mock_block([0; 32], 3);
 
         // Add our first block #12
-        blockchain.add_block(good_block_12);
+        blockchain.add_block(good_block_12).await;
         assert_eq!(good_block_12_hash, blockchain.get_latest_block_hash());
         assert_eq!(12, blockchain.get_latest_block_id());
 
         // Add our second block #13
-        blockchain.add_block(good_block_13);
+        blockchain.add_block(good_block_13).await;
         assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
 
         // Add bad block in next block_id -- block should not affect the blockchain
-        blockchain.add_block(bad_block_14);
+        blockchain.add_block(bad_block_14).await;
         assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
 
         // Add bad block in current block_id -- block should not affect the blockchain
-        blockchain.add_block(bad_block_13);
+        blockchain.add_block(bad_block_13).await;
         assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
 
         // Add good block with earlier block_id --- block should not affect the blockchain
-        blockchain.add_block(good_block_3);
+        blockchain.add_block(good_block_3).await;
         assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
     }
