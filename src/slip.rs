@@ -1,4 +1,4 @@
-use crate::crypto::{SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
+use crate::crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey};
 use serde::{Deserialize, Serialize};
 
 use ahash::AHashMap;
@@ -7,7 +7,7 @@ use enum_variant_count_derive::TryFromByte;
 use std::convert::{TryFrom, TryInto};
 
 /// The size of a serilized slip in bytes.
-pub const SLIP_SIZE: usize = 107;
+pub const SLIP_SIZE: usize = 75;
 
 /// SlipType is a human-readable indicator of the slip-type, such
 /// as in a normal transaction, a VIP-transaction, a rebroadcast
@@ -31,8 +31,7 @@ pub enum SlipType {
 pub struct SlipCore {
     #[serde_as(as = "[_; 33]")]
     publickey: SaitoPublicKey,
-    #[serde_as(as = "[_; 64]")]
-    uuid: SaitoSignature,
+    uuid: SaitoHash,
     amount: u64,
     slip_ordinal: u8,
     slip_type: SlipType,
@@ -41,7 +40,7 @@ pub struct SlipCore {
 impl SlipCore {
     pub fn new(
         publickey: [u8; 33],
-        uuid: [u8; 64],
+        uuid: [u8; 32],
         amount: u64,
         slip_ordinal: u8,
         slip_type: SlipType,
@@ -58,7 +57,7 @@ impl SlipCore {
 
 impl Default for SlipCore {
     fn default() -> Self {
-        Self::new([0; 33], [0; 64], 0, 0, SlipType::Normal)
+        Self::new([0; 33], [0; 32], 0, 0, SlipType::Normal)
     }
 }
 
@@ -80,7 +79,7 @@ impl Slip {
         self.core.amount
     }
 
-    pub fn get_uuid(&self) -> SaitoSignature {
+    pub fn get_uuid(&self) -> SaitoHash {
         self.core.uuid
     }
 
@@ -100,7 +99,7 @@ impl Slip {
         self.core.amount = amount;
     }
 
-    pub fn set_uuid(&mut self, uuid: SaitoSignature) {
+    pub fn set_uuid(&mut self, uuid: SaitoHash) {
         self.core.uuid = uuid;
     }
 
@@ -144,11 +143,10 @@ impl Slip {
     }
     pub fn deserialize_from_net(bytes: Vec<u8>) -> Slip {
         let tx_id: SaitoPublicKey = bytes[..33].try_into().unwrap();
-        let uuid: SaitoSignature = bytes[33..97].try_into().unwrap();
-        let amount: u64 = u64::from_be_bytes(bytes[97..105].try_into().unwrap());
-        let slip_ordinal: u8 = bytes[105];
+        let uuid: SaitoHash = bytes[33..65].try_into().unwrap();
+        let amount: u64 = u64::from_be_bytes(bytes[65..73].try_into().unwrap());
+        let slip_ordinal: u8 = bytes[73];
         let slip_type: SlipType = SlipType::try_from(bytes[SLIP_SIZE - 1]).unwrap();
-        //u64::from_be_bytes(bytes[32..40].try_into().unwrap());
         Slip::new(SlipCore::new(tx_id, uuid, amount, slip_ordinal, slip_type))
     }
     pub fn serialize_for_net(&self) -> Vec<u8> {
@@ -176,16 +174,16 @@ mod tests {
     fn slip_core_default_test() {
         let slip_core = SlipCore::default();
         assert_eq!(slip_core.publickey, [0; 33]);
-        assert_eq!(slip_core.uuid, [0; 64]);
+        assert_eq!(slip_core.uuid, [0; 32]);
         assert_eq!(slip_core.amount, 0);
         assert_eq!(slip_core.slip_type, SlipType::Normal);
     }
 
     #[test]
     fn slip_core_new_test() {
-        let slip_core = SlipCore::new([0; 33], [0; 64], 0, 0, SlipType::Normal);
+        let slip_core = SlipCore::new([0; 33], [0; 32], 0, 0, SlipType::Normal);
         assert_eq!(slip_core.publickey, [0; 33]);
-        assert_eq!(slip_core.uuid, [0; 64]);
+        assert_eq!(slip_core.uuid, [0; 32]);
         assert_eq!(slip_core.amount, 0);
         assert_eq!(slip_core.slip_type, SlipType::Normal);
     }
@@ -194,7 +192,7 @@ mod tests {
     fn slip_default_test() {
         let slip = Slip::default();
         assert_eq!(slip.core.publickey, [0; 33]);
-        assert_eq!(slip.core.uuid, [0; 64]);
+        assert_eq!(slip.core.uuid, [0; 32]);
         assert_eq!(slip.core.amount, 0);
         assert_eq!(slip.core.slip_type, SlipType::Normal);
     }
@@ -203,7 +201,7 @@ mod tests {
     fn slip_new_test() {
         let slip = Slip::new(SlipCore::default());
         assert_eq!(slip.core.publickey, [0; 33]);
-        assert_eq!(slip.core.uuid, [0; 64]);
+        assert_eq!(slip.core.uuid, [0; 32]);
         assert_eq!(slip.core.amount, 0);
         assert_eq!(slip.core.slip_type, SlipType::Normal);
     }
@@ -212,7 +210,7 @@ mod tests {
     fn slip_serialization_for_net_test() {
         let slip = Slip::new(SlipCore::default());
         let serialized_slip = slip.serialize_for_net();
-        assert_eq!(serialized_slip.len(), 107);
+        assert_eq!(serialized_slip.len(), 75);
         let deserilialized_slip = Slip::deserialize_from_net(serialized_slip);
         assert_eq!(slip, deserilialized_slip);
     }

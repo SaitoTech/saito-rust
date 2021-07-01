@@ -3,6 +3,9 @@ use crate::blockring::BlockRing;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::storage::Storage;
 use crate::time::create_timestamp;
+use crate::wallet::Wallet;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use ahash::AHashMap;
 
@@ -11,20 +14,21 @@ pub struct Blockchain {
     pub utxoset: AHashMap<SaitoUTXOSetKey, u64>,
     pub blockring: BlockRing,
     pub blocks: AHashMap<SaitoHash, Block>,
+    pub wallet_lock: Arc<RwLock<Wallet>>,
 }
 
 impl Blockchain {
     #[allow(clippy::clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Blockchain {
             utxoset: AHashMap::new(),
             blockring: BlockRing::new(),
             blocks: AHashMap::new(),
+            wallet_lock,
         }
     }
 
     pub async fn add_block(&mut self, block: Block) {
-
         println!(
             " ... add_block {} start: {:?}",
             block.get_id(),
@@ -112,12 +116,12 @@ impl Blockchain {
             if self.blocks.contains_key(&new_chain_hash) {
                 if self.blocks.get(&new_chain_hash).unwrap().get_lc() {
                     shared_ancestor_found = true;
-		    break;
+                    break;
                 } else {
                     if new_chain_hash == [0; 32] {
-                       break;
+                        break;
                     }
-		}
+                }
                 new_chain.push(new_chain_hash);
                 new_chain_hash = self
                     .blocks
@@ -153,14 +157,12 @@ impl Blockchain {
                 }
             }
         } else {
-
-	    if self.blockring.get_longest_chain_block_id() != 0 {
-println!("We have added a block without a parent block... triggering failure");
-                self.add_block_failure();
-	        return;
-	    }
-
-	}
+            if self.blockring.get_longest_chain_block_id() != 0 {
+                println!("We have added a block without a parent block... triggering failure");
+                self.add_block_failure().await;
+                return;
+            }
+        }
 
         //
         // at this point we should have a shared ancestor or not
@@ -188,16 +190,16 @@ println!("We have added a block without a parent block... triggering failure");
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             println!(" ... finish validate: {:?}", create_timestamp());
             if does_new_chain_validate {
-                self.add_block_success(block_hash);
+                self.add_block_success(block_hash).await;
             } else {
-                self.add_block_failure();
+                self.add_block_failure().await;
             }
         } else {
-            self.add_block_failure();
+            self.add_block_failure().await;
         }
     }
 
-    pub fn add_block_success(&mut self, block_hash: SaitoHash) {
+    pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         //
         // TODO -
         //
@@ -207,12 +209,26 @@ println!("We have added a block without a parent block... triggering failure");
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
-        self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+        {
+            self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+        }
 
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
+
+        //
+        // TODO - this is merely for testing, we do not intend
+        // the routing client to process transactions in its
+        // wallet.
+        {
+            println!(" ... start wallet: {}", create_timestamp());
+            let mut wallet = self.wallet_lock.write().await;
+            let block = self.blocks.get(&block_hash).unwrap();
+            wallet.add_block(&block);
+            println!(" ... finsh wallet: {}", create_timestamp());
+        }
     }
-    pub fn add_block_failure(&mut self) {}
+    pub async fn add_block_failure(&mut self) {}
 
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_longest_chain_block_hash();

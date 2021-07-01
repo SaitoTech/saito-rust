@@ -50,16 +50,16 @@ impl Storage {
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
                 let mut block = Block::deserialize_for_net(encoded);
-println!("loading block with hash: {:?}", block.get_hash());
+                println!("loading block with hash: {:?}", block.get_hash());
 
-	        //
-	        // the hash needs calculation separately after loading
-	        //
-	        if block.get_hash() == [0; 32] {
-	            let block_hash = block.generate_hash();
-	            block.set_hash(block_hash);
-	        }
-println!("loading block with hash: {:?}", block.get_hash());
+                //
+                // the hash needs calculation separately after loading
+                //
+                if block.get_hash() == [0; 32] {
+                    let block_hash = block.generate_hash();
+                    block.set_hash(block_hash);
+                }
+                println!("loading block with hash: {:?}", block.get_hash());
 
                 let mut blockchain = blockchain_lock.write().await;
                 blockchain.add_block(block).await;
