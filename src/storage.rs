@@ -52,7 +52,7 @@ impl Storage {
                 f.read_to_end(&mut encoded).unwrap();
                 let block = Block::deserialize_for_net(encoded);
                 let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block);
+                blockchain.add_block(block).await;
                 println!("Loaded block {} of {}", pos, paths.len() - 1);
             }
         }

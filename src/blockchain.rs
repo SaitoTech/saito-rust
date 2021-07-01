@@ -23,7 +23,7 @@ impl Blockchain {
         }
     }
 
-    pub fn add_block(&mut self, block: Block) {
+    pub async fn add_block(&mut self, block: Block) {
         println!(" ... add_block start: {:?}", create_timestamp());
         println!(" ... txs in block: {:?}", block.transactions.len());
 
@@ -195,8 +195,7 @@ impl Blockchain {
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
-	let mut block = self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
-        let storage = Storage::new();
+	    let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
     }
     pub fn add_block_failure(&mut self) {}
