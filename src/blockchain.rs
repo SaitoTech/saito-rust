@@ -36,10 +36,15 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_longest_chain_block_hash();
 
+
         //
         // sanity checks
         //
-        //println!("Block Hash: {:?}", block.get_hash());
+        if self.blocks.contains_key(&block_hash) {
+            println!("ERROR: block exists in blockchain {:?}", block.get_hash());
+	    return;
+	}
+
 
         //
         // pre-validation
@@ -88,6 +93,7 @@ impl Blockchain {
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
         }
+
 
         //
         // find shared ancestor of new_block with old_chain
@@ -142,9 +148,6 @@ impl Blockchain {
             }
         }
 
-        //println!("new chain: {:?}", new_chain);
-        //println!("old chain: {:?}", old_chain);
-
         //
         // at this point we should have a shared ancestor
         //
@@ -180,7 +183,6 @@ impl Blockchain {
         }
 
         println!("TOTAL INDEX OF BLOCKS");
-        self.blockring.print_lc();
     }
 
     pub fn add_block_success(&mut self, block_hash: SaitoHash) {
@@ -193,8 +195,7 @@ impl Blockchain {
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
-
-        self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+	let mut block = self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
     }
@@ -244,12 +245,18 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
+
         if old_chain.len() > new_chain.len() {
             return false;
         }
+      
+      	if self.blockring.get_longest_chain_block_id() >= self.blocks.get(&new_chain[new_chain.len()-1]).unwrap().get_id() {
+            return false;
+	      }
 
         let mut old_bf: u64 = 0;
         let mut new_bf: u64 = 0;
+
         for hash in old_chain.iter() {
             old_bf += self.blocks.get(hash).unwrap().get_burnfee();
         }
@@ -280,6 +287,14 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
+
+      	//
+	      // if we are winding a non-existent chain with a wind_failure it
+	      // means our wind attempt failed and we should move directly into
+	      // add_block_failure() by returning false.
+	      //
+	      if wind_failure == true && new_chain.len() == 0 { return false; }
+
         {
             // yes, there is a warning here, but we need the mutable borrow to set the
             // tx.hash_for_signature information inside AFAICT
@@ -360,5 +375,61 @@ impl Blockchain {
             //
             self.unwind_chain(new_chain, old_chain, current_unwind_index - 1, wind_failure)
         }
+    }
+}
+
+#[cfg(test)]
+
+mod tests {
+    use crate::test_utilities::mocks::{make_mock_block, make_mock_invalid_block};
+
+    use super::*;
+    #[test]
+    fn add_block_test() {
+
+        let mut blockchain = Blockchain::new();
+
+	//
+	// Good Blocks
+	//
+        let good_block_12 = make_mock_block([0; 32], 12);
+        let good_block_12_hash = good_block_12.get_hash();
+        let good_block_13 = make_mock_block(good_block_12_hash, 13);
+        let good_block_13_hash = good_block_13.get_hash();
+
+
+	//
+	// "Bad" Blocks
+	//
+        let bad_block_13 = make_mock_invalid_block(good_block_13_hash, 13);
+        let bad_block_14 = make_mock_invalid_block(good_block_12_hash, 14);
+	let good_block_3 = make_mock_block([0; 32], 3);
+
+
+        // Add our first block #12
+        blockchain.add_block(good_block_12);
+        assert_eq!(good_block_12_hash, blockchain.get_latest_block_hash());
+        assert_eq!(12, blockchain.get_latest_block_id());
+
+        // Add our second block #13
+        blockchain.add_block(good_block_13);
+        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Add bad block in next block_id -- block should not affect the blockchain
+        blockchain.add_block(bad_block_14);
+        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Add bad block in current block_id -- block should not affect the blockchain
+        blockchain.add_block(bad_block_13);
+        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
+        // Add good block with earlier block_id --- block should not affect the blockchain
+        blockchain.add_block(good_block_3);
+        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
+        assert_eq!(13, blockchain.get_latest_block_id());
+
     }
 }

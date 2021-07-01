@@ -38,10 +38,10 @@ impl RingItem {
         self.block_ids.push(block_id);
     }
 
-    pub fn on_chain_reorganization(&mut self, hash: SaitoHash, lc: bool) {
+    pub fn on_chain_reorganization(&mut self, hash: SaitoHash, lc: bool) -> bool {
         if !lc {
             self.lc_pos = usize::MAX;
-        } else {
+       } else {
             //
             // update new longest-chain
             //
@@ -50,6 +50,11 @@ impl RingItem {
                     self.lc_pos = i;
                 }
             }
+
+	    //
+	    // this hash does not exist
+	    //
+	    if self.block_ids.len() < self.lc_pos { return false; }
 
             //
             // remove any old indices
@@ -70,7 +75,10 @@ impl RingItem {
 
             self.block_hashes = new_block_hashes;
             self.block_ids = new_block_ids;
+
         }
+
+	true
     }
 }
 
@@ -136,12 +144,37 @@ impl BlockRing {
         self.block_ring[(insert_pos as usize)].add_block(block.get_id(), block.get_hash());
     }
 
-    pub fn on_chain_reorganization(&mut self, block_id: u64, hash: SaitoHash, lc: bool) {
+    pub fn on_chain_reorganization(&mut self, block_id: u64, hash: SaitoHash, lc: bool) -> bool {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
-        self.block_ring[(insert_pos as usize)].on_chain_reorganization(hash, lc);
+        if !self.block_ring[(insert_pos as usize)].on_chain_reorganization(hash, lc) { 
+	    return false;
+	}
         if lc {
             self.block_ring_lc_pos = insert_pos as usize;
-        }
+        } else {
+
+	    //
+	    // only adjust longest_chain if this is it
+	    //
+	    if self.block_ring_lc_pos == insert_pos as usize {
+	        let mut previous_block_idx = self.block_ring_lc_pos-1;
+
+	        // reset to lc_pos to unknown
+	        self.block_ring_lc_pos = usize::MAX;
+
+	        // but try to find it
+	        if previous_block_idx < 0 { previous_block_idx = RING_BUFFER_LENGTH as usize - 1; }
+	        let previous_block_idx_lc_pos = self.block_ring[previous_block_idx as usize].lc_pos;
+	        if previous_block_idx_lc_pos != usize::MAX {
+	            if self.block_ring[previous_block_idx].block_ids.len() > previous_block_idx_lc_pos {
+	                if self.block_ring[previous_block_idx].block_ids[previous_block_idx_lc_pos] == block_id-1 {
+			    self.block_ring_lc_pos = previous_block_idx;
+		        }
+		    }
+	        }
+	    }
+	}
+	true
     }
 
     pub fn get_longest_chain_block_hash_by_block_id(&self, id: u64) -> SaitoHash {
@@ -187,8 +220,61 @@ impl BlockRing {
 
 #[cfg(test)]
 mod test {
+    use crate::test_utilities::mocks::{make_mock_block, make_mock_invalid_block};
+
+    use super::*;
     #[test]
-    fn longest_chain_queue_test() {
-        assert_eq!(1, 1);
+    fn add_block_test() {
+
+        let mut blockring = BlockRing::new();
+
+        //
+        // Good Blocks
+        //
+        let block_1 = make_mock_block([0; 32], 1);
+        let block_2 = make_mock_block(block_1.get_hash(), 2);
+        let block_3 = make_mock_block(block_2.get_hash(), 3);
+        let block_4 = make_mock_block(block_3.get_hash(), 4);
+        let block_3_2 = make_mock_block(block_2.get_hash(), 3);
+        let block_4_2 = make_mock_block(block_3.get_hash(), 4);
+        let block_5_2 = make_mock_block(block_4.get_hash(), 5);
+
+	blockring.add_block(&block_1);
+	blockring.add_block(&block_2);
+	blockring.add_block(&block_3);
+	blockring.add_block(&block_4);
+	blockring.add_block(&block_3_2);
+	blockring.add_block(&block_4_2);
+	blockring.add_block(&block_5_2);
+
+        // do we contain these block hashes?
+        assert_eq!(blockring.contains_block_hash_at_block_id(1, block_1.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(2, block_2.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(3, block_3.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(4, block_4.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(3, block_3_2.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(4, block_4_2.get_hash()), true);
+        assert_eq!(blockring.contains_block_hash_at_block_id(5, block_5_2.get_hash()), true);
+
+	// reorganize longest chain
+	blockring.on_chain_reorganization(1, block_1.get_hash(), true);
+	blockring.on_chain_reorganization(2, block_2.get_hash(), true);
+	blockring.on_chain_reorganization(3, block_3.get_hash(), true);
+	blockring.on_chain_reorganization(4, block_4.get_hash(), true);
+	blockring.on_chain_reorganization(4, block_4.get_hash(), false);
+	blockring.on_chain_reorganization(3, block_3.get_hash(), false);
+	blockring.on_chain_reorganization(3, block_3_2.get_hash(), true);
+	blockring.on_chain_reorganization(4, block_4_2.get_hash(), true);
+	blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
+
+        assert_eq!(blockring.get_longest_chain_block_id(), 5);
+	// reorg in the wrong location
+	blockring.on_chain_reorganization(532, block_5_2.get_hash(), false);
+        assert_eq!(blockring.get_longest_chain_block_id(), 5);
+
+	blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
+        assert_eq!(blockring.get_longest_chain_block_id(), 5);
+
+
     }
 }

@@ -27,9 +27,9 @@ impl Storage {
         filename.push_str(&".sai");
 
         let mut buffer = File::create(filename).unwrap();
-
         let byte_array: Vec<u8> = block.serialize_for_net();
         buffer.write_all(&byte_array[..]).unwrap();
+
     }
     pub async fn load_blocks_from_disk(&self, blockchain_lock: Arc<RwLock<Blockchain>>) {
         let mut paths: Vec<_> = fs::read_dir(self.blocks_dir_path.clone())
@@ -51,10 +51,7 @@ impl Storage {
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
                 let block = Block::deserialize_for_net(encoded);
-                //let mut blockchain = Handle::current().block_on();
-                println!("get lock...");
                 let mut blockchain = blockchain_lock.write().await;
-                println!("adding...");
                 blockchain.add_block(block);
                 println!("Loaded block {} of {}", pos, paths.len() - 1);
             }
