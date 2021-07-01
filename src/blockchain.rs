@@ -195,8 +195,7 @@ impl Blockchain {
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
-	let mut block = self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
-        let storage = Storage::new();
+	    let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
     }
     pub fn add_block_failure(&mut self) {}
@@ -269,12 +268,10 @@ impl Blockchain {
 	//
 	if wind_failure == true && new_chain.len() == 0 { return false; }
 
-        let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
-
         {
 	    // yes, there is a warning here, but we need the mutable borrow to set the 
 	    // tx.hash_for_signature information inside AFAICT
-            let mut block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+            let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
             //
             // validate the block
