@@ -4,8 +4,8 @@ use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
-use std::{sync::Arc};
-use tokio::sync::{RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use ahash::AHashMap;
 
@@ -24,12 +24,11 @@ impl Blockchain {
             utxoset: AHashMap::new(),
             blockring: BlockRing::new(),
             blocks: AHashMap::new(),
-	    wallet_lock,
+            wallet_lock,
         }
     }
 
     pub async fn add_block(&mut self, block: Block) {
-
         println!(
             " ... add_block {} start: {:?}",
             block.get_id(),
@@ -117,12 +116,12 @@ impl Blockchain {
             if self.blocks.contains_key(&new_chain_hash) {
                 if self.blocks.get(&new_chain_hash).unwrap().get_lc() {
                     shared_ancestor_found = true;
-		    break;
+                    break;
                 } else {
                     if new_chain_hash == [0; 32] {
-                       break;
+                        break;
                     }
-		}
+                }
                 new_chain.push(new_chain_hash);
                 new_chain_hash = self
                     .blocks
@@ -158,14 +157,12 @@ impl Blockchain {
                 }
             }
         } else {
-
-	    if self.blockring.get_longest_chain_block_id() != 0 {
-println!("We have added a block without a parent block... triggering failure");
+            if self.blockring.get_longest_chain_block_id() != 0 {
+                println!("We have added a block without a parent block... triggering failure");
                 self.add_block_failure().await;
-	        return;
-	    }
-
-	}
+                return;
+            }
+        }
 
         //
         // at this point we should have a shared ancestor or not
@@ -212,24 +209,24 @@ println!("We have added a block without a parent block... triggering failure");
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
-	{
-          self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
-	}
+        {
+            self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+        }
 
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
 
-	//
-	// TODO - this is merely for testing, we do not intend
-	// the routing client to process transactions in its
-	// wallet.
-	{
-println!(" ... start wallet: {}", create_timestamp());
-	    let mut wallet = self.wallet_lock.write().await;
+        //
+        // TODO - this is merely for testing, we do not intend
+        // the routing client to process transactions in its
+        // wallet.
+        {
+            println!(" ... start wallet: {}", create_timestamp());
+            let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
-	    wallet.add_block(&block);
-println!(" ... finsh wallet: {}", create_timestamp());
-	}
+            wallet.add_block(&block);
+            println!(" ... finsh wallet: {}", create_timestamp());
+        }
     }
     pub async fn add_block_failure(&mut self) {}
 

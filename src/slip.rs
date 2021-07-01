@@ -1,4 +1,4 @@
-use crate::crypto::{SaitoPublicKey, SaitoUTXOSetKey, SaitoHash};
+use crate::crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey};
 use serde::{Deserialize, Serialize};
 
 use ahash::AHashMap;
