@@ -63,7 +63,7 @@ impl Mempool {
     /// Calculates the work available in mempool to produce a block
     ///
     pub async fn calculate_work_available(&self) -> u64 {
-	return 2
+	return 2 * 100_000_000;
     }
 
     //
@@ -76,19 +76,13 @@ impl Mempool {
         let current_timestamp = create_timestamp();
 
 	let previous_block_burnfee = blockchain.get_latest_block_burnfee();
-	let previous_block_burnfee_as_u64: u64 = (previous_block_burnfee * 10_000_000.0).round() as u64;
-
-println!("{}", previous_block_burnfee_as_u64);
-println!("{}", previous_block_timestamp);
-println!("{}", current_timestamp);
 
         let work_needed : u64 = BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
-            previous_block_burnfee_as_u64,
+            previous_block_burnfee,
             current_timestamp,
             previous_block_timestamp,
         );
 
-println!("work needed this time: {}", work_needed);
 	work_needed
     }
 
@@ -121,26 +115,22 @@ println!("WA: {:?} -- WN: {:?}", work_available, work_needed);
         let mut block = Block::default();
 
 	let previous_block_burnfee = blockchain.get_latest_block_burnfee();
-	let previous_block_burnfee_as_u64: u64 = (previous_block_burnfee * 10_000_000.0).round() as u64;
 
 	let previous_block_timestamp = blockchain.get_latest_block_timestamp();
         let current_timestamp = create_timestamp();
 
 	let new_burnfee :u64 = BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-            previous_block_burnfee_as_u64,
+            previous_block_burnfee,
             current_timestamp,
             previous_block_timestamp,
         );
 
-println!("this is the new burnfee");
+println!("setting this as the new burnfee: {}", new_burnfee);
 println!("{}", new_burnfee);
-
 
         block.set_id(previous_block_id + 1);
         block.set_previous_block_hash(previous_block_hash);
-let new_burnfee_f64 = (new_burnfee as f64 / 10_000_000.0) as f64;
-        block.set_burnfee(new_burnfee_f64);
-//        block.set_burnfee(new_burnfee);
+        block.set_burnfee(new_burnfee);
 
         let wallet = self.wallet_lock.read().await;
 

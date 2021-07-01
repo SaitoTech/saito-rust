@@ -23,7 +23,7 @@ pub struct BlockCore {
     #[serde_as(as = "[_; 64]")]
     signature: SaitoSignature, // signature of block creator
     treasury: u64,
-    burnfee: f64,
+    burnfee: u64,
     difficulty: u64,
 }
 
@@ -37,7 +37,7 @@ impl BlockCore {
         merkle_root: [u8; 32],
         signature: [u8; 64],
         treasury: u64,
-        burnfee: f64,
+        burnfee: u64,
         difficulty: u64,
     ) -> Self {
         Self {
@@ -64,7 +64,7 @@ impl Default for BlockCore {
             [0; 32],
             [0; 64],
             0,
-            0.0,
+            0,
             0,
         )
     }
@@ -132,7 +132,7 @@ impl Block {
         self.core.treasury
     }
 
-    pub fn get_burnfee(&self) -> f64 {
+    pub fn get_burnfee(&self) -> u64 {
         self.core.burnfee
     }
 
@@ -175,7 +175,7 @@ impl Block {
         self.core.treasury = treasury;
     }
 
-    pub fn set_burnfee(&mut self, burnfee: f64) {
+    pub fn set_burnfee(&mut self, burnfee: u64) {
         self.core.burnfee = burnfee;
     }
 
@@ -270,7 +270,7 @@ impl Block {
         let signature: SaitoSignature = bytes[117..181].try_into().unwrap();
 
         let treasury: u64 = u64::from_be_bytes(bytes[181..189].try_into().unwrap());
-        let burnfee: f64 = f64::from_be_bytes(bytes[189..197].try_into().unwrap());
+        let burnfee: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
         let difficulty: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
         let mut transactions = vec![];
         let mut start_of_transaction_data = 205;
