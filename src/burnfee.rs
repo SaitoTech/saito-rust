@@ -30,14 +30,10 @@ impl BurnFee {
         // convert to float for division
         let elapsed_time_float = elapsed_time as f64;
         let burn_fee_previous_block_as_float: f64 = burn_fee_previous_block as f64 / 100_000_000.0;
-println!("bfpbaf: {}", burn_fee_previous_block_as_float);
         let work_needed_float: f64 = burn_fee_previous_block_as_float / elapsed_time_float;
-println!("wnf: {}", work_needed_float);
 
         // convert back to nolan for rounding / safety
         let work_needed_nolan = (work_needed_float * 100_000_000.0).round() as u64;
-
-println!("wnn: {}", work_needed_nolan);
 
         work_needed_nolan
     }
@@ -66,12 +62,8 @@ println!("wnn: {}", work_needed_nolan);
 
         let burn_fee_previous_block_as_float: f64 = burn_fee_previous_block as f64 / 100_000_000.0;
 
-println!("create new burn fee");
-println!("bfpbs: {}", burn_fee_previous_block_as_float);
-
         let res1: f64 = burn_fee_previous_block_as_float
             * ((HEARTBEAT) as f64 / (timestamp_difference) as f64).sqrt();
-println!("res1: {}", res1);
         let new_burnfee: u64 = (res1 * 100_000_000.0).round() as u64;
 
         new_burnfee

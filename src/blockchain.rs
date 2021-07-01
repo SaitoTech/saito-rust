@@ -24,8 +24,12 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-        println!(" ... add_block start: {:?}", create_timestamp());
+        println!(" ... add_block {} start: {:?}", block.get_id(), create_timestamp());
+//        println!(" ... hash: {:?}", block.get_hash());
         println!(" ... txs in block: {:?}", block.transactions.len());
+
+//println!("... from previous block hash: {:?}", block.get_previous_block_hash());
+
 
         //
         // start by extracting some variables that we will use
@@ -123,6 +127,7 @@ impl Blockchain {
             }
         }
 
+
         //
         // and get existing current chain for comparison
         //
@@ -174,11 +179,14 @@ impl Blockchain {
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             println!(" ... finish validate: {:?}", create_timestamp());
             if does_new_chain_validate {
+println!("ADD SUCCESS");
                 self.add_block_success(block_hash);
             } else {
+println!("ADD FAILURE");
                 self.add_block_failure();
             }
         } else {
+println!("ADD FAILURE");
             self.add_block_failure();
         }
 
@@ -195,8 +203,11 @@ impl Blockchain {
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
-	    let storage = Storage::new();
+        self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+
+        let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
+
     }
     pub fn add_block_failure(&mut self) {}
 
@@ -246,12 +257,16 @@ impl Blockchain {
     ) -> bool {
 
         if old_chain.len() > new_chain.len() {
+println!("ERROR 1");
             return false;
         }
       
       	if self.blockring.get_longest_chain_block_id() >= self.blocks.get(&new_chain[new_chain.len()-1]).unwrap().get_id() {
+println!("{:?}", new_chain);
+println!("ERROR 2-1: {}", self.blockring.get_longest_chain_block_id());
+println!("ERROR 2-2: {}", self.blocks.get(&new_chain[new_chain.len()-1]).unwrap().get_id());
             return false;
-	      }
+	}
 
         let mut old_bf: u64 = 0;
         let mut new_bf: u64 = 0;
@@ -266,7 +281,13 @@ impl Blockchain {
         //
         // new chain must have more accumulated work AND be longer
         //
+
+println!("valid lchain: {}", 
         old_chain.len() < new_chain.len() && old_bf <= new_bf
+);
+
+        old_chain.len() < new_chain.len() && old_bf <= new_bf
+
     }
 
     pub fn validate(&mut self, new_chain: Vec<[u8; 32]>, old_chain: Vec<[u8; 32]>) -> bool {
