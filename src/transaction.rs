@@ -289,12 +289,12 @@ impl Transaction {
         //
         let hash_for_signature: SaitoHash = self.get_hash_for_signature();
         let sig: SaitoSignature = self.get_signature();
-        let mut publickey: SaitoPublicKey = [0; 33];
-        if !self.core.inputs.is_empty() {
-            publickey = self.core.inputs[0].get_publickey();
-        } else {
+        
+
+        if self.core.inputs.is_empty() {
             panic!("transaction must have at least 1 input");
         }
+        let publickey: SaitoPublicKey = self.core.inputs[0].get_publickey();
 
         if !verify(&hash_for_signature, sig, publickey) {
             println!("message verifies not");
