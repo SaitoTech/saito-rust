@@ -280,7 +280,6 @@
 <span id="277">277</span>
 <span id="278">278</span>
 <span id="279">279</span>
-<span id="280">280</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
@@ -441,13 +440,12 @@
 	    <span class="comment">// only adjust longest_chain if this is it</span>
 	    <span class="comment">//</span>
 	    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span> {
-	        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">previous_block_idx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span><span class="op">-</span><span class="number">1</span>;
+	        <span class="kw">let</span> <span class="ident">previous_block_idx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span><span class="op">-</span><span class="number">1</span>;
 
 	        <span class="comment">// reset to lc_pos to unknown</span>
 	        <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="ident">usize::MAX</span>;
 
 	        <span class="comment">// but try to find it</span>
-	        <span class="kw">if</span> <span class="ident">previous_block_idx</span> <span class="op">&lt;</span> <span class="number">0</span> { <span class="ident">previous_block_idx</span> <span class="op">=</span> <span class="ident">RING_BUFFER_LENGTH</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="number">1</span>; }
 	        <span class="kw">let</span> <span class="ident">previous_block_idx_lc_pos</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">lc_pos</span>;
 	        <span class="kw">if</span> <span class="ident">previous_block_idx_lc_pos</span> <span class="op">!</span><span class="op">=</span> <span class="ident">usize::MAX</span> {
 	            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span>].<span class="ident">block_ids</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">previous_block_idx_lc_pos</span> {
@@ -504,7 +502,7 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test</span> {
-    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::mocks</span>::{<span class="ident">make_mock_block</span>, <span class="ident">make_mock_invalid_block</span>};
+    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::mocks</span>::{<span class="ident">make_mock_block</span>};
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="attribute">#[<span class="ident">test</span>]</span>
