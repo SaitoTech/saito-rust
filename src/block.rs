@@ -200,6 +200,7 @@ impl Block {
     // for blockchain functions.
     //
     pub fn generate_hash(&self) -> SaitoHash {
+
         //
         // fastest known way that isn't bincode ??
         //
@@ -383,7 +384,6 @@ impl Block {
             keep_looping = start_point < stop_point - 1;
         }
 
-
         //
         // hash the final leaf
         //
@@ -420,17 +420,19 @@ impl Block {
         //            }
         //        }
 
-	//
+        //
         // verify merkle root
-	//
-	if self.core.merkle_root == [0; 32] {
-	    return false; 
-	}
+        //
+        if self.core.merkle_root == [0; 32] {
+            println!("merkle root is false 1");
+            return false;
+        }
 
         //
         // verify merkle root
         //
         if self.core.merkle_root != self.generate_merkle_root() {
+            println!("merkle root is false 2");
             return false;
         }
 
@@ -447,7 +449,7 @@ impl Block {
         //
         let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
 
-	true
+        true
     }
 }
 

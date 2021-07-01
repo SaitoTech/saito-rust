@@ -24,8 +24,15 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-        println!(" ... add_block start: {:?}", create_timestamp());
-        println!(" ... txs in block: {:?}", block.transactions.len());
+
+        println!(
+            " ... add_block {} start: {:?}",
+            block.get_id(),
+            create_timestamp()
+        );
+        //println!(" ... hash: {:?}", block.get_hash());
+        //println!(" ... txs in block: {:?}", block.transactions.len());
+        //println!(" ... w/ prev bhsh: {:?}", block.get_previous_block_hash());
 
         //
         // start by extracting some variables that we will use
@@ -36,15 +43,13 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_longest_chain_block_hash();
 
-
         //
         // sanity checks
         //
         if self.blocks.contains_key(&block_hash) {
             println!("ERROR: block exists in blockchain {:?}", block.get_hash());
-	    return;
-	}
-
+            return;
+        }
 
         //
         // pre-validation
@@ -94,7 +99,6 @@ impl Blockchain {
             self.blocks.insert(block_hash, block);
         }
 
-
         //
         // find shared ancestor of new_block with old_chain
         //
@@ -106,18 +110,20 @@ impl Blockchain {
 
         while !shared_ancestor_found {
             if self.blocks.contains_key(&new_chain_hash) {
+                if self.blocks.get(&new_chain_hash).unwrap().get_lc() {
+                    shared_ancestor_found = true;
+		    break;
+                } else {
+                    if new_chain_hash == [0; 32] {
+                       break;
+                    }
+		}
                 new_chain.push(new_chain_hash);
                 new_chain_hash = self
                     .blocks
                     .get(&new_chain_hash)
                     .unwrap()
                     .get_previous_block_hash();
-                if new_chain_hash == [0; 32] {
-                    break;
-                }
-                if self.blocks.get(&new_chain_hash).unwrap().get_lc() {
-                    shared_ancestor_found = true;
-                }
             } else {
                 break;
             }
@@ -146,10 +152,18 @@ impl Blockchain {
                     }
                 }
             }
-        }
+        } else {
+
+	    if self.blockring.get_longest_chain_block_id() != 0 {
+println!("We have added a block without a parent block... triggering failure");
+                self.add_block_failure();
+	        return;
+	    }
+
+	}
 
         //
-        // at this point we should have a shared ancestor
+        // at this point we should have a shared ancestor or not
         //
         // find out whether this new block is claiming to require chain-validation
         //
@@ -181,8 +195,6 @@ impl Blockchain {
         } else {
             self.add_block_failure();
         }
-
-        println!("TOTAL INDEX OF BLOCKS");
     }
 
     pub fn add_block_success(&mut self, block_hash: SaitoHash) {
@@ -195,7 +207,9 @@ impl Blockchain {
         // manually checked that the entry exists in order to pull
         // this trick. we did this check before validating.
         //
-	    let storage = Storage::new();
+        self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+
+        let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
     }
     pub fn add_block_failure(&mut self) {}
@@ -203,6 +217,32 @@ impl Blockchain {
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_longest_chain_block_hash();
         self.blocks.get(&block_hash)
+    }
+
+    pub fn get_latest_block_burnfee(&self) -> u64 {
+        let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block = self.blocks.get(&block_hash);
+        match block {
+            Some(block) => {
+                return block.get_burnfee();
+            }
+            None => {
+                return 0;
+            }
+        }
+    }
+
+    pub fn get_latest_block_timestamp(&self) -> u64 {
+        let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block = self.blocks.get(&block_hash);
+        match block {
+            Some(block) => {
+                return block.get_timestamp();
+            }
+            None => {
+                return 0;
+            }
+        }
     }
 
     pub fn get_latest_block_hash(&self) -> SaitoHash {
@@ -218,17 +258,32 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
-
         if old_chain.len() > new_chain.len() {
+            println!("ERROR 1");
             return false;
         }
 
-	if self.blockring.get_longest_chain_block_id() >= self.blocks.get(&new_chain[new_chain.len()-1]).unwrap().get_id() {
+        if self.blockring.get_longest_chain_block_id()
+            >= self
+                .blocks
+                .get(&new_chain[new_chain.len() - 1])
+                .unwrap()
+                .get_id()
+        {
+            println!("{:?}", new_chain);
+            println!("ERROR 2-1: {}", self.blockring.get_longest_chain_block_id());
+            println!(
+                "ERROR 2-2: {}",
+                self.blocks
+                    .get(&new_chain[new_chain.len() - 1])
+                    .unwrap()
+                    .get_id()
+            );
             return false;
-	}
+        }
 
-        let mut old_bf = 0;
-        let mut new_bf = 0;
+        let mut old_bf: u64 = 0;
+        let mut new_bf: u64 = 0;
 
         for hash in old_chain.iter() {
             old_bf += self.blocks.get(hash).unwrap().get_burnfee();
@@ -260,17 +315,18 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-
-	//
-	// if we are winding a non-existent chain with a wind_failure it
-	// means our wind attempt failed and we should move directly into
-	// add_block_failure() by returning false.
-	//
-	if wind_failure == true && new_chain.len() == 0 { return false; }
+        //
+        // if we are winding a non-existent chain with a wind_failure it
+        // means our wind attempt failed and we should move directly into
+        // add_block_failure() by returning false.
+        //
+        if wind_failure == true && new_chain.len() == 0 {
+            return false;
+        }
 
         {
-	    // yes, there is a warning here, but we need the mutable borrow to set the 
-	    // tx.hash_for_signature information inside AFAICT
+            // yes, there is a warning here, but we need the mutable borrow to set the
+            // tx.hash_for_signature information inside AFAICT
             let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
             //
@@ -359,25 +415,22 @@ mod tests {
     use super::*;
     #[test]
     fn add_block_test() {
-
         let mut blockchain = Blockchain::new();
 
-	//
-	// Good Blocks
-	//
+        //
+        // Good Blocks
+        //
         let good_block_12 = make_mock_block([0; 32], 12);
         let good_block_12_hash = good_block_12.get_hash();
         let good_block_13 = make_mock_block(good_block_12_hash, 13);
         let good_block_13_hash = good_block_13.get_hash();
 
-
-	//
-	// "Bad" Blocks
-	//
+        //
+        // "Bad" Blocks
+        //
         let bad_block_13 = make_mock_invalid_block(good_block_13_hash, 13);
         let bad_block_14 = make_mock_invalid_block(good_block_12_hash, 14);
-	let good_block_3 = make_mock_block([0; 32], 3);
-
+        let good_block_3 = make_mock_block([0; 32], 3);
 
         // Add our first block #12
         blockchain.add_block(good_block_12);
@@ -403,6 +456,5 @@ mod tests {
         blockchain.add_block(good_block_3);
         assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
         assert_eq!(13, blockchain.get_latest_block_id());
-
     }
 }
