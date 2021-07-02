@@ -91,14 +91,6 @@
 <span id="88">88</span>
 <span id="89">89</span>
 <span id="90">90</span>
-<span id="91">91</span>
-<span id="92">92</span>
-<span id="93">93</span>
-<span id="94">94</span>
-<span id="95">95</span>
-<span id="96">96</span>
-<span id="97">97</span>
-<span id="98">98</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block</span>::{<span class="ident">Block</span>, <span class="ident">BlockCore</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
@@ -123,15 +115,7 @@
     }
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_mock_block</span>(<span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
-    <span class="comment">// let mock_input =     pub fn new(</span>
-    <span class="comment">//     publickey: [u8; 33],</span>
-    <span class="comment">//     uuid: [u8; 64],</span>
-    <span class="comment">//     amount: u64,</span>
-    <span class="comment">//     slip_ordinal: u8,</span>
-    <span class="comment">//     slip_type: SlipType,</span>
-    <span class="comment">// ) -&gt; Self {</span>
-
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_mock_block</span>(<span class="ident">time_stamp</span>: <span class="ident">u64</span>, <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
     <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
     <span class="kw">let</span> <span class="ident">mock_input</span> <span class="op">=</span> <span class="ident">Slip::new</span>(<span class="ident">SlipCore::new</span>(
         <span class="ident">wallet</span>.<span class="ident">get_publickey</span>(),
@@ -148,7 +132,7 @@
         <span class="ident">SlipType::Normal</span>,
     ));
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>(<span class="ident">TransactionCore::new</span>(
-        <span class="ident">create_timestamp</span>(),
+        <span class="ident">time_stamp</span>,
         <span class="macro">vec!</span>[<span class="ident">mock_input</span>],
         <span class="macro">vec!</span>[<span class="ident">mock_output</span>],
         <span class="macro">vec!</span>[],
@@ -158,7 +142,7 @@
     <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
     <span class="kw">let</span> <span class="ident">mock_core</span> <span class="op">=</span> <span class="ident">BlockCore::new</span>(
         <span class="ident">block_id</span>,
-        <span class="ident">create_timestamp</span>(),
+        <span class="ident">time_stamp</span>,
         <span class="ident">previous_block_hash</span>,
         <span class="ident">wallet</span>.<span class="ident">get_publickey</span>(),
         [<span class="number">2</span>; <span class="number">32</span>],
@@ -173,8 +157,8 @@
     <span class="ident">block</span>.<span class="ident">set_hash</span>(<span class="ident">block</span>.<span class="ident">generate_hash</span>());
     <span class="ident">block</span>
 }
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_mock_invalid_block</span>(<span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_block</span> <span class="op">=</span> <span class="ident">make_mock_block</span>(<span class="ident">previous_block_hash</span>, <span class="ident">block_id</span>);
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_mock_invalid_block</span>(<span class="ident">time_stamp</span>: <span class="ident">u64</span>, <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_block</span> <span class="op">=</span> <span class="ident">make_mock_block</span>(<span class="ident">time_stamp</span>, <span class="ident">previous_block_hash</span>, <span class="ident">block_id</span>);
     <span class="ident">mock_block</span>.<span class="ident">set_merkle_root</span>([<span class="number">0</span>; <span class="number">32</span>]);
     <span class="ident">mock_block</span>
 }
