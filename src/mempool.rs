@@ -4,6 +4,7 @@ use crate::{
     burnfee::BurnFee,
     consensus::SaitoMessage,
     crypto::{hash, verify},
+    golden_ticket::GoldenTicket,
     slip::Slip,
     time::create_timestamp,
     transaction::Transaction,
@@ -24,6 +25,13 @@ pub enum AddBlockResult {
     Accepted,
     Exists,
 }
+#[derive(Clone, PartialEq)]
+pub enum AddTransactionResult {
+    Accepted,
+    Rejected,
+    Invalid,
+    Exists,
+}
 
 /// The `Mempool` holds unprocessed blocks and transactions and is in control of
 /// discerning when thenodeis allowed to create a block. It bundles the block and
@@ -34,6 +42,7 @@ pub struct Mempool {
     blocks: VecDeque<Block>,
     wallet_lock: Arc<RwLock<Wallet>>,
     currently_processing_blocks: bool,
+    broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
 }
 
 impl Mempool {
@@ -43,7 +52,12 @@ impl Mempool {
             blocks: VecDeque::new(),
             wallet_lock,
             currently_processing_blocks: false,
+	    broadcast_channel_sender: None,
         }
+    }
+
+    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
+        self.broadcast_channel_sender = Some(bcs);
     }
 
     pub fn add_block(&mut self, block: Block) -> AddBlockResult {
@@ -59,6 +73,13 @@ impl Mempool {
             AddBlockResult::Accepted
         }
     }
+
+    pub fn add_transaction(&mut self, transaction: Transaction) -> AddTransactionResult {
+
+	AddTransactionResult::Accepted
+    }
+
+ 
 
     ///
     /// Calculates the work available in mempool to produce a block
@@ -188,19 +209,24 @@ impl Mempool {
 pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
+
+    //
+    // mempool gets global broadcast channel
+    //
+    {
+        let mut mempool = mempool_lock.write().await;
+        mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+    }
+
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
     let generate_block_sender = mempool_channel_sender.clone();
 
+
     tokio::spawn(async move {
         loop {
-            //          generate_block_sender
-            //               .send(MempoolMessage::GenerateBlock)
-            //               .await
-            //               .expect("error: GenerateBlock message failed to send");
-            //          sleep(Duration::from_millis(20000));
             generate_block_sender
                 .send(MempoolMessage::TryBundleBlock)
                 .await
@@ -215,14 +241,15 @@ pub async fn run(
                 match message {
 
                     // TryBundleBlock makes periodic attempts to produce blocks and does so
-            // if the mempool can bundle blocks....
+             	    // if the mempool can bundle blocks....
                     MempoolMessage::TryBundleBlock => {
                         let mut mempool = mempool_lock.write().await;
-                    let can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
+                        let can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
                         if can_bundle {
                             let block = mempool.generate_block(blockchain_lock.clone()).await;
                             if AddBlockResult::Accepted == mempool.add_block(block) {
-                                mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
+                                broadcast_channel_sender.send(SaitoMessage::TestMessage).unwrap();
+                                mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                             }
                         }
                     },
@@ -237,16 +264,16 @@ pub async fn run(
                         }
                     },
 
-                    // ProcessBlocks will add blocks FIFO from the queue
-                    // into blockchain
+                    // ProcessBlocks will add blocks FIFO from the queue into blockchain
                     MempoolMessage::ProcessBlocks => {
                         let mut mempool = mempool_lock.write().await;
-            mempool.currently_processing_blocks = true;
+            		mempool.currently_processing_blocks = true;
                         let mut blockchain = blockchain_lock.write().await;
                         while let Some(block) = mempool.blocks.pop_front() {
+			    let this_hash = block.get_hash();
                             blockchain.add_block(block).await;
                         }
-            mempool.currently_processing_blocks = false;
+            		mempool.currently_processing_blocks = false;
                     },
                 }
             }
@@ -268,6 +295,11 @@ pub async fn run(
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
                         let mut _mempool = mempool_lock.write().await;
                     },
+                    SaitoMessage::MinerNewGoldenTicket { ticket : gt } => {
+                        println!("Mempool RECEIVES GoldenTicket Solution BROADCAST!");
+			println!("{:?}", gt);
+                    },
+		    _ => {},
                 }
             }
         }
