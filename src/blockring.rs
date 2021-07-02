@@ -223,24 +223,53 @@ impl BlockRing {
 
 #[cfg(test)]
 mod test {
-    use crate::test_utilities::mocks::{MockTimestampGenerator, make_mock_block};
+    use crate::test_utilities::mocks::make_mock_block;
 
     use super::*;
     #[test]
     fn blockring_test1() {
-        let mut timestamp_generator = MockTimestampGenerator::new();
         let mut blockring = BlockRing::new();
 
         //
         // Good Blocks
         //
-        let block_1 = make_mock_block(timestamp_generator.next(), [0; 32], 1);
-        let block_2 = make_mock_block(timestamp_generator.next(), block_1.get_hash(), 2);
-        let block_3 = make_mock_block(timestamp_generator.next(), block_2.get_hash(), 3);
-        let block_4 = make_mock_block(timestamp_generator.next(), block_3.get_hash(), 4);
-        let block_3_2 = make_mock_block(timestamp_generator.next(), block_2.get_hash(), 3);
-        let block_4_2 = make_mock_block(timestamp_generator.next(), block_3.get_hash(), 4);
-        let block_5_2 = make_mock_block(timestamp_generator.next(), block_4.get_hash(), 5);
+        let block_1 = make_mock_block(0, 10, [0; 32], 1);
+        let block_2 = make_mock_block(
+            block_1.get_timestamp(),
+            block_1.get_burnfee(),
+            block_1.get_hash(),
+            2,
+        );
+        let block_3 = make_mock_block(
+            block_2.get_timestamp(),
+            block_2.get_burnfee(),
+            block_2.get_hash(),
+            3,
+        );
+        let block_4 = make_mock_block(
+            block_3.get_timestamp(),
+            block_3.get_burnfee(),
+            block_3.get_hash(),
+            4,
+        );
+        let block_3_2 = make_mock_block(
+            block_2.get_timestamp(),
+            block_2.get_burnfee(),
+            block_2.get_hash(),
+            3,
+        );
+        let block_4_2 = make_mock_block(
+            block_3.get_timestamp(),
+            block_3.get_burnfee(),
+            block_3.get_hash(),
+            4,
+        );
+        let block_5_2 = make_mock_block(
+            block_4.get_timestamp(),
+            block_4.get_burnfee(),
+            block_4.get_hash(),
+            5,
+        );
 
         blockring.add_block(&block_1);
         blockring.add_block(&block_2);
@@ -302,11 +331,10 @@ mod test {
 
     #[test]
     fn blockring_test2() {
-        let mut timestamp_generator = MockTimestampGenerator::new();
         let mut blockring = BlockRing::new();
         // TODO: This is wrong, the latest block is null, not 0
         assert_eq!(0, blockring.get_longest_chain_block_id());
-        let mock_block = make_mock_block(timestamp_generator.next(), [0; 32], 0);
+        let mock_block = make_mock_block(0, 10, [0; 32], 0);
         println!("mock block hash {:?}", mock_block.get_hash());
         blockring.add_block(&mock_block);
         // TODO: These next 3 are also wrong, they should probably return None or panic

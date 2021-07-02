@@ -1,27 +1,23 @@
 use crate::block::{Block, BlockCore};
+use crate::burnfee::BurnFee;
 use crate::crypto::SaitoHash;
 use crate::slip::{Slip, SlipCore, SlipType};
-use crate::time::create_timestamp;
 use crate::transaction::{Transaction, TransactionCore, TransactionType};
 use crate::wallet::Wallet;
 
-pub struct MockTimestampGenerator {
-    timestamp: u64,
-}
-
-impl MockTimestampGenerator {
-    pub fn new() -> MockTimestampGenerator {
-        MockTimestampGenerator {
-            timestamp: create_timestamp(),
-        }
-    }
-    pub fn next(&mut self) -> u64 {
-        self.timestamp += 1000;
-        self.timestamp
-    }
-}
-
-pub fn make_mock_block(time_stamp: u64, previous_block_hash: SaitoHash, block_id: u64) -> Block {
+pub fn make_mock_block(
+    prev_timestamp: u64,
+    previous_burnfee: u64,
+    previous_block_hash: SaitoHash,
+    block_id: u64,
+) -> Block {
+    let step: u64 = 10000;
+    let timestamp = prev_timestamp + step;
+    let burnfee = BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
+        previous_burnfee,
+        timestamp,
+        prev_timestamp,
+    );
     let wallet = Wallet::new();
     let mock_input = Slip::new(SlipCore::new(
         wallet.get_publickey(),
@@ -38,7 +34,7 @@ pub fn make_mock_block(time_stamp: u64, previous_block_hash: SaitoHash, block_id
         SlipType::Normal,
     ));
     let mut transaction = Transaction::new(TransactionCore::new(
-        time_stamp,
+        timestamp,
         vec![mock_input],
         vec![mock_output],
         vec![],
@@ -48,13 +44,13 @@ pub fn make_mock_block(time_stamp: u64, previous_block_hash: SaitoHash, block_id
     transaction.sign(wallet.get_privatekey());
     let mock_core = BlockCore::new(
         block_id,
-        time_stamp,
+        timestamp,
         previous_block_hash,
         wallet.get_publickey(),
         [2; 32],
         [3; 64],
         0,
-        0,
+        burnfee,
         0,
     );
     let mut block = Block::new(mock_core);
@@ -63,28 +59,3 @@ pub fn make_mock_block(time_stamp: u64, previous_block_hash: SaitoHash, block_id
     block.set_hash(block.generate_hash());
     block
 }
-pub fn make_mock_invalid_block(time_stamp: u64, previous_block_hash: SaitoHash, block_id: u64) -> Block {
-    let mut mock_block = make_mock_block(time_stamp, previous_block_hash, block_id);
-    mock_block.set_merkle_root([0; 32]);
-    mock_block
-}
-
-// pub fn make_mock_block_with_tx(
-//     previous_block_hash: SaitoHash,
-//     block_id: u64,
-//     tx: Transaction,
-// ) -> Block {
-//     Block::new_mock(previous_block_hash, &mut vec![tx.clone()], block_id)
-// }
-// pub fn make_mock_tx(input: SlipID, amount: u64, to: PublicKey) -> Transaction {
-//     let to_slip = OutputSlip::new(to, SlipType::Normal, amount);
-//     Transaction::new(
-//         Signature::from_compact(&[0; 64]).unwrap(),
-//         vec![],
-//         create_timestamp(),
-//         vec![input.clone()],
-//         vec![to_slip.clone()],
-//         TransactionType::Normal,
-//         vec![104, 101, 108, 108, 111],
-//     )
-// }
