@@ -172,7 +172,6 @@ impl Blockchain {
                 return;
             }
         }
-
         //
         // at this point we should have a shared ancestor or not
         //
@@ -343,7 +342,6 @@ impl Blockchain {
         for hash in new_chain.iter() {
             new_bf += self.blocks.get(hash).unwrap().get_burnfee();
         }
-
         //
         // new chain must have more accumulated work AND be longer
         //
@@ -552,53 +550,132 @@ pub async fn run(
 #[cfg(test)]
 
 mod tests {
-    use crate::test_utilities::mocks::{make_mock_block, make_mock_invalid_block};
+    use crate::test_utilities::mocks::make_mock_block;
 
     use super::*;
     #[tokio::test]
-    async fn add_block_test() {
+    async fn add_block_test_1() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mut blockchain = Blockchain::new(wallet_lock.clone());
+        let mock_block_1 = make_mock_block(0, 10, [0; 32], 1);
+        let mock_block_2 = make_mock_block(
+            mock_block_1.get_timestamp(),
+            mock_block_1.get_burnfee(),
+            mock_block_1.get_hash(),
+            mock_block_1.get_id() + 1,
+        );
+        // TODO: Add a test here that tries to insert a bad first block
+        // I don't think we are doing any validation of the first block yet,
+        // it should probably have a particular hash and block id = 1
+
+        // Add our first block
+        blockchain.add_block(mock_block_1.clone()).await;
+        assert_eq!(mock_block_1.get_id(), blockchain.get_latest_block_id());
+        assert_eq!(mock_block_1.get_hash(), blockchain.get_latest_block_hash());
+
+        // Add our second block
+        blockchain.add_block(mock_block_2.clone()).await;
+        assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
+        assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
+
+        // Try to add block with wrong block id
+        let invalid_block_wrong_block_id = make_mock_block(
+            mock_block_1.get_timestamp(),
+            mock_block_1.get_burnfee(),
+            mock_block_1.get_hash(),
+            mock_block_1.get_id() + 2,
+        );
+        blockchain
+            .add_block(invalid_block_wrong_block_id.clone())
+            .await;
+        assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
+        assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
+
+        // Try to add block with wrong burnfee
+        let invalid_block_wrong_burnfee = make_mock_block(
+            mock_block_1.get_timestamp(),
+            mock_block_1.get_burnfee() - 1,
+            mock_block_1.get_hash(),
+            mock_block_1.get_id() + 1,
+        );
+        blockchain
+            .add_block(invalid_block_wrong_burnfee.clone())
+            .await;
+        assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
+        assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
+
+        // Try to add block with wrong previous hash
+        let invalid_block_wrong_prev_hash = make_mock_block(
+            mock_block_1.get_timestamp(),
+            mock_block_1.get_burnfee(),
+            [0; 32],
+            mock_block_1.get_id() + 1,
+        );
+        blockchain
+            .add_block(invalid_block_wrong_prev_hash.clone())
+            .await;
+        assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
+        assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
+    }
+
+    #[tokio::test]
+    async fn add_fork_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mut blockchain = Blockchain::new(wallet_lock.clone());
 
-        //
-        // Good Blocks
-        //
-        let good_block_12 = make_mock_block([0; 32], 12);
-        let good_block_12_hash = good_block_12.get_hash();
-        let good_block_13 = make_mock_block(good_block_12_hash, 13);
-        let good_block_13_hash = good_block_13.get_hash();
+        let mock_block_1 = make_mock_block(0, 10, [0; 32], 1);
+        blockchain.add_block(mock_block_1.clone()).await;
 
-        //
-        // "Bad" Blocks
-        //
-        let bad_block_13 = make_mock_invalid_block(good_block_13_hash, 13);
-        let bad_block_14 = make_mock_invalid_block(good_block_12_hash, 14);
-        let good_block_3 = make_mock_block([0; 32], 3);
+        let mut prev_block = mock_block_1.clone();
 
-        // Add our first block #12
-        blockchain.add_block(good_block_12).await;
-        assert_eq!(good_block_12_hash, blockchain.get_latest_block_hash());
-        assert_eq!(12, blockchain.get_latest_block_id());
+        for _n in 0..5 {
+            let next_block = make_mock_block(
+                prev_block.get_timestamp(),
+                prev_block.get_burnfee(),
+                prev_block.get_hash(),
+                prev_block.get_id() + 1,
+            );
 
-        // Add our second block #13
-        blockchain.add_block(good_block_13).await;
-        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
-        assert_eq!(13, blockchain.get_latest_block_id());
+            blockchain.add_block(next_block.clone()).await;
 
-        // Add bad block in next block_id -- block should not affect the blockchain
-        blockchain.add_block(bad_block_14).await;
-        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
-        assert_eq!(13, blockchain.get_latest_block_id());
+            assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
+            assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
+            prev_block = next_block;
+        }
 
-        // Add bad block in current block_id -- block should not affect the blockchain
-        blockchain.add_block(bad_block_13).await;
-        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
-        assert_eq!(13, blockchain.get_latest_block_id());
+        assert_eq!(prev_block.get_id(), blockchain.get_latest_block_id());
+        assert_eq!(prev_block.get_hash(), blockchain.get_latest_block_hash());
+        // make a fork
+        let longest_chain_block_id = prev_block.get_id();
+        let longest_chain_block_hash = prev_block.get_hash();
+        prev_block = mock_block_1.clone();
+        // extend the fork to match the height of LC, the latest block id/hash shouldn't change yet...
+        for _n in 0..5 {
+            let next_block = make_mock_block(
+                prev_block.get_timestamp(),
+                prev_block.get_burnfee(),
+                prev_block.get_hash(),
+                prev_block.get_id() + 1,
+            );
 
-        // Add good block with earlier block_id --- block should not affect the blockchain
-        blockchain.add_block(good_block_3).await;
-        assert_eq!(good_block_13_hash, blockchain.get_latest_block_hash());
-        assert_eq!(13, blockchain.get_latest_block_id());
+            blockchain.add_block(next_block.clone()).await;
+
+            assert_eq!(longest_chain_block_id, blockchain.get_latest_block_id());
+            assert_eq!(longest_chain_block_hash, blockchain.get_latest_block_hash());
+            prev_block = next_block;
+        }
+        // adding another block should now effect the LC
+        let next_block = make_mock_block(
+            prev_block.get_timestamp(),
+            prev_block.get_burnfee(),
+            prev_block.get_hash(),
+            prev_block.get_id() + 1,
+        );
+
+        blockchain.add_block(next_block.clone()).await;
+        // TODO: These tests are failing
+        assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
+        assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
     }
 }
 
