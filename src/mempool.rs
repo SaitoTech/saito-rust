@@ -202,6 +202,18 @@ impl Mempool {
 
         block
     }
+
+    pub async fn generate_golden_ticket_transaction(&mut self, golden_ticket: GoldenTicket) -> Transaction {
+        let mut transaction = Transaction::default();
+
+        // for now we'll use bincode to de/serialize
+        transaction.set_message(bincode::serialize(&golden_ticket).unwrap());
+
+        let wallet = self.wallet_lock.read().await;
+        transaction.sign(wallet.get_privatekey());
+
+        transaction
+    }
 }
 
 // This function is called on initialization to setup the sending
@@ -293,10 +305,11 @@ pub async fn run(
                         let mut _mempool = mempool_lock.write().await;
                     },
                     SaitoMessage::MinerNewGoldenTicket { ticket : gt } => {
-                        println!("Mempool RECEIVES GoldenTicket Solution BROADCAST!");
-			println!("{:?}", gt);
+                        let mut mempool = mempool_lock.write().await;
+                        let transaction = mempool.generate_golden_ticket_transaction(gt).await;
+                        mempool.add_transaction(transaction);
                     },
-            _ => {},
+                    _ => {},
                 }
             }
         }

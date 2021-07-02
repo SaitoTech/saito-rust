@@ -43,20 +43,15 @@ impl Miner {
     }
 
     fn is_valid_solution(&self, solution: SaitoHash) -> bool {
-        // let difficulty_curve: f64 = 1.0;
-        // let difficulty = difficulty_curve.round() as usize;
-        // let difficulty_grain: f64 = difficulty_curve % 1.0;
+        let difficulty_order = (self.difficulty as f64 / 1_0000_0000 as f64).round() as usize;
+        let difficulty_grain = self.difficulty % 1_0000_0000;
 
-        let random_solution = U256::from_big_endian(&solution[..]);
-        let target_solution= U256::from_big_endian(&self.target[..]);
+        let random_solution = U256::from_big_endian(&solution[..difficulty_order]);
+        let target_solution= U256::from_big_endian(&self.target[..difficulty_order]);
+        let difficulty_grain = U256::from(difficulty_grain * 16);
 
-        println!("RANDOM_SOLUTION {:?}", random_solution);
-        println!("TARGET_SOLUTION {:?}", target_solution);
-
-        true
-
-        // random_solution_decimal >= previous_hash_decimal
-        //     && (random_solution_decimal - previous_hash_decimal) <= difficulty_grain
+        random_solution >= target_solution
+            && (random_solution - target_solution) <= difficulty_grain
     }
 
     pub async fn mine(&mut self) {
@@ -100,7 +95,6 @@ impl Miner {
 
 pub async fn run(
     miner_lock: Arc<RwLock<Miner>>,
-    blockchain_lock: Arc<RwLock<Blockchain>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
@@ -137,9 +131,7 @@ pub async fn run(
                     // Mine 1 Ticket
                     //
                     MinerMessage::MineGoldenTicket => {
-                        // let blockchain = blockchain_lock.read().await;
                         let mut miner = miner_lock.write().await;
-                        // let target = blockchain.get_latest_block_hash();
                         miner.mine().await;
                     },
                     _ => {}
