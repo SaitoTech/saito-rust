@@ -1,4 +1,5 @@
 use crate::crypto::SaitoHash;
+use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
 use crate::storage::Storage;
 use crate::wallet::Wallet;
@@ -25,7 +26,7 @@ pub enum SaitoMessage {
     BlockchainNewLongestChainBlock { hash: SaitoHash },
     BlockchainAddBlockSuccess { hash : SaitoHash },
     BlockchainAddBlockFailure { hash : SaitoHash },
-    MinerNewGoldenTicket { solution : SaitoHash },
+    MinerNewGoldenTicket { ticket : GoldenTicket },
     MempoolNewBlock { hash: SaitoHash },
     MempoolNewTransaction { transaction: Transaction },
 }

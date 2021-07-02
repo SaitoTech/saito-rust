@@ -27,3 +27,4 @@ impl Default for GoldenTicket {
         Self::new(0, [0; 32], [0; 32], [0; 33])
     }
 }
+

@@ -4,6 +4,7 @@ use crate::{
     burnfee::BurnFee,
     consensus::SaitoMessage,
     crypto::{hash, verify},
+    golden_ticket::GoldenTicket,
     slip::Slip,
     time::create_timestamp,
     transaction::Transaction,
@@ -280,14 +281,8 @@ pub async fn run(
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
                         let mut _mempool = mempool_lock.write().await;
                     },
-                    SaitoMessage::TestMessage => {
-                        println!("Mempool RECEIVES TEST MESSAGE BROADCAST!");
-                    },
-                    SaitoMessage::TestMessage2 => {
-                        println!("Mempool RECEIVES TEST MESSAGE 2 BROADCAST!");
-                    },
-                    SaitoMessage::TestMessage3 => {
-                        println!("Mempool RECEIVES TEST MESSAGE 3 BROADCAST!");
+                    SaitoMessage::MinerNewGoldenTicket { ticket : gt } => {
+                        println!("Mempool RECEIVES GoldenTicket Solution BROADCAST!");
                     },
 		    _ => {},
                 }

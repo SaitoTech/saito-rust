@@ -43,24 +43,28 @@ impl Miner {
         true
     }
 
-
-    pub fn mine(&self, target_block_hash : SaitoHash) {
+    pub async fn mine(&self, target_block_hash : SaitoHash) {
 
         if self.is_active {
-
-println!("trying to mine golden ticket...");
 
             let solution = hash(&generate_random_bytes(32));
 
             if self.is_valid_solution(solution, target_block_hash) {
 
+		let vote = 0;
+		let wallet = self.wallet_lock.read().await;
+
+		let gt = GoldenTicket::new(vote, target_block_hash, solution, wallet.get_publickey());
+
                 if !self.broadcast_channel_sender.is_none() {
                     self.broadcast_channel_sender.as_ref().unwrap()
-                        .send(SaitoMessage::MinerNewGoldenTicket { solution: solution })
+                        .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
                         .expect("error: MinerNewGoldenTicket message failed to send");
                 }
 
-println!("GOLDEN TICKET FOUND");
+		// stop mining
+                self.set_is_active(false);
+
 	    }
         }
 
@@ -73,16 +77,6 @@ println!("GOLDEN TICKET FOUND");
     pub fn set_target(&mut self, target: SaitoHash) {
         self.target  = target;
     }
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -160,48 +154,7 @@ println!("GOLDEN TICKET FOUND");
         golden_transaction.sign(wallet.get_privatekey());
         //return golden_transaction;
     }
-
-    fn create_gt_solution(
-        &self,
-        random: [u8; 32],
-        target: [u8; 32],
-        publickey: SaitoPublicKey,
-    ) -> GoldenTicket {
-        return GoldenTicket::new(1, target, random, publickey);
-    }
-
-    pub fn set_target(&mut self, target: SaitoHash) {
-        self.target = target;
-    }
-
 ***/
-
-/***
-                    let wallet = wallet_lock.read().await;
-                    let golden_tx =
-                        miner.generate_golden_ticket_transaction(solution, block, wallet);
-
-                    {
-                        let mut miner_write = miner_run_lock.write().await;
-                        miner_write.set_is_active(false);
-                    }
-
-                    broadcast_channel_sender
-                        .send(SaitoMessage::MinerempoolNewTransaction {
-                            transaction: golden_tx,
-                        })
-                        .unwrap();
-                }
-            }
-    broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
-
-    }
-****/
-
-/***
-****/
-
-
 
 }
 
@@ -249,7 +202,7 @@ pub async fn run(
 			let blockchain = blockchain_lock.read().await;
 			let miner = miner_lock.read().await;
 			let target = blockchain.get_latest_block_hash();
-			miner.mine(target);
+			miner.mine(target).await;
                     },
 		    _ => {}
 		}
@@ -263,7 +216,6 @@ pub async fn run(
                 match message {
 
                     SaitoMessage::BlockchainNewLongestChainBlock { hash : block_hash } => {
-println!("MINER receives notification of new longest-chain block ... update target");
                         let mut miner = miner_lock.write().await;
                         miner.set_target(block_hash);
                         miner.set_is_active(true);
