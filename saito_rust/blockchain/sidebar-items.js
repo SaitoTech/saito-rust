@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Blockchain",""]]});
+initSidebarItems({"fn":[["run",""]],"struct":[["Blockchain",""]]});

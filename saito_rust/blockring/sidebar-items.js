@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["BlockRing",""],["RingItem",""]]});
+initSidebarItems({"constant":[["EPOCH_LENGTH",""],["RING_BUFFER_LENGTH",""]],"struct":[["BlockRing",""],["RingItem",""]]});

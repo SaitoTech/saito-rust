@@ -305,6 +305,38 @@
 <span id="302">302</span>
 <span id="303">303</span>
 <span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -312,6 +344,7 @@
     <span class="ident">burnfee::BurnFee</span>,
     <span class="ident">consensus::SaitoMessage</span>,
     <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">verify</span>},
+    <span class="ident">golden_ticket::GoldenTicket</span>,
     <span class="ident">slip::Slip</span>,
     <span class="ident">time::create_timestamp</span>,
     <span class="ident">transaction::Transaction</span>,
@@ -332,6 +365,13 @@
     <span class="ident">Accepted</span>,
     <span class="ident">Exists</span>,
 }
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AddTransactionResult</span> {
+    <span class="ident">Accepted</span>,
+    <span class="ident">Rejected</span>,
+    <span class="ident">Invalid</span>,
+    <span class="ident">Exists</span>,
+}
 
 <span class="doccomment">/// The `Mempool` holds unprocessed blocks and transactions and is in control of</span>
 <span class="doccomment">/// discerning when thenodeis allowed to create a block. It bundles the block and</span>
@@ -342,6 +382,7 @@
     <span class="ident">blocks</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">currently_processing_blocks</span>: <span class="ident">bool</span>,
+    <span class="ident">broadcast_channel_sender</span>:   <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Mempool</span> {
@@ -351,7 +392,12 @@
             <span class="ident">blocks</span>: <span class="ident">VecDeque::new</span>(),
             <span class="ident">wallet_lock</span>,
             <span class="ident">currently_processing_blocks</span>: <span class="bool-val">false</span>,
+	    <span class="ident">broadcast_channel_sender</span>: <span class="prelude-val">None</span>,
         }
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_broadcast_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bcs</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bcs</span>);
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddBlockResult</span> {
@@ -367,6 +413,13 @@
             <span class="ident">AddBlockResult::Accepted</span>
         }
     }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">transaction</span>: <span class="ident">Transaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddTransactionResult</span> {
+
+	<span class="ident">AddTransactionResult::Accepted</span>
+    }
+
+ 
 
     <span class="doccomment">///</span>
     <span class="doccomment">/// Calculates the work available in mempool to produce a block</span>
@@ -496,19 +549,24 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">_broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
+    <span class="ident">broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
     <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+
+    <span class="comment">//</span>
+    <span class="comment">// mempool gets global broadcast channel</span>
+    <span class="comment">//</span>
+    {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+        <span class="ident">mempool</span>.<span class="ident">set_broadcast_channel_sender</span>(<span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>());
+    }
+
     <span class="kw">let</span> (<span class="ident">mempool_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">mempool_channel_receiver</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
     <span class="kw">let</span> <span class="ident">generate_block_sender</span> <span class="op">=</span> <span class="ident">mempool_channel_sender</span>.<span class="ident">clone</span>();
 
+
     <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">loop</span> {
-            <span class="comment">//          generate_block_sender</span>
-            <span class="comment">//               .send(MempoolMessage::GenerateBlock)</span>
-            <span class="comment">//               .await</span>
-            <span class="comment">//               .expect(&quot;error: GenerateBlock message failed to send&quot;);</span>
-            <span class="comment">//          sleep(Duration::from_millis(20000));</span>
             <span class="ident">generate_block_sender</span>
                 .<span class="ident">send</span>(<span class="ident">MempoolMessage::TryBundleBlock</span>)
                 .<span class="kw">await</span>
@@ -523,14 +581,15 @@
                 <span class="kw">match</span> <span class="ident">message</span> {
 
                     <span class="comment">// TryBundleBlock makes periodic attempts to produce blocks and does so</span>
-            <span class="comment">// if the mempool can bundle blocks....</span>
+             	    <span class="comment">// if the mempool can bundle blocks....</span>
                     <span class="ident">MempoolMessage::TryBundleBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                    <span class="kw">let</span> <span class="ident">can_bundle</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">can_bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+                        <span class="kw">let</span> <span class="ident">can_bundle</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">can_bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
                         <span class="kw">if</span> <span class="ident">can_bundle</span> {
                             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">generate_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
                             <span class="kw">if</span> <span class="ident">AddBlockResult::Accepted</span> <span class="op">=</span><span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>) {
-                                <span class="ident">mempool_channel_sender</span>.<span class="ident">send</span>(<span class="ident">MempoolMessage::ProcessBlocks</span>).<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to send ProcessBlocks message&quot;</span>)
+                                <span class="ident">broadcast_channel_sender</span>.<span class="ident">send</span>(<span class="ident">SaitoMessage::TestMessage</span>).<span class="ident">unwrap</span>();
+                                <span class="ident">mempool_channel_sender</span>.<span class="ident">send</span>(<span class="ident">MempoolMessage::ProcessBlocks</span>).<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to send ProcessBlocks message&quot;</span>);
                             }
                         }
                     },
@@ -545,16 +604,16 @@
                         }
                     },
 
-                    <span class="comment">// ProcessBlocks will add blocks FIFO from the queue</span>
-                    <span class="comment">// into blockchain</span>
+                    <span class="comment">// ProcessBlocks will add blocks FIFO from the queue into blockchain</span>
                     <span class="ident">MempoolMessage::ProcessBlocks</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="ident">mempool</span>.<span class="ident">currently_processing_blocks</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            		<span class="ident">mempool</span>.<span class="ident">currently_processing_blocks</span> <span class="op">=</span> <span class="bool-val">true</span>;
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">blocks</span>.<span class="ident">pop_front</span>() {
+			    <span class="kw">let</span> <span class="ident">this_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
                             <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
                         }
-            <span class="ident">mempool</span>.<span class="ident">currently_processing_blocks</span> <span class="op">=</span> <span class="bool-val">false</span>;
+            		<span class="ident">mempool</span>.<span class="ident">currently_processing_blocks</span> <span class="op">=</span> <span class="bool-val">false</span>;
                     },
                 }
             }
@@ -576,6 +635,11 @@
                     <span class="ident">SaitoMessage::MempoolNewTransaction</span> { <span class="ident">transaction</span>: <span class="ident">_transaction</span> } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">_mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                     },
+                    <span class="ident">SaitoMessage::MinerNewGoldenTicket</span> { <span class="ident">ticket</span> : <span class="ident">gt</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">println!</span>(<span class="string">&quot;Mempool RECEIVES GoldenTicket Solution BROADCAST!&quot;</span>);
+			<span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">gt</span>);
+                    },
+		    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
                 }
             }
         }

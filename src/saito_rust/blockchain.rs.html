@@ -553,17 +553,148 @@
 <span id="550">550</span>
 <span id="551">551</span>
 <span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::consensus::SaitoMessage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoUTXOSetKey</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time::create_timestamp</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
+<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
+
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Blockchain</span> {
@@ -571,6 +702,7 @@
     <span class="kw">pub</span> <span class="ident">blockring</span>: <span class="ident">BlockRing</span>,
     <span class="kw">pub</span> <span class="ident">blocks</span>: <span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoHash</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">broadcast_channel_sender</span>:   <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Blockchain</span> {
@@ -581,8 +713,14 @@
             <span class="ident">blockring</span>: <span class="ident">BlockRing::new</span>(),
             <span class="ident">blocks</span>: <span class="ident">AHashMap::new</span>(),
             <span class="ident">wallet_lock</span>,
+	    <span class="ident">broadcast_channel_sender</span>: <span class="prelude-val">None</span>,
         }
     }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_broadcast_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bcs</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bcs</span>);
+    }
+
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {
         <span class="macro">println!</span>(
@@ -741,14 +879,43 @@
         <span class="comment">// viable.</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="ident">am_i_the_longest_chain</span> {
+
             <span class="kw">let</span> <span class="ident">does_new_chain_validate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">validate</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>);
             <span class="kw">if</span> <span class="ident">does_new_chain_validate</span> {
+
                 <span class="self">self</span>.<span class="ident">add_block_success</span>(<span class="ident">block_hash</span>).<span class="kw">await</span>;
+
+                <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
+                    <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()
+                        .<span class="ident">send</span>(<span class="ident">SaitoMessage::BlockchainAddBlockSuccess</span> { <span class="ident">hash</span>: <span class="ident">block_hash</span> })
+                        .<span class="ident">expect</span>(<span class="string">&quot;error: BlockchainAddBlockSuccess message failed to send&quot;</span>);
+                }
+
+                <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
+                    <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()
+                        .<span class="ident">send</span>(<span class="ident">SaitoMessage::BlockchainNewLongestChainBlock</span> { <span class="ident">hash</span>: <span class="ident">block_hash</span> })
+                        .<span class="ident">expect</span>(<span class="string">&quot;error: BlockchainNewLongestChainBlock message failed to send&quot;</span>);
+                }
+
+
             } <span class="kw">else</span> {
                 <span class="self">self</span>.<span class="ident">add_block_failure</span>().<span class="kw">await</span>;
+
+                <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
+                    <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()
+                        .<span class="ident">send</span>(<span class="ident">SaitoMessage::BlockchainAddBlockFailure</span> { <span class="ident">hash</span>: <span class="ident">block_hash</span> })
+                        .<span class="ident">expect</span>(<span class="string">&quot;error: BlockchainAddBlockFailure message failed to send&quot;</span>);
+                }
+
             }
         } <span class="kw">else</span> {
             <span class="self">self</span>.<span class="ident">add_block_failure</span>().<span class="kw">await</span>;
+
+            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
+                <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()
+                    .<span class="ident">send</span>(<span class="ident">SaitoMessage::BlockchainAddBlockFailure</span> { <span class="ident">hash</span>: <span class="ident">block_hash</span> })
+                    .<span class="ident">expect</span>(<span class="string">&quot;error: BlockchainAddBlockFailure message failed to send&quot;</span>);
+            }
         }
     }
 
@@ -975,6 +1142,96 @@
     }
 }
 
+
+
+
+<span class="comment">// This function is called on initialization to setup the sending</span>
+<span class="comment">// and receiving channels for asynchronous loops or message checks</span>
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>( 
+    <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
+    <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+
+    <span class="kw">let</span> (<span class="ident">blockchain_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">blockchain_channel_receiver</span>) : (<span class="ident">tokio::sync::mpsc::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>, <span class="ident">tokio::sync::mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
+
+    <span class="comment">//</span>
+    <span class="comment">// blockchain takes global broadcast channel</span>
+    <span class="comment">//</span>
+    {   
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+        <span class="ident">blockchain</span>.<span class="ident">set_broadcast_channel_sender</span>(<span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>());
+    }
+
+
+    <span class="comment">//</span>
+    <span class="comment">// local broadcasting loop</span>
+    <span class="comment">//</span>
+    <span class="kw">let</span> <span class="ident">test_sender</span> <span class="op">=</span> <span class="ident">blockchain_channel_sender</span>.<span class="ident">clone</span>();
+    <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
+        <span class="kw">loop</span> {
+            <span class="comment">//test_sender</span>
+            <span class="comment">//    .send(MempoolMessage::TryBundleBlock)</span>
+            <span class="comment">//    .await</span>
+            <span class="comment">//    .expect(&quot;error: GenerateBlock message failed to send&quot;);</span>
+            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">1000</span>));
+        }
+    });
+
+
+    <span class="comment">//</span>
+    <span class="comment">// receive broadcast messages</span>
+    <span class="comment">//</span>
+    <span class="kw">loop</span> {
+        <span class="macro">tokio::select!</span> {
+
+	    <span class="comment">//</span>
+	    <span class="comment">// local broadcast messages</span>
+	    <span class="comment">//</span>
+            <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">blockchain_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">match</span> <span class="ident">message</span> {
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
+                }
+            }
+
+	    <span class="comment">//</span>
+	    <span class="comment">// global broadcast messages</span>
+	    <span class="comment">//</span>
+            <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">match</span> <span class="ident">message</span> {
+                    <span class="ident">SaitoMessage::MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">println!</span>(<span class="string">&quot;Blockchain aware of new block in mempool! -- we might use for this congestion tracking&quot;</span>);
+                    },
+
+<span class="comment">//</span>
+<span class="comment">// TODO - delete - keeping as quick reference for multiple ways</span>
+<span class="comment">// to broadcast messages.</span>
+<span class="comment">//</span>
+<span class="comment">//                    SaitoMessage::TestMessage =&gt; {</span>
+<span class="comment">//             		println!(&quot;Blockchain RECEIVED TEST MESSAGE!&quot;);</span>
+<span class="comment">//			let blockchain = blockchain_lock.read().await;</span>
+<span class="comment">//</span>
+<span class="comment">//			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();</span>
+<span class="comment">//</span>
+<span class="comment">//		        if !blockchain.broadcast_channel_sender.is_none() {</span>
+<span class="comment">//			    println!(&quot;blockchain broadcast channel sender exists!&quot;);</span>
+<span class="comment">//  </span>
+<span class="comment">//	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()</span>
+<span class="comment">//                        	.send(SaitoMessage::TestMessage3)</span>
+<span class="comment">//                        	.expect(&quot;error: Mempool TryBundle Block message failed to send&quot;);</span>
+<span class="comment">//        		}</span>
+<span class="comment">//                    },</span>
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
+                }
+            }
+        }
+    }
+
+}
+
+
+
+
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 
 <span class="kw">mod</span> <span class="ident">tests</span> {
@@ -1106,6 +1363,7 @@
         <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_hash</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
     }
 }
+
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>

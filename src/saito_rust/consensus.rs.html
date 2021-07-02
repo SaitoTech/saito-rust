@@ -105,8 +105,39 @@
 <span id="102">102</span>
 <span id="103">103</span>
 <span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">transaction::Transaction</span>};
@@ -126,6 +157,13 @@
 <span class="doccomment">/// broadcast channel in normal operations.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SaitoMessage</span> {
+    <span class="ident">TestMessage</span>,
+    <span class="ident">TestMessage2</span>,
+    <span class="ident">TestMessage3</span>,
+    <span class="ident">BlockchainNewLongestChainBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
+    <span class="ident">BlockchainAddBlockSuccess</span> { <span class="ident">hash</span> : <span class="ident">SaitoHash</span> },
+    <span class="ident">BlockchainAddBlockFailure</span> { <span class="ident">hash</span> : <span class="ident">SaitoHash</span> },
+    <span class="ident">MinerNewGoldenTicket</span> { <span class="ident">ticket</span> : <span class="ident">GoldenTicket</span> },
     <span class="ident">MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
     <span class="ident">MempoolNewTransaction</span> { <span class="ident">transaction</span>: <span class="ident">Transaction</span> },
 }
@@ -172,23 +210,43 @@
         <span class="comment">// being sent into the async threads rather than the original</span>
         <span class="comment">//</span>
         <span class="comment">// major classes get a clone of the broadcast channel sender</span>
-        <span class="comment">// on initialization so they can broadcast cross-system messages.</span>
-        <span class="comment">// submission on init avoids the need for constant checks to see</span>
-        <span class="comment">// whether the channels exist and unwrapping them when sending</span>
-        <span class="comment">// messages, as well as setters.</span>
+        <span class="comment">// which is assigned to them on Object::run so they can </span>
+	<span class="comment">// broadcast cross-system messages. See SaitoMessage ENUM above</span>
+	<span class="comment">// for information on cross-system notifications.</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
+        <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage::new</span>();
 
         <span class="ident">storage</span>.<span class="ident">load_blocks_from_disk</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+
         <span class="macro">tokio::select!</span> {
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::mempool::run</span>(
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_receiver</span>
+            ) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
+                }
+            },
+            <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::blockchain::run</span>(
+                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
+                <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
+            ) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
+                }
+            },
+            <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::miner::run</span>(
+                <span class="ident">miner_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
+                <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
