@@ -20,15 +20,17 @@ pub enum MinerMessage {
 pub struct Miner {
     pub is_active: bool,
     pub target: SaitoHash,
+    pub wallet_lock: Arc<RwLock<Wallet>>,
     broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
 }
 
 impl Miner {
 
-    pub fn new() -> Miner {
+    pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Miner {
         Miner {
             is_active: false,
     	    target: [0; 32],
+	    wallet_lock,
 	    broadcast_channel_sender: None,
         }
     }
@@ -207,7 +209,6 @@ pub async fn run(
     miner_lock: Arc<RwLock<Miner>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
-    wallet_lock: Arc<RwLock<Wallet>>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
 
