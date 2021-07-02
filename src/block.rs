@@ -145,6 +145,10 @@ impl Block {
         self.transactions = transactions.to_vec();
     }
 
+    //pub fn set_transactions(&mut self, transactions: Vec<Transaction>) {
+    //    self.transactions = transactions;
+    //}
+
     pub fn set_id(&mut self, id: u64) {
         self.core.id = id;
     }
@@ -429,11 +433,9 @@ impl Block {
                         new_burnfee
                     );
                     return false;
-                } else {
-                    println!("Burn Fee validates...");
                 }
             } else {
-                // TODO assert that this is the first (or second?) block!
+                // TODO assert that this is the first (or second?) block! ?
             }
         }
 
