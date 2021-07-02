@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["make_mock_block",""],["make_mock_invalid_block",""]],"struct":[["MockTimestampGenerator",""]]});
+initSidebarItems({"fn":[["make_mock_block",""]]});

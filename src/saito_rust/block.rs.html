@@ -629,6 +629,11 @@
 <span id="626">626</span>
 <span id="627">627</span>
 <span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
@@ -1042,27 +1047,32 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blockchain</span>: <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-
         <span class="comment">//</span>
         <span class="comment">// validate burn fee</span>
         <span class="comment">//</span>
         {
             <span class="kw">let</span> <span class="ident">previous_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_previous_block_hash</span>());
             <span class="kw">if</span> <span class="op">!</span><span class="ident">previous_block</span>.<span class="ident">is_none</span>() {
-        	<span class="kw">let</span> <span class="ident">new_burnfee</span>: <span class="ident">u64</span> <span class="op">=</span>
-            	    <span class="ident">BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan</span>(
-                	<span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_burnfee</span>(),
-                	<span class="self">self</span>.<span class="ident">get_timestamp</span>(),
-                	<span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_timestamp</span>(),
-            	    );
-		<span class="kw">if</span> <span class="ident">new_burnfee</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_burnfee</span>() {
-		    <span class="macro">println!</span>(<span class="string">&quot;ERROR: burn fee does not validate, expected: {}&quot;</span>, <span class="ident">new_burnfee</span>);
-		    <span class="kw">return</span> <span class="bool-val">false</span>;
-		} <span class="kw">else</span> {
-		    <span class="macro">println!</span>(<span class="string">&quot;Burn Fee validates...&quot;</span>);
-		}
+                <span class="kw">let</span> <span class="ident">new_burnfee</span>: <span class="ident">u64</span> <span class="op">=</span>
+                    <span class="ident">BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan</span>(
+                        <span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_burnfee</span>(),
+                        <span class="self">self</span>.<span class="ident">get_timestamp</span>(),
+                        <span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_timestamp</span>(),
+                    );
+                <span class="macro">println!</span>(<span class="string">&quot;validate burnfee {} {}&quot;</span>, <span class="ident">new_burnfee</span>, <span class="self">self</span>.<span class="ident">get_burnfee</span>());
+                <span class="kw">if</span> <span class="ident">new_burnfee</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_burnfee</span>() {
+                    <span class="macro">println!</span>(
+                        <span class="string">&quot;ERROR: burn fee does not validate, expected: {}&quot;</span>,
+                        <span class="ident">new_burnfee</span>
+                    );
+                    <span class="kw">return</span> <span class="bool-val">false</span>;
+                } <span class="kw">else</span> {
+                    <span class="macro">println!</span>(<span class="string">&quot;Burn Fee validates...&quot;</span>);
+                }
+            } <span class="kw">else</span> {
+                <span class="comment">// TODO assert that this is the first (or second?) block!</span>
             }
-	}
+        }
 
         <span class="comment">//</span>
         <span class="comment">// verify merkle root</span>
