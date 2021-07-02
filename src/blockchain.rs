@@ -10,14 +10,13 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 
 use ahash::AHashMap;
 
-
 #[derive(Debug)]
 pub struct Blockchain {
     pub utxoset: AHashMap<SaitoUTXOSetKey, u64>,
     pub blockring: BlockRing,
     pub blocks: AHashMap<SaitoHash, Block>,
     pub wallet_lock: Arc<RwLock<Wallet>>,
-    broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
+    broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
 }
 
 impl Blockchain {
@@ -28,14 +27,13 @@ impl Blockchain {
             blockring: BlockRing::new(),
             blocks: AHashMap::new(),
             wallet_lock,
-	    broadcast_channel_sender: None,
+            broadcast_channel_sender: None,
         }
     }
 
     pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
         self.broadcast_channel_sender = Some(bcs);
     }
-
 
     pub async fn add_block(&mut self, block: Block) {
         println!(
@@ -195,40 +193,43 @@ impl Blockchain {
         // viable.
         //
         if am_i_the_longest_chain {
-
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             if does_new_chain_validate {
-
                 self.add_block_success(block_hash).await;
 
                 if !self.broadcast_channel_sender.is_none() {
-                    self.broadcast_channel_sender.as_ref().unwrap()
+                    self.broadcast_channel_sender
+                        .as_ref()
+                        .unwrap()
                         .send(SaitoMessage::BlockchainAddBlockSuccess { hash: block_hash })
                         .expect("error: BlockchainAddBlockSuccess message failed to send");
                 }
 
                 if !self.broadcast_channel_sender.is_none() {
-                    self.broadcast_channel_sender.as_ref().unwrap()
+                    self.broadcast_channel_sender
+                        .as_ref()
+                        .unwrap()
                         .send(SaitoMessage::BlockchainNewLongestChainBlock { hash: block_hash })
                         .expect("error: BlockchainNewLongestChainBlock message failed to send");
                 }
-
-
             } else {
                 self.add_block_failure().await;
 
                 if !self.broadcast_channel_sender.is_none() {
-                    self.broadcast_channel_sender.as_ref().unwrap()
+                    self.broadcast_channel_sender
+                        .as_ref()
+                        .unwrap()
                         .send(SaitoMessage::BlockchainAddBlockFailure { hash: block_hash })
                         .expect("error: BlockchainAddBlockFailure message failed to send");
                 }
-
             }
         } else {
             self.add_block_failure().await;
 
             if !self.broadcast_channel_sender.is_none() {
-                self.broadcast_channel_sender.as_ref().unwrap()
+                self.broadcast_channel_sender
+                    .as_ref()
+                    .unwrap()
                     .send(SaitoMessage::BlockchainAddBlockFailure { hash: block_hash })
                     .expect("error: BlockchainAddBlockFailure message failed to send");
             }
@@ -459,27 +460,25 @@ impl Blockchain {
     }
 }
 
-
-
-
 // This function is called on initialization to setup the sending
 // and receiving channels for asynchronous loops or message checks
-pub async fn run( 
+pub async fn run(
     blockchain_lock: Arc<RwLock<Blockchain>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-
-    let (blockchain_channel_sender, mut blockchain_channel_receiver) : (tokio::sync::mpsc::Sender<SaitoMessage>, tokio::sync::mpsc::Receiver<SaitoMessage>) = mpsc::channel(4);
+    let (blockchain_channel_sender, mut blockchain_channel_receiver): (
+        tokio::sync::mpsc::Sender<SaitoMessage>,
+        tokio::sync::mpsc::Receiver<SaitoMessage>,
+    ) = mpsc::channel(4);
 
     //
     // blockchain takes global broadcast channel
     //
-    {   
+    {
         let mut blockchain = blockchain_lock.write().await;
         blockchain.set_broadcast_channel_sender(broadcast_channel_sender.clone());
     }
-
 
     //
     // local broadcasting loop
@@ -495,30 +494,30 @@ pub async fn run(
         }
     });
 
-
     //
     // receive broadcast messages
     //
     loop {
         tokio::select! {
 
-	    //
-	    // local broadcast messages
-	    //
+        //
+        // local broadcast messages
+        //
             Some(message) = blockchain_channel_receiver.recv() => {
                 match message {
                     _ => {},
                 }
             }
 
-	    //
-	    // global broadcast messages
-	    //
+        //
+        // global broadcast messages
+        //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
                     SaitoMessage::MempoolNewBlock { hash: _hash } => {
                         println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
                     },
+<<<<<<< Updated upstream
 
 //
 // TODO - delete - keeping as quick reference for multiple ways
@@ -538,16 +537,28 @@ pub async fn run(
 //                        	.expect("error: Mempool TryBundle Block message failed to send");
 //        		}
 //                    },
+=======
+                    SaitoMessage::TestMessage => {
+                      println!("Blockchain RECEIVED TEST MESSAGE!");
+            let blockchain = blockchain_lock.read().await;
+
+            broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();
+
+                if !blockchain.broadcast_channel_sender.is_none() {
+                println!("blockchain broadcast channel sender exists!");
+
+                      blockchain.broadcast_channel_sender.as_ref().unwrap()
+                            .send(SaitoMessage::TestMessage3)
+                            .expect("error: Mempool TryBundle Block message failed to send");
+                }
+                    },
+>>>>>>> Stashed changes
                     _ => {},
                 }
             }
         }
     }
-
 }
-
-
-
 
 #[cfg(test)]
 
@@ -601,4 +612,3 @@ mod tests {
         assert_eq!(13, blockchain.get_latest_block_id());
     }
 }
-

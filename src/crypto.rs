@@ -29,12 +29,12 @@ pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
     (public_key.serialize(), secret_bytes)
 }
 
-pub fn generate_random_bytes(len : u64) -> Vec<u8> {
-    if len==0 { 
-	let x : Vec<u8> = vec![];
-	return x;
+pub fn generate_random_bytes(len: u64) -> Vec<u8> {
+    if len == 0 {
+        let x: Vec<u8> = vec![];
+        return x;
     }
-    return (0..len).map(|_| { rand::random::<u8>() }).collect()
+    return (0..len).map(|_| rand::random::<u8>()).collect();
 }
 
 pub fn hash(data: &Vec<u8>) -> SaitoHash {

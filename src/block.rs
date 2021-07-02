@@ -410,27 +410,29 @@ impl Block {
     }
 
     pub fn validate(&self, blockchain: &Blockchain) -> bool {
-
         //
         // validate burn fee
         //
         {
             let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
             if !previous_block.is_none() {
-        	let new_burnfee: u64 =
-            	    BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-                	previous_block.unwrap().get_burnfee(),
-                	self.get_timestamp(),
-                	previous_block.unwrap().get_timestamp(),
-            	    );
-		if new_burnfee != self.get_burnfee() {
-		    println!("ERROR: burn fee does not validate, expected: {}", new_burnfee);
-		    return false;
-		} else {
-		    println!("Burn Fee validates...");
-		}
+                let new_burnfee: u64 =
+                    BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
+                        previous_block.unwrap().get_burnfee(),
+                        self.get_timestamp(),
+                        previous_block.unwrap().get_timestamp(),
+                    );
+                if new_burnfee != self.get_burnfee() {
+                    println!(
+                        "ERROR: burn fee does not validate, expected: {}",
+                        new_burnfee
+                    );
+                    return false;
+                } else {
+                    println!("Burn Fee validates...");
+                }
             }
-	}
+        }
 
         //
         // verify merkle root
