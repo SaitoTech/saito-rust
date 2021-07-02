@@ -257,9 +257,6 @@ pub async fn run(
                         while let Some(block) = mempool.blocks.pop_front() {
 			    let this_hash = block.get_hash();
                             blockchain.add_block(block).await;
-			    if this_hash == blockchain.get_latest_block_hash() {
-                        	broadcast_channel_sender.send(SaitoMessage::NewLongestChainBlock { hash : this_hash } ).unwrap();
-			    }
                         }
             		mempool.currently_processing_blocks = false;
                     },

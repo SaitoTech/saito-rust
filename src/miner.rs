@@ -1,12 +1,9 @@
 use crate::{
-    block::Block,
     blockchain::Blockchain,
-    blockring::EPOCH_LENGTH,
     consensus::SaitoMessage,
-    crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey},
+    crypto::{generate_random_bytes, hash, SaitoHash},
     golden_ticket::GoldenTicket,
-    slip::Slip,
-    transaction::{Transaction, TransactionType},
+    transaction::Transaction,
     wallet::Wallet,
 };
 
@@ -23,15 +20,21 @@ pub enum MinerMessage {
 pub struct Miner {
     pub is_active: bool,
     pub target: SaitoHash,
+    broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
 }
 
 impl Miner {
 
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Miner {
+        Miner {
             is_active: false,
     	    target: [0; 32],
+	    broadcast_channel_sender: None,
         }
+    }
+
+    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
+        self.broadcast_channel_sender = Some(bcs);
     }
 
     fn is_valid_solution(&self, solution: SaitoHash, target_block_hash: SaitoHash) -> bool {
@@ -48,6 +51,13 @@ println!("trying to mine golden ticket...");
             let solution = hash(&generate_random_bytes(32));
 
             if self.is_valid_solution(solution, target_block_hash) {
+
+                if !self.broadcast_channel_sender.is_none() {
+                    self.broadcast_channel_sender.as_ref().unwrap()
+                        .send(SaitoMessage::MinerNewGoldenTicket { solution: solution })
+                        .expect("error: MinerNewGoldenTicket message failed to send");
+                }
+
 println!("GOLDEN TICKET FOUND");
 	    }
         }
@@ -201,6 +211,15 @@ pub async fn run(
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
 
+    //
+    // miner gets global broadcast channel
+    //
+    {
+        let mut miner = miner_lock.write().await;
+        miner.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+    }
+
+
     let (miner_channel_sender, mut miner_channel_receiver) = mpsc::channel(4);
 
 
@@ -242,7 +261,8 @@ pub async fn run(
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
 
-                    SaitoMessage::NewLongestChainBlock { hash : block_hash } => {
+                    SaitoMessage::BlockchainNewLongestChainBlock { hash : block_hash } => {
+println!("MINER receives notification of new longest-chain block ... update target");
                         let mut miner = miner_lock.write().await;
                         miner.set_target(block_hash);
                         miner.set_is_active(true);
