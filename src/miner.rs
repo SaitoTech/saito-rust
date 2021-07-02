@@ -30,13 +30,53 @@ impl Miner {
     pub fn new() -> Self {
         Self {
             is_active: false,
-            target: [0; 32],
+    	    target: [0; 32],
         }
     }
 
-    fn is_valid_solution(&self, solution: SaitoHash, previous_block: &Block) -> bool {
+    fn is_valid_solution(&self, solution: SaitoHash, target_block_hash: SaitoHash) -> bool {
         true
     }
+
+
+    pub fn mine(&self, target_block_hash : SaitoHash) {
+
+        if self.is_active {
+
+println!("trying to mine golden ticket...");
+
+            let solution = hash(&generate_random_bytes(32));
+
+            if self.is_valid_solution(solution, target_block_hash) {
+println!("GOLDEN TICKET FOUND");
+	    }
+        }
+
+    }
+
+    pub fn set_is_active(&mut self, is_active: bool) {
+        self.is_active = is_active;
+    }
+
+    pub fn set_target(&mut self, target: SaitoHash) {
+        self.target  = target;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/***
 
     fn find_winner(&self, solution: &SaitoHash, previous_block: &Block) -> SaitoPublicKey {
         [0; 33]
@@ -51,7 +91,6 @@ impl Miner {
 
 	return Transaction::default();
 
-/***
         let publickey = wallet.get_publickey();
         let gt_solution = self.create_gt_solution(solution, previous_block.get_hash(), publickey);
 
@@ -107,7 +146,6 @@ impl Miner {
 
         // sign TX
         golden_transaction.sign(wallet.get_privatekey());
-***/
         //return golden_transaction;
     }
 
@@ -124,17 +162,9 @@ impl Miner {
         self.target = target;
     }
 
-    pub fn set_is_active(&mut self, is_active: bool) {
-        self.is_active = is_active;
-    }
+***/
 
 /***
-            let miner = miner_run_lock.read().await;
-            if miner.is_active {
-                let blockchain = blockchain_lock.read().await;
-                let block = blockchain.get_block(&miner.target).unwrap();
-                let solution = hash(&generate_random_data(32));
-                if miner.is_valid_solution(solution, block) {
                     let wallet = wallet_lock.read().await;
                     let golden_tx =
                         miner.generate_golden_ticket_transaction(solution, block, wallet);
@@ -145,12 +175,18 @@ impl Miner {
                     }
 
                     broadcast_channel_sender
-                        .send(SaitoMessage::MempoolNewTransaction {
+                        .send(SaitoMessage::MinerempoolNewTransaction {
                             transaction: golden_tx,
                         })
                         .unwrap();
                 }
             }
+    broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
+
+    }
+****/
+
+/***
 ****/
 
 
@@ -160,8 +196,8 @@ impl Miner {
 pub async fn run(
     miner_lock: Arc<RwLock<Miner>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    wallet_lock: Arc<RwLock<Wallet>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    wallet_lock: Arc<RwLock<Wallet>>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
 
@@ -171,10 +207,7 @@ pub async fn run(
     let mine_ticket_sender = miner_channel_sender.clone();
     tokio::spawn(async move {
         loop {
-            mine_ticket_sender
-                .send(MinerMessage::MineGoldenTicket)
-                .await
-                .expect("error: GenerateBlock message failed to send");
+            mine_ticket_sender.send(MinerMessage::MineGoldenTicket).await;
             sleep(Duration::from_millis(1000));
         }
     });
@@ -189,12 +222,14 @@ pub async fn run(
 	    //
             Some(message) = miner_channel_receiver.recv() => {
                 match message {
-
 		    //
 		    // Mine 1 Ticket 
 		    //
                     MinerMessage::MineGoldenTicket => {
-println!("RECEIVED MINE GOLDEN TICKET MSG");
+			let blockchain = blockchain_lock.read().await;
+			let miner = miner_lock.read().await;
+			let target = blockchain.get_latest_block_hash();
+			miner.mine(target);
                     },
 		    _ => {}
 		}
@@ -219,7 +254,6 @@ println!("RECEIVED MINE GOLDEN TICKET MSG");
 	}
     }
 
-    Ok(())
 }
 
 mod test {}

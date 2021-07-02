@@ -234,8 +234,7 @@ pub async fn run(
                         }
                     },
 
-                    // ProcessBlocks will add blocks FIFO from the queue
-                    // into blockchain
+                    // ProcessBlocks will add blocks FIFO from the queue into blockchain
                     MempoolMessage::ProcessBlocks => {
                         let mut mempool = mempool_lock.write().await;
             		mempool.currently_processing_blocks = true;
@@ -244,7 +243,7 @@ pub async fn run(
 			    let this_hash = block.get_hash();
                             blockchain.add_block(block).await;
 			    if this_hash == blockchain.get_latest_block_hash() {
-                        	broadcast_channel_sender.send(SaitoMessage::NewLongestChainBlock { hash : this_hash } ).await.expect("Failed to send ProcessBlocks message")
+                        	broadcast_channel_sender.send(SaitoMessage::NewLongestChainBlock { hash : this_hash } ).unwrap();
 			    }
                         }
             		mempool.currently_processing_blocks = false;
@@ -269,6 +268,7 @@ pub async fn run(
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
                         let mut _mempool = mempool_lock.write().await;
                     },
+		    _ => {},
                 }
             }
         }
