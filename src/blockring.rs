@@ -1,8 +1,8 @@
 use crate::block::Block;
 use crate::crypto::SaitoHash;
 
-const EPOCH_LENGTH: u64 = 21000;
-const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
+pub const EPOCH_LENGTH: u64 = 21000;
+pub const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
 
 //
 // This is an index with shorthand information on the block_ids and hashes of the blocks

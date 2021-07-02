@@ -188,19 +188,16 @@ impl Mempool {
 pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
+
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
     let generate_block_sender = mempool_channel_sender.clone();
 
+
     tokio::spawn(async move {
         loop {
-            //          generate_block_sender
-            //               .send(MempoolMessage::GenerateBlock)
-            //               .await
-            //               .expect("error: GenerateBlock message failed to send");
-            //          sleep(Duration::from_millis(20000));
             generate_block_sender
                 .send(MempoolMessage::TryBundleBlock)
                 .await
@@ -215,10 +212,10 @@ pub async fn run(
                 match message {
 
                     // TryBundleBlock makes periodic attempts to produce blocks and does so
-            // if the mempool can bundle blocks....
+             	    // if the mempool can bundle blocks....
                     MempoolMessage::TryBundleBlock => {
                         let mut mempool = mempool_lock.write().await;
-                    let can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
+                        let can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
                         if can_bundle {
                             let block = mempool.generate_block(blockchain_lock.clone()).await;
                             if AddBlockResult::Accepted == mempool.add_block(block) {
@@ -241,12 +238,16 @@ pub async fn run(
                     // into blockchain
                     MempoolMessage::ProcessBlocks => {
                         let mut mempool = mempool_lock.write().await;
-            mempool.currently_processing_blocks = true;
+            		mempool.currently_processing_blocks = true;
                         let mut blockchain = blockchain_lock.write().await;
                         while let Some(block) = mempool.blocks.pop_front() {
+			    let this_hash = block.get_hash();
                             blockchain.add_block(block).await;
+			    if this_hash == blockchain.get_latest_block_hash() {
+                        	broadcast_channel_sender.send(SaitoMessage::NewLongestChainBlock { hash : this_hash } ).await.expect("Failed to send ProcessBlocks message")
+			    }
                         }
-            mempool.currently_processing_blocks = false;
+            		mempool.currently_processing_blocks = false;
                     },
                 }
             }

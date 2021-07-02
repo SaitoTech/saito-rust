@@ -18,6 +18,7 @@ struct Consensus {
 /// broadcast channel in normal operations.
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {
+    NewLongestChainBlock { hash: SaitoHash },
     MempoolNewBlock { hash: SaitoHash },
     MempoolNewTransaction { transaction: Transaction },
 }

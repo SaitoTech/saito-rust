@@ -9,6 +9,7 @@ use tokio::sync::RwLock;
 
 use ahash::AHashMap;
 
+
 #[derive(Debug)]
 pub struct Blockchain {
     pub utxoset: AHashMap<SaitoUTXOSetKey, u64>,
@@ -475,3 +476,4 @@ mod tests {
         assert_eq!(13, blockchain.get_latest_block_id());
     }
 }
+
