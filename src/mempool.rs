@@ -118,11 +118,6 @@ impl Mempool {
             previous_block_timestamp,
         );
 
-        println!(
-            "time elapsed: {}",
-            current_timestamp - previous_block_timestamp
-        );
-
         work_needed
     }
 
@@ -136,9 +131,14 @@ impl Mempool {
         }
 
         let work_available = self.calculate_work_available().await;
-        let work_needed = self.calculate_work_needed(blockchain_lock).await;
+        let work_needed = self.calculate_work_needed(blockchain_lock.clone()).await;
 
-        println!("WA: {:?} -- WN: {:?}", work_available, work_needed);
+	{
+	    let blockchain = blockchain_lock.read().await;
+	    let previous_block_timestamp = blockchain.get_latest_block_timestamp();
+	    let time_elapsed = create_timestamp() - previous_block_timestamp;
+            println!("WA: {:?} -- WN: {:?} -- TE: {:?}", work_available, work_needed, time_elapsed);
+	}
 
         if work_available >= work_needed {
             return true;
@@ -337,8 +337,10 @@ pub async fn run(
 			    wallet_privatekey = wallet.get_privatekey();
 			}
 
+			let current_txs_in_mempool = mempool.transactions.len();
+
 		        for _i in 0..10 {
-	                    println!("creating tx {:?}", _i);
+	                    println!("creating tx {:?}", (_i+current_txs_in_mempool+1));
 
             		    let mut transaction = Transaction::default();
 
