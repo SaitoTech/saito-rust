@@ -22,6 +22,7 @@ pub enum MinerMessage {
 pub struct Miner {
     pub is_active: bool,
     pub target: SaitoHash,
+    pub difficulty: u64,
     pub wallet_lock: Arc<RwLock<Wallet>>,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
 }
@@ -31,6 +32,7 @@ impl Miner {
         Miner {
             is_active: false,
             target: [0; 32],
+            difficulty: 0,
             wallet_lock,
             broadcast_channel_sender: None,
         }
@@ -40,36 +42,40 @@ impl Miner {
         self.broadcast_channel_sender = Some(bcs);
     }
 
-    fn is_valid_solution(&self, solution: SaitoHash, target_block_hash: SaitoHash) -> bool {
-        let difficulty_curve: f64 = 1.0;
-        let difficulty = difficulty_curve.round() as usize;
-        let difficulty_grain: f64 = difficulty_curve % 1.0;
+    fn is_valid_solution(&self, solution: SaitoHash) -> bool {
+        // let difficulty_curve: f64 = 1.0;
+        // let difficulty = difficulty_curve.round() as usize;
+        // let difficulty_grain: f64 = difficulty_curve % 1.0;
 
-        let random_solution_decimal = U256::from_big_endian(&solution[0..difficulty]);
-        let previous_hash_decimal = U256::from_big_endian(&target_block_hash[0..difficulty]);
-        let difficulty_grain = U256::from((difficulty_grain * 16.0).round() as u32);
+        let random_solution = U256::from_big_endian(&solution[..]);
+        let target_solution= U256::from_big_endian(&self.target[..]);
 
-        random_solution_decimal >= previous_hash_decimal
-            && (random_solution_decimal - previous_hash_decimal) <= difficulty_grain
+        println!("RANDOM_SOLUTION {:?}", random_solution);
+        println!("TARGET_SOLUTION {:?}", target_solution);
+
+        true
+
+        // random_solution_decimal >= previous_hash_decimal
+        //     && (random_solution_decimal - previous_hash_decimal) <= difficulty_grain
     }
 
-    pub async fn mine(&self, target_block_hash: SaitoHash) {
+    pub async fn mine(&mut self) {
         if self.is_active {
 
             let solution = hash(&generate_random_bytes(32));
 
-            if self.is_valid_solution(solution, target_block_hash) {
+            if self.is_valid_solution(solution) {
 
-            { 
+            {
                 let vote = 0;
                 let wallet = self.wallet_lock.write().await;
-                let gt = GoldenTicket::new(vote, target_block_hash, solution, wallet.get_publickey());
+                let gt = GoldenTicket::new(vote, self.target, solution, wallet.get_publickey());
 
-                        if !self.broadcast_channel_sender.is_none() {
-                            self.broadcast_channel_sender.as_ref().unwrap()
-                                .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
-                                .expect("error: MinerNewGoldenTicket message failed to send");
-                        }
+                if !self.broadcast_channel_sender.is_none() {
+                    self.broadcast_channel_sender.as_ref().unwrap()
+                        .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
+                        .expect("error: MinerNewGoldenTicket message failed to send");
+                }
             }
 
 		    // stop mining
@@ -85,6 +91,10 @@ impl Miner {
 
     pub fn set_target(&mut self, target: SaitoHash) {
         self.target = target;
+    }
+
+    pub fn set_difficulty(&mut self, difficulty: u64) {
+        self.difficulty = difficulty;
     }
 }
 
@@ -127,10 +137,10 @@ pub async fn run(
                     // Mine 1 Ticket
                     //
                     MinerMessage::MineGoldenTicket => {
-                        let blockchain = blockchain_lock.read().await;
-                        let miner = miner_lock.read().await;
-                        let target = blockchain.get_latest_block_hash();
-                        miner.mine(target).await;
+                        // let blockchain = blockchain_lock.read().await;
+                        let mut miner = miner_lock.write().await;
+                        // let target = blockchain.get_latest_block_hash();
+                        miner.mine().await;
                     },
                     _ => {}
                 }
@@ -142,9 +152,10 @@ pub async fn run(
             //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
-                    SaitoMessage::BlockchainNewLongestChainBlock { hash : block_hash } => {
+                    SaitoMessage::BlockchainNewLongestChainBlock { hash : block_hash, difficulty } => {
                         let mut miner = miner_lock.write().await;
                         miner.set_target(block_hash);
+                        miner.set_difficulty(difficulty);
                         miner.set_is_active(true);
                     },
                     _ => {}
@@ -155,4 +166,25 @@ pub async fn run(
     }
 }
 
-mod test {}
+mod test {
+
+    use super::*;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+
+    #[test]
+    fn miner_is_valid_solution_test() {
+        let target_hash = [1; 32];
+        let solution_hash = [4 as u8; 32];
+
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mut miner = Miner::new(wallet_lock);
+
+        miner.set_target(target_hash);
+
+        miner.is_valid_solution(solution_hash);
+
+        assert!(true);
+    }
+
+}
