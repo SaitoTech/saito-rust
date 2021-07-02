@@ -18,6 +18,9 @@ struct Consensus {
 /// broadcast channel in normal operations.
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {
+    TestMessage,
+    TestMessage2,
+    TestMessage3,
     NewLongestChainBlock { hash: SaitoHash },
     MempoolNewBlock { hash: SaitoHash },
     MempoolNewTransaction { transaction: Transaction },
@@ -82,6 +85,15 @@ impl Consensus {
                 blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_receiver
+            ) => {
+                if let Err(err) = res {
+                    eprintln!("{:?}", err)
+                }
+            },
+            res = crate::blockchain::run(
+                blockchain_lock.clone(),
+                broadcast_channel_sender.clone(),
+                broadcast_channel_sender.subscribe()
             ) => {
                 if let Err(err) = res {
                     eprintln!("{:?}", err)

@@ -34,6 +34,7 @@ pub struct Mempool {
     blocks: VecDeque<Block>,
     wallet_lock: Arc<RwLock<Wallet>>,
     currently_processing_blocks: bool,
+    broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
 }
 
 impl Mempool {
@@ -43,7 +44,12 @@ impl Mempool {
             blocks: VecDeque::new(),
             wallet_lock,
             currently_processing_blocks: false,
+	    broadcast_channel_sender: None,
         }
+    }
+
+    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
+        self.broadcast_channel_sender = Some(bcs);
     }
 
     pub fn add_block(&mut self, block: Block) -> AddBlockResult {
@@ -192,6 +198,14 @@ pub async fn run(
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
 
+    //
+    // mempool gets global broadcast channel
+    //
+    {
+        let mut mempool = mempool_lock.write().await;
+        mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+    }
+
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
     let generate_block_sender = mempool_channel_sender.clone();
 
@@ -219,7 +233,8 @@ pub async fn run(
                         if can_bundle {
                             let block = mempool.generate_block(blockchain_lock.clone()).await;
                             if AddBlockResult::Accepted == mempool.add_block(block) {
-                                mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
+                                broadcast_channel_sender.send(SaitoMessage::TestMessage).unwrap();
+                                mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                             }
                         }
                     },
@@ -267,6 +282,15 @@ pub async fn run(
                     }
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
                         let mut _mempool = mempool_lock.write().await;
+                    },
+                    SaitoMessage::TestMessage => {
+                        println!("Mempool RECEIVES TEST MESSAGE BROADCAST!");
+                    },
+                    SaitoMessage::TestMessage2 => {
+                        println!("Mempool RECEIVES TEST MESSAGE 2 BROADCAST!");
+                    },
+                    SaitoMessage::TestMessage3 => {
+                        println!("Mempool RECEIVES TEST MESSAGE 3 BROADCAST!");
                     },
 		    _ => {},
                 }

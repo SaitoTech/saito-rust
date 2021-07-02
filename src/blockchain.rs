@@ -1,11 +1,12 @@
 use crate::block::Block;
 use crate::blockring::BlockRing;
+use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::{sync::Arc, thread::sleep, time::Duration};
+use tokio::sync::{broadcast, mpsc, RwLock};
 
 use ahash::AHashMap;
 
@@ -16,6 +17,8 @@ pub struct Blockchain {
     pub blockring: BlockRing,
     pub blocks: AHashMap<SaitoHash, Block>,
     pub wallet_lock: Arc<RwLock<Wallet>>,
+    broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
+
 }
 
 impl Blockchain {
@@ -26,8 +29,14 @@ impl Blockchain {
             blockring: BlockRing::new(),
             blocks: AHashMap::new(),
             wallet_lock,
+	    broadcast_channel_sender: None,
         }
     }
+
+    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
+        self.broadcast_channel_sender = Some(bcs);
+    }
+
 
     pub async fn add_block(&mut self, block: Block) {
         println!(
@@ -423,6 +432,96 @@ impl Blockchain {
         }
     }
 }
+
+
+
+
+// This function is called on initialization to setup the sending
+// and receiving channels for asynchronous loops or message checks
+pub async fn run( 
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
+) -> crate::Result<()> {
+
+//    let (blockchain_channel_sender, mut blockchain_channel_receiver) = mpsc::channel(4);
+    let (blockchain_channel_sender, mut blockchain_channel_receiver) : (tokio::sync::mpsc::Sender<SaitoMessage>, tokio::sync::mpsc::Receiver<SaitoMessage>) = mpsc::channel(4);
+//    let (blockchain_channel_sender : tokio::sync::mpsc::Sender<SaitoMessage>, blockchain_channel_receiver: tokio::sync::mpsc::Receiver<SaitoMessage>) = mpsc::channel(4);
+
+
+    //
+    // blockchain takes global broadcast channel
+    //
+    {   
+        let mut blockchain = blockchain_lock.write().await;
+        blockchain.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+    }
+
+
+    //
+    // local broadcast channel
+    //
+
+    //
+    // local broadcasting loop
+    //
+//    let test_sender = blockchain_channel_sender.clone();
+//    tokio::spawn(async move {
+//        loop {
+            //test_sender
+            //    .send(MempoolMessage::TryBundleBlock)
+            //    .await
+            //    .expect("error: GenerateBlock message failed to send");
+//            sleep(Duration::from_millis(1000));
+//        }
+//    });
+
+
+    //
+    // receive broadcast messages
+    //
+    loop {
+        tokio::select! {
+
+	    //
+	    // local broadcast messages
+	    //
+            Some(message) = blockchain_channel_receiver.recv() => {
+                match message {
+                    _ => {},
+                }
+            }
+
+	    //
+	    // global broadcast messages
+	    //
+            Ok(message) = broadcast_channel_receiver.recv() => {
+                match message {
+                    SaitoMessage::MempoolNewBlock { hash: _hash } => {
+                        println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
+                    },
+                    SaitoMessage::TestMessage => {
+              println!("Blockchain RECEIVED TEST MESSAGE!");
+			let mut blockchain = blockchain_lock.read().await;
+			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();
+
+        if !blockchain.broadcast_channel_sender.is_none() {
+println!("blockchain broadcast channel sender exists!");
+           blockchain.broadcast_channel_sender.as_ref().unwrap()
+                        .send(SaitoMessage::TestMessage3)
+                        .expect("error: Mempool TryBundle Block message failed to send");
+        }
+                    },
+                    _ => {},
+                }
+            }
+        }
+    }
+
+}
+
+
+
 
 #[cfg(test)]
 

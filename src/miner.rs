@@ -11,7 +11,7 @@ use crate::{
 };
 
 use std::{sync::Arc, thread::sleep, time::Duration};
-use tokio::sync::{broadcast, mpsc, RwLock, RwLockReadGuard};
+use tokio::sync::{broadcast, mpsc, RwLock};
 
 
 pub enum MinerMessage {
