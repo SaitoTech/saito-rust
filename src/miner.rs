@@ -43,7 +43,7 @@ impl Miner {
         true
     }
 
-    pub async fn mine(&self, target_block_hash : SaitoHash) {
+    pub async fn mine(&mut self, target_block_hash : SaitoHash) {
 
         if self.is_active {
 
@@ -51,16 +51,17 @@ impl Miner {
 
             if self.is_valid_solution(solution, target_block_hash) {
 
-		let vote = 0;
-		let wallet = self.wallet_lock.read().await;
+		{ 
+		    let vote = 0;
+		    let wallet = self.wallet_lock.write().await;
+		    let gt = GoldenTicket::new(vote, target_block_hash, solution, wallet.get_publickey());
 
-		let gt = GoldenTicket::new(vote, target_block_hash, solution, wallet.get_publickey());
-
-                if !self.broadcast_channel_sender.is_none() {
-                    self.broadcast_channel_sender.as_ref().unwrap()
-                        .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
-                        .expect("error: MinerNewGoldenTicket message failed to send");
-                }
+                    if !self.broadcast_channel_sender.is_none() {
+                        self.broadcast_channel_sender.as_ref().unwrap()
+                            .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
+                            .expect("error: MinerNewGoldenTicket message failed to send");
+                    }
+		}
 
 		// stop mining
                 self.set_is_active(false);
@@ -81,12 +82,7 @@ impl Miner {
 
 
 
-
 /***
-
-    fn find_winner(&self, solution: &SaitoHash, previous_block: &Block) -> SaitoPublicKey {
-        [0; 33]
-    }
 
     fn generate_golden_ticket_transaction(
         &self,
@@ -200,7 +196,7 @@ pub async fn run(
 		    //
                     MinerMessage::MineGoldenTicket => {
 			let blockchain = blockchain_lock.read().await;
-			let miner = miner_lock.read().await;
+			let mut miner = miner_lock.write().await;
 			let target = blockchain.get_latest_block_hash();
 			miner.mine(target).await;
                     },

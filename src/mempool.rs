@@ -25,6 +25,13 @@ pub enum AddBlockResult {
     Accepted,
     Exists,
 }
+#[derive(Clone, PartialEq)]
+pub enum AddTransactionResult {
+    Accepted,
+    Rejected,
+    Invalid,
+    Exists,
+}
 
 /// The `Mempool` holds unprocessed blocks and transactions and is in control of
 /// discerning when thenodeis allowed to create a block. It bundles the block and
@@ -66,6 +73,13 @@ impl Mempool {
             AddBlockResult::Accepted
         }
     }
+
+    pub fn add_transaction(&mut self, transaction: Transaction) -> AddTransactionResult {
+
+	AddTransactionResult::Accepted
+    }
+
+ 
 
     ///
     /// Calculates the work available in mempool to produce a block
@@ -283,6 +297,7 @@ pub async fn run(
                     },
                     SaitoMessage::MinerNewGoldenTicket { ticket : gt } => {
                         println!("Mempool RECEIVES GoldenTicket Solution BROADCAST!");
+			println!("{:?}", gt);
                     },
 		    _ => {},
                 }
