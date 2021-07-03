@@ -183,54 +183,9 @@
 <span id="180">180</span>
 <span id="181">181</span>
 <span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
-<span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">block::Block</span>,
     <span class="ident">blockchain::Blockchain</span>,
     <span class="ident">consensus::SaitoMessage</span>,
     <span class="ident">crypto</span>::{<span class="ident">generate_random_bytes</span>, <span class="ident">hash</span>, <span class="ident">SaitoHash</span>},
@@ -241,8 +196,9 @@
 
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
+<span class="kw">use</span> <span class="ident">bigint::uint::U256</span>;
 
-
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MinerMessage</span> {
     <span class="ident">StartMining</span>,
     <span class="ident">StopMining</span>,
@@ -252,18 +208,19 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Miner</span> {
     <span class="kw">pub</span> <span class="ident">is_active</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">SaitoHash</span>,
+    <span class="kw">pub</span> <span class="ident">difficulty</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">broadcast_channel_sender</span>:   <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">broadcast_channel_sender</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Miner</span> {
-
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Miner</span> {
         <span class="ident">Miner</span> {
             <span class="ident">is_active</span>: <span class="bool-val">false</span>,
-    	    <span class="ident">target</span>: [<span class="number">0</span>; <span class="number">32</span>],
-	    <span class="ident">wallet_lock</span>,
-	    <span class="ident">broadcast_channel_sender</span>: <span class="prelude-val">None</span>,
+            <span class="ident">target</span>: [<span class="number">0</span>; <span class="number">32</span>],
+            <span class="ident">difficulty</span>: <span class="number">0</span>,
+            <span class="ident">wallet_lock</span>,
+            <span class="ident">broadcast_channel_sender</span>: <span class="prelude-val">None</span>,
         }
     }
 
@@ -271,36 +228,42 @@
         <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bcs</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">is_valid_solution</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">solution</span>: <span class="ident">SaitoHash</span>, <span class="ident">target_block_hash</span>: <span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="bool-val">true</span>
+    <span class="kw">fn</span> <span class="ident">is_valid_solution</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">solution</span>: <span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">let</span> <span class="ident">difficulty_order</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">difficulty</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="number">1_0000_0000</span> <span class="kw">as</span> <span class="ident">f64</span>).<span class="ident">round</span>() <span class="kw">as</span> <span class="ident">usize</span>;
+        <span class="kw">let</span> <span class="ident">difficulty_grain</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">difficulty</span> <span class="op">%</span> <span class="number">1_0000_0000</span>;
+
+        <span class="kw">let</span> <span class="ident">random_solution</span> <span class="op">=</span> <span class="ident">U256::from_big_endian</span>(<span class="kw-2">&amp;</span><span class="ident">solution</span>[..<span class="ident">difficulty_order</span>]);
+        <span class="kw">let</span> <span class="ident">target_solution</span><span class="op">=</span> <span class="ident">U256::from_big_endian</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">target</span>[..<span class="ident">difficulty_order</span>]);
+        <span class="kw">let</span> <span class="ident">difficulty_grain</span> <span class="op">=</span> <span class="ident">U256::from</span>(<span class="ident">difficulty_grain</span> <span class="op">*</span> <span class="number">16</span>);
+
+        <span class="ident">random_solution</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">target_solution</span>
+            <span class="op">&amp;&amp;</span> (<span class="ident">random_solution</span> <span class="op">-</span> <span class="ident">target_solution</span>) <span class="op">&lt;</span><span class="op">=</span> <span class="ident">difficulty_grain</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mine</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">target_block_hash</span> : <span class="ident">SaitoHash</span>) {
-
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mine</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_active</span> {
 
             <span class="kw">let</span> <span class="ident">solution</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">generate_random_bytes</span>(<span class="number">32</span>));
 
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_valid_solution</span>(<span class="ident">solution</span>, <span class="ident">target_block_hash</span>) {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_valid_solution</span>(<span class="ident">solution</span>) {
 
-		{ 
-		    <span class="kw">let</span> <span class="ident">vote</span> <span class="op">=</span> <span class="number">0</span>;
-		    <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-		    <span class="kw">let</span> <span class="ident">gt</span> <span class="op">=</span> <span class="ident">GoldenTicket::new</span>(<span class="ident">vote</span>, <span class="ident">target_block_hash</span>, <span class="ident">solution</span>, <span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
+            {
+                <span class="kw">let</span> <span class="ident">vote</span> <span class="op">=</span> <span class="number">0</span>;
+                <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                <span class="kw">let</span> <span class="ident">gt</span> <span class="op">=</span> <span class="ident">GoldenTicket::new</span>(<span class="ident">vote</span>, <span class="self">self</span>.<span class="ident">target</span>, <span class="ident">solution</span>, <span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
 
-                    <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
-                        <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()
-                            .<span class="ident">send</span>(<span class="ident">SaitoMessage::MinerNewGoldenTicket</span> { <span class="ident">ticket</span>: <span class="ident">gt</span> })
-                            .<span class="ident">expect</span>(<span class="string">&quot;error: MinerNewGoldenTicket message failed to send&quot;</span>);
-                    }
-		}
+                <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
+                    <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()
+                        .<span class="ident">send</span>(<span class="ident">SaitoMessage::MinerNewGoldenTicket</span> { <span class="ident">ticket</span>: <span class="ident">gt</span> })
+                        .<span class="ident">expect</span>(<span class="string">&quot;error: MinerNewGoldenTicket message failed to send&quot;</span>);
+                }
+            }
 
-		<span class="comment">// stop mining</span>
+		    <span class="comment">// stop mining</span>
                 <span class="self">self</span>.<span class="ident">set_is_active</span>(<span class="bool-val">false</span>);
 
-	    }
+	        }
         }
-
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_is_active</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">is_active</span>: <span class="ident">bool</span>) {
@@ -308,91 +271,19 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_target</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">target</span>: <span class="ident">SaitoHash</span>) {
-        <span class="self">self</span>.<span class="ident">target</span>  <span class="op">=</span> <span class="ident">target</span>;
+        <span class="self">self</span>.<span class="ident">target</span> <span class="op">=</span> <span class="ident">target</span>;
     }
 
-
-
-
-<span class="comment">/***
-
-    fn generate_golden_ticket_transaction(
-        &amp;self,
-        solution: SaitoHash,
-        previous_block: &amp;Block,
-        wallet: RwLockReadGuard&lt;Wallet&gt;,
-    ) -&gt; Transaction {
-
-	return Transaction::default();
-
-        let publickey = wallet.get_publickey();
-        let gt_solution = self.create_gt_solution(solution, previous_block.get_hash(), publickey);
-
-        // hardcoded paysplit
-        let paysplit = 0.5;
-
-        // Find winning node
-        let winning_tx_address = self.find_winner(&amp;solution, &amp;previous_block);
-
-        // we need to calculate the fees that are gonna go in the slips here
-        // TODO add burnfee
-        // let paid_burn_fee = previous_block.get_paid_burnfee();
-
-        // This is just inputs - outputs for all transactions in the block
-        // TODO add fees
-        // let total_fees_for_creator = previous_block.get_available_fees(&amp;previous_block.get_creator());
-
-        // get the fees available from our publickey
-        // TODO add fees
-        // let total_fees_in_block = previous_block.get_available_fees(&amp;publickey);
-
-        // calculate the amount the creator can take for themselves
-        // let mut creator_surplus = 0;
-        // if total_fees_for_creator &gt; paid_burn_fee {
-        //     creator_surplus = total_fees_for_creator - paid_burn_fee;
-        // }
-
-        // find the amount that will be divied out to miners and nodes
-        // (total_fees_in_block - creator_surplus) + previous_block.get_coinbase();
-
-        let total_fees_for_miners_and_nodes =
-            (previous_block.get_treasury() as f64 / EPOCH_LENGTH as f64).round() as u64;
-
-        // Calculate shares
-        let miner_share = (total_fees_for_miners_and_nodes as f32 * paysplit).round() as u64;
-        let node_share = total_fees_for_miners_and_nodes - miner_share;
-
-        // create our golden ticket tx (au_tx)
-        let mut golden_transaction = Transaction::default();
-        golden_transaction.set_transaction_type(TransactionType::GoldenTicket);
-
-        let mut miner_slip = Slip::default();
-        miner_slip.set_publickey(publickey);
-        miner_slip.set_amount(miner_share);
-
-        let mut node_slip = Slip::default();
-        node_slip.set_publickey(winning_tx_address);
-        node_slip.set_amount(node_share);
-
-        golden_transaction.add_output(miner_slip);
-        golden_transaction.add_output(node_slip);
-        golden_transaction.set_message(bincode::serialize(&amp;gt_solution).unwrap());
-
-        // sign TX
-        golden_transaction.sign(wallet.get_privatekey());
-        //return golden_transaction;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_difficulty</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">difficulty</span>: <span class="ident">u64</span>) {
+        <span class="self">self</span>.<span class="ident">difficulty</span> <span class="op">=</span> <span class="ident">difficulty</span>;
     }
-***/</span>
-
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
     <span class="ident">miner_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Miner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
     <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-
     <span class="comment">//</span>
     <span class="comment">// miner gets global broadcast channel</span>
     <span class="comment">//</span>
@@ -401,63 +292,80 @@
         <span class="ident">miner</span>.<span class="ident">set_broadcast_channel_sender</span>(<span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>());
     }
 
-
     <span class="kw">let</span> (<span class="ident">miner_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">miner_channel_receiver</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
-
 
     <span class="kw">let</span> <span class="ident">mine_ticket_sender</span> <span class="op">=</span> <span class="ident">miner_channel_sender</span>.<span class="ident">clone</span>();
     <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">loop</span> {
-            <span class="ident">mine_ticket_sender</span>.<span class="ident">send</span>(<span class="ident">MinerMessage::MineGoldenTicket</span>).<span class="kw">await</span>;
-            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">1000</span>));
+            <span class="ident">mine_ticket_sender</span>
+                .<span class="ident">send</span>(<span class="ident">MinerMessage::MineGoldenTicket</span>)
+                .<span class="kw">await</span>
+                .<span class="ident">expect</span>(<span class="string">&quot;Failed to send MineGoldenTicket message&quot;</span>);
+            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">100</span>));
         }
     });
-
-
 
     <span class="kw">loop</span> {
         <span class="macro">tokio::select!</span> {
 
-	    <span class="comment">//</span>
-	    <span class="comment">// Miner Channel Messages</span>
-	    <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">// Miner Channel Messages</span>
+            <span class="comment">//</span>
             <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">miner_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">match</span> <span class="ident">message</span> {
-		    <span class="comment">//</span>
-		    <span class="comment">// Mine 1 Ticket </span>
-		    <span class="comment">//</span>
+                    <span class="comment">//</span>
+                    <span class="comment">// Mine 1 Ticket</span>
+                    <span class="comment">//</span>
                     <span class="ident">MinerMessage::MineGoldenTicket</span> <span class="op">=</span><span class="op">&gt;</span> {
-			<span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-			<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">miner</span> <span class="op">=</span> <span class="ident">miner_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-			<span class="kw">let</span> <span class="ident">target</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
-			<span class="ident">miner</span>.<span class="ident">mine</span>(<span class="ident">target</span>).<span class="kw">await</span>;
-                    },
-		    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
-		}
-	    }
-
-
-	    <span class="comment">//</span>
-	    <span class="comment">// Saito Channel Messages</span>
-	    <span class="comment">//</span>
-            <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">match</span> <span class="ident">message</span> {
-
-                    <span class="ident">SaitoMessage::BlockchainNewLongestChainBlock</span> { <span class="ident">hash</span> : <span class="ident">block_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">miner</span> <span class="op">=</span> <span class="ident">miner_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                        <span class="ident">miner</span>.<span class="ident">set_target</span>(<span class="ident">block_hash</span>);
-                        <span class="ident">miner</span>.<span class="ident">set_is_active</span>(<span class="bool-val">true</span>);
+                        <span class="ident">miner</span>.<span class="ident">mine</span>().<span class="kw">await</span>;
                     },
-		    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
                 }
             }
 
-	}
+
+            <span class="comment">//</span>
+            <span class="comment">// Saito Channel Messages</span>
+            <span class="comment">//</span>
+            <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">match</span> <span class="ident">message</span> {
+                    <span class="ident">SaitoMessage::BlockchainNewLongestChainBlock</span> { <span class="ident">hash</span> : <span class="ident">block_hash</span>, <span class="ident">difficulty</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">miner</span> <span class="op">=</span> <span class="ident">miner_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                        <span class="ident">miner</span>.<span class="ident">set_target</span>(<span class="ident">block_hash</span>);
+                        <span class="ident">miner</span>.<span class="ident">set_difficulty</span>(<span class="ident">difficulty</span>);
+                        <span class="ident">miner</span>.<span class="ident">set_is_active</span>(<span class="bool-val">true</span>);
+                    },
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
+                }
+            }
+
+        }
+    }
+}
+
+<span class="kw">mod</span> <span class="ident">test</span> {
+
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+    <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">miner_is_valid_solution_test</span>() {
+        <span class="kw">let</span> <span class="ident">target_hash</span> <span class="op">=</span> [<span class="number">1</span>; <span class="number">32</span>];
+        <span class="kw">let</span> <span class="ident">solution_hash</span> <span class="op">=</span> [<span class="number">4</span> <span class="kw">as</span> <span class="ident">u8</span>; <span class="number">32</span>];
+
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">miner</span> <span class="op">=</span> <span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>);
+
+        <span class="ident">miner</span>.<span class="ident">set_target</span>(<span class="ident">target_hash</span>);
+
+        <span class="ident">miner</span>.<span class="ident">is_valid_solution</span>(<span class="ident">solution_hash</span>);
+
+        <span class="macro">assert!</span>(<span class="bool-val">true</span>);
     }
 
 }
-
-<span class="kw">mod</span> <span class="ident">test</span> {}
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>

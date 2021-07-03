@@ -631,9 +631,6 @@
 <span id="628">628</span>
 <span id="629">629</span>
 <span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
@@ -1059,7 +1056,6 @@
                         <span class="self">self</span>.<span class="ident">get_timestamp</span>(),
                         <span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_timestamp</span>(),
                     );
-                <span class="macro">println!</span>(<span class="string">&quot;validate burnfee {} {}&quot;</span>, <span class="ident">new_burnfee</span>, <span class="self">self</span>.<span class="ident">get_burnfee</span>());
                 <span class="kw">if</span> <span class="ident">new_burnfee</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_burnfee</span>() {
                     <span class="macro">println!</span>(
                         <span class="string">&quot;ERROR: burn fee does not validate, expected: {}&quot;</span>,
@@ -1069,8 +1065,6 @@
                 } <span class="kw">else</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;Burn Fee validates...&quot;</span>);
                 }
-            } <span class="kw">else</span> {
-                <span class="comment">// TODO assert that this is the first (or second?) block!</span>
             }
         }
 

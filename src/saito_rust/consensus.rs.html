@@ -133,7 +133,6 @@
 <span id="130">130</span>
 <span id="131">131</span>
 <span id="132">132</span>
-<span id="133">133</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
@@ -160,7 +159,7 @@
     <span class="ident">TestMessage</span>,
     <span class="ident">TestMessage2</span>,
     <span class="ident">TestMessage3</span>,
-    <span class="ident">BlockchainNewLongestChainBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
+    <span class="ident">BlockchainNewLongestChainBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">difficulty</span>: <span class="ident">u64</span> },
     <span class="ident">BlockchainAddBlockSuccess</span> { <span class="ident">hash</span> : <span class="ident">SaitoHash</span> },
     <span class="ident">BlockchainAddBlockFailure</span> { <span class="ident">hash</span> : <span class="ident">SaitoHash</span> },
     <span class="ident">MinerNewGoldenTicket</span> { <span class="ident">ticket</span> : <span class="ident">GoldenTicket</span> },
@@ -210,9 +209,9 @@
         <span class="comment">// being sent into the async threads rather than the original</span>
         <span class="comment">//</span>
         <span class="comment">// major classes get a clone of the broadcast channel sender</span>
-        <span class="comment">// which is assigned to them on Object::run so they can </span>
-	<span class="comment">// broadcast cross-system messages. See SaitoMessage ENUM above</span>
-	<span class="comment">// for information on cross-system notifications.</span>
+        <span class="comment">// which is assigned to them on Object::run so they can</span>
+        <span class="comment">// broadcast cross-system messages. See SaitoMessage ENUM above</span>
+        <span class="comment">// for information on cross-system notifications.</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
@@ -244,7 +243,6 @@
             },
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::miner::run</span>(
                 <span class="ident">miner_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {
