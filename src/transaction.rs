@@ -22,6 +22,8 @@ pub const TRANSACTION_SIZE: usize = 85;
 #[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone, TryFromByte)]
 pub enum TransactionType {
     Normal,
+    Fee,
+    GoldenTicket,
     Other,
 }
 
@@ -86,6 +88,15 @@ pub struct Transaction {
     core: TransactionCore,
     // hash used for merkle_root (does not include signature), and slip uuid
     hash_for_signature: SaitoHash,
+
+    total_in: u64,
+    total_out: u64,
+    total_fees: u64,
+    fees_cumulative: f64,
+
+    routing_work_to_me: u64,
+    routing_work_to_creator: u64,
+
 }
 
 impl Transaction {
@@ -93,6 +104,13 @@ impl Transaction {
         Self {
             core,
             hash_for_signature: [0; 32],
+
+    	    total_in: 0,
+	    total_out: 0,
+	    total_fees: 0,
+	    fees_cumulative: 0.0,
+	    routing_work_to_me: 0,
+	    routing_work_to_creator: 0,
         }
     }
 
@@ -102,6 +120,15 @@ impl Transaction {
 
     pub fn add_output(&mut self, output_slip: Slip) {
         self.core.outputs.push(output_slip);
+    }
+
+    pub fn is_golden_ticket(&self) -> bool {
+	if self.core.transaction_type == TransactionType::GoldenTicket { return true; }
+	return false;
+    }
+
+    pub fn get_total_fees(&self) -> u64 {
+        self.total_fees
     }
 
     pub fn get_timestamp(&self) -> u64 {
@@ -281,6 +308,17 @@ impl Transaction {
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         self.set_hash_for_signature(hash_for_signature);
 
+	//
+	// calculate nolan in / out, fees
+	//
+        let mut nolan_in: u64 = 0;
+        let mut nolan_out: u64 = 0;
+        for input in &self.core.inputs { nolan_in += input.get_amount(); }
+        for output in &self.core.outputs { nolan_out += output.get_amount(); }
+        self.total_in = nolan_in;
+	self.total_out = nolan_out;
+	self.total_fees = nolan_in - nolan_out;
+
         true
     }
     pub fn validate(&self) -> bool {
@@ -315,18 +353,7 @@ impl Transaction {
         //
         // VALIDATE no negative payments
         //
-        let mut nolan_in: u64 = 0;
-        let mut nolan_out: u64 = 0;
-        for input in &self.core.inputs {
-            nolan_in += input.get_amount();
-        }
-        for output in &self.core.outputs {
-            nolan_out += output.get_amount();
-        }
-
-        //
         // Rust Types prevent these variables being < 0
-        //
         //        if nolan_in < 0 {
         //            println!("ERROR 672939: negative payment in transaction from slip");
         //            return false;
@@ -335,10 +362,11 @@ impl Transaction {
         //            println!("ERROR 672940: negative payment in transaction to slip");
         //            return false;
         //        }
-        if nolan_out > nolan_in {
+        if self.total_out > self.total_in {
             println!("ERROR 672941: transaction spends more than it has available");
             return false;
         }
+
 
         //
         // VALIDATE UTXO inputs

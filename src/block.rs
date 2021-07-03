@@ -71,6 +71,29 @@ impl Default for BlockCore {
     }
 }
 
+
+//
+// object used when generating and validation transactions, containing the
+// information that is created selectively according to the transaction fees
+// and the optional outbound payments.
+//
+#[derive(PartialEq, Debug, Clone)]
+pub struct ConsensusValues {
+    fee_transaction: Transaction, // transaction containing outbound payments
+}
+impl ConsensusValues {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new() -> ConsensusValues {
+        ConsensusValues {
+	    fee_transaction: Transaction::default(),
+        }
+    }
+}
+
+
+
+
+
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
     /// Consensus Level Variables
@@ -395,6 +418,57 @@ impl Block {
         mrv[start_point].get_hash()
     }
 
+
+    pub fn generate_consensus_data(&self, blockchain : &Blockchain) -> ConsensusValues{
+
+        let mut cv = ConsensusValues::new();
+
+        let mut gt_num = 0;
+	let mut total_fees = 0;
+
+	//
+	// calculate total fees in block
+	//
+        for transaction in &self.transactions {
+	    total_fees += transaction.get_total_fees();
+            if transaction.is_golden_ticket() {
+		gt_num += 1;
+            }
+        }
+
+	//
+	// calculate miner and router payments
+	//
+	let miner_payment = total_fees / 2;
+	let router_payment = total_fees - miner_payment;
+
+
+	cv.fee_transaction.set_transaction_type(TransactionType::Fee);
+
+        let mut input1 = Slip::default();
+                input1.set_publickey([0; 33]);
+                input1.set_amount(miner_payment);
+
+        let mut output1 = Slip::default();
+                output1.set_publickey([0; 33]);
+                output1.set_amount(router_payment);
+
+        cv.fee_transaction.add_input(input1);
+        cv.fee_transaction.add_output(output1);
+
+	//
+	// calculate routing work
+	//
+
+
+
+	// and return
+	return cv;
+
+    }
+
+
+
     pub fn on_chain_reorganization(
         &self,
         utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
@@ -406,6 +480,12 @@ impl Block {
         true
     }
 
+    //
+    // before we validate the block we need to generate some information such
+    // as the hash of the transaction message data that is used to generate
+    // the signature. because this requires mutable access to the transactions
+    // Rust forces us to do it in a separate function.
+    //
     pub fn validate_pre_calculations(&mut self) {
         let _transactions_valid = &self
             .transactions
@@ -469,6 +549,8 @@ impl Block {
 
         true
     }
+
+
 }
 
 impl Default for Block {

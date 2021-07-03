@@ -43,7 +43,7 @@ pub struct Mempool {
     blocks: VecDeque<Block>,
     transactions: Vec<Transaction>, // vector so we just copy it over
     wallet_lock: Arc<RwLock<Wallet>>,
-    currently_processing_blocks: bool,
+    currently_processing_block: bool,
     broadcast_channel_sender:   Option<broadcast::Sender<SaitoMessage>>,
 }
 
@@ -54,7 +54,7 @@ impl Mempool {
             blocks: VecDeque::new(),
             transactions: vec![],
             wallet_lock,
-            currently_processing_blocks: false,
+            currently_processing_block: false,
 	    broadcast_channel_sender: None,
         }
     }
@@ -75,7 +75,6 @@ impl Mempool {
             self.blocks.push_back(block);
             return AddBlockResult::Accepted;
         }
-        return AddBlockResult::Accepted;
     }
 
     pub fn add_transaction(&mut self, transaction: Transaction) -> AddTransactionResult {
@@ -90,7 +89,6 @@ impl Mempool {
             self.transactions.push(transaction);
             return AddTransactionResult::Accepted;      
         }
-	return AddTransactionResult::Accepted;
     }
 
  
@@ -126,7 +124,7 @@ impl Mempool {
     ///
     pub async fn can_bundle_block(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
 
-        if self.currently_processing_blocks {
+        if self.currently_processing_block {
             return false;
         }
 
@@ -361,22 +359,20 @@ pub async fn run(
 
         		    // sign ...
         		    transaction.sign(wallet_privatekey);
-        		    let tx_sig = transaction.get_signature();
-
             		    mempool.add_transaction(transaction);
+
         		}
                     },
 
                     // ProcessBlocks will add blocks FIFO from the queue into blockchain
                     MempoolMessage::ProcessBlocks => {
                         let mut mempool = mempool_lock.write().await;
-            		mempool.currently_processing_blocks = true;
+            		mempool.currently_processing_block = true;
                         let mut blockchain = blockchain_lock.write().await;
                         while let Some(block) = mempool.blocks.pop_front() {
-			    let this_hash = block.get_hash();
                             blockchain.add_block(block).await;
                         }
-            		mempool.currently_processing_blocks = false;
+            		mempool.currently_processing_block = false;
                     },
                 }
             }
