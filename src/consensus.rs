@@ -23,7 +23,7 @@ pub enum SaitoMessage {
     TestMessage,
     TestMessage2,
     TestMessage3,
-    BlockchainNewLongestChainBlock { hash: SaitoHash },
+    BlockchainNewLongestChainBlock { hash: SaitoHash, difficulty: u64 },
     BlockchainAddBlockSuccess { hash : SaitoHash },
     BlockchainAddBlockFailure { hash : SaitoHash },
     MinerNewGoldenTicket { ticket : GoldenTicket },
@@ -73,9 +73,9 @@ impl Consensus {
         // being sent into the async threads rather than the original
         //
         // major classes get a clone of the broadcast channel sender
-        // which is assigned to them on Object::run so they can 
-	// broadcast cross-system messages. See SaitoMessage ENUM above
-	// for information on cross-system notifications.
+        // which is assigned to them on Object::run so they can
+        // broadcast cross-system messages. See SaitoMessage ENUM above
+        // for information on cross-system notifications.
         //
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
@@ -107,7 +107,6 @@ impl Consensus {
             },
             res = crate::miner::run(
                 miner_lock.clone(),
-                blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
