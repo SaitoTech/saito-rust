@@ -147,6 +147,10 @@ impl Transaction {
         &self.core.inputs
     }
 
+    pub fn get_mut_inputs(&mut self) -> &mut Vec<Slip> {
+        &mut self.core.inputs
+    }
+
     pub fn get_outputs(&self) -> &Vec<Slip> {
         &self.core.outputs
     }
@@ -335,6 +339,7 @@ impl Transaction {
 
     }
     pub fn validate(&self) -> bool {
+
         //
         // VALIDATE signature valid
         //

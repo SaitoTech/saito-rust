@@ -5,7 +5,7 @@ use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
-use std::{sync::Arc, thread::sleep, time::Duration};
+use std::{sync::Arc};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
 use ahash::AHashMap;

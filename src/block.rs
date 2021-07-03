@@ -360,6 +360,7 @@ impl Block {
     }
 
     pub fn generate_merkle_root(&self) -> SaitoHash {
+
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
@@ -519,7 +520,7 @@ println!("Use rnd-hash rather than golden ticket: {:?}", miner_random);
 	    //
 	    // calculate routing work
 	    //
-println!("total fees in block: {}", self.total_fees);
+
 
 	    //
 	    // fee transaction added to consensus values
@@ -610,6 +611,7 @@ println!("total fees in block: {}", self.total_fees);
                 // TODO assert that this is the first (or second?) block! ?
             }
         }
+
 
         //
         // verify merkle root

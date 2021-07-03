@@ -3,7 +3,7 @@ use crate::{
     blockchain::Blockchain,
     burnfee::BurnFee,
     consensus::SaitoMessage,
-    crypto::{hash, verify},
+    crypto::{hash, verify, SaitoHash},
     golden_ticket::GoldenTicket,
     slip::Slip,
     time::create_timestamp,
@@ -80,7 +80,10 @@ impl Mempool {
     // this handles any transactions broadcast on the same system. it receives the transaction
     // directly and so does not validate against the UTXOset etc. 
     pub fn add_transaction(&mut self, transaction: Transaction) -> AddTransactionResult {
+
         let tx_sig_to_insert = transaction.get_signature();
+
+
         if self
             .transactions
             .iter()
@@ -101,7 +104,13 @@ impl Mempool {
 
 	// convert into transaction
 	let mut wallet = self.wallet_lock.write().await;
-        let transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
+        let mut transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
+
+        //
+        // create hash_for_signature to avoid failure generating merkle_root
+        //
+        let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
+        transaction.set_hash_for_signature(hash_for_signature);
 
         if self
             .transactions
@@ -203,13 +212,35 @@ impl Mempool {
 	//
 	let cv: ConsensusValues = block.generate_consensus_data(&blockchain);
 
+	//
+	// set hash_for_signature for fee_tx as we cannot mutably fetch it
+	// during merkle_root generation as those functions require parallel
+	// processing in block validation. So some extra code here.
+	//
 	if !cv.fee_transaction.is_none() {
-println!("adding fee transaction to our new block!");
-	    block.add_transaction(cv.fee_transaction.unwrap());
+
+	    //
+	    // fee-transaction must still pass validation rules
+	    //
+	    let mut fee_tx = cv.fee_transaction.unwrap();
+	    let wallet = self.wallet_lock.write().await;
+
+
+            for input in fee_tx.get_mut_inputs() { input.set_publickey(wallet.get_publickey()); }
+            let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
+            fee_tx.set_hash_for_signature(hash_for_signature);
+
+	    //
+	    // sign the transaction
+	    //
+	    fee_tx.sign(wallet.get_privatekey());
+
+	    block.add_transaction(fee_tx);
 	}
 
         let block_merkle_root = block.generate_merkle_root();
         block.set_merkle_root(block_merkle_root);
+println!("merkle root set in mempool txs {} as: {:?}", block.transactions.len(), block_merkle_root);
         let block_hash = block.generate_hash();
         block.set_hash(block_hash);
 
