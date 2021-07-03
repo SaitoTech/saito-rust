@@ -119,6 +119,7 @@ impl Mempool {
         {
             return AddTransactionResult::Exists;
         } else {
+println!("adding goldten ticket to mempool...");
             self.transactions.push(transaction);
             return AddTransactionResult::Accepted;      
         }

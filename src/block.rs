@@ -2,6 +2,7 @@ use crate::{
     blockchain::Blockchain,
     burnfee::BurnFee,
     crypto::{hash, generate_random_bytes, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    golden_ticket::GoldenTicket,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
     time::create_timestamp,
@@ -452,9 +453,6 @@ impl Block {
 	let mut miner_publickey: SaitoPublicKey = [0; 33];
 	let mut router_publickey: SaitoPublicKey = [0; 33];
 
-	let miner_random = hash(&generate_random_bytes(32));
-println!("Use rnd-hash rather than golden ticket: {:?}", miner_random);
-
 
 	//
 	// calculate total fees in block
@@ -480,10 +478,16 @@ println!("Use rnd-hash rather than golden ticket: {:?}", miner_random);
         }
 
 
-	if gt_num > 0 {
+	if gt_num > 0 && gt_idx != usize::MAX {
+
+            let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(self.transactions[gt_idx].get_message().to_vec());
+	    let miner_random = golden_ticket.get_random();
+println!("Rand: {:?}", miner_random);
+
 
 	    let mut fee_transaction = Transaction::default();
 	    fee_transaction.set_transaction_type(TransactionType::Fee);
+
 
 	    //
 	    // calculate miner and router payments
@@ -635,6 +639,13 @@ println!("Use rnd-hash rather than golden ticket: {:?}", miner_random);
         //
 	let cv = self.generate_consensus_data(&blockchain);
 
+
+	//
+	// validate golden ticket
+	//
+	if cv.gt_idx != usize::MAX {
+	    let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(self.transactions[cv.gt_idx].get_message().to_vec());
+	}
 
         //
         // VALIDATE transactions

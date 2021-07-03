@@ -52,28 +52,29 @@ impl Miner {
     }
 
     pub async fn mine(&mut self) {
+println!("MINE! {}", self.is_active);
         if self.is_active {
 
             let solution = hash(&generate_random_bytes(32));
 
             if self.is_valid_solution(solution) {
 
-            {
-                let vote = 0;
-                let wallet = self.wallet_lock.write().await;
-                let gt = GoldenTicket::new(vote, self.target, solution, wallet.get_publickey());
+                {
+                    let vote = 0;
+                    let wallet = self.wallet_lock.write().await;
+                    let gt = GoldenTicket::new(vote, self.target, solution, wallet.get_publickey());
 
-                if !self.broadcast_channel_sender.is_none() {
-                    self.broadcast_channel_sender.as_ref().unwrap()
-                        .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
-                        .expect("error: MinerNewGoldenTicket message failed to send");
+                    if !self.broadcast_channel_sender.is_none() {
+                        self.broadcast_channel_sender.as_ref().unwrap()
+                            .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
+                            .expect("error: MinerNewGoldenTicket message failed to send");
+                    }
                 }
-            }
 
-		    // stop mining
+		// stop mining
                 self.set_is_active(false);
 
-	        }
+	    }
         }
     }
 
