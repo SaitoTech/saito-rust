@@ -422,7 +422,6 @@ impl Block {
                         self.get_timestamp(),
                         previous_block.unwrap().get_timestamp(),
                     );
-                println!("validate burnfee {} {}", new_burnfee, self.get_burnfee());
                 if new_burnfee != self.get_burnfee() {
                     println!(
                         "ERROR: burn fee does not validate, expected: {}",
@@ -432,8 +431,6 @@ impl Block {
                 } else {
                     println!("Burn Fee validates...");
                 }
-            } else {
-                // TODO assert that this is the first (or second?) block!
             }
         }
 
