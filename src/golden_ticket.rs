@@ -1,5 +1,6 @@
-use crate::crypto::{SaitoPublicKey, SaitoHash};
+use crate::crypto::{hash, SaitoPublicKey, SaitoHash};
 use serde::{Deserialize, Serialize};
+use bigint::uint::U256;
 use std::convert::TryInto;
 
 #[serde_with::serde_as]
@@ -22,6 +23,34 @@ impl GoldenTicket {
             publickey,
         };
     }
+
+
+    // TODO - review exact solution generated and mechanism to determine validity
+    pub fn generate_solution(random_bytes : SaitoHash, publickey : SaitoPublicKey) -> SaitoHash {
+
+        let mut vbytes : Vec<u8> = vec![];
+                vbytes.extend(&random_bytes);
+                vbytes.extend(&publickey);
+
+        hash(&vbytes)
+
+    }
+
+
+    // TODO - review exact algorithm in use here
+    pub fn is_valid_solution(target: SaitoHash, solution:SaitoHash , difficulty : u64) -> bool {
+
+        let difficulty_order = (difficulty as f64 / 1_0000_0000 as f64).round() as usize;
+        let difficulty_grain = difficulty % 1_0000_0000;
+
+        let random_solution = U256::from_big_endian(&solution[..difficulty_order]);
+        let target_solution= U256::from_big_endian(&target[..difficulty_order]);
+        let difficulty_grain = U256::from(difficulty_grain * 16);
+
+        random_solution >= target_solution
+            && (random_solution - target_solution) <= difficulty_grain
+    }
+
 
     pub fn get_vote(&self) -> u8 {
         self.vote

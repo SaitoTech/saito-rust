@@ -1,7 +1,7 @@
 use crate::{
     blockchain::Blockchain,
     burnfee::BurnFee,
-    crypto::{hash, generate_random_bytes, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
     golden_ticket::GoldenTicket,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
@@ -9,6 +9,7 @@ use crate::{
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
 };
 use ahash::AHashMap;
+use bigint::uint::U256;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -449,7 +450,6 @@ impl Block {
 	let mut gt_idx: usize = usize::MAX;
 	let mut ft_idx: usize = usize::MAX;
 	let mut total_fees = 0;
-	let mut total_fees = 0;
 	let mut miner_publickey: SaitoPublicKey = [0; 33];
 	let mut router_publickey: SaitoPublicKey = [0; 33];
 
@@ -480,13 +480,50 @@ impl Block {
 
 	if gt_num > 0 && gt_idx != usize::MAX {
 
+	    //
+	    // grab random solution from golden ticket
+	    //
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(self.transactions[gt_idx].get_message().to_vec());
 	    let miner_random = golden_ticket.get_random();
-println!("Rand: {:?}", miner_random);
 
-
+	    //
+	    // create fee transaction
+	    //
 	    let mut fee_transaction = Transaction::default();
 	    fee_transaction.set_transaction_type(TransactionType::Fee);
+
+
+	    //
+	    // find winning router
+	    //
+	    let x = U256::from_big_endian(&miner_random);
+	    let mut y = total_fees;
+	    if (y == 0) { y = 100; }
+	    let z = U256::from_big_endian(&y.to_be_bytes());
+	    let (winning_router, bolres)  = x.overflowing_rem(z);
+	    let winning_nolan_in_fees = winning_router.low_u64();
+
+	    //
+	    // winning TX contains the winning nolan
+	    //
+	    // i.e. txs are picked based on fee contribution
+	    //
+	    // TODO - panics if no txs in block
+	    //
+	    let mut winning_tx = &self.transactions[0];
+	    for transaction in &self.transactions {
+	        if transaction.cumulative_fees > winning_nolan_in_fees {
+		    break;
+		}
+		winning_tx = &transaction;
+	    };
+
+	    //
+	    // winning router is just tx sender for now
+	    //
+ 	    // TODO we need to add routing paths etc.
+	    //
+	    router_publickey = winning_tx.get_inputs()[0].get_publickey();
 
 
 	    //
@@ -494,7 +531,6 @@ println!("Rand: {:?}", miner_random);
 	    //
 	    let miner_payment = total_fees / 2;
 	    let router_payment = total_fees - miner_payment;
-
 
             let mut input1 = Slip::default();
                     input1.set_publickey(miner_publickey);
@@ -520,10 +556,6 @@ println!("Rand: {:?}", miner_random);
             fee_transaction.add_output(output1);
             fee_transaction.add_input(input2);
             fee_transaction.add_output(output2);
-
-	    //
-	    // calculate routing work
-	    //
 
 
 	    //

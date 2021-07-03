@@ -89,13 +89,13 @@ pub struct Transaction {
     // hash used for merkle_root (does not include signature), and slip uuid
     hash_for_signature: SaitoHash,
 
-    total_in: u64,
-    total_out: u64,
-    total_fees: u64,
-    cumulative_fees: u64,
+    pub total_in: u64,
+    pub total_out: u64,
+    pub total_fees: u64,
+    pub cumulative_fees: u64,
 
-    routing_work_to_me: u64,
-    routing_work_to_creator: u64,
+    pub routing_work_to_me: u64,
+    pub routing_work_to_creator: u64,
 
 }
 

@@ -1,13 +1,12 @@
 use crate::{
     consensus::SaitoMessage,
-    crypto::{generate_random_bytes, hash, SaitoHash},
+    crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey},
     golden_ticket::GoldenTicket,
     wallet::Wallet,
 };
 
 use std::{sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
-use bigint::uint::U256;
 
 #[derive(Debug, Clone)]
 pub enum MinerMessage {
@@ -39,30 +38,24 @@ impl Miner {
         self.broadcast_channel_sender = Some(bcs);
     }
 
-    fn is_valid_solution(&self, solution: SaitoHash) -> bool {
-        let difficulty_order = (self.difficulty as f64 / 1_0000_0000 as f64).round() as usize;
-        let difficulty_grain = self.difficulty % 1_0000_0000;
-
-        let random_solution = U256::from_big_endian(&solution[..difficulty_order]);
-        let target_solution= U256::from_big_endian(&self.target[..difficulty_order]);
-        let difficulty_grain = U256::from(difficulty_grain * 16);
-
-        random_solution >= target_solution
-            && (random_solution - target_solution) <= difficulty_grain
-    }
-
     pub async fn mine(&mut self) {
-println!("MINE! {}", self.is_active);
         if self.is_active {
 
-            let solution = hash(&generate_random_bytes(32));
+	    let mut publickey : SaitoPublicKey;
 
-            if self.is_valid_solution(solution) {
+	    {
+                let wallet = self.wallet_lock.read().await;
+	        publickey = wallet.get_publickey();
+            }
+
+	    let random_bytes = hash(&generate_random_bytes(32));
+            let solution = GoldenTicket::generate_solution(random_bytes, publickey);
+
+            if GoldenTicket::is_valid_solution(self.target, solution, self.difficulty) {
 
                 {
                     let vote = 0;
-                    let wallet = self.wallet_lock.write().await;
-                    let gt = GoldenTicket::new(vote, self.target, solution, wallet.get_publickey());
+                    let gt = GoldenTicket::new(vote, self.target, random_bytes, publickey);
 
                     if !self.broadcast_channel_sender.is_none() {
                         self.broadcast_channel_sender.as_ref().unwrap()
