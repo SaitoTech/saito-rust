@@ -12,6 +12,7 @@ pub struct GoldenTicket {
 }
 
 impl GoldenTicket {
+
     pub fn new(vote: u8, target: [u8; 32], random: [u8; 32], publickey: SaitoPublicKey) -> Self {
         return Self {
             vote,
@@ -20,6 +21,7 @@ impl GoldenTicket {
             publickey,
         };
     }
+
 }
 
 impl Default for GoldenTicket {

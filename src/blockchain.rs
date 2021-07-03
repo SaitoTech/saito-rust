@@ -381,9 +381,10 @@ impl Blockchain {
             let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
 
             //
-            // validate the block
+            // perform the pre-validation calculations needed to validate the block
+	    // below, in-parallel with read-only access.
             //
-            block.validate_pre_calculations();
+            block.pre_validation_calculations();
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();

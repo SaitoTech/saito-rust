@@ -3,8 +3,9 @@ use crate::crypto::{
     generate_keys, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
     SaitoUTXOSetKey,
 };
+use crate::golden_ticket::GoldenTicket;
 use crate::slip::Slip;
-use crate::transaction::Transaction;
+use crate::transaction::{Transaction, TransactionType};
 
 /// The `Wallet` manages the public and private keypair of the node and holds the
 /// slips that are used to form transactions on the network.
@@ -67,6 +68,35 @@ impl Wallet {
     pub fn sign(&self, message_bytes: &[u8]) -> SaitoSignature {
         sign(message_bytes, self.privatekey)
     }
+
+
+
+    pub async fn create_golden_ticket_transaction(&mut self, golden_ticket : GoldenTicket) -> Transaction {
+
+        let mut transaction = Transaction::default();
+
+        // for now we'll use bincode to de/serialize
+        transaction.set_transaction_type(TransactionType::GoldenTicket);
+        transaction.set_message(bincode::serialize(&golden_ticket).unwrap());
+
+        let mut input1 = Slip::default();
+        input1.set_publickey(self.get_publickey());
+        input1.set_amount(0);
+        input1.set_uuid([0; 32]);
+
+        let mut output1 = Slip::default();
+        output1.set_publickey(self.get_publickey());
+        output1.set_amount(0);
+        output1.set_uuid([0; 32]);
+
+        transaction.add_input(input1);
+        transaction.add_output(output1);
+        transaction.sign(self.get_privatekey());
+
+        transaction
+    }
+
+
 }
 
 /// The `WalletSlip` stores the essential information needed to track which

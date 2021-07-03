@@ -1,5 +1,5 @@
 use crate::{
-    block::Block,
+    block::{Block, ConsensusValues},
     blockchain::Blockchain,
     burnfee::BurnFee,
     consensus::SaitoMessage,
@@ -77,6 +77,8 @@ impl Mempool {
         }
     }
 
+    // this handles any transactions broadcast on the same system. it receives the transaction
+    // directly and so does not validate against the UTXOset etc. 
     pub fn add_transaction(&mut self, transaction: Transaction) -> AddTransactionResult {
         let tx_sig_to_insert = transaction.get_signature();
         if self
@@ -90,6 +92,30 @@ impl Mempool {
             return AddTransactionResult::Accepted;      
         }
     }
+
+    // this handles golden tickets broadcast on the same system. it wraps them
+    // in a transaction and then saves them in the mempool if they are targetting
+    // the right block. this pushes the golden ticket indiscriminately into the 
+    // transaction array -- we can do a better job.
+    pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) -> AddTransactionResult {
+
+	// convert into transaction
+	let mut wallet = self.wallet_lock.write().await;
+        let transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
+
+        if self
+            .transactions
+            .iter()
+            .any(|transaction| transaction.is_golden_ticket() == true)
+        {
+            return AddTransactionResult::Exists;
+        } else {
+            self.transactions.push(transaction);
+            return AddTransactionResult::Accepted;      
+        }
+    }
+
+
 
  
 
@@ -168,15 +194,19 @@ impl Mempool {
         block.set_burnfee(current_burnfee);
         block.set_timestamp(current_timestamp);
 
-println!("pre-swap: {} vs {}", block.transactions.len(), self.transactions.len());
-
+//println!("pre-swap: {} vs {}", block.transactions.len(), self.transactions.len());
 	mem::swap(&mut block.transactions, &mut self.transactions);
+//println!("post-swap: {} vs {}", block.transactions.len(), self.transactions.len());
 
-println!("post-swap: {} vs {}", block.transactions.len(), self.transactions.len());
-//	block.transset_transactions((&mut *self.transactions).to_vec());
-//	block.set_transactions(self.transactions);
-//.to_vec());
-//	self.transactions = vec![];
+	//
+	// create 
+	//
+	let cv: ConsensusValues = block.generate_consensus_data(&blockchain);
+
+	if !cv.fee_transaction.is_none() {
+println!("adding fee transaction to our new block!");
+	    block.add_transaction(cv.fee_transaction.unwrap());
+	}
 
         let block_merkle_root = block.generate_merkle_root();
         block.set_merkle_root(block_merkle_root);
@@ -258,17 +288,6 @@ println!("post-swap: {} vs {}", block.transactions.len(), self.transactions.len(
         block
     }
 
-    pub async fn generate_golden_ticket_transaction(&mut self, golden_ticket: GoldenTicket) -> Transaction {
-        let mut transaction = Transaction::default();
-
-        // for now we'll use bincode to de/serialize
-        transaction.set_message(bincode::serialize(&golden_ticket).unwrap());
-
-        let wallet = self.wallet_lock.read().await;
-        transaction.sign(wallet.get_privatekey());
-
-        transaction
-    }
 }
 
 // This function is called on initialization to setup the sending
@@ -404,10 +423,9 @@ pub async fn run(
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
                         let mut _mempool = mempool_lock.write().await;
                     },
-                    SaitoMessage::MinerNewGoldenTicket { ticket : gt } => {
+                    SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
                         let mut mempool = mempool_lock.write().await;
-                        let transaction = mempool.generate_golden_ticket_transaction(gt).await;
-                        mempool.add_transaction(transaction);
+                        mempool.add_golden_ticket(golden_ticket).await;
                     },
                     _ => {},
                 }

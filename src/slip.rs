@@ -15,6 +15,12 @@ pub const SLIP_SIZE: usize = 75;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq, TryFromByte)]
 pub enum SlipType {
     Normal,
+    MinerInput,
+    MinerOutput,
+    RouterInput,
+    RouterOutput,
+    StakerInput,
+    StakerOutput,
     Other, // need more than one value for TryFromBytes
 }
 

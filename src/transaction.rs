@@ -92,7 +92,7 @@ pub struct Transaction {
     total_in: u64,
     total_out: u64,
     total_fees: u64,
-    fees_cumulative: f64,
+    cumulative_fees: u64,
 
     routing_work_to_me: u64,
     routing_work_to_creator: u64,
@@ -104,11 +104,10 @@ impl Transaction {
         Self {
             core,
             hash_for_signature: [0; 32],
-
     	    total_in: 0,
 	    total_out: 0,
 	    total_fees: 0,
-	    fees_cumulative: 0.0,
+	    cumulative_fees: 0,
 	    routing_work_to_me: 0,
 	    routing_work_to_creator: 0,
         }
@@ -120,6 +119,11 @@ impl Transaction {
 
     pub fn add_output(&mut self, output_slip: Slip) {
         self.core.outputs.push(output_slip);
+    }
+
+    pub fn is_fee_transaction(&self) -> bool {
+	if self.core.transaction_type == TransactionType::Fee { return true; }
+	return false;
     }
 
     pub fn is_golden_ticket(&self) -> bool {
@@ -301,7 +305,15 @@ impl Transaction {
         }
     }
 
-    pub fn validate_pre_calculations(&mut self) -> bool {
+    //
+    // we have to calculate cumulative fees sequentially.
+    //
+    pub fn pre_validation_calculations_cumulative_fees(&mut self, cumulative_fees : u64) -> u64 {
+	self.cumulative_fees = cumulative_fees + self.total_fees;
+	return self.cumulative_fees;
+    }
+    pub fn pre_validation_calculations_parallelizable(&mut self) -> bool {
+
         //
         // and save the hash_for_signature so we can use it later...
         //
@@ -319,7 +331,8 @@ impl Transaction {
 	self.total_out = nolan_out;
 	self.total_fees = nolan_in - nolan_out;
 
-        true
+	true
+
     }
     pub fn validate(&self) -> bool {
         //

@@ -1,11 +1,11 @@
 use crate::{
     blockchain::Blockchain,
     burnfee::BurnFee,
-    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    crypto::{hash, generate_random_bytes, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
     merkle::MerkleTreeLayer,
-    slip::SLIP_SIZE,
+    slip::{Slip, SlipType, SLIP_SIZE},
     time::create_timestamp,
-    transaction::{Transaction, TRANSACTION_SIZE},
+    transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
 };
 use ahash::AHashMap;
 use rayon::prelude::*;
@@ -79,13 +79,26 @@ impl Default for BlockCore {
 //
 #[derive(PartialEq, Debug, Clone)]
 pub struct ConsensusValues {
-    fee_transaction: Transaction, // transaction containing outbound payments
+    // expected transaction containing outbound payments
+    pub fee_transaction: Option<Transaction>, 
+    // number of FEE in transactions if exists
+    pub ft_num: u8,
+    // index of FEE in transactions if exists
+    pub ft_idx: usize,
+    // number of GT in transactions if exists
+    pub gt_num: u8,
+    // index of GT in transactions if exists
+    pub gt_idx: usize,
 }
 impl ConsensusValues {
     #[allow(clippy::too_many_arguments)]
     pub fn new() -> ConsensusValues {
         ConsensusValues {
-	    fee_transaction: Transaction::default(),
+	    fee_transaction: None,
+	    ft_num: 0,
+	    ft_idx: usize::MAX,
+	    gt_num: 0,
+	    gt_idx: usize::MAX,
         }
     }
 }
@@ -102,6 +115,8 @@ pub struct Block {
     pub transactions: Vec<Transaction>,
     /// Self-Calculated / Validated
     hash: SaitoHash,
+    /// total fees paid into block
+    total_fees: u64,
     /// Is Block on longest chain
     lc: bool,
 }
@@ -112,6 +127,7 @@ impl Block {
             core,
             transactions: vec![],
             hash: [0; 32],
+            total_fees: 0,
             lc: false,
         }
     }
@@ -419,48 +435,102 @@ impl Block {
     }
 
 
+    //
+    //
+    //
     pub fn generate_consensus_data(&self, blockchain : &Blockchain) -> ConsensusValues{
 
         let mut cv = ConsensusValues::new();
 
-        let mut gt_num = 0;
+        let mut gt_num: u8 = 0;
+        let mut ft_num: u8 = 0;
+	let mut gt_idx: usize = usize::MAX;
+	let mut ft_idx: usize = usize::MAX;
 	let mut total_fees = 0;
+	let mut total_fees = 0;
+	let mut miner_publickey: SaitoPublicKey = [0; 33];
+	let mut router_publickey: SaitoPublicKey = [0; 33];
+
+	let miner_random = hash(&generate_random_bytes(32));
+println!("Use rnd-hash rather than golden ticket: {:?}", miner_random);
+
 
 	//
 	// calculate total fees in block
 	//
+	let mut idx: usize = 0;
         for transaction in &self.transactions {
-	    total_fees += transaction.get_total_fees();
-            if transaction.is_golden_ticket() {
+
+	    // fee transaction
+	    if !transaction.is_fee_transaction() {
+	        total_fees += transaction.get_total_fees();
+            } else {
+	        ft_num += 1;
+		ft_idx = idx;
+	    }
+
+	    // gt transaction
+	    if transaction.is_golden_ticket() {
 		gt_num += 1;
+		gt_idx = idx;
             }
+
+	    idx += 1;
         }
 
-	//
-	// calculate miner and router payments
-	//
-	let miner_payment = total_fees / 2;
-	let router_payment = total_fees - miner_payment;
+
+	if gt_num > 0 {
+
+	    let mut fee_transaction = Transaction::default();
+	    fee_transaction.set_transaction_type(TransactionType::Fee);
+
+	    //
+	    // calculate miner and router payments
+	    //
+	    let miner_payment = total_fees / 2;
+	    let router_payment = total_fees - miner_payment;
 
 
-	cv.fee_transaction.set_transaction_type(TransactionType::Fee);
+            let mut input1 = Slip::default();
+                    input1.set_publickey(miner_publickey);
+                    input1.set_amount(0);
+                    input1.set_slip_type(SlipType::MinerInput);
 
-        let mut input1 = Slip::default();
-                input1.set_publickey([0; 33]);
-                input1.set_amount(miner_payment);
+            let mut output1 = Slip::default();
+                    output1.set_publickey([0; 33]);
+                    output1.set_amount(miner_payment);
+                    output1.set_slip_type(SlipType::MinerOutput);
 
-        let mut output1 = Slip::default();
-                output1.set_publickey([0; 33]);
-                output1.set_amount(router_payment);
+            let mut input2 = Slip::default();
+                    input2.set_publickey(router_publickey);
+                    input2.set_amount(0);
+                    input2.set_slip_type(SlipType::RouterInput);
 
-        cv.fee_transaction.add_input(input1);
-        cv.fee_transaction.add_output(output1);
+            let mut output2 = Slip::default();
+                    output2.set_publickey(router_publickey);
+                    output2.set_amount(router_payment);
+                    output2.set_slip_type(SlipType::RouterOutput);
 
-	//
-	// calculate routing work
-	//
+            fee_transaction.add_input(input1);
+            fee_transaction.add_output(output1);
+            fee_transaction.add_input(input2);
+            fee_transaction.add_output(output2);
 
+	    //
+	    // calculate routing work
+	    //
+println!("total fees in block: {}", self.total_fees);
 
+	    //
+	    // fee transaction added to consensus values
+	    //
+	    cv.fee_transaction = Some(fee_transaction);
+	    cv.ft_idx = ft_idx;
+	    cv.ft_num = ft_num;
+	    cv.gt_idx = gt_idx;
+	    cv.gt_num = gt_num;
+
+	}
 
 	// and return
 	return cv;
@@ -486,11 +556,34 @@ impl Block {
     // the signature. because this requires mutable access to the transactions
     // Rust forces us to do it in a separate function.
     //
-    pub fn validate_pre_calculations(&mut self) {
-        let _transactions_valid = &self
+    // we first calculate as much information as we can in parallel before 
+    // sweeping through the transactions to find out what percentage of the 
+    // cumulative block fees they contain.
+    //
+    pub fn pre_validation_calculations(&mut self) -> bool {
+
+	//
+	// PARALLEL PROCESSING of most data
+	//
+        let _transactions_pre_calculated = &self
             .transactions
             .par_iter_mut()
-            .all(|tx| tx.validate_pre_calculations());
+            .all(|tx| tx.pre_validation_calculations_parallelizable());
+
+        //
+        // CUMULATIVE FEES only AFTER parallel calculations
+        //
+	let mut cumulative_fees = 0;
+        for transaction in &mut self.transactions {
+            cumulative_fees = transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
+        }
+
+	//
+	// update block with total fees
+	//
+	self.total_fees = cumulative_fees;
+
+	true
     }
 
     pub fn validate(&self, blockchain: &Blockchain) -> bool {
@@ -535,12 +628,11 @@ impl Block {
         }
 
         //
-        // validate fee-transaction
+        // validate fee-transaction (miner/router/staker) payments
         //
+        //
+	let cv = self.generate_consensus_data(&blockchain);
 
-        //
-        // validate miner/staker outbound-payments
-        //
 
         //
         // VALIDATE transactions
