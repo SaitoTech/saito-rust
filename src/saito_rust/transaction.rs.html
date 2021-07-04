@@ -439,6 +439,83 @@
 <span id="436">436</span>
 <span id="437">437</span>
 <span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -464,6 +541,8 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">TryFromByte</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TransactionType</span> {
     <span class="ident">Normal</span>,
+    <span class="ident">Fee</span>,
+    <span class="ident">GoldenTicket</span>,
     <span class="ident">Other</span>,
 }
 
@@ -528,6 +607,14 @@
     <span class="ident">core</span>: <span class="ident">TransactionCore</span>,
     <span class="comment">// hash used for merkle_root (does not include signature), and slip uuid</span>
     <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span>,
+
+    <span class="kw">pub</span> <span class="ident">total_in</span>: <span class="ident">u64</span>,
+    <span class="kw">pub</span> <span class="ident">total_out</span>: <span class="ident">u64</span>,
+    <span class="kw">pub</span> <span class="ident">total_fees</span>: <span class="ident">u64</span>,
+    <span class="kw">pub</span> <span class="ident">cumulative_fees</span>: <span class="ident">u64</span>,
+
+    <span class="kw">pub</span> <span class="ident">routing_work_to_me</span>: <span class="ident">u64</span>,
+    <span class="kw">pub</span> <span class="ident">routing_work_to_creator</span>: <span class="ident">u64</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Transaction</span> {
@@ -535,6 +622,12 @@
         <span class="self">Self</span> {
             <span class="ident">core</span>,
             <span class="ident">hash_for_signature</span>: [<span class="number">0</span>; <span class="number">32</span>],
+            <span class="ident">total_in</span>: <span class="number">0</span>,
+            <span class="ident">total_out</span>: <span class="number">0</span>,
+            <span class="ident">total_fees</span>: <span class="number">0</span>,
+            <span class="ident">cumulative_fees</span>: <span class="number">0</span>,
+            <span class="ident">routing_work_to_me</span>: <span class="number">0</span>,
+            <span class="ident">routing_work_to_creator</span>: <span class="number">0</span>,
         }
     }
 
@@ -544,6 +637,24 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_output</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">output_slip</span>: <span class="ident">Slip</span>) {
         <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span>.<span class="ident">push</span>(<span class="ident">output_slip</span>);
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_fee_transaction</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::Fee</span> {
+            <span class="kw">return</span> <span class="bool-val">true</span>;
+        }
+        <span class="kw">return</span> <span class="bool-val">false</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_golden_ticket</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::GoldenTicket</span> {
+            <span class="kw">return</span> <span class="bool-val">true</span>;
+        }
+        <span class="kw">return</span> <span class="bool-val">false</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_total_fees</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="self">self</span>.<span class="ident">total_fees</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_timestamp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
@@ -556,6 +667,14 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_inputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">inputs</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_mut_inputs</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">inputs</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_mut_outputs</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_outputs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
@@ -595,6 +714,17 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) {
+        <span class="comment">//</span>
+        <span class="comment">// we set slip ordinals when signing</span>
+        <span class="comment">//</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slip_ordinal</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="macro">println!</span>(<span class="string">&quot;signing tx with {} outputs: &quot;</span>, <span class="self">self</span>.<span class="ident">get_outputs</span>().<span class="ident">len</span>());
+        <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">get_mut_outputs</span>() {
+            <span class="macro">println!</span>(<span class="string">&quot;updating slip ordinal: {}&quot;</span>, <span class="ident">slip_ordinal</span>);
+            <span class="ident">output</span>.<span class="ident">set_slip_ordinal</span>(<span class="ident">slip_ordinal</span>);
+            <span class="ident">slip_ordinal</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+        }
+
         <span class="kw">let</span> <span class="ident">hash_for_signature</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">serialize_for_signature</span>());
         <span class="self">self</span>.<span class="ident">set_signature</span>(<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash_for_signature</span>, <span class="ident">privatekey</span>));
         <span class="self">self</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
@@ -716,12 +846,44 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_pre_calculations</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="comment">//</span>
+    <span class="comment">// we have to calculate cumulative fees sequentially.</span>
+    <span class="comment">//</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pre_validation_calculations_cumulative_fees</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cumulative_fees</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="self">self</span>.<span class="ident">cumulative_fees</span> <span class="op">=</span> <span class="ident">cumulative_fees</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">total_fees</span>;
+        <span class="kw">return</span> <span class="self">self</span>.<span class="ident">cumulative_fees</span>;
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pre_validation_calculations_parallelizable</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="comment">//</span>
         <span class="comment">// and save the hash_for_signature so we can use it later...</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">serialize_for_signature</span>());
         <span class="self">self</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
+
+        <span class="comment">//</span>
+        <span class="comment">// calculate nolan in / out, fees</span>
+        <span class="comment">//</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_in</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_out</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">inputs</span> {
+            <span class="ident">nolan_in</span> <span class="op">+</span><span class="op">=</span> <span class="ident">input</span>.<span class="ident">get_amount</span>();
+        }
+        <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span> {
+            <span class="ident">nolan_out</span> <span class="op">+</span><span class="op">=</span> <span class="ident">output</span>.<span class="ident">get_amount</span>();
+        }
+        <span class="self">self</span>.<span class="ident">total_in</span> <span class="op">=</span> <span class="ident">nolan_in</span>;
+        <span class="self">self</span>.<span class="ident">total_out</span> <span class="op">=</span> <span class="ident">nolan_out</span>;
+        <span class="self">self</span>.<span class="ident">total_fees</span> <span class="op">=</span> <span class="number">0</span>;
+
+        <span class="comment">//</span>
+        <span class="comment">// note that this is not validation code, permitting this. we may have</span>
+        <span class="comment">// some transactions that do insert NOLAN, such as during testing of</span>
+        <span class="comment">// monetary policy. All sanity checks need to be in the validate()</span>
+        <span class="comment">// function.</span>
+        <span class="comment">//</span>
+        <span class="kw">if</span> <span class="ident">nolan_in</span> <span class="op">&gt;</span> <span class="ident">nolan_out</span> {
+            <span class="self">self</span>.<span class="ident">total_fees</span> <span class="op">=</span> <span class="ident">nolan_in</span> <span class="op">-</span> <span class="ident">nolan_out</span>;
+        }
 
         <span class="bool-val">true</span>
     }
@@ -757,18 +919,7 @@
         <span class="comment">//</span>
         <span class="comment">// VALIDATE no negative payments</span>
         <span class="comment">//</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_in</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_out</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">inputs</span> {
-            <span class="ident">nolan_in</span> <span class="op">+</span><span class="op">=</span> <span class="ident">input</span>.<span class="ident">get_amount</span>();
-        }
-        <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">outputs</span> {
-            <span class="ident">nolan_out</span> <span class="op">+</span><span class="op">=</span> <span class="ident">output</span>.<span class="ident">get_amount</span>();
-        }
-
-        <span class="comment">//</span>
         <span class="comment">// Rust Types prevent these variables being &lt; 0</span>
-        <span class="comment">//</span>
         <span class="comment">//        if nolan_in &lt; 0 {</span>
         <span class="comment">//            println!(&quot;ERROR 672939: negative payment in transaction from slip&quot;);</span>
         <span class="comment">//            return false;</span>
@@ -777,7 +928,10 @@
         <span class="comment">//            println!(&quot;ERROR 672940: negative payment in transaction to slip&quot;);</span>
         <span class="comment">//            return false;</span>
         <span class="comment">//        }</span>
-        <span class="kw">if</span> <span class="ident">nolan_out</span> <span class="op">&gt;</span> <span class="ident">nolan_in</span> {
+        <span class="comment">//</span>
+        <span class="comment">// we make an exception for fee transactions, which may be pulling revenue from the</span>
+        <span class="comment">// treasury in some amount.</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">total_out</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">total_in</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">get_transaction_type</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">TransactionType::Fee</span> {
             <span class="macro">println!</span>(<span class="string">&quot;ERROR 672941: transaction spends more than it has available&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }

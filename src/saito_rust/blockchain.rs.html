@@ -675,6 +675,10 @@
 <span id="672">672</span>
 <span id="673">673</span>
 <span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -683,7 +687,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time::create_timestamp</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
+<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
@@ -886,7 +890,10 @@
                     <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>
                         .<span class="ident">as_ref</span>()
                         .<span class="ident">unwrap</span>()
-                        .<span class="ident">send</span>(<span class="ident">SaitoMessage::BlockchainNewLongestChainBlock</span> { <span class="ident">hash</span>: <span class="ident">block_hash</span>, <span class="ident">difficulty</span> })
+                        .<span class="ident">send</span>(<span class="ident">SaitoMessage::BlockchainNewLongestChainBlock</span> {
+                            <span class="ident">hash</span>: <span class="ident">block_hash</span>,
+                            <span class="ident">difficulty</span>,
+                        })
                         .<span class="ident">expect</span>(<span class="string">&quot;error: BlockchainNewLongestChainBlock message failed to send&quot;</span>);
                 }
             } <span class="kw">else</span> {
@@ -1059,9 +1066,10 @@
             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>]).<span class="ident">unwrap</span>();
 
             <span class="comment">//</span>
-            <span class="comment">// validate the block</span>
+            <span class="comment">// perform the pre-validation calculations needed to validate the block</span>
+            <span class="comment">// below, in-parallel with read-only access.</span>
             <span class="comment">//</span>
-            <span class="ident">block</span>.<span class="ident">validate_pre_calculations</span>();
+            <span class="ident">block</span>.<span class="ident">pre_validation_calculations</span>();
         }
 
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>]).<span class="ident">unwrap</span>();
@@ -1143,7 +1151,7 @@
     <span class="ident">broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
     <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="kw">let</span> (<span class="ident">blockchain_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">blockchain_channel_receiver</span>): (
+    <span class="kw">let</span> (<span class="ident">_blockchain_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">blockchain_channel_receiver</span>): (
         <span class="ident">tokio::sync::mpsc::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
         <span class="ident">tokio::sync::mpsc::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
     ) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
@@ -1159,16 +1167,16 @@
     <span class="comment">//</span>
     <span class="comment">// local broadcasting loop</span>
     <span class="comment">//</span>
-    <span class="kw">let</span> <span class="ident">test_sender</span> <span class="op">=</span> <span class="ident">blockchain_channel_sender</span>.<span class="ident">clone</span>();
-    <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-        <span class="kw">loop</span> {
-            <span class="comment">//test_sender</span>
-            <span class="comment">//    .send(MempoolMessage::TryBundleBlock)</span>
-            <span class="comment">//    .await</span>
-            <span class="comment">//    .expect(&quot;error: GenerateBlock message failed to send&quot;);</span>
-            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">1000</span>));
-        }
-    });
+    <span class="comment">//let test_sender = blockchain_channel_sender.clone();</span>
+    <span class="comment">//tokio::spawn(async move {</span>
+    <span class="comment">//    loop {</span>
+    <span class="comment">//test_sender</span>
+    <span class="comment">//    .send(MempoolMessage::TryBundleBlock)</span>
+    <span class="comment">//    .await</span>
+    <span class="comment">//    .expect(&quot;error: GenerateBlock message failed to send&quot;);</span>
+    <span class="comment">//        sleep(Duration::from_millis(1000));</span>
+    <span class="comment">//    }</span>
+    <span class="comment">//});</span>
 
     <span class="comment">//</span>
     <span class="comment">// receive broadcast messages</span>
@@ -1176,46 +1184,46 @@
     <span class="kw">loop</span> {
         <span class="macro">tokio::select!</span> {
 
-        <span class="comment">//</span>
-        <span class="comment">// local broadcast messages</span>
-        <span class="comment">//</span>
-            <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">blockchain_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">match</span> <span class="ident">message</span> {
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
-                }
-            }
+                <span class="comment">//</span>
+                <span class="comment">// local broadcast messages</span>
+                <span class="comment">//</span>
+                    <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">blockchain_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">match</span> <span class="ident">message</span> {
+                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
+                        }
+                    }
+
+                <span class="comment">//</span>
+                <span class="comment">// global broadcast messages</span>
+                <span class="comment">//</span>
+                    <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">match</span> <span class="ident">message</span> {
+                            <span class="ident">SaitoMessage::MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="macro">println!</span>(<span class="string">&quot;Blockchain aware of new block in mempool! -- we might use for this congestion tracking&quot;</span>);
+                            },
 
         <span class="comment">//</span>
-        <span class="comment">// global broadcast messages</span>
+        <span class="comment">// TODO - delete - keeping as quick reference for multiple ways</span>
+        <span class="comment">// to broadcast messages.</span>
         <span class="comment">//</span>
-            <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">match</span> <span class="ident">message</span> {
-                    <span class="ident">SaitoMessage::MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="macro">println!</span>(<span class="string">&quot;Blockchain aware of new block in mempool! -- we might use for this congestion tracking&quot;</span>);
-                    },
-
-<span class="comment">//</span>
-<span class="comment">// TODO - delete - keeping as quick reference for multiple ways</span>
-<span class="comment">// to broadcast messages.</span>
-<span class="comment">//</span>
-<span class="comment">//                    SaitoMessage::TestMessage =&gt; {</span>
-<span class="comment">//             		println!(&quot;Blockchain RECEIVED TEST MESSAGE!&quot;);</span>
-<span class="comment">//			let blockchain = blockchain_lock.read().await;</span>
-<span class="comment">//</span>
-<span class="comment">//			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();</span>
-<span class="comment">//</span>
-<span class="comment">//		        if !blockchain.broadcast_channel_sender.is_none() {</span>
-<span class="comment">//			    println!(&quot;blockchain broadcast channel sender exists!&quot;);</span>
-<span class="comment">//  </span>
-<span class="comment">//	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()</span>
-<span class="comment">//                        	.send(SaitoMessage::TestMessage3)</span>
-<span class="comment">//                        	.expect(&quot;error: Mempool TryBundle Block message failed to send&quot;);</span>
-<span class="comment">//        		}</span>
-<span class="comment">//                    },</span>
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
+        <span class="comment">//                    SaitoMessage::TestMessage =&gt; {</span>
+        <span class="comment">//             		println!(&quot;Blockchain RECEIVED TEST MESSAGE!&quot;);</span>
+        <span class="comment">//			let blockchain = blockchain_lock.read().await;</span>
+        <span class="comment">//</span>
+        <span class="comment">//			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();</span>
+        <span class="comment">//</span>
+        <span class="comment">//		        if !blockchain.broadcast_channel_sender.is_none() {</span>
+        <span class="comment">//			    println!(&quot;blockchain broadcast channel sender exists!&quot;);</span>
+        <span class="comment">//</span>
+        <span class="comment">//	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()</span>
+        <span class="comment">//                        	.send(SaitoMessage::TestMessage3)</span>
+        <span class="comment">//                        	.expect(&quot;error: Mempool TryBundle Block message failed to send&quot;);</span>
+        <span class="comment">//        		}</span>
+        <span class="comment">//                    },</span>
+                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
+                        }
+                    }
                 }
-            }
-        }
     }
 }
 

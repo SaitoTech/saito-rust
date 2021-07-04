@@ -218,6 +218,17 @@
 <span id="215">215</span>
 <span id="216">216</span>
 <span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoUTXOSetKey</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -236,6 +247,12 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Hash</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">TryFromByte</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SlipType</span> {
     <span class="ident">Normal</span>,
+    <span class="ident">MinerInput</span>,
+    <span class="ident">MinerOutput</span>,
+    <span class="ident">RouterInput</span>,
+    <span class="ident">RouterOutput</span>,
+    <span class="ident">StakerInput</span>,
+    <span class="ident">StakerOutput</span>,
     <span class="ident">Other</span>, <span class="comment">// need more than one value for TryFromBytes</span>
 }
 
@@ -337,6 +354,7 @@
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">publickey</span>);
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">uuid</span>);
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">amount</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">core</span>.<span class="ident">slip_ordinal</span>.<span class="ident">to_be_bytes</span>()));
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">core</span>.<span class="ident">slip_type</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>
     }
@@ -347,8 +365,11 @@
         <span class="ident">_lc</span>: <span class="ident">bool</span>,
         <span class="ident">slip_value</span>: <span class="ident">u64</span>,
     ) {
-        <span class="kw">let</span> <span class="ident">slip_key</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_utxoset_key</span>();
-        <span class="ident">utxoset</span>.<span class="ident">entry</span>(<span class="ident">slip_key</span>).<span class="ident">or_insert</span>(<span class="ident">slip_value</span>);
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> {
+            <span class="kw">let</span> <span class="ident">slip_key</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_utxoset_key</span>();
+            <span class="macro">println!</span>(<span class="string">&quot;inserting slip into shashmap: {:?}&quot;</span>, <span class="ident">slip_key</span>);
+            <span class="ident">utxoset</span>.<span class="ident">entry</span>(<span class="ident">slip_key</span>).<span class="ident">or_insert</span>(<span class="ident">slip_value</span>);
+        }
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_utxoset_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoUTXOSetKey</span> {
@@ -356,6 +377,7 @@
         <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_publickey</span>());
         <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_uuid</span>());
         <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_amount</span>().<span class="ident">to_be_bytes</span>());
+        <span class="ident">res</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_slip_ordinal</span>().<span class="ident">to_be_bytes</span>());
         <span class="ident">res</span>
     }
 
