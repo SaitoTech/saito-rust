@@ -267,18 +267,18 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
 
         <span class="comment">// for now we&#39;ll use bincode to de/serialize</span>
         <span class="ident">transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::GoldenTicket</span>);
         <span class="ident">transaction</span>.<span class="ident">set_message</span>(<span class="ident">golden_ticket</span>.<span class="ident">serialize_for_transaction</span>());
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
         <span class="ident">input1</span>.<span class="ident">set_publickey</span>(<span class="self">self</span>.<span class="ident">get_publickey</span>());
         <span class="ident">input1</span>.<span class="ident">set_amount</span>(<span class="number">0</span>);
         <span class="ident">input1</span>.<span class="ident">set_uuid</span>([<span class="number">0</span>; <span class="number">32</span>]);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
         <span class="ident">output1</span>.<span class="ident">set_publickey</span>(<span class="self">self</span>.<span class="ident">get_publickey</span>());
         <span class="ident">output1</span>.<span class="ident">set_amount</span>(<span class="number">0</span>);
         <span class="ident">output1</span>.<span class="ident">set_uuid</span>([<span class="number">0</span>; <span class="number">32</span>]);

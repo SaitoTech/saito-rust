@@ -61,13 +61,12 @@
 <span id="58">58</span>
 <span id="59">59</span>
 <span id="60">60</span>
-<span id="61">61</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block</span>::{<span class="ident">Block</span>, <span class="ident">BlockCore</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block</span>::{<span class="ident">Block</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::burnfee::BurnFee</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipCore</span>, <span class="ident">SlipType</span>};
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionCore</span>, <span class="ident">TransactionType</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipType</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction</span>::{<span class="ident">Transaction</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_mock_block</span>(
@@ -84,44 +83,43 @@
         <span class="ident">prev_timestamp</span>,
     );
     <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
-    <span class="kw">let</span> <span class="ident">mock_input</span> <span class="op">=</span> <span class="ident">Slip::new</span>(<span class="ident">SlipCore::new</span>(
-        <span class="ident">wallet</span>.<span class="ident">get_publickey</span>(),
-        [<span class="number">0</span>; <span class="number">32</span>],
-        <span class="number">1</span>,
-        <span class="number">0</span>,
-        <span class="ident">SlipType::Normal</span>,
-    ));
-    <span class="kw">let</span> <span class="ident">mock_output</span> <span class="op">=</span> <span class="ident">Slip::new</span>(<span class="ident">SlipCore::new</span>(
-        <span class="ident">wallet</span>.<span class="ident">get_publickey</span>(),
-        [<span class="number">0</span>; <span class="number">32</span>],
-        <span class="number">1</span>,
-        <span class="number">0</span>,
-        <span class="ident">SlipType::Normal</span>,
-    ));
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>(<span class="ident">TransactionCore::new</span>(
-        <span class="ident">timestamp</span>,
-        <span class="macro">vec!</span>[<span class="ident">mock_input</span>],
-        <span class="macro">vec!</span>[<span class="ident">mock_output</span>],
-        <span class="macro">vec!</span>[],
-        <span class="ident">TransactionType::Normal</span>,
-        [<span class="number">0</span>; <span class="number">64</span>],
-    ));
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_input</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+    <span class="ident">mock_input</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
+    <span class="ident">mock_input</span>.<span class="ident">set_uuid</span>([<span class="number">0</span>; <span class="number">32</span>]);
+    <span class="ident">mock_input</span>.<span class="ident">set_amount</span>(<span class="number">1</span>);
+    <span class="ident">mock_input</span>.<span class="ident">set_slip_ordinal</span>(<span class="number">0</span>);
+    <span class="ident">mock_input</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::Normal</span>);
+   
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_output</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+    <span class="ident">mock_output</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
+    <span class="ident">mock_output</span>.<span class="ident">set_uuid</span>([<span class="number">0</span>; <span class="number">32</span>]);
+    <span class="ident">mock_output</span>.<span class="ident">set_amount</span>(<span class="number">1</span>);
+    <span class="ident">mock_output</span>.<span class="ident">set_slip_ordinal</span>(<span class="number">0</span>);
+    <span class="ident">mock_output</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::Normal</span>);
+
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
+
+    <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">mock_input</span>);
+    <span class="ident">transaction</span>.<span class="ident">add_output</span>(<span class="ident">mock_output</span>);
+
     <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
-    <span class="kw">let</span> <span class="ident">mock_core</span> <span class="op">=</span> <span class="ident">BlockCore::new</span>(
-        <span class="ident">block_id</span>,
-        <span class="ident">timestamp</span>,
-        <span class="ident">previous_block_hash</span>,
-        <span class="ident">wallet</span>.<span class="ident">get_publickey</span>(),
-        [<span class="number">2</span>; <span class="number">32</span>],
-        [<span class="number">3</span>; <span class="number">64</span>],
-        <span class="number">0</span>,
-        <span class="ident">burnfee</span>,
-        <span class="number">0</span>,
-    );
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>(<span class="ident">mock_core</span>);
+
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
+
+    <span class="ident">block</span>.<span class="ident">set_id</span>(<span class="ident">block_id</span>);
+    <span class="ident">block</span>.<span class="ident">set_timestamp</span>(<span class="ident">timestamp</span>);
+    <span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>(<span class="ident">previous_block_hash</span>);
+    <span class="ident">block</span>.<span class="ident">set_creator</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
+    <span class="ident">block</span>.<span class="ident">set_merkle_root</span>([<span class="number">2</span>; <span class="number">32</span>]);
+    <span class="ident">block</span>.<span class="ident">set_signature</span>([<span class="number">3</span>; <span class="number">64</span>]);
+    <span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="number">0</span>);
+    <span class="ident">block</span>.<span class="ident">set_treasury</span>(<span class="number">0</span>);
+    <span class="ident">block</span>.<span class="ident">set_burnfee</span>(<span class="ident">burnfee</span>);
+
     <span class="ident">block</span>.<span class="ident">set_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec!</span>[<span class="ident">transaction</span>]);
     <span class="ident">block</span>.<span class="ident">set_merkle_root</span>(<span class="ident">block</span>.<span class="ident">generate_merkle_root</span>());
     <span class="ident">block</span>.<span class="ident">set_hash</span>(<span class="ident">block</span>.<span class="ident">generate_hash</span>());
+
     <span class="ident">block</span>
 }
 </pre></div>

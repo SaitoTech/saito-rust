@@ -797,73 +797,6 @@
 <span id="794">794</span>
 <span id="795">795</span>
 <span id="796">796</span>
-<span id="797">797</span>
-<span id="798">798</span>
-<span id="799">799</span>
-<span id="800">800</span>
-<span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
-<span id="814">814</span>
-<span id="815">815</span>
-<span id="816">816</span>
-<span id="817">817</span>
-<span id="818">818</span>
-<span id="819">819</span>
-<span id="820">820</span>
-<span id="821">821</span>
-<span id="822">822</span>
-<span id="823">823</span>
-<span id="824">824</span>
-<span id="825">825</span>
-<span id="826">826</span>
-<span id="827">827</span>
-<span id="828">828</span>
-<span id="829">829</span>
-<span id="830">830</span>
-<span id="831">831</span>
-<span id="832">832</span>
-<span id="833">833</span>
-<span id="834">834</span>
-<span id="835">835</span>
-<span id="836">836</span>
-<span id="837">837</span>
-<span id="838">838</span>
-<span id="839">839</span>
-<span id="840">840</span>
-<span id="841">841</span>
-<span id="842">842</span>
-<span id="843">843</span>
-<span id="844">844</span>
-<span id="845">845</span>
-<span id="846">846</span>
-<span id="847">847</span>
-<span id="848">848</span>
-<span id="849">849</span>
-<span id="850">850</span>
-<span id="851">851</span>
-<span id="852">852</span>
-<span id="853">853</span>
-<span id="854">854</span>
-<span id="855">855</span>
-<span id="856">856</span>
-<span id="857">857</span>
-<span id="858">858</span>
-<span id="859">859</span>
-<span id="860">860</span>
-<span id="861">861</span>
-<span id="862">862</span>
-<span id="863">863</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
@@ -872,7 +805,6 @@
     <span class="ident">golden_ticket::GoldenTicket</span>,
     <span class="ident">merkle::MerkleTreeLayer</span>,
     <span class="ident">slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipType</span>, <span class="ident">SLIP_SIZE</span>},
-    <span class="ident">time::create_timestamp</span>,
     <span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>, <span class="ident">TRANSACTION_SIZE</span>},
 };
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
@@ -880,65 +812,6 @@
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
-
-<span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockCore</span> {
-    <span class="ident">id</span>: <span class="ident">u64</span>,
-    <span class="ident">timestamp</span>: <span class="ident">u64</span>,
-    <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 33]&quot;</span>)]</span>
-    <span class="ident">creator</span>: <span class="ident">SaitoPublicKey</span>, <span class="comment">// public key of block creator</span>
-    <span class="ident">merkle_root</span>: <span class="ident">SaitoHash</span>, <span class="comment">// merkle root of txs</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 64]&quot;</span>)]</span>
-    <span class="ident">signature</span>: <span class="ident">SaitoSignature</span>, <span class="comment">// signature of block creator</span>
-    <span class="ident">treasury</span>: <span class="ident">u64</span>,
-    <span class="ident">burnfee</span>: <span class="ident">u64</span>,
-    <span class="ident">difficulty</span>: <span class="ident">u64</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">BlockCore</span> {
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">id</span>: <span class="ident">u64</span>,
-        <span class="ident">timestamp</span>: <span class="ident">u64</span>,
-        <span class="ident">previous_block_hash</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
-        <span class="ident">creator</span>: [<span class="ident">u8</span>; <span class="number">33</span>],
-        <span class="ident">merkle_root</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
-        <span class="ident">signature</span>: [<span class="ident">u8</span>; <span class="number">64</span>],
-        <span class="ident">treasury</span>: <span class="ident">u64</span>,
-        <span class="ident">burnfee</span>: <span class="ident">u64</span>,
-        <span class="ident">difficulty</span>: <span class="ident">u64</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">id</span>,
-            <span class="ident">timestamp</span>,
-            <span class="ident">previous_block_hash</span>,
-            <span class="ident">creator</span>,
-            <span class="ident">merkle_root</span>,
-            <span class="ident">signature</span>,
-            <span class="ident">treasury</span>,
-            <span class="ident">burnfee</span>,
-            <span class="ident">difficulty</span>,
-        }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BlockCore</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span><span class="ident">::new</span>(
-            <span class="number">0</span>,
-            <span class="ident">create_timestamp</span>(),
-            [<span class="number">0</span>; <span class="number">32</span>],
-            [<span class="number">0</span>; <span class="number">33</span>],
-            [<span class="number">0</span>; <span class="number">32</span>],
-            [<span class="number">0</span>; <span class="number">64</span>],
-            <span class="number">0</span>,
-            <span class="number">0</span>,
-            <span class="number">0</span>,
-        )
-    }
-}
 
 <span class="comment">//</span>
 <span class="comment">// object used when generating and validation transactions, containing the</span>
@@ -971,10 +844,21 @@
     }
 }
 
+<span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Block</span> {
     <span class="doccomment">/// Consensus Level Variables</span>
-    <span class="ident">core</span>: <span class="ident">BlockCore</span>,
+    <span class="ident">id</span>: <span class="ident">u64</span>,
+    <span class="ident">timestamp</span>: <span class="ident">u64</span>,
+    <span class="ident">previous_block_hash</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 33]&quot;</span>)]</span>
+    <span class="ident">creator</span>: [<span class="ident">u8</span>; <span class="number">33</span>],
+    <span class="ident">merkle_root</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 64]&quot;</span>)]</span>
+    <span class="ident">signature</span>: [<span class="ident">u8</span>; <span class="number">64</span>],
+    <span class="ident">treasury</span>: <span class="ident">u64</span>,
+    <span class="ident">burnfee</span>: <span class="ident">u64</span>,
+    <span class="ident">difficulty</span>: <span class="ident">u64</span>,
     <span class="doccomment">/// Transactions</span>
     <span class="kw">pub</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Self-Calculated / Validated</span>
@@ -986,9 +870,18 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Block</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">core</span>: <span class="ident">BlockCore</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::clippy::new_without_default</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
         <span class="ident">Block</span> {
-            <span class="ident">core</span>,
+            <span class="ident">id</span>: <span class="number">0</span>,
+            <span class="ident">timestamp</span>: <span class="number">0</span>,
+            <span class="ident">previous_block_hash</span>: [<span class="number">0</span>; <span class="number">32</span>],
+            <span class="ident">creator</span>: [<span class="number">0</span>; <span class="number">33</span>],
+            <span class="ident">merkle_root</span>: [<span class="number">0</span>; <span class="number">32</span>],
+            <span class="ident">signature</span>: [<span class="number">0</span>; <span class="number">64</span>],
+            <span class="ident">treasury</span>: <span class="number">0</span>,
+            <span class="ident">burnfee</span>: <span class="number">0</span>,
+            <span class="ident">difficulty</span>: <span class="number">0</span>,
             <span class="ident">transactions</span>: <span class="macro">vec!</span>[],
             <span class="ident">hash</span>: [<span class="number">0</span>; <span class="number">32</span>],
             <span class="ident">total_fees</span>: <span class="number">0</span>,
@@ -1009,39 +902,39 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">id</span>
+        <span class="self">self</span>.<span class="ident">id</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_timestamp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">timestamp</span>
+        <span class="self">self</span>.<span class="ident">timestamp</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_previous_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">previous_block_hash</span>
+        <span class="self">self</span>.<span class="ident">previous_block_hash</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_creator</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">creator</span>
+        <span class="self">self</span>.<span class="ident">creator</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_merkle_root</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">merkle_root</span>
+        <span class="self">self</span>.<span class="ident">merkle_root</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoSignature</span> {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">signature</span>
+        <span class="self">self</span>.<span class="ident">signature</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_treasury</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">treasury</span>
+        <span class="self">self</span>.<span class="ident">treasury</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_burnfee</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">burnfee</span>
+        <span class="self">self</span>.<span class="ident">burnfee</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_difficulty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">difficulty</span>
+        <span class="self">self</span>.<span class="ident">difficulty</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">transactions</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>) {
@@ -1053,7 +946,7 @@
     <span class="comment">//}</span>
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_id</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>;
+        <span class="self">self</span>.<span class="ident">id</span> <span class="op">=</span> <span class="ident">id</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_lc</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lc</span>: <span class="ident">bool</span>) {
@@ -1061,34 +954,35 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_timestamp</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">timestamp</span>: <span class="ident">u64</span>) {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">timestamp</span>;
+        <span class="self">self</span>.<span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">timestamp</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_previous_block_hash</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>) {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">previous_block_hash</span>;
+        <span class="self">self</span>.<span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">previous_block_hash</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_creator</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">creator</span>: <span class="ident">SaitoPublicKey</span>) {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">creator</span> <span class="op">=</span> <span class="ident">creator</span>;
+        <span class="self">self</span>.<span class="ident">creator</span> <span class="op">=</span> <span class="ident">creator</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_merkle_root</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">merkle_root</span>: <span class="ident">SaitoHash</span>) {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">merkle_root</span> <span class="op">=</span> <span class="ident">merkle_root</span>;
+        <span class="self">self</span>.<span class="ident">merkle_root</span> <span class="op">=</span> <span class="ident">merkle_root</span>;
     }
 
-    <span class="comment">// TODO - signature needs to be generated from consensus vars</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_signature</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {}
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_signature</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">signature</span> : <span class="ident">SaitoSignature</span>) {
+	<span class="self">self</span>.<span class="ident">signature</span> <span class="op">=</span> <span class="ident">signature</span>;
+    }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_treasury</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">treasury</span>: <span class="ident">u64</span>) {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">treasury</span> <span class="op">=</span> <span class="ident">treasury</span>;
+        <span class="self">self</span>.<span class="ident">treasury</span> <span class="op">=</span> <span class="ident">treasury</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_burnfee</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">burnfee</span>: <span class="ident">u64</span>) {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">burnfee</span> <span class="op">=</span> <span class="ident">burnfee</span>;
+        <span class="self">self</span>.<span class="ident">burnfee</span> <span class="op">=</span> <span class="ident">burnfee</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_difficulty</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">difficulty</span>: <span class="ident">u64</span>) {
-        <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">difficulty</span> <span class="op">=</span> <span class="ident">difficulty</span>;
+        <span class="self">self</span>.<span class="ident">difficulty</span> <span class="op">=</span> <span class="ident">difficulty</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_hash</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">hash</span>: <span class="ident">SaitoHash</span>) {
@@ -1112,15 +1006,15 @@
         <span class="comment">// fastest known way that isn&#39;t bincode ??</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">id</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">timestamp</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">previous_block_hash</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">creator</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">merkle_root</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">signature</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">treasury</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">burnfee</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">difficulty</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">id</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">timestamp</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">previous_block_hash</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">merkle_root</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">treasury</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">burnfee</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">difficulty</span>.<span class="ident">to_be_bytes</span>());
 
         <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">vbytes</span>)
     }
@@ -1140,15 +1034,15 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_net</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">iter</span>().<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">id</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">timestamp</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">previous_block_hash</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">creator</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">merkle_root</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">signature</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">treasury</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">burnfee</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">core</span>.<span class="ident">difficulty</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">id</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">timestamp</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">previous_block_hash</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">merkle_root</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">treasury</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">burnfee</span>.<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">difficulty</span>.<span class="ident">to_be_bytes</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized_txs</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> {
             <span class="ident">serialized_txs</span>.<span class="ident">extend</span>(<span class="ident">transaction</span>.<span class="ident">serialize_for_net</span>());
@@ -1208,17 +1102,18 @@
             <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
             <span class="ident">start_of_transaction_data</span> <span class="op">=</span> <span class="ident">end_of_transaction_data</span>;
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>(<span class="ident">BlockCore::new</span>(
-            <span class="ident">id</span>,
-            <span class="ident">timestamp</span>,
-            <span class="ident">previous_block_hash</span>,
-            <span class="ident">creator</span>,
-            <span class="ident">merkle_root</span>,
-            <span class="ident">signature</span>,
-            <span class="ident">treasury</span>,
-            <span class="ident">burnfee</span>,
-            <span class="ident">difficulty</span>,
-        ));
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
+	<span class="ident">block</span>.<span class="ident">set_id</span>(<span class="ident">id</span>);
+	<span class="ident">block</span>.<span class="ident">set_timestamp</span>(<span class="ident">timestamp</span>);
+	<span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>(<span class="ident">previous_block_hash</span>);
+	<span class="ident">block</span>.<span class="ident">set_creator</span>(<span class="ident">creator</span>);
+	<span class="ident">block</span>.<span class="ident">set_merkle_root</span>(<span class="ident">merkle_root</span>);
+	<span class="ident">block</span>.<span class="ident">set_signature</span>(<span class="ident">signature</span>);
+	<span class="ident">block</span>.<span class="ident">set_treasury</span>(<span class="ident">treasury</span>);
+	<span class="ident">block</span>.<span class="ident">set_burnfee</span>(<span class="ident">burnfee</span>);
+	<span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="ident">difficulty</span>);
+
         <span class="ident">block</span>.<span class="ident">set_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>);
         <span class="ident">block</span>
     }
@@ -1346,7 +1241,7 @@
             <span class="comment">//</span>
             <span class="comment">// create fee transaction</span>
             <span class="comment">//</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fee_transaction</span> <span class="op">=</span> <span class="ident">Transaction::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fee_transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
             <span class="ident">fee_transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::Fee</span>);
 
             <span class="comment">//</span>
@@ -1384,7 +1279,8 @@
             <span class="comment">//</span>
             <span class="comment">// TODO we need to add routing paths etc.</span>
             <span class="comment">//</span>
-            <span class="ident">router_publickey</span> <span class="op">=</span> <span class="ident">winning_tx</span>.<span class="ident">get_inputs</span>()[<span class="number">0</span>].<span class="ident">get_publickey</span>();
+	    <span class="kw">let</span> <span class="ident">random_number2</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">miner_random</span>.<span class="ident">to_vec</span>());
+            <span class="ident">router_publickey</span> <span class="op">=</span> <span class="ident">winning_tx</span>.<span class="ident">get_winning_routing_node</span>(<span class="ident">random_number2</span>);
 
             <span class="comment">//</span>
             <span class="comment">// winning miner from golden ticket</span>
@@ -1402,22 +1298,22 @@
             <span class="kw">let</span> <span class="ident">miner_payment</span> <span class="op">=</span> <span class="ident">total_fees</span> <span class="op">/</span> <span class="number">2</span>;
             <span class="kw">let</span> <span class="ident">router_payment</span> <span class="op">=</span> <span class="ident">total_fees</span> <span class="op">-</span> <span class="ident">miner_payment</span>;
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
             <span class="ident">input1</span>.<span class="ident">set_publickey</span>(<span class="ident">miner_publickey</span>);
             <span class="ident">input1</span>.<span class="ident">set_amount</span>(<span class="number">0</span>);
             <span class="ident">input1</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::MinerInput</span>);
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
             <span class="ident">output1</span>.<span class="ident">set_publickey</span>([<span class="number">0</span>; <span class="number">33</span>]);
             <span class="ident">output1</span>.<span class="ident">set_amount</span>(<span class="ident">miner_payment</span>);
             <span class="ident">output1</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::MinerOutput</span>);
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input2</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input2</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
             <span class="ident">input2</span>.<span class="ident">set_publickey</span>(<span class="ident">router_publickey</span>);
             <span class="ident">input2</span>.<span class="ident">set_amount</span>(<span class="number">0</span>);
             <span class="ident">input2</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::RouterInput</span>);
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output2</span> <span class="op">=</span> <span class="ident">Slip::default</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output2</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
             <span class="ident">output2</span>.<span class="ident">set_publickey</span>(<span class="ident">router_publickey</span>);
             <span class="ident">output2</span>.<span class="ident">set_amount</span>(<span class="ident">router_payment</span>);
             <span class="ident">output2</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::RouterOutput</span>);
@@ -1516,7 +1412,7 @@
         <span class="comment">//</span>
         <span class="comment">// verify merkle root</span>
         <span class="comment">//</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">merkle_root</span> <span class="op">=</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>] {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">merkle_root</span> <span class="op">=</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>] {
             <span class="macro">println!</span>(<span class="string">&quot;merkle root is false 1&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
@@ -1524,7 +1420,7 @@
         <span class="comment">//</span>
         <span class="comment">// verify merkle root</span>
         <span class="comment">//</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">core</span>.<span class="ident">merkle_root</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_merkle_root</span>() {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">merkle_root</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_merkle_root</span>() {
             <span class="macro">println!</span>(<span class="string">&quot;merkle root is false 2&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
@@ -1567,11 +1463,6 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Block</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span><span class="ident">::new</span>(<span class="ident">BlockCore::default</span>())
-    }
-}
 
 <span class="comment">//</span>
 <span class="comment">// TODO</span>
@@ -1599,102 +1490,77 @@
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipCore</span>},
+        <span class="ident">slip</span>::{<span class="ident">Slip</span>},
         <span class="ident">time::create_timestamp</span>,
-        <span class="ident">transaction</span>::{<span class="ident">TransactionCore</span>, <span class="ident">TransactionType</span>},
+        <span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>},
         <span class="ident">wallet::Wallet</span>,
     };
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">block_core_new_test</span>() {
-        <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
-        <span class="kw">let</span> <span class="ident">block_core</span> <span class="op">=</span> <span class="ident">BlockCore::new</span>(<span class="number">0</span>, <span class="ident">timestamp</span>, [<span class="number">0</span>; <span class="number">32</span>], [<span class="number">0</span>; <span class="number">33</span>], [<span class="number">0</span>; <span class="number">32</span>], [<span class="number">0</span>; <span class="number">64</span>], <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);
-
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">id</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">timestamp</span>, <span class="ident">timestamp</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">previous_block_hash</span>, [<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">creator</span>, [<span class="number">0</span>; <span class="number">33</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">merkle_root</span>, [<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">signature</span>, [<span class="number">0</span>; <span class="number">64</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">treasury</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">burnfee</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">difficulty</span>, <span class="number">0</span>);
-    }
-
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">block_core_default_test</span>() {
-        <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
-        <span class="kw">let</span> <span class="ident">block_core</span> <span class="op">=</span> <span class="ident">BlockCore::default</span>();
-
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">id</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">timestamp</span>, <span class="ident">timestamp</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">previous_block_hash</span>, [<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">creator</span>, [<span class="number">0</span>; <span class="number">33</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">merkle_root</span>, [<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">signature</span>, [<span class="number">0</span>; <span class="number">64</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">treasury</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">burnfee</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block_core</span>.<span class="ident">difficulty</span>, <span class="number">0</span>);
-    }
-
-    <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">block_new_test</span>() {
-        <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
-        <span class="kw">let</span> <span class="ident">core</span> <span class="op">=</span> <span class="ident">BlockCore::default</span>();
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>(<span class="ident">core</span>);
 
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">id</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">timestamp</span>, <span class="ident">timestamp</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">previous_block_hash</span>, [<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">creator</span>, [<span class="number">0</span>; <span class="number">33</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">merkle_root</span>, [<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">signature</span>, [<span class="number">0</span>; <span class="number">64</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">treasury</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">burnfee</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">difficulty</span>, <span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
+
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">id</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">timestamp</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">previous_block_hash</span>, [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">creator</span>, [<span class="number">0</span>; <span class="number">33</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">merkle_root</span>, [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">signature</span>, [<span class="number">0</span>; <span class="number">64</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">treasury</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">burnfee</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">difficulty</span>, <span class="number">0</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">block_default_test</span>() {
-        <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::default</span>();
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">id</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">timestamp</span>, <span class="ident">timestamp</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">previous_block_hash</span>, [<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">creator</span>, [<span class="number">0</span>; <span class="number">33</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">merkle_root</span>, [<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">signature</span>, [<span class="number">0</span>; <span class="number">64</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">treasury</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">burnfee</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">core</span>.<span class="ident">difficulty</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">id</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">timestamp</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">previous_block_hash</span>, [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">creator</span>, [<span class="number">0</span>; <span class="number">33</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">merkle_root</span>, [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">signature</span>, [<span class="number">0</span>; <span class="number">64</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">treasury</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">burnfee</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">difficulty</span>, <span class="number">0</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">block_serialize_for_net_test</span>() {
-        <span class="kw">let</span> <span class="ident">mock_input</span> <span class="op">=</span> <span class="ident">Slip::new</span>(<span class="ident">SlipCore::default</span>());
-        <span class="kw">let</span> <span class="ident">mock_output</span> <span class="op">=</span> <span class="ident">Slip::new</span>(<span class="ident">SlipCore::default</span>());
-        <span class="kw">let</span> <span class="ident">mock_tx</span> <span class="op">=</span> <span class="ident">Transaction::new</span>(<span class="ident">TransactionCore::new</span>(
-            <span class="ident">create_timestamp</span>(),
-            <span class="macro">vec!</span>[<span class="ident">mock_input</span>.<span class="ident">clone</span>()],
-            <span class="macro">vec!</span>[<span class="ident">mock_output</span>.<span class="ident">clone</span>()],
-            <span class="macro">vec!</span>[<span class="number">104</span>, <span class="number">101</span>, <span class="number">108</span>, <span class="number">108</span>, <span class="number">111</span>],
-            <span class="ident">TransactionType::Normal</span>,
-            [<span class="number">1</span>; <span class="number">64</span>],
-        ));
-        <span class="kw">let</span> <span class="ident">mock_tx2</span> <span class="op">=</span> <span class="ident">Transaction::new</span>(<span class="ident">TransactionCore::new</span>(
-            <span class="ident">create_timestamp</span>(),
-            <span class="macro">vec!</span>[<span class="ident">mock_input</span>.<span class="ident">clone</span>()],
-            <span class="macro">vec!</span>[<span class="ident">mock_output</span>.<span class="ident">clone</span>()],
-            <span class="macro">vec!</span>[],
-            <span class="ident">TransactionType::Normal</span>,
-            [<span class="number">2</span>; <span class="number">64</span>],
-        ));
+        <span class="kw">let</span> <span class="ident">mock_input</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+        <span class="kw">let</span> <span class="ident">mock_output</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_tx</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
+        <span class="ident">mock_tx</span>.<span class="ident">set_timestamp</span>(<span class="ident">create_timestamp</span>());
+        <span class="ident">mock_tx</span>.<span class="ident">add_input</span>(<span class="ident">mock_input</span>.<span class="ident">clone</span>());
+        <span class="ident">mock_tx</span>.<span class="ident">add_output</span>(<span class="ident">mock_output</span>.<span class="ident">clone</span>());
+        <span class="ident">mock_tx</span>.<span class="ident">set_message</span>(<span class="macro">vec!</span>[<span class="number">104</span>, <span class="number">101</span>, <span class="number">108</span>, <span class="number">111</span>]);
+        <span class="ident">mock_tx</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::Normal</span>);
+        <span class="ident">mock_tx</span>.<span class="ident">set_signature</span>([<span class="number">1</span>; <span class="number">64</span>]);
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_tx2</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
+        <span class="ident">mock_tx2</span>.<span class="ident">set_timestamp</span>(<span class="ident">create_timestamp</span>());
+        <span class="ident">mock_tx2</span>.<span class="ident">add_input</span>(<span class="ident">mock_input</span>);
+        <span class="ident">mock_tx2</span>.<span class="ident">add_output</span>(<span class="ident">mock_output</span>);
+        <span class="ident">mock_tx2</span>.<span class="ident">set_message</span>(<span class="macro">vec!</span>[]);
+        <span class="ident">mock_tx2</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::Normal</span>);
+        <span class="ident">mock_tx2</span>.<span class="ident">set_signature</span>([<span class="number">2</span>; <span class="number">64</span>]);
+
         <span class="kw">let</span> <span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>(<span class="ident">BlockCore::new</span>(
-            <span class="number">1</span>, <span class="ident">timestamp</span>, [<span class="number">1</span>; <span class="number">32</span>], [<span class="number">2</span>; <span class="number">33</span>], [<span class="number">3</span>; <span class="number">32</span>], [<span class="number">4</span>; <span class="number">64</span>], <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>,
-        ));
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
+	<span class="ident">block</span>.<span class="ident">set_id</span>(<span class="number">1</span>);
+	<span class="ident">block</span>.<span class="ident">set_timestamp</span>(<span class="ident">timestamp</span>);
+	<span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>([<span class="number">1</span>; <span class="number">32</span>]);
+	<span class="ident">block</span>.<span class="ident">set_creator</span>([<span class="number">2</span>; <span class="number">33</span>]);
+	<span class="ident">block</span>.<span class="ident">set_merkle_root</span>([<span class="number">3</span>; <span class="number">32</span>]);
+	<span class="ident">block</span>.<span class="ident">set_signature</span>([<span class="number">4</span>; <span class="number">64</span>]);
+	<span class="ident">block</span>.<span class="ident">set_treasury</span>(<span class="number">1</span>);
+	<span class="ident">block</span>.<span class="ident">set_burnfee</span>(<span class="number">2</span>);
+	<span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="number">3</span>);
         <span class="ident">block</span>.<span class="ident">set_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec!</span>[<span class="ident">mock_tx</span>, <span class="ident">mock_tx2</span>]);
+
         <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_net</span>();
         <span class="kw">let</span> <span class="ident">deserialized_block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="ident">serialized_block</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">block</span>, <span class="ident">deserialized_block</span>);
@@ -1711,13 +1577,13 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">block_merkle_root_test</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">5</span>)
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::default</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
                 <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
                 <span class="ident">transaction</span>
             })

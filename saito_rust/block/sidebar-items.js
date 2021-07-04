@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Block",""],["BlockCore",""],["DataToValidate",""]]});
+initSidebarItems({"struct":[["Block",""],["DataToValidate",""]]});
