@@ -27,17 +27,11 @@ pub enum TransactionType {
     Other,
 }
 
-/// TransactionCore is a self-contained object containing only the core
-/// information about the transaction that exists regardless of how it
-/// was routed or produced. It exists to simplify transaction serialization
-/// and deserialization until we have custom functions.
-///
-/// This is a private variable. Access to variables within the
-/// TransactionCore should be handled through getters and setters in the
-/// block which surrounds it.
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct TransactionCore {
+pub struct Transaction {
+
+    // the bulk of the consensus transaction data
     timestamp: u64,
     inputs: Vec<Slip>,
     outputs: Vec<Slip>,
@@ -45,47 +39,8 @@ pub struct TransactionCore {
     message: Vec<u8>,
     transaction_type: TransactionType,
     #[serde_as(as = "[_; 64]")]
-    signature: SaitoSignature, // compact signatures are 64 bytes; DER signatures are 68-72 bytes
-}
+    signature: SaitoSignature,
 
-impl TransactionCore {
-    pub fn new(
-        timestamp: u64,
-        inputs: Vec<Slip>,
-        outputs: Vec<Slip>,
-        message: Vec<u8>,
-        transaction_type: TransactionType,
-        signature: SaitoSignature,
-    ) -> Self {
-        Self {
-            timestamp,
-            inputs,
-            outputs,
-            message,
-            transaction_type,
-            signature,
-        }
-    }
-}
-
-impl Default for TransactionCore {
-    fn default() -> Self {
-        Self::new(
-            create_timestamp(),
-            vec![],
-            vec![],
-            vec![],
-            TransactionType::Normal,
-            [0; 64],
-        )
-    }
-}
-
-#[serde_with::serde_as]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct Transaction {
-    // the bulk of the consensus transaction data
-    core: TransactionCore,
     // hash used for merkle_root (does not include signature), and slip uuid
     hash_for_signature: SaitoHash,
 
@@ -99,9 +54,15 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn new(core: TransactionCore) -> Self {
+    #[allow(clippy::clippy::new_without_default)]
+    pub fn new() -> Self {
         Self {
-            core,
+            timestamp: 0,
+            inputs: vec![],
+            outputs: vec![],
+            message: vec![],
+            transaction_type: TransactionType::Normal,
+            signature: [0; 64],
             hash_for_signature: [0; 32],
             total_in: 0,
             total_out: 0,
@@ -113,22 +74,22 @@ impl Transaction {
     }
 
     pub fn add_input(&mut self, input_slip: Slip) {
-        self.core.inputs.push(input_slip);
+        self.inputs.push(input_slip);
     }
 
     pub fn add_output(&mut self, output_slip: Slip) {
-        self.core.outputs.push(output_slip);
+        self.outputs.push(output_slip);
     }
 
     pub fn is_fee_transaction(&self) -> bool {
-        if self.core.transaction_type == TransactionType::Fee {
+        if self.transaction_type == TransactionType::Fee {
             return true;
         }
         return false;
     }
 
     pub fn is_golden_ticket(&self) -> bool {
-        if self.core.transaction_type == TransactionType::GoldenTicket {
+        if self.transaction_type == TransactionType::GoldenTicket {
             return true;
         }
         return false;
@@ -139,31 +100,31 @@ impl Transaction {
     }
 
     pub fn get_timestamp(&self) -> u64 {
-        self.core.timestamp
+        self.timestamp
     }
 
     pub fn get_transaction_type(&self) -> TransactionType {
-        self.core.transaction_type
+        self.transaction_type
     }
 
     pub fn get_inputs(&self) -> &Vec<Slip> {
-        &self.core.inputs
+        &self.inputs
     }
 
     pub fn get_mut_inputs(&mut self) -> &mut Vec<Slip> {
-        &mut self.core.inputs
+        &mut self.inputs
     }
 
     pub fn get_mut_outputs(&mut self) -> &mut Vec<Slip> {
-        &mut self.core.outputs
+        &mut self.outputs
     }
 
     pub fn get_outputs(&self) -> &Vec<Slip> {
-        &self.core.outputs
+        &self.outputs
     }
 
     pub fn get_message(&self) -> &Vec<u8> {
-        &self.core.message
+        &self.message
     }
 
     pub fn get_hash_for_signature(&self) -> SaitoHash {
@@ -171,23 +132,31 @@ impl Transaction {
     }
 
     pub fn get_signature(&self) -> [u8; 64] {
-        self.core.signature
+        self.signature
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
-        self.core.timestamp = timestamp;
+        self.timestamp = timestamp;
     }
 
     pub fn set_transaction_type(&mut self, transaction_type: TransactionType) {
-        self.core.transaction_type = transaction_type;
+        self.transaction_type = transaction_type;
+    }
+
+    pub fn set_inputs(&mut self, inputs : Vec<Slip>) {
+        self.inputs = inputs;
+    }
+
+    pub fn set_outputs(&mut self, outputs : Vec<Slip>) {
+        self.outputs = outputs;
     }
 
     pub fn set_message(&mut self, message: Vec<u8>) {
-        self.core.message = message;
+        self.message = message;
     }
 
     pub fn set_signature(&mut self, sig: SaitoSignature) {
-        self.core.signature = sig;
+        self.signature = sig;
     }
 
     pub fn set_hash_for_signature(&mut self, hash: SaitoHash) {
@@ -216,15 +185,15 @@ impl Transaction {
         // fastest known way that isn't bincode ??
         //
         let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend(&self.core.timestamp.to_be_bytes());
-        for input in &self.core.inputs {
+        vbytes.extend(&self.timestamp.to_be_bytes());
+        for input in &self.inputs {
             vbytes.extend(&input.serialize_for_signature());
         }
-        for output in &self.core.outputs {
+        for output in &self.outputs {
             vbytes.extend(&output.serialize_for_signature());
         }
-        vbytes.extend(&(self.core.transaction_type as u32).to_be_bytes());
-        vbytes.extend(&self.core.message);
+        vbytes.extend(&(self.transaction_type as u32).to_be_bytes());
+        vbytes.extend(&self.message);
 
         vbytes
     }
@@ -266,14 +235,14 @@ impl Transaction {
         let message = bytes[start_of_message..start_of_message + message_len]
             .try_into()
             .unwrap();
-        Transaction::new(TransactionCore::new(
-            timestamp,
-            inputs,
-            outputs,
-            message,
-            transaction_type,
-            signature,
-        ))
+        let mut transaction = Transaction::new();
+	transaction.set_timestamp(timestamp);
+	transaction.set_inputs(inputs);
+	transaction.set_outputs(outputs);
+	transaction.set_message(message);
+	transaction.set_transaction_type(transaction_type);
+	transaction.set_signature(signature);
+	transaction
     }
 
     /// Serialize a Transaction for transport or disk.
@@ -288,19 +257,19 @@ impl Transaction {
     /// [message]
     pub fn serialize_for_net(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend(&(self.core.inputs.len() as u32).to_be_bytes());
-        vbytes.extend(&(self.core.outputs.len() as u32).to_be_bytes());
-        vbytes.extend(&(self.core.message.len() as u32).to_be_bytes());
-        vbytes.extend(&self.core.signature);
-        vbytes.extend(&self.core.timestamp.to_be_bytes());
-        vbytes.extend(&(self.core.transaction_type as u8).to_be_bytes());
-        for input in &self.core.inputs {
+        vbytes.extend(&(self.inputs.len() as u32).to_be_bytes());
+        vbytes.extend(&(self.outputs.len() as u32).to_be_bytes());
+        vbytes.extend(&(self.message.len() as u32).to_be_bytes());
+        vbytes.extend(&self.signature);
+        vbytes.extend(&self.timestamp.to_be_bytes());
+        vbytes.extend(&(self.transaction_type as u8).to_be_bytes());
+        for input in &self.inputs {
             vbytes.extend(&input.serialize_for_net());
         }
-        for output in &self.core.outputs {
+        for output in &self.outputs {
             vbytes.extend(&output.serialize_for_net());
         }
-        vbytes.extend(&self.core.message);
+        vbytes.extend(&self.message);
         vbytes
     }
     /// Serialize a Transaction for transport or disk.
@@ -346,10 +315,10 @@ impl Transaction {
         //
         let mut nolan_in: u64 = 0;
         let mut nolan_out: u64 = 0;
-        for input in &self.core.inputs {
+        for input in &self.inputs {
             nolan_in += input.get_amount();
         }
-        for output in &self.core.outputs {
+        for output in &self.outputs {
             nolan_out += output.get_amount();
         }
         self.total_in = nolan_in;
@@ -375,10 +344,10 @@ impl Transaction {
         let hash_for_signature: SaitoHash = self.get_hash_for_signature();
         let sig: SaitoSignature = self.get_signature();
 
-        if self.core.inputs.is_empty() {
+        if self.inputs.is_empty() {
             panic!("transaction must have at least 1 input");
         }
-        let publickey: SaitoPublicKey = self.core.inputs[0].get_publickey();
+        let publickey: SaitoPublicKey = self.inputs[0].get_publickey();
 
         if !verify(&hash_for_signature, sig, publickey) {
             println!("message verifies not");
@@ -420,7 +389,7 @@ impl Transaction {
         //
         // VALIDATE UTXO inputs
         //
-        for input in &self.core.inputs {
+        for input in &self.inputs {
             if !input.validate() {
                 return false;
             }
@@ -429,11 +398,6 @@ impl Transaction {
     }
 }
 
-impl Default for Transaction {
-    fn default() -> Self {
-        Self::new(TransactionCore::default())
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -442,72 +406,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn transaction_core_default_test() {
-        let timestamp = create_timestamp();
-        let tx_core = TransactionCore::default();
-        assert_eq!(tx_core.timestamp, timestamp);
-        assert_eq!(tx_core.inputs, vec![]);
-        assert_eq!(tx_core.outputs, vec![]);
-        assert_eq!(tx_core.message, Vec::<u8>::new());
-        assert_eq!(tx_core.transaction_type, TransactionType::Normal);
-    }
-
-    #[test]
-    fn transaction_core_new_test() {
-        let timestamp = create_timestamp();
-        let tx_core = TransactionCore::new(
-            timestamp,
-            vec![],
-            vec![],
-            vec![],
-            TransactionType::Normal,
-            [0; 64],
-        );
-        assert_eq!(tx_core.timestamp, timestamp);
-        assert_eq!(tx_core.inputs, vec![]);
-        assert_eq!(tx_core.outputs, vec![]);
-        assert_eq!(tx_core.message, Vec::<u8>::new());
-        assert_eq!(tx_core.transaction_type, TransactionType::Normal);
-        assert_eq!(tx_core.signature, [0; 64]);
-    }
-
-    #[test]
-    fn transaction_default_test() {
-        let timestamp = create_timestamp();
-        let tx = Transaction::default();
-        assert_eq!(tx.core.timestamp, timestamp);
-        assert_eq!(tx.core.inputs, vec![]);
-        assert_eq!(tx.core.outputs, vec![]);
-        assert_eq!(tx.core.message, Vec::<u8>::new());
-        assert_eq!(tx.core.transaction_type, TransactionType::Normal);
-        assert_eq!(tx.core.signature, [0; 64]);
-    }
-
-    #[test]
     fn transaction_new_test() {
-        let timestamp = create_timestamp();
-        let tx_core = TransactionCore::default();
-        let tx = Transaction::new(tx_core);
-        assert_eq!(tx.core.timestamp, timestamp);
-        assert_eq!(tx.core.inputs, vec![]);
-        assert_eq!(tx.core.outputs, vec![]);
-        assert_eq!(tx.core.message, Vec::<u8>::new());
-        assert_eq!(tx.core.transaction_type, TransactionType::Normal);
-        assert_eq!(tx.core.signature, [0; 64]);
+        let tx = Transaction::new();
+        assert_eq!(tx.timestamp, 0);
+        assert_eq!(tx.inputs, vec![]);
+        assert_eq!(tx.outputs, vec![]);
+        assert_eq!(tx.message, Vec::<u8>::new());
+        assert_eq!(tx.transaction_type, TransactionType::Normal);
+        assert_eq!(tx.signature, [0; 64]);
     }
 
     #[test]
     fn serialize_for_net_test() {
         let mock_input = Slip::new(SlipCore::default());
         let mock_output = Slip::new(SlipCore::default());
-        let mock_tx = Transaction::new(TransactionCore::new(
-            create_timestamp(),
-            vec![mock_input],
-            vec![mock_output],
-            vec![104, 101, 108, 108, 111],
-            TransactionType::Normal,
-            [1; 64],
-        ));
+        let mock_tx = Transaction::new();
+	mock_tx.set_timestamp(create_timestamp());
+	mock_tx.add_input(mock_input);
+	mock_tx.add_output(mock_output);
+	mock_tx.set_message(vec![104, 101, 108, 108, 111]);
+        mock_tx.set_transaction_type(TransactionType::Normal);
+	mock_tx.set_signature([1; 64]);
         let serialized_tx = mock_tx.serialize_for_net();
         let deserialized_tx = Transaction::deserialize_from_net(serialized_tx);
         assert_eq!(mock_tx, deserialized_tx);

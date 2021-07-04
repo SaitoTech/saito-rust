@@ -73,7 +73,7 @@ impl Wallet {
         &mut self,
         golden_ticket: GoldenTicket,
     ) -> Transaction {
-        let mut transaction = Transaction::default();
+        let mut transaction = Transaction::new();
 
         // for now we'll use bincode to de/serialize
         transaction.set_transaction_type(TransactionType::GoldenTicket);

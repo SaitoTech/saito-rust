@@ -5,7 +5,6 @@ use crate::{
     golden_ticket::GoldenTicket,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
-    time::create_timestamp,
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
 };
 use ahash::AHashMap;
@@ -13,65 +12,6 @@ use bigint::uint::U256;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-
-#[serde_with::serde_as]
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct BlockCore {
-    id: u64,
-    timestamp: u64,
-    previous_block_hash: SaitoHash,
-    #[serde_as(as = "[_; 33]")]
-    creator: SaitoPublicKey, // public key of block creator
-    merkle_root: SaitoHash, // merkle root of txs
-    #[serde_as(as = "[_; 64]")]
-    signature: SaitoSignature, // signature of block creator
-    treasury: u64,
-    burnfee: u64,
-    difficulty: u64,
-}
-
-impl BlockCore {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        id: u64,
-        timestamp: u64,
-        previous_block_hash: [u8; 32],
-        creator: [u8; 33],
-        merkle_root: [u8; 32],
-        signature: [u8; 64],
-        treasury: u64,
-        burnfee: u64,
-        difficulty: u64,
-    ) -> Self {
-        Self {
-            id,
-            timestamp,
-            previous_block_hash,
-            creator,
-            merkle_root,
-            signature,
-            treasury,
-            burnfee,
-            difficulty,
-        }
-    }
-}
-
-impl Default for BlockCore {
-    fn default() -> Self {
-        Self::new(
-            0,
-            create_timestamp(),
-            [0; 32],
-            [0; 33],
-            [0; 32],
-            [0; 64],
-            0,
-            0,
-            0,
-        )
-    }
-}
 
 //
 // object used when generating and validation transactions, containing the
@@ -104,10 +44,21 @@ impl DataToValidate {
     }
 }
 
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
     /// Consensus Level Variables
-    core: BlockCore,
+    id: u64,
+    timestamp: u64,
+    previous_block_hash: [u8; 32],
+    #[serde_as(as = "[_; 33]")]
+    creator: [u8; 33],
+    merkle_root: [u8; 32],
+    #[serde_as(as = "[_; 64]")]
+    signature: [u8; 64],
+    treasury: u64,
+    burnfee: u64,
+    difficulty: u64,
     /// Transactions
     pub transactions: Vec<Transaction>,
     /// Self-Calculated / Validated
@@ -119,9 +70,18 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(core: BlockCore) -> Block {
+    #[allow(clippy::clippy::new_without_default)]
+    pub fn new() -> Block {
         Block {
-            core,
+            id: 0,
+            timestamp: 0,
+            previous_block_hash: [0; 32],
+            creator: [0; 33],
+            merkle_root: [0; 32],
+            signature: [0; 64],
+            treasury: 0,
+            burnfee: 0,
+            difficulty: 0,
             transactions: vec![],
             hash: [0; 32],
             total_fees: 0,
@@ -142,39 +102,39 @@ impl Block {
     }
 
     pub fn get_id(&self) -> u64 {
-        self.core.id
+        self.id
     }
 
     pub fn get_timestamp(&self) -> u64 {
-        self.core.timestamp
+        self.timestamp
     }
 
     pub fn get_previous_block_hash(&self) -> SaitoHash {
-        self.core.previous_block_hash
+        self.previous_block_hash
     }
 
     pub fn get_creator(&self) -> SaitoPublicKey {
-        self.core.creator
+        self.creator
     }
 
     pub fn get_merkle_root(&self) -> SaitoHash {
-        self.core.merkle_root
+        self.merkle_root
     }
 
     pub fn get_signature(&self) -> SaitoSignature {
-        self.core.signature
+        self.signature
     }
 
     pub fn get_treasury(&self) -> u64 {
-        self.core.treasury
+        self.treasury
     }
 
     pub fn get_burnfee(&self) -> u64 {
-        self.core.burnfee
+        self.burnfee
     }
 
     pub fn get_difficulty(&self) -> u64 {
-        self.core.difficulty
+        self.difficulty
     }
 
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
@@ -186,7 +146,7 @@ impl Block {
     //}
 
     pub fn set_id(&mut self, id: u64) {
-        self.core.id = id;
+        self.id = id;
     }
 
     pub fn set_lc(&mut self, lc: bool) {
@@ -194,34 +154,35 @@ impl Block {
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
-        self.core.timestamp = timestamp;
+        self.timestamp = timestamp;
     }
 
     pub fn set_previous_block_hash(&mut self, previous_block_hash: SaitoHash) {
-        self.core.previous_block_hash = previous_block_hash;
+        self.previous_block_hash = previous_block_hash;
     }
 
     pub fn set_creator(&mut self, creator: SaitoPublicKey) {
-        self.core.creator = creator;
+        self.creator = creator;
     }
 
     pub fn set_merkle_root(&mut self, merkle_root: SaitoHash) {
-        self.core.merkle_root = merkle_root;
+        self.merkle_root = merkle_root;
     }
 
-    // TODO - signature needs to be generated from consensus vars
-    pub fn set_signature(&mut self) {}
+    pub fn set_signature(&mut self, signature : SaitoSignature) {
+	self.signature = signature;
+    }
 
     pub fn set_treasury(&mut self, treasury: u64) {
-        self.core.treasury = treasury;
+        self.treasury = treasury;
     }
 
     pub fn set_burnfee(&mut self, burnfee: u64) {
-        self.core.burnfee = burnfee;
+        self.burnfee = burnfee;
     }
 
     pub fn set_difficulty(&mut self, difficulty: u64) {
-        self.core.difficulty = difficulty;
+        self.difficulty = difficulty;
     }
 
     pub fn set_hash(&mut self, hash: SaitoHash) {
@@ -245,15 +206,15 @@ impl Block {
         // fastest known way that isn't bincode ??
         //
         let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend(&self.core.id.to_be_bytes());
-        vbytes.extend(&self.core.timestamp.to_be_bytes());
-        vbytes.extend(&self.core.previous_block_hash);
-        vbytes.extend(&self.core.creator);
-        vbytes.extend(&self.core.merkle_root);
-        vbytes.extend(&self.core.signature);
-        vbytes.extend(&self.core.treasury.to_be_bytes());
-        vbytes.extend(&self.core.burnfee.to_be_bytes());
-        vbytes.extend(&self.core.difficulty.to_be_bytes());
+        vbytes.extend(&self.id.to_be_bytes());
+        vbytes.extend(&self.timestamp.to_be_bytes());
+        vbytes.extend(&self.previous_block_hash);
+        vbytes.extend(&self.creator);
+        vbytes.extend(&self.merkle_root);
+        vbytes.extend(&self.signature);
+        vbytes.extend(&self.treasury.to_be_bytes());
+        vbytes.extend(&self.burnfee.to_be_bytes());
+        vbytes.extend(&self.difficulty.to_be_bytes());
 
         hash(&vbytes)
     }
@@ -273,15 +234,15 @@ impl Block {
     pub fn serialize_for_net(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&(self.transactions.iter().len() as u32).to_be_bytes());
-        vbytes.extend(&self.core.id.to_be_bytes());
-        vbytes.extend(&self.core.timestamp.to_be_bytes());
-        vbytes.extend(&self.core.previous_block_hash);
-        vbytes.extend(&self.core.creator);
-        vbytes.extend(&self.core.merkle_root);
-        vbytes.extend(&self.core.signature);
-        vbytes.extend(&self.core.treasury.to_be_bytes());
-        vbytes.extend(&self.core.burnfee.to_be_bytes());
-        vbytes.extend(&self.core.difficulty.to_be_bytes());
+        vbytes.extend(&self.id.to_be_bytes());
+        vbytes.extend(&self.timestamp.to_be_bytes());
+        vbytes.extend(&self.previous_block_hash);
+        vbytes.extend(&self.creator);
+        vbytes.extend(&self.merkle_root);
+        vbytes.extend(&self.signature);
+        vbytes.extend(&self.treasury.to_be_bytes());
+        vbytes.extend(&self.burnfee.to_be_bytes());
+        vbytes.extend(&self.difficulty.to_be_bytes());
         let mut serialized_txs = vec![];
         self.transactions.iter().for_each(|transaction| {
             serialized_txs.extend(transaction.serialize_for_net());
@@ -341,17 +302,18 @@ impl Block {
             transactions.push(transaction);
             start_of_transaction_data = end_of_transaction_data;
         }
-        let mut block = Block::new(BlockCore::new(
-            id,
-            timestamp,
-            previous_block_hash,
-            creator,
-            merkle_root,
-            signature,
-            treasury,
-            burnfee,
-            difficulty,
-        ));
+
+        let mut block = Block::new();
+	block.set_id(id);
+	block.set_timestamp(timestamp);
+	block.set_previous_block_hash(previous_block_hash);
+	block.set_creator(creator);
+	block.set_merkle_root(merkle_root);
+	block.set_signature(signature);
+	block.set_treasury(treasury);
+	block.set_burnfee(burnfee);
+	block.set_difficulty(difficulty);
+
         block.set_transactions(&mut transactions);
         block
     }
@@ -479,7 +441,7 @@ impl Block {
             //
             // create fee transaction
             //
-            let mut fee_transaction = Transaction::default();
+            let mut fee_transaction = Transaction::new();
             fee_transaction.set_transaction_type(TransactionType::Fee);
 
             //
@@ -649,7 +611,7 @@ impl Block {
         //
         // verify merkle root
         //
-        if self.core.merkle_root == [0; 32] {
+        if self.merkle_root == [0; 32] {
             println!("merkle root is false 1");
             return false;
         }
@@ -657,7 +619,7 @@ impl Block {
         //
         // verify merkle root
         //
-        if self.core.merkle_root != self.generate_merkle_root() {
+        if self.merkle_root != self.generate_merkle_root() {
             println!("merkle root is false 2");
             return false;
         }
@@ -700,11 +662,6 @@ impl Block {
     }
 }
 
-impl Default for Block {
-    fn default() -> Self {
-        Self::new(BlockCore::default())
-    }
-}
 
 //
 // TODO
@@ -734,100 +691,76 @@ mod tests {
     use crate::{
         slip::{Slip, SlipCore},
         time::create_timestamp,
-        transaction::{TransactionCore, TransactionType},
+        transaction::{Transaction, TransactionType},
         wallet::Wallet,
     };
 
     #[test]
-    fn block_core_new_test() {
-        let timestamp = create_timestamp();
-        let block_core = BlockCore::new(0, timestamp, [0; 32], [0; 33], [0; 32], [0; 64], 0, 0, 0);
-
-        assert_eq!(block_core.id, 0);
-        assert_eq!(block_core.timestamp, timestamp);
-        assert_eq!(block_core.previous_block_hash, [0; 32]);
-        assert_eq!(block_core.creator, [0; 33]);
-        assert_eq!(block_core.merkle_root, [0; 32]);
-        assert_eq!(block_core.signature, [0; 64]);
-        assert_eq!(block_core.treasury, 0);
-        assert_eq!(block_core.burnfee, 0);
-        assert_eq!(block_core.difficulty, 0);
-    }
-
-    #[test]
-    fn block_core_default_test() {
-        let timestamp = create_timestamp();
-        let block_core = BlockCore::default();
-
-        assert_eq!(block_core.id, 0);
-        assert_eq!(block_core.timestamp, timestamp);
-        assert_eq!(block_core.previous_block_hash, [0; 32]);
-        assert_eq!(block_core.creator, [0; 33]);
-        assert_eq!(block_core.merkle_root, [0; 32]);
-        assert_eq!(block_core.signature, [0; 64]);
-        assert_eq!(block_core.treasury, 0);
-        assert_eq!(block_core.burnfee, 0);
-        assert_eq!(block_core.difficulty, 0);
-    }
-
-    #[test]
     fn block_new_test() {
-        let timestamp = create_timestamp();
-        let core = BlockCore::default();
-        let block = Block::new(core);
 
-        assert_eq!(block.core.id, 0);
-        assert_eq!(block.core.timestamp, timestamp);
-        assert_eq!(block.core.previous_block_hash, [0; 32]);
-        assert_eq!(block.core.creator, [0; 33]);
-        assert_eq!(block.core.merkle_root, [0; 32]);
-        assert_eq!(block.core.signature, [0; 64]);
-        assert_eq!(block.core.treasury, 0);
-        assert_eq!(block.core.burnfee, 0);
-        assert_eq!(block.core.difficulty, 0);
+        let block = Block::new();
+
+        assert_eq!(block.id, 0);
+        assert_eq!(block.timestamp, 0);
+        assert_eq!(block.previous_block_hash, [0; 32]);
+        assert_eq!(block.creator, [0; 33]);
+        assert_eq!(block.merkle_root, [0; 32]);
+        assert_eq!(block.signature, [0; 64]);
+        assert_eq!(block.treasury, 0);
+        assert_eq!(block.burnfee, 0);
+        assert_eq!(block.difficulty, 0);
     }
 
     #[test]
     fn block_default_test() {
         let timestamp = create_timestamp();
-        let block = Block::default();
+        let block = Block::new();
 
-        assert_eq!(block.core.id, 0);
-        assert_eq!(block.core.timestamp, timestamp);
-        assert_eq!(block.core.previous_block_hash, [0; 32]);
-        assert_eq!(block.core.creator, [0; 33]);
-        assert_eq!(block.core.merkle_root, [0; 32]);
-        assert_eq!(block.core.signature, [0; 64]);
-        assert_eq!(block.core.treasury, 0);
-        assert_eq!(block.core.burnfee, 0);
-        assert_eq!(block.core.difficulty, 0);
+        assert_eq!(block.id, 0);
+        assert_eq!(block.timestamp, timestamp);
+        assert_eq!(block.previous_block_hash, [0; 32]);
+        assert_eq!(block.creator, [0; 33]);
+        assert_eq!(block.merkle_root, [0; 32]);
+        assert_eq!(block.signature, [0; 64]);
+        assert_eq!(block.treasury, 0);
+        assert_eq!(block.burnfee, 0);
+        assert_eq!(block.difficulty, 0);
     }
 
     #[test]
     fn block_serialize_for_net_test() {
         let mock_input = Slip::new(SlipCore::default());
         let mock_output = Slip::new(SlipCore::default());
-        let mock_tx = Transaction::new(TransactionCore::new(
-            create_timestamp(),
-            vec![mock_input.clone()],
-            vec![mock_output.clone()],
-            vec![104, 101, 108, 108, 111],
-            TransactionType::Normal,
-            [1; 64],
-        ));
-        let mock_tx2 = Transaction::new(TransactionCore::new(
-            create_timestamp(),
-            vec![mock_input.clone()],
-            vec![mock_output.clone()],
-            vec![],
-            TransactionType::Normal,
-            [2; 64],
-        ));
+        let mock_tx = Transaction::new();
+        mock_tx.set_timestamp(create_timestamp());
+        mock_tx.add_input(mock_input.clone());
+        mock_tx.add_output(mock_output.clone());
+        mock_tx.set_message(vec![104, 101, 108, 111]);
+        mock_tx.set_transaction_type(TransactionType::Normal);
+        mock_tx.set_signature([1; 64]);
+
+        let mock_tx2 = Transaction::new();
+        mock_tx2.set_timestamp(create_timestamp());
+        mock_tx2.add_input(mock_input);
+        mock_tx2.add_output(mock_output);
+        mock_tx2.set_message(vec![]);
+        mock_tx2.set_transaction_type(TransactionType::Normal);
+        mock_tx2.set_signature([2; 64]);
+
         let timestamp = create_timestamp();
-        let mut block = Block::new(BlockCore::new(
-            1, timestamp, [1; 32], [2; 33], [3; 32], [4; 64], 1, 2, 3,
-        ));
+
+        let mut block = Block::new();
+	block.set_id(1);
+	block.set_timestamp(timestamp);
+	block.set_previous_block_hash([1; 32]);
+	block.set_creator([2; 33]);
+	block.set_merkle_root([3; 32]);
+	block.set_signature([4; 64]);
+	block.set_treasury(1);
+	block.set_burnfee(2);
+	block.set_difficulty(3);
         block.set_transactions(&mut vec![mock_tx, mock_tx2]);
+
         let serialized_block = block.serialize_for_net();
         let deserialized_block = Block::deserialize_for_net(serialized_block);
         assert_eq!(block, deserialized_block);
@@ -844,13 +777,13 @@ mod tests {
 
     #[test]
     fn block_merkle_root_test() {
-        let mut block = Block::default();
+        let mut block = Block::new();
         let wallet = Wallet::new();
 
         let mut transactions = (0..5)
             .into_iter()
             .map(|_| {
-                let mut transaction = Transaction::default();
+                let mut transaction = Transaction::new();
                 transaction.sign(wallet.get_privatekey());
                 transaction
             })
