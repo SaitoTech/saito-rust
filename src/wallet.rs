@@ -69,10 +69,10 @@ impl Wallet {
         sign(message_bytes, self.privatekey)
     }
 
-
-
-    pub async fn create_golden_ticket_transaction(&mut self, golden_ticket : GoldenTicket) -> Transaction {
-
+    pub async fn create_golden_ticket_transaction(
+        &mut self,
+        golden_ticket: GoldenTicket,
+    ) -> Transaction {
         let mut transaction = Transaction::default();
 
         // for now we'll use bincode to de/serialize
@@ -95,8 +95,6 @@ impl Wallet {
 
         transaction
     }
-
-
 }
 
 /// The `WalletSlip` stores the essential information needed to track which

@@ -24,9 +24,9 @@ pub enum SaitoMessage {
     TestMessage2,
     TestMessage3,
     BlockchainNewLongestChainBlock { hash: SaitoHash, difficulty: u64 },
-    BlockchainAddBlockSuccess { hash : SaitoHash },
-    BlockchainAddBlockFailure { hash : SaitoHash },
-    MinerNewGoldenTicket { ticket : GoldenTicket },
+    BlockchainAddBlockSuccess { hash: SaitoHash },
+    BlockchainAddBlockFailure { hash: SaitoHash },
+    MinerNewGoldenTicket { ticket: GoldenTicket },
     MempoolNewBlock { hash: SaitoHash },
     MempoolNewTransaction { transaction: Transaction },
 }

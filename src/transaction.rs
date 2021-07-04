@@ -96,7 +96,6 @@ pub struct Transaction {
 
     pub routing_work_to_me: u64,
     pub routing_work_to_creator: u64,
-
 }
 
 impl Transaction {
@@ -104,12 +103,12 @@ impl Transaction {
         Self {
             core,
             hash_for_signature: [0; 32],
-    	    total_in: 0,
-	    total_out: 0,
-	    total_fees: 0,
-	    cumulative_fees: 0,
-	    routing_work_to_me: 0,
-	    routing_work_to_creator: 0,
+            total_in: 0,
+            total_out: 0,
+            total_fees: 0,
+            cumulative_fees: 0,
+            routing_work_to_me: 0,
+            routing_work_to_creator: 0,
         }
     }
 
@@ -122,13 +121,17 @@ impl Transaction {
     }
 
     pub fn is_fee_transaction(&self) -> bool {
-	if self.core.transaction_type == TransactionType::Fee { return true; }
-	return false;
+        if self.core.transaction_type == TransactionType::Fee {
+            return true;
+        }
+        return false;
     }
 
     pub fn is_golden_ticket(&self) -> bool {
-	if self.core.transaction_type == TransactionType::GoldenTicket { return true; }
-	return false;
+        if self.core.transaction_type == TransactionType::GoldenTicket {
+            return true;
+        }
+        return false;
     }
 
     pub fn get_total_fees(&self) -> u64 {
@@ -192,17 +195,16 @@ impl Transaction {
     }
 
     pub fn sign(&mut self, privatekey: SaitoPrivateKey) {
-
-	//
-	// we set slip ordinals when signing
-	//
-	let mut slip_ordinal = 0;
-println!("signing tx with {} outputs: ", self.get_outputs().len());
+        //
+        // we set slip ordinals when signing
+        //
+        let mut slip_ordinal = 0;
+        println!("signing tx with {} outputs: ", self.get_outputs().len());
         for output in self.get_mut_outputs() {
-println!("updating slip ordinal: {}", slip_ordinal);
-	    output.set_slip_ordinal(slip_ordinal); 
-	    slip_ordinal += 1;
-	}
+            println!("updating slip ordinal: {}", slip_ordinal);
+            output.set_slip_ordinal(slip_ordinal);
+            slip_ordinal += 1;
+        }
 
         let hash_for_signature = hash(&self.serialize_for_signature());
         self.set_signature(sign(&hash_for_signature, privatekey));
@@ -328,42 +330,45 @@ println!("updating slip ordinal: {}", slip_ordinal);
     //
     // we have to calculate cumulative fees sequentially.
     //
-    pub fn pre_validation_calculations_cumulative_fees(&mut self, cumulative_fees : u64) -> u64 {
-	self.cumulative_fees = cumulative_fees + self.total_fees;
-	return self.cumulative_fees;
+    pub fn pre_validation_calculations_cumulative_fees(&mut self, cumulative_fees: u64) -> u64 {
+        self.cumulative_fees = cumulative_fees + self.total_fees;
+        return self.cumulative_fees;
     }
     pub fn pre_validation_calculations_parallelizable(&mut self) -> bool {
-
         //
         // and save the hash_for_signature so we can use it later...
         //
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         self.set_hash_for_signature(hash_for_signature);
 
-	//
-	// calculate nolan in / out, fees
-	//
+        //
+        // calculate nolan in / out, fees
+        //
         let mut nolan_in: u64 = 0;
         let mut nolan_out: u64 = 0;
-        for input in &self.core.inputs { nolan_in += input.get_amount(); }
-        for output in &self.core.outputs { nolan_out += output.get_amount(); }
+        for input in &self.core.inputs {
+            nolan_in += input.get_amount();
+        }
+        for output in &self.core.outputs {
+            nolan_out += output.get_amount();
+        }
         self.total_in = nolan_in;
-	self.total_out = nolan_out;
-	self.total_fees = 0;
+        self.total_out = nolan_out;
+        self.total_fees = 0;
 
-	//
-	// note that this is not validation code, permitting this. we may have
-	// some transactions that do insert NOLAN, such as during testing of
-	// monetary policy. All sanity checks need to be in the validate() 
-	// function.
-	//
-	if nolan_in > nolan_out { self.total_fees = nolan_in - nolan_out; }
+        //
+        // note that this is not validation code, permitting this. we may have
+        // some transactions that do insert NOLAN, such as during testing of
+        // monetary policy. All sanity checks need to be in the validate()
+        // function.
+        //
+        if nolan_in > nolan_out {
+            self.total_fees = nolan_in - nolan_out;
+        }
 
-	true
-
+        true
     }
     pub fn validate(&self) -> bool {
-
         //
         // VALIDATE signature valid
         //
@@ -404,14 +409,13 @@ println!("updating slip ordinal: {}", slip_ordinal);
         //            println!("ERROR 672940: negative payment in transaction to slip");
         //            return false;
         //        }
-	//
-	// we make an exception for fee transactions, which may be pulling revenue from the 
-	// treasury in some amount.
+        //
+        // we make an exception for fee transactions, which may be pulling revenue from the
+        // treasury in some amount.
         if self.total_out > self.total_in && self.get_transaction_type() != TransactionType::Fee {
             println!("ERROR 672941: transaction spends more than it has available");
             return false;
         }
-
 
         //
         // VALIDATE UTXO inputs

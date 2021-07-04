@@ -5,7 +5,7 @@ use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
-use std::{sync::Arc};
+use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
 use ahash::AHashMap;
@@ -208,7 +208,10 @@ impl Blockchain {
                     self.broadcast_channel_sender
                         .as_ref()
                         .unwrap()
-                        .send(SaitoMessage::BlockchainNewLongestChainBlock { hash: block_hash, difficulty })
+                        .send(SaitoMessage::BlockchainNewLongestChainBlock {
+                            hash: block_hash,
+                            difficulty,
+                        })
                         .expect("error: BlockchainNewLongestChainBlock message failed to send");
                 }
             } else {
@@ -382,7 +385,7 @@ impl Blockchain {
 
             //
             // perform the pre-validation calculations needed to validate the block
-	    // below, in-parallel with read-only access.
+            // below, in-parallel with read-only access.
             //
             block.pre_validation_calculations();
         }
@@ -485,10 +488,10 @@ pub async fn run(
     //let test_sender = blockchain_channel_sender.clone();
     //tokio::spawn(async move {
     //    loop {
-            //test_sender
-            //    .send(MempoolMessage::TryBundleBlock)
-            //    .await
-            //    .expect("error: GenerateBlock message failed to send");
+    //test_sender
+    //    .send(MempoolMessage::TryBundleBlock)
+    //    .await
+    //    .expect("error: GenerateBlock message failed to send");
     //        sleep(Duration::from_millis(1000));
     //    }
     //});
@@ -499,46 +502,46 @@ pub async fn run(
     loop {
         tokio::select! {
 
-        //
-        // local broadcast messages
-        //
-            Some(message) = blockchain_channel_receiver.recv() => {
-                match message {
-                    _ => {},
-                }
-            }
+                //
+                // local broadcast messages
+                //
+                    Some(message) = blockchain_channel_receiver.recv() => {
+                        match message {
+                            _ => {},
+                        }
+                    }
+
+                //
+                // global broadcast messages
+                //
+                    Ok(message) = broadcast_channel_receiver.recv() => {
+                        match message {
+                            SaitoMessage::MempoolNewBlock { hash: _hash } => {
+                                println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
+                            },
 
         //
-        // global broadcast messages
+        // TODO - delete - keeping as quick reference for multiple ways
+        // to broadcast messages.
         //
-            Ok(message) = broadcast_channel_receiver.recv() => {
-                match message {
-                    SaitoMessage::MempoolNewBlock { hash: _hash } => {
-                        println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
-                    },
-
-//
-// TODO - delete - keeping as quick reference for multiple ways
-// to broadcast messages.
-//
-//                    SaitoMessage::TestMessage => {
-//             		println!("Blockchain RECEIVED TEST MESSAGE!");
-//			let blockchain = blockchain_lock.read().await;
-//
-//			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();
-//
-//		        if !blockchain.broadcast_channel_sender.is_none() {
-//			    println!("blockchain broadcast channel sender exists!");
-//  
-//	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()
-//                        	.send(SaitoMessage::TestMessage3)
-//                        	.expect("error: Mempool TryBundle Block message failed to send");
-//        		}
-//                    },
-                    _ => {},
+        //                    SaitoMessage::TestMessage => {
+        //             		println!("Blockchain RECEIVED TEST MESSAGE!");
+        //			let blockchain = blockchain_lock.read().await;
+        //
+        //			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();
+        //
+        //		        if !blockchain.broadcast_channel_sender.is_none() {
+        //			    println!("blockchain broadcast channel sender exists!");
+        //
+        //	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()
+        //                        	.send(SaitoMessage::TestMessage3)
+        //                        	.expect("error: Mempool TryBundle Block message failed to send");
+        //        		}
+        //                    },
+                            _ => {},
+                        }
+                    }
                 }
-            }
-        }
     }
 }
 

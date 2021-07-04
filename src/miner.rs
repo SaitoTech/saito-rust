@@ -39,34 +39,33 @@ impl Miner {
 
     pub async fn mine(&mut self) {
         if self.is_active {
+            let publickey: SaitoPublicKey;
 
-	    let publickey : SaitoPublicKey;
-
-	    {
+            {
                 let wallet = self.wallet_lock.read().await;
-	        publickey = wallet.get_publickey();
+                publickey = wallet.get_publickey();
             }
 
-	    let random_bytes = hash(&generate_random_bytes(32));
+            let random_bytes = hash(&generate_random_bytes(32));
             let solution = GoldenTicket::generate_solution(random_bytes, publickey);
 
             if GoldenTicket::is_valid_solution(self.target, solution, self.difficulty) {
-
                 {
                     let vote = 0;
                     let gt = GoldenTicket::new(vote, self.target, random_bytes, publickey);
 
                     if !self.broadcast_channel_sender.is_none() {
-                        self.broadcast_channel_sender.as_ref().unwrap()
+                        self.broadcast_channel_sender
+                            .as_ref()
+                            .unwrap()
                             .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
                             .expect("error: MinerNewGoldenTicket message failed to send");
                     }
                 }
 
-		// stop mining
+                // stop mining
                 self.set_is_active(false);
-
-	    }
+            }
         }
     }
 
@@ -148,6 +147,4 @@ pub async fn run(
     }
 }
 
-mod test {
-
-}
+mod test {}
