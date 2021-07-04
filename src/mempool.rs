@@ -1,5 +1,5 @@
 use crate::{
-    block::{Block, ConsensusValues},
+    block::{Block, DataToValidate},
     blockchain::Blockchain,
     burnfee::BurnFee,
     consensus::SaitoMessage,
@@ -211,7 +211,7 @@ println!("adding goldten ticket to mempool...");
 	//
 	// create 
 	//
-	let cv: ConsensusValues = block.generate_consensus_data(&blockchain);
+	let cv: DataToValidate = block.generate_data_to_validate(&blockchain);
 
 	//
 	// set hash_for_signature for fee_tx as we cannot mutably fetch it
@@ -387,6 +387,7 @@ pub async fn run(
 
                     // GenerateTransaction makes a transaction and adds it to the mempool if possible
                     MempoolMessage::GenerateTransaction => {
+
                         let mut mempool = mempool_lock.write().await;
         		let mut wallet_publickey = [0; 33];
         		let mut wallet_privatekey = [0; 32];

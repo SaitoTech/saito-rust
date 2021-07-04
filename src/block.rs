@@ -80,7 +80,7 @@ impl Default for BlockCore {
 // and the optional outbound payments.
 //
 #[derive(PartialEq, Debug, Clone)]
-pub struct ConsensusValues {
+pub struct DataToValidate {
     // expected transaction containing outbound payments
     pub fee_transaction: Option<Transaction>, 
     // number of FEE in transactions if exists
@@ -92,10 +92,10 @@ pub struct ConsensusValues {
     // index of GT in transactions if exists
     pub gt_idx: usize,
 }
-impl ConsensusValues {
+impl DataToValidate {
     #[allow(clippy::too_many_arguments)]
-    pub fn new() -> ConsensusValues {
-        ConsensusValues {
+    pub fn new() -> DataToValidate {
+        DataToValidate {
 	    fee_transaction: None,
 	    ft_num: 0,
 	    ft_idx: usize::MAX,
@@ -441,9 +441,9 @@ impl Block {
     //
     //
     //
-    pub fn generate_consensus_data(&self, blockchain : &Blockchain) -> ConsensusValues{
+    pub fn generate_data_to_validate(&self, blockchain : &Blockchain) -> DataToValidate{
 
-        let mut cv = ConsensusValues::new();
+        let mut cv = DataToValidate::new();
 
         let mut gt_num: u8 = 0;
         let mut ft_num: u8 = 0;
@@ -500,7 +500,7 @@ impl Block {
 	    let mut y = total_fees;
 	    if (y == 0) { y = 100; }
 	    let z = U256::from_big_endian(&y.to_be_bytes());
-	    let (winning_router, bolres)  = x.overflowing_rem(z);
+	    let (winning_router, _bolres)  = x.overflowing_rem(z);
 	    let winning_nolan_in_fees = winning_router.low_u64();
 
 	    //
@@ -529,6 +529,11 @@ impl Block {
 	    //
 	    // calculate miner and router payments
 	    //
+
+//
+// TODO - REMOVE  - temporary to create tokens so we have circulating fees
+total_fees = 10000;
+//
 	    let miner_payment = total_fees / 2;
 	    let router_payment = total_fees - miner_payment;
 
@@ -627,8 +632,8 @@ impl Block {
         //
         // validate burn fee
         //
+        let mut previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
         {
-            let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
             if !previous_block.is_none() {
                 let new_burnfee: u64 =
                     BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
@@ -669,15 +674,23 @@ impl Block {
         // validate fee-transaction (miner/router/staker) payments
         //
         //
-	let cv = self.generate_consensus_data(&blockchain);
+	let cv = self.generate_data_to_validate(&blockchain);
 
 
 	//
 	// validate golden ticket
 	//
 	if cv.gt_idx != usize::MAX {
-	    let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(self.transactions[cv.gt_idx].get_message().to_vec());
-	}
+            let mut previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
+            if !previous_block.is_none() {
+		let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(self.transactions[cv.gt_idx].get_message().to_vec());
+	        let solution = GoldenTicket::generate_solution(golden_ticket.get_random(), golden_ticket.get_publickey());
+	        if !GoldenTicket::is_valid_solution(previous_block.unwrap().get_hash(), solution, previous_block.unwrap().get_difficulty()) {
+		    println!("ERROR: Golden Ticket solution does not validate against previous block hash and difficulty");
+		    return false;
+	        }
+	    }
+        }
 
         //
         // VALIDATE transactions
