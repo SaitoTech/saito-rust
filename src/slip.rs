@@ -37,6 +37,7 @@ pub struct Slip {
 }
 
 impl Slip {
+
     pub fn new() -> Self {
         Self {
 	    publickey: [0; 33],
@@ -47,6 +48,26 @@ impl Slip {
 	}
     }
 
+    pub fn validate(&self) -> bool {
+        true
+    }
+
+    pub fn on_chain_reorganization(
+        &self,
+        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
+        _lc: bool,
+        slip_value: u64,
+    ) {
+        if self.get_amount() > 0 {
+            let slip_key = self.get_utxoset_key();
+            println!("inserting slip into shashmap: {:?}", slip_key);
+            utxoset.entry(slip_key).or_insert(slip_value);
+        }
+    }
+
+    //
+    // Getters and Setters
+    //
     pub fn get_publickey(&self) -> SaitoPublicKey {
         self.publickey
     }
@@ -87,6 +108,10 @@ impl Slip {
         self.slip_type = slip_type;
     }
 
+
+    //
+    // Serialization
+    //
     pub fn serialize_for_signature(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&self.publickey);
@@ -95,19 +120,6 @@ impl Slip {
         vbytes.extend(&(self.slip_ordinal.to_be_bytes()));
         vbytes.extend(&(self.slip_type as u32).to_be_bytes());
         vbytes
-    }
-
-    pub fn on_chain_reorganization(
-        &self,
-        utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
-        _lc: bool,
-        slip_value: u64,
-    ) {
-        if self.get_amount() > 0 {
-            let slip_key = self.get_utxoset_key();
-            println!("inserting slip into shashmap: {:?}", slip_key);
-            utxoset.entry(slip_key).or_insert(slip_value);
-        }
     }
 
     pub fn get_utxoset_key(&self) -> SaitoUTXOSetKey {
@@ -119,9 +131,6 @@ impl Slip {
         res
     }
 
-    pub fn validate(&self) -> bool {
-        true
-    }
     pub fn deserialize_from_net(bytes: Vec<u8>) -> Slip {
         let publickey: SaitoPublicKey = bytes[..33].try_into().unwrap();
         let uuid: SaitoHash = bytes[33..65].try_into().unwrap();

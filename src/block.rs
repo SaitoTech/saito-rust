@@ -479,7 +479,8 @@ impl Block {
             //
             // TODO we need to add routing paths etc.
             //
-            router_publickey = winning_tx.get_inputs()[0].get_publickey();
+	    let random_number2 = hash(&miner_random.to_vec());
+            router_publickey = winning_tx.get_winning_routing_node(random_number2);
 
             //
             // winning miner from golden ticket

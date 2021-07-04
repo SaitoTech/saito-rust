@@ -6,12 +6,12 @@ use crate::{
         SaitoUTXOSetKey,
     },
     slip::{Slip, SLIP_SIZE},
-    time::create_timestamp,
 };
 use ahash::AHashMap;
 use enum_variant_count_derive::TryFromByte;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use bigint::uint::U256;
 
 pub const TRANSACTION_SIZE: usize = 85;
 
@@ -133,6 +133,23 @@ impl Transaction {
 
     pub fn get_signature(&self) -> [u8; 64] {
         self.signature
+    }
+
+    pub fn get_winning_routing_node(&self, random_hash : SaitoHash) -> SaitoPublicKey {
+
+        //
+        // find winning router
+        //
+        let x = U256::from_big_endian(&random_hash);
+        let y: u64 = 10_000_000_000;
+        let z = U256::from_big_endian(&y.to_be_bytes());
+        let (_winning_routing_node_random, _bolres) = x.overflowing_rem(z);
+
+	//
+	// TODO - process routing path, return winner
+	//
+        return self.inputs[0].get_publickey();
+
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {

@@ -2,7 +2,7 @@ use crate::block::{Block};
 use crate::burnfee::BurnFee;
 use crate::crypto::SaitoHash;
 use crate::slip::{Slip, SlipType};
-use crate::transaction::{Transaction, TransactionType};
+use crate::transaction::{Transaction};
 use crate::wallet::Wallet;
 
 pub fn make_mock_block(
