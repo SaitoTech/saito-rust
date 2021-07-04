@@ -287,12 +287,12 @@ impl Mempool {
 
             transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
 
-            let mut input1 = Slip::default();
+            let mut input1 = Slip::new();
             input1.set_publickey(wallet.get_publickey());
             input1.set_amount(1000000);
             input1.set_uuid([1; 32]);
 
-            let mut output1 = Slip::default();
+            let mut output1 = Slip::new();
             output1.set_publickey(wallet.get_publickey());
             output1.set_amount(1000000);
             output1.set_uuid([1; 32]);
@@ -410,12 +410,12 @@ pub async fn run(
 
                     transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
 
-                    let mut input1 = Slip::default();
+                    let mut input1 = Slip::new();
                     input1.set_publickey(wallet_publickey);
                            input1.set_amount(1000000);
                     input1.set_uuid([1; 32]);
 
-                    let mut output1 = Slip::default();
+                    let mut output1 = Slip::new();
                     output1.set_publickey(wallet_publickey);
                     output1.set_amount(1000000);
                     output1.set_uuid([1; 32]);

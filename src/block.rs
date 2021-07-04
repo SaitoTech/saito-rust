@@ -497,22 +497,22 @@ impl Block {
             let miner_payment = total_fees / 2;
             let router_payment = total_fees - miner_payment;
 
-            let mut input1 = Slip::default();
+            let mut input1 = Slip::new();
             input1.set_publickey(miner_publickey);
             input1.set_amount(0);
             input1.set_slip_type(SlipType::MinerInput);
 
-            let mut output1 = Slip::default();
+            let mut output1 = Slip::new();
             output1.set_publickey([0; 33]);
             output1.set_amount(miner_payment);
             output1.set_slip_type(SlipType::MinerOutput);
 
-            let mut input2 = Slip::default();
+            let mut input2 = Slip::new();
             input2.set_publickey(router_publickey);
             input2.set_amount(0);
             input2.set_slip_type(SlipType::RouterInput);
 
-            let mut output2 = Slip::default();
+            let mut output2 = Slip::new();
             output2.set_publickey(router_publickey);
             output2.set_amount(router_payment);
             output2.set_slip_type(SlipType::RouterOutput);
@@ -689,7 +689,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        slip::{Slip, SlipCore},
+        slip::{Slip},
         time::create_timestamp,
         transaction::{Transaction, TransactionType},
         wallet::Wallet,
@@ -713,11 +713,10 @@ mod tests {
 
     #[test]
     fn block_default_test() {
-        let timestamp = create_timestamp();
         let block = Block::new();
 
         assert_eq!(block.id, 0);
-        assert_eq!(block.timestamp, timestamp);
+        assert_eq!(block.timestamp, 0);
         assert_eq!(block.previous_block_hash, [0; 32]);
         assert_eq!(block.creator, [0; 33]);
         assert_eq!(block.merkle_root, [0; 32]);
@@ -729,9 +728,9 @@ mod tests {
 
     #[test]
     fn block_serialize_for_net_test() {
-        let mock_input = Slip::new(SlipCore::default());
-        let mock_output = Slip::new(SlipCore::default());
-        let mock_tx = Transaction::new();
+        let mock_input = Slip::new();
+        let mock_output = Slip::new();
+        let mut mock_tx = Transaction::new();
         mock_tx.set_timestamp(create_timestamp());
         mock_tx.add_input(mock_input.clone());
         mock_tx.add_output(mock_output.clone());
@@ -739,7 +738,7 @@ mod tests {
         mock_tx.set_transaction_type(TransactionType::Normal);
         mock_tx.set_signature([1; 64]);
 
-        let mock_tx2 = Transaction::new();
+        let mut mock_tx2 = Transaction::new();
         mock_tx2.set_timestamp(create_timestamp());
         mock_tx2.add_input(mock_input);
         mock_tx2.add_output(mock_output);

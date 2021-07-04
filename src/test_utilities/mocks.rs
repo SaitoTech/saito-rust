@@ -1,7 +1,7 @@
 use crate::block::{Block};
 use crate::burnfee::BurnFee;
 use crate::crypto::SaitoHash;
-use crate::slip::{Slip, SlipCore, SlipType};
+use crate::slip::{Slip, SlipType};
 use crate::transaction::{Transaction, TransactionType};
 use crate::wallet::Wallet;
 
@@ -19,20 +19,20 @@ pub fn make_mock_block(
         prev_timestamp,
     );
     let wallet = Wallet::new();
-    let mock_input = Slip::new(SlipCore::new(
-        wallet.get_publickey(),
-        [0; 32],
-        1,
-        0,
-        SlipType::Normal,
-    ));
-    let mock_output = Slip::new(SlipCore::new(
-        wallet.get_publickey(),
-        [0; 32],
-        1,
-        0,
-        SlipType::Normal,
-    ));
+    let mut mock_input = Slip::new();
+    mock_input.set_publickey(wallet.get_publickey());
+    mock_input.set_uuid([0; 32]);
+    mock_input.set_amount(1);
+    mock_input.set_slip_ordinal(0);
+    mock_input.set_slip_type(SlipType::Normal);
+   
+    let mut mock_output = Slip::new();
+    mock_output.set_publickey(wallet.get_publickey());
+    mock_output.set_uuid([0; 32]);
+    mock_output.set_amount(1);
+    mock_output.set_slip_ordinal(0);
+    mock_output.set_slip_type(SlipType::Normal);
+
     let mut transaction = Transaction::new();
 
     transaction.add_input(mock_input);

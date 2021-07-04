@@ -401,7 +401,7 @@ impl Transaction {
 
 #[cfg(test)]
 mod tests {
-    use crate::slip::SlipCore;
+    use crate::slip::Slip;
 
     use super::*;
 
@@ -418,9 +418,9 @@ mod tests {
 
     #[test]
     fn serialize_for_net_test() {
-        let mock_input = Slip::new(SlipCore::default());
-        let mock_output = Slip::new(SlipCore::default());
-        let mock_tx = Transaction::new();
+        let mock_input = Slip::new();
+        let mock_output = Slip::new();
+        let mut mock_tx = Transaction::new();
 	mock_tx.set_timestamp(create_timestamp());
 	mock_tx.add_input(mock_input);
 	mock_tx.add_output(mock_output);
