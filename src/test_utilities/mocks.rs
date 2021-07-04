@@ -1,8 +1,8 @@
-use crate::block::{Block, BlockCore};
+use crate::block::{Block};
 use crate::burnfee::BurnFee;
 use crate::crypto::SaitoHash;
-use crate::slip::{Slip, SlipCore, SlipType};
-use crate::transaction::{Transaction, TransactionCore, TransactionType};
+use crate::slip::{Slip, SlipType};
+use crate::transaction::{Transaction};
 use crate::wallet::Wallet;
 
 pub fn make_mock_block(
@@ -19,43 +19,42 @@ pub fn make_mock_block(
         prev_timestamp,
     );
     let wallet = Wallet::new();
-    let mock_input = Slip::new(SlipCore::new(
-        wallet.get_publickey(),
-        [0; 32],
-        1,
-        0,
-        SlipType::Normal,
-    ));
-    let mock_output = Slip::new(SlipCore::new(
-        wallet.get_publickey(),
-        [0; 32],
-        1,
-        0,
-        SlipType::Normal,
-    ));
-    let mut transaction = Transaction::new(TransactionCore::new(
-        timestamp,
-        vec![mock_input],
-        vec![mock_output],
-        vec![],
-        TransactionType::Normal,
-        [0; 64],
-    ));
+    let mut mock_input = Slip::new();
+    mock_input.set_publickey(wallet.get_publickey());
+    mock_input.set_uuid([0; 32]);
+    mock_input.set_amount(1);
+    mock_input.set_slip_ordinal(0);
+    mock_input.set_slip_type(SlipType::Normal);
+   
+    let mut mock_output = Slip::new();
+    mock_output.set_publickey(wallet.get_publickey());
+    mock_output.set_uuid([0; 32]);
+    mock_output.set_amount(1);
+    mock_output.set_slip_ordinal(0);
+    mock_output.set_slip_type(SlipType::Normal);
+
+    let mut transaction = Transaction::new();
+
+    transaction.add_input(mock_input);
+    transaction.add_output(mock_output);
+
     transaction.sign(wallet.get_privatekey());
-    let mock_core = BlockCore::new(
-        block_id,
-        timestamp,
-        previous_block_hash,
-        wallet.get_publickey(),
-        [2; 32],
-        [3; 64],
-        0,
-        burnfee,
-        0,
-    );
-    let mut block = Block::new(mock_core);
+
+    let mut block = Block::new();
+
+    block.set_id(block_id);
+    block.set_timestamp(timestamp);
+    block.set_previous_block_hash(previous_block_hash);
+    block.set_creator(wallet.get_publickey());
+    block.set_merkle_root([2; 32]);
+    block.set_signature([3; 64]);
+    block.set_difficulty(0);
+    block.set_treasury(0);
+    block.set_burnfee(burnfee);
+
     block.set_transactions(&mut vec![transaction]);
     block.set_merkle_root(block.generate_merkle_root());
     block.set_hash(block.generate_hash());
+
     block
 }

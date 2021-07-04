@@ -313,6 +313,7 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
+
         if old_chain.len() > new_chain.len() {
             println!("ERROR 1");
             return false;
@@ -662,7 +663,7 @@ mod tests {
             assert_eq!(longest_chain_block_hash, blockchain.get_latest_block_hash());
             prev_block = next_block;
         }
-        // adding another block should now effect the LC
+        // adding another block should now affect the LC
         let next_block = make_mock_block(
             prev_block.get_timestamp(),
             prev_block.get_burnfee(),

@@ -73,18 +73,18 @@ impl Wallet {
         &mut self,
         golden_ticket: GoldenTicket,
     ) -> Transaction {
-        let mut transaction = Transaction::default();
+        let mut transaction = Transaction::new();
 
         // for now we'll use bincode to de/serialize
         transaction.set_transaction_type(TransactionType::GoldenTicket);
         transaction.set_message(golden_ticket.serialize_for_transaction());
 
-        let mut input1 = Slip::default();
+        let mut input1 = Slip::new();
         input1.set_publickey(self.get_publickey());
         input1.set_amount(0);
         input1.set_uuid([0; 32]);
 
-        let mut output1 = Slip::default();
+        let mut output1 = Slip::new();
         output1.set_publickey(self.get_publickey());
         output1.set_amount(0);
         output1.set_uuid([0; 32]);

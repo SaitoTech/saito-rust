@@ -184,7 +184,7 @@ impl Mempool {
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
 
-        let mut block = Block::default();
+        let mut block = Block::new();
 
         let previous_block_burnfee = blockchain.get_latest_block_burnfee();
         let previous_block_timestamp = blockchain.get_latest_block_timestamp();
@@ -256,7 +256,7 @@ impl Mempool {
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
 
-        let mut block = Block::default();
+        let mut block = Block::new();
 
         let previous_block_burnfee = blockchain.get_latest_block_burnfee();
         let previous_block_timestamp = blockchain.get_latest_block_timestamp();
@@ -283,16 +283,16 @@ impl Mempool {
         for _i in 0..10 {
             //            println!("creating tx {:?}", _i);
 
-            let mut transaction = Transaction::default();
+            let mut transaction = Transaction::new();
 
             transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
 
-            let mut input1 = Slip::default();
+            let mut input1 = Slip::new();
             input1.set_publickey(wallet.get_publickey());
             input1.set_amount(1000000);
             input1.set_uuid([1; 32]);
 
-            let mut output1 = Slip::default();
+            let mut output1 = Slip::new();
             output1.set_publickey(wallet.get_publickey());
             output1.set_amount(1000000);
             output1.set_uuid([1; 32]);
@@ -406,16 +406,16 @@ pub async fn run(
 
                         println!("creating tx {:?}", (_i+current_txs_in_mempool+1));
 
-                        let mut transaction = Transaction::default();
+                        let mut transaction = Transaction::new();
 
                     transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
 
-                    let mut input1 = Slip::default();
+                    let mut input1 = Slip::new();
                     input1.set_publickey(wallet_publickey);
                            input1.set_amount(1000000);
                     input1.set_uuid([1; 32]);
 
-                    let mut output1 = Slip::default();
+                    let mut output1 = Slip::new();
                     output1.set_publickey(wallet_publickey);
                     output1.set_amount(1000000);
                     output1.set_uuid([1; 32]);
@@ -492,7 +492,7 @@ mod tests {
         let wallet = Wallet::new();
         let mut mempool = Mempool::new(Arc::new(RwLock::new(wallet)));
 
-        let block = Block::default();
+        let block = Block::new();
 
         mempool.add_block(block.clone());
 
