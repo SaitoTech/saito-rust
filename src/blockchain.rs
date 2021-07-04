@@ -466,7 +466,7 @@ pub async fn run(
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-    let (blockchain_channel_sender, mut blockchain_channel_receiver): (
+    let (_blockchain_channel_sender, mut blockchain_channel_receiver): (
         tokio::sync::mpsc::Sender<SaitoMessage>,
         tokio::sync::mpsc::Receiver<SaitoMessage>,
     ) = mpsc::channel(4);

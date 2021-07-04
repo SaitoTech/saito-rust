@@ -231,8 +231,10 @@ println!("adding goldten ticket to mempool...");
             let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
             fee_tx.set_hash_for_signature(hash_for_signature);
 
+println!("UUID in this is: {:?}", hash_for_signature);
+
 	    //
-	    // sign the transaction
+	    // sign the transaction and finalize it
 	    //
 	    fee_tx.sign(wallet.get_privatekey());
 
@@ -389,8 +391,9 @@ pub async fn run(
                     MempoolMessage::GenerateTransaction => {
 
                         let mut mempool = mempool_lock.write().await;
-        		let mut wallet_publickey = [0; 33];
-        		let mut wallet_privatekey = [0; 32];
+        		let wallet_publickey;
+        		let wallet_privatekey;
+
 			{
 			    let wallet = mempool.wallet_lock.read().await;
 			    wallet_publickey = wallet.get_publickey();
@@ -400,6 +403,7 @@ pub async fn run(
 			let current_txs_in_mempool = mempool.transactions.len();
 
 		        for _i in 0..10 {
+
 	                    println!("creating tx {:?}", (_i+current_txs_in_mempool+1));
 
             		    let mut transaction = Transaction::default();

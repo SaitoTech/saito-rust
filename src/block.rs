@@ -441,7 +441,7 @@ impl Block {
     //
     //
     //
-    pub fn generate_data_to_validate(&self, blockchain : &Blockchain) -> DataToValidate{
+    pub fn generate_data_to_validate(&self, _blockchain : &Blockchain) -> DataToValidate{
 
         let mut cv = DataToValidate::new();
 
@@ -450,8 +450,8 @@ impl Block {
 	let mut gt_idx: usize = usize::MAX;
 	let mut ft_idx: usize = usize::MAX;
 	let mut total_fees = 0;
-	let mut miner_publickey: SaitoPublicKey = [0; 33];
-	let mut router_publickey: SaitoPublicKey = [0; 33];
+	let miner_publickey;
+	let router_publickey;
 
 
 	//
@@ -492,13 +492,15 @@ impl Block {
 	    let mut fee_transaction = Transaction::default();
 	    fee_transaction.set_transaction_type(TransactionType::Fee);
 
-
 	    //
 	    // find winning router
 	    //
 	    let x = U256::from_big_endian(&miner_random);
 	    let mut y = total_fees;
-	    if (y == 0) { y = 100; }
+	    //
+	    // TODO - y cannot be zero or divide by zero
+	    //
+	    if y == 0 { y = 100; }
 	    let z = U256::from_big_endian(&y.to_be_bytes());
 	    let (winning_router, _bolres)  = x.overflowing_rem(z);
 	    let winning_nolan_in_fees = winning_router.low_u64();
@@ -524,6 +526,12 @@ impl Block {
  	    // TODO we need to add routing paths etc.
 	    //
 	    router_publickey = winning_tx.get_inputs()[0].get_publickey();
+
+
+	    //
+	    // winning miner from golden ticket
+	    //
+	    miner_publickey = golden_ticket.get_publickey();
 
 
 	    //
@@ -632,7 +640,7 @@ total_fees = 10000;
         //
         // validate burn fee
         //
-        let mut previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
+        let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
         {
             if !previous_block.is_none() {
                 let new_burnfee: u64 =
@@ -681,7 +689,6 @@ total_fees = 10000;
 	// validate golden ticket
 	//
 	if cv.gt_idx != usize::MAX {
-            let mut previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
             if !previous_block.is_none() {
 		let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(self.transactions[cv.gt_idx].get_message().to_vec());
 	        let solution = GoldenTicket::generate_solution(golden_ticket.get_random(), golden_ticket.get_publickey());

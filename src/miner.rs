@@ -4,7 +4,6 @@ use crate::{
     golden_ticket::GoldenTicket,
     wallet::Wallet,
 };
-
 use std::{sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -41,7 +40,7 @@ impl Miner {
     pub async fn mine(&mut self) {
         if self.is_active {
 
-	    let mut publickey : SaitoPublicKey;
+	    let publickey : SaitoPublicKey;
 
 	    {
                 let wallet = self.wallet_lock.read().await;
@@ -150,24 +149,5 @@ pub async fn run(
 }
 
 mod test {
-
-    use super::*;
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
-
-    #[test]
-    fn miner_is_valid_solution_test() {
-        let target_hash = [1; 32];
-        let solution_hash = [4 as u8; 32];
-
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let mut miner = Miner::new(wallet_lock);
-
-        miner.set_target(target_hash);
-
-        miner.is_valid_solution(solution_hash);
-
-        assert!(true);
-    }
 
 }

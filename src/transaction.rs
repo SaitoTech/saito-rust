@@ -151,6 +151,10 @@ impl Transaction {
         &mut self.core.inputs
     }
 
+    pub fn get_mut_outputs(&mut self) -> &mut Vec<Slip> {
+        &mut self.core.outputs
+    }
+
     pub fn get_outputs(&self) -> &Vec<Slip> {
         &self.core.outputs
     }
@@ -188,6 +192,18 @@ impl Transaction {
     }
 
     pub fn sign(&mut self, privatekey: SaitoPrivateKey) {
+
+	//
+	// we set slip ordinals when signing
+	//
+	let mut slip_ordinal = 0;
+println!("signing tx with {} outputs: ", self.get_outputs().len());
+        for output in self.get_mut_outputs() {
+println!("updating slip ordinal: {}", slip_ordinal);
+	    output.set_slip_ordinal(slip_ordinal); 
+	    slip_ordinal += 1;
+	}
+
         let hash_for_signature = hash(&self.serialize_for_signature());
         self.set_signature(sign(&hash_for_signature, privatekey));
         self.set_hash_for_signature(hash_for_signature);
@@ -333,7 +349,15 @@ impl Transaction {
         for output in &self.core.outputs { nolan_out += output.get_amount(); }
         self.total_in = nolan_in;
 	self.total_out = nolan_out;
-	self.total_fees = nolan_in - nolan_out;
+	self.total_fees = 0;
+
+	//
+	// note that this is not validation code, permitting this. we may have
+	// some transactions that do insert NOLAN, such as during testing of
+	// monetary policy. All sanity checks need to be in the validate() 
+	// function.
+	//
+	if nolan_in > nolan_out { self.total_fees = nolan_in - nolan_out; }
 
 	true
 
@@ -380,7 +404,10 @@ impl Transaction {
         //            println!("ERROR 672940: negative payment in transaction to slip");
         //            return false;
         //        }
-        if self.total_out > self.total_in {
+	//
+	// we make an exception for fee transactions, which may be pulling revenue from the 
+	// treasury in some amount.
+        if self.total_out > self.total_in && self.get_transaction_type() != TransactionType::Fee {
             println!("ERROR 672941: transaction spends more than it has available");
             return false;
         }
