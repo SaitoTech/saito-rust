@@ -19,6 +19,12 @@ struct KeyFile {
 #[derive(Debug, Clone)]
 pub struct KeyPairStore {}
 
+impl Default for KeyPairStore {
+    fn default() -> Self {
+        KeyPairStore::new()
+    }
+}
+
 impl KeyPairStore {
     /// Create new `KeyPairStore`
     pub fn new() -> Self {
@@ -38,6 +44,8 @@ impl KeyPairStore {
         let _content = match data() {
             Err(_e) => {
                 // panic!("{}", e)
+                // @QUESTION: why is this failing if i leave out the expect?
+                // because the type doesn't math then but why? when to know to do what?
                 KeyPairStore::create_key_file().expect("Failed to create file!")
             }
             Ok(s) => {
@@ -60,17 +68,16 @@ impl KeyPairStore {
 
     pub fn create_key_file() -> Result<String, io::Error> {
         // - ask for pw
-        // - write pw to file to given path
 
         // println!("File does not exist. Let's create it!");
         let password = rpassword::prompt_password_stdout("Password: ").unwrap();
         println!("Your password is {}", password);
-        // pass.to_string();
 
         //btw, for directly reading/writing a whoel fiel to/from a string, there is std::fs::read_to_string and std::Fs::write
 
+        // @TODO: - write pw to file to given path
         let mut file = File::create("foo.txt")?;
         file.write_all(password.as_bytes())?;
-        Ok(password.to_string())
+        Ok(password)
     }
 }
