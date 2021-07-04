@@ -1,7 +1,7 @@
 use crate::{
     blockchain::Blockchain,
     burnfee::BurnFee,
-    crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    crypto::{hash, sign, SaitoHash, SaitoPublicKey, SaitoPrivateKey, SaitoSignature, SaitoUTXOSetKey},
     golden_ticket::GoldenTicket,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
@@ -193,6 +193,23 @@ impl Block {
         self.transactions.push(tx);
     }
 
+
+    pub fn sign(&mut self, publickey: SaitoPublicKey, privatekey: SaitoPrivateKey) {
+
+        //
+        // we set final data
+        //
+        self.set_creator(publickey);
+
+        let hash_for_signature = hash(&self.serialize_for_signature());
+        self.set_hash(hash_for_signature);
+
+        self.set_signature(sign(&hash_for_signature, privatekey));
+
+    }
+
+
+    //
     // TODO
     //
     // hash is nor being serialized from the right data - requires
@@ -218,6 +235,24 @@ impl Block {
 
         hash(&vbytes)
     }
+
+    // serialize major block components for block signature
+    // this will manually calculate the merkle_root if necessary
+    // but it is advised that the merkle_root be already calculated
+    // to avoid speed issues.
+    pub fn serialize_for_signature(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.id.to_be_bytes());
+        vbytes.extend(&self.timestamp.to_be_bytes());
+        vbytes.extend(&self.previous_block_hash);
+        vbytes.extend(&self.creator);
+        vbytes.extend(&self.merkle_root);
+        vbytes.extend(&self.treasury.to_be_bytes());
+        vbytes.extend(&self.burnfee.to_be_bytes());
+        vbytes.extend(&self.difficulty.to_be_bytes());
+        vbytes
+    }
+
 
     /// Serialize a Block for transport or disk.
     /// [len of transactions - 4 bytes - u32]

@@ -1,6 +1,6 @@
 use crate::block::Block;
 use crate::crypto::{
-    generate_keys, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
+    hash, generate_keys, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
     SaitoUTXOSetKey,
 };
 use crate::golden_ticket::GoldenTicket;
@@ -91,6 +91,10 @@ impl Wallet {
 
         transaction.add_input(input1);
         transaction.add_output(output1);
+
+        let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
+        transaction.set_hash_for_signature(hash_for_signature);
+
         transaction.sign(self.get_privatekey());
 
         transaction

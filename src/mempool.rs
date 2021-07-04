@@ -99,15 +99,16 @@ impl Mempool {
     // the right block. this pushes the golden ticket indiscriminately into the
     // transaction array -- we can do a better job.
     pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) -> AddTransactionResult {
+
         // convert into transaction
         let mut wallet = self.wallet_lock.write().await;
-        let mut transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
+        let transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
 
         //
         // create hash_for_signature to avoid failure generating merkle_root
-        //
-        let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
-        transaction.set_hash_for_signature(hash_for_signature);
+        // - TODO - we can remove this
+        //let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
+        //transaction.set_hash_for_signature(hash_for_signature);
 
         if self
             .transactions
@@ -240,13 +241,11 @@ impl Mempool {
 
         let block_merkle_root = block.generate_merkle_root();
         block.set_merkle_root(block_merkle_root);
-        println!(
-            "merkle root set in mempool txs {} as: {:?}",
-            block.transactions.len(),
-            block_merkle_root
-        );
         let block_hash = block.generate_hash();
         block.set_hash(block_hash);
+
+        let wallet = self.wallet_lock.read().await;
+	block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
         block
     }
