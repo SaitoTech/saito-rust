@@ -1,16 +1,11 @@
 use crate::{
-    block::Block,
-    blockchain::Blockchain,
     consensus::SaitoMessage,
-    crypto::{generate_random_bytes, hash, SaitoHash},
+    crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey},
     golden_ticket::GoldenTicket,
-    transaction::Transaction,
     wallet::Wallet,
 };
-
 use std::{sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
-use bigint::uint::U256;
 
 #[derive(Debug, Clone)]
 pub enum MinerMessage {
@@ -42,41 +37,35 @@ impl Miner {
         self.broadcast_channel_sender = Some(bcs);
     }
 
-    fn is_valid_solution(&self, solution: SaitoHash) -> bool {
-        let difficulty_order = (self.difficulty as f64 / 1_0000_0000 as f64).round() as usize;
-        let difficulty_grain = self.difficulty % 1_0000_0000;
-
-        let random_solution = U256::from_big_endian(&solution[..difficulty_order]);
-        let target_solution= U256::from_big_endian(&self.target[..difficulty_order]);
-        let difficulty_grain = U256::from(difficulty_grain * 16);
-
-        random_solution >= target_solution
-            && (random_solution - target_solution) <= difficulty_grain
-    }
-
     pub async fn mine(&mut self) {
         if self.is_active {
-
-            let solution = hash(&generate_random_bytes(32));
-
-            if self.is_valid_solution(solution) {
+            let publickey: SaitoPublicKey;
 
             {
-                let vote = 0;
-                let wallet = self.wallet_lock.write().await;
-                let gt = GoldenTicket::new(vote, self.target, solution, wallet.get_publickey());
-
-                if !self.broadcast_channel_sender.is_none() {
-                    self.broadcast_channel_sender.as_ref().unwrap()
-                        .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
-                        .expect("error: MinerNewGoldenTicket message failed to send");
-                }
+                let wallet = self.wallet_lock.read().await;
+                publickey = wallet.get_publickey();
             }
 
-		    // stop mining
-                self.set_is_active(false);
+            let random_bytes = hash(&generate_random_bytes(32));
+            let solution = GoldenTicket::generate_solution(random_bytes, publickey);
 
-	        }
+            if GoldenTicket::is_valid_solution(self.target, solution, self.difficulty) {
+                {
+                    let vote = 0;
+                    let gt = GoldenTicket::new(vote, self.target, random_bytes, publickey);
+
+                    if !self.broadcast_channel_sender.is_none() {
+                        self.broadcast_channel_sender
+                            .as_ref()
+                            .unwrap()
+                            .send(SaitoMessage::MinerNewGoldenTicket { ticket: gt })
+                            .expect("error: MinerNewGoldenTicket message failed to send");
+                    }
+                }
+
+                // stop mining
+                self.set_is_active(false);
+            }
         }
     }
 
@@ -158,25 +147,4 @@ pub async fn run(
     }
 }
 
-mod test {
-
-    use super::*;
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
-
-    #[test]
-    fn miner_is_valid_solution_test() {
-        let target_hash = [1; 32];
-        let solution_hash = [4 as u8; 32];
-
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let mut miner = Miner::new(wallet_lock);
-
-        miner.set_target(target_hash);
-
-        miner.is_valid_solution(solution_hash);
-
-        assert!(true);
-    }
-
-}
+mod test {}

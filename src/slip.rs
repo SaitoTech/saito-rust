@@ -15,6 +15,12 @@ pub const SLIP_SIZE: usize = 75;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq, TryFromByte)]
 pub enum SlipType {
     Normal,
+    MinerInput,
+    MinerOutput,
+    RouterInput,
+    RouterOutput,
+    StakerInput,
+    StakerOutput,
     Other, // need more than one value for TryFromBytes
 }
 
@@ -116,6 +122,7 @@ impl Slip {
         vbytes.extend(&self.core.publickey);
         vbytes.extend(&self.core.uuid);
         vbytes.extend(&self.core.amount.to_be_bytes());
+        vbytes.extend(&(self.core.slip_ordinal.to_be_bytes()));
         vbytes.extend(&(self.core.slip_type as u32).to_be_bytes());
         vbytes
     }
@@ -126,8 +133,11 @@ impl Slip {
         _lc: bool,
         slip_value: u64,
     ) {
-        let slip_key = self.get_utxoset_key();
-        utxoset.entry(slip_key).or_insert(slip_value);
+        if self.get_amount() > 0 {
+            let slip_key = self.get_utxoset_key();
+            println!("inserting slip into shashmap: {:?}", slip_key);
+            utxoset.entry(slip_key).or_insert(slip_value);
+        }
     }
 
     pub fn get_utxoset_key(&self) -> SaitoUTXOSetKey {
@@ -135,6 +145,7 @@ impl Slip {
         res.extend(&self.get_publickey());
         res.extend(&self.get_uuid());
         res.extend(&self.get_amount().to_be_bytes());
+        res.extend(&self.get_slip_ordinal().to_be_bytes());
         res
     }
 

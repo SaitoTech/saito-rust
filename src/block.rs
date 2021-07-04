@@ -2,12 +2,14 @@ use crate::{
     blockchain::Blockchain,
     burnfee::BurnFee,
     crypto::{hash, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey},
+    golden_ticket::GoldenTicket,
     merkle::MerkleTreeLayer,
-    slip::SLIP_SIZE,
+    slip::{Slip, SlipType, SLIP_SIZE},
     time::create_timestamp,
-    transaction::{Transaction, TRANSACTION_SIZE},
+    transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
 };
 use ahash::AHashMap;
+use bigint::uint::U256;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -71,6 +73,37 @@ impl Default for BlockCore {
     }
 }
 
+//
+// object used when generating and validation transactions, containing the
+// information that is created selectively according to the transaction fees
+// and the optional outbound payments.
+//
+#[derive(PartialEq, Debug, Clone)]
+pub struct DataToValidate {
+    // expected transaction containing outbound payments
+    pub fee_transaction: Option<Transaction>,
+    // number of FEE in transactions if exists
+    pub ft_num: u8,
+    // index of FEE in transactions if exists
+    pub ft_idx: usize,
+    // number of GT in transactions if exists
+    pub gt_num: u8,
+    // index of GT in transactions if exists
+    pub gt_idx: usize,
+}
+impl DataToValidate {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new() -> DataToValidate {
+        DataToValidate {
+            fee_transaction: None,
+            ft_num: 0,
+            ft_idx: usize::MAX,
+            gt_num: 0,
+            gt_idx: usize::MAX,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
     /// Consensus Level Variables
@@ -79,6 +112,8 @@ pub struct Block {
     pub transactions: Vec<Transaction>,
     /// Self-Calculated / Validated
     hash: SaitoHash,
+    /// total fees paid into block
+    total_fees: u64,
     /// Is Block on longest chain
     lc: bool,
 }
@@ -89,6 +124,7 @@ impl Block {
             core,
             transactions: vec![],
             hash: [0; 32],
+            total_fees: 0,
             lc: false,
         }
     }
@@ -144,6 +180,10 @@ impl Block {
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
         self.transactions = transactions.to_vec();
     }
+
+    //pub fn set_transactions(&mut self, transactions: Vec<Transaction>) {
+    //    self.transactions = transactions;
+    //}
 
     pub fn set_id(&mut self, id: u64) {
         self.core.id = id;
@@ -391,6 +431,149 @@ impl Block {
         mrv[start_point].get_hash()
     }
 
+    //
+    //
+    //
+    pub fn generate_data_to_validate(&self, _blockchain: &Blockchain) -> DataToValidate {
+        let mut cv = DataToValidate::new();
+
+        let mut gt_num: u8 = 0;
+        let mut ft_num: u8 = 0;
+        let mut gt_idx: usize = usize::MAX;
+        let mut ft_idx: usize = usize::MAX;
+        let mut total_fees = 0;
+        let miner_publickey;
+        let router_publickey;
+
+        //
+        // calculate total fees in block
+        //
+        let mut idx: usize = 0;
+        for transaction in &self.transactions {
+            // fee transaction
+            if !transaction.is_fee_transaction() {
+                total_fees += transaction.get_total_fees();
+            } else {
+                ft_num += 1;
+                ft_idx = idx;
+            }
+
+            // gt transaction
+            if transaction.is_golden_ticket() {
+                gt_num += 1;
+                gt_idx = idx;
+            }
+
+            idx += 1;
+        }
+
+        if gt_num > 0 && gt_idx != usize::MAX {
+            //
+            // grab random solution from golden ticket
+            //
+            let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
+                self.transactions[gt_idx].get_message().to_vec(),
+            );
+            let miner_random = golden_ticket.get_random();
+
+            //
+            // create fee transaction
+            //
+            let mut fee_transaction = Transaction::default();
+            fee_transaction.set_transaction_type(TransactionType::Fee);
+
+            //
+            // find winning router
+            //
+            let x = U256::from_big_endian(&miner_random);
+            let mut y = total_fees;
+            //
+            // TODO - y cannot be zero or divide by zero
+            //
+            if y == 0 {
+                y = 100;
+            }
+            let z = U256::from_big_endian(&y.to_be_bytes());
+            let (winning_router, _bolres) = x.overflowing_rem(z);
+            let winning_nolan_in_fees = winning_router.low_u64();
+
+            //
+            // winning TX contains the winning nolan
+            //
+            // i.e. txs are picked based on fee contribution
+            //
+            // TODO - panics if no txs in block
+            //
+            let mut winning_tx = &self.transactions[0];
+            for transaction in &self.transactions {
+                if transaction.cumulative_fees > winning_nolan_in_fees {
+                    break;
+                }
+                winning_tx = &transaction;
+            }
+
+            //
+            // winning router is just tx sender for now
+            //
+            // TODO we need to add routing paths etc.
+            //
+            router_publickey = winning_tx.get_inputs()[0].get_publickey();
+
+            //
+            // winning miner from golden ticket
+            //
+            miner_publickey = golden_ticket.get_publickey();
+
+            //
+            // calculate miner and router payments
+            //
+
+            //
+            // TODO - REMOVE  - temporary to create tokens so we have circulating fees
+            total_fees = 10000;
+            //
+            let miner_payment = total_fees / 2;
+            let router_payment = total_fees - miner_payment;
+
+            let mut input1 = Slip::default();
+            input1.set_publickey(miner_publickey);
+            input1.set_amount(0);
+            input1.set_slip_type(SlipType::MinerInput);
+
+            let mut output1 = Slip::default();
+            output1.set_publickey([0; 33]);
+            output1.set_amount(miner_payment);
+            output1.set_slip_type(SlipType::MinerOutput);
+
+            let mut input2 = Slip::default();
+            input2.set_publickey(router_publickey);
+            input2.set_amount(0);
+            input2.set_slip_type(SlipType::RouterInput);
+
+            let mut output2 = Slip::default();
+            output2.set_publickey(router_publickey);
+            output2.set_amount(router_payment);
+            output2.set_slip_type(SlipType::RouterOutput);
+
+            fee_transaction.add_input(input1);
+            fee_transaction.add_output(output1);
+            fee_transaction.add_input(input2);
+            fee_transaction.add_output(output2);
+
+            //
+            // fee transaction added to consensus values
+            //
+            cv.fee_transaction = Some(fee_transaction);
+            cv.ft_idx = ft_idx;
+            cv.ft_num = ft_num;
+            cv.gt_idx = gt_idx;
+            cv.gt_num = gt_num;
+        }
+
+        // and return
+        return cv;
+    }
+
     pub fn on_chain_reorganization(
         &self,
         utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
@@ -402,19 +585,48 @@ impl Block {
         true
     }
 
-    pub fn validate_pre_calculations(&mut self) {
-        let _transactions_valid = &self
+    //
+    // before we validate the block we need to generate some information such
+    // as the hash of the transaction message data that is used to generate
+    // the signature. because this requires mutable access to the transactions
+    // Rust forces us to do it in a separate function.
+    //
+    // we first calculate as much information as we can in parallel before
+    // sweeping through the transactions to find out what percentage of the
+    // cumulative block fees they contain.
+    //
+    pub fn pre_validation_calculations(&mut self) -> bool {
+        //
+        // PARALLEL PROCESSING of most data
+        //
+        let _transactions_pre_calculated = &self
             .transactions
             .par_iter_mut()
-            .all(|tx| tx.validate_pre_calculations());
+            .all(|tx| tx.pre_validation_calculations_parallelizable());
+
+        //
+        // CUMULATIVE FEES only AFTER parallel calculations
+        //
+        let mut cumulative_fees = 0;
+        for transaction in &mut self.transactions {
+            cumulative_fees =
+                transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
+        }
+
+        //
+        // update block with total fees
+        //
+        self.total_fees = cumulative_fees;
+
+        true
     }
 
     pub fn validate(&self, blockchain: &Blockchain) -> bool {
         //
         // validate burn fee
         //
+        let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
         {
-            let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
             if !previous_block.is_none() {
                 let new_burnfee: u64 =
                     BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
@@ -428,9 +640,9 @@ impl Block {
                         new_burnfee
                     );
                     return false;
-                } else {
-                    println!("Burn Fee validates...");
                 }
+            } else {
+                // TODO assert that this is the first (or second?) block! ?
             }
         }
 
@@ -451,12 +663,33 @@ impl Block {
         }
 
         //
-        // validate fee-transaction
+        // validate fee-transaction (miner/router/staker) payments
         //
+        //
+        let cv = self.generate_data_to_validate(&blockchain);
 
         //
-        // validate miner/staker outbound-payments
+        // validate golden ticket
         //
+        if cv.gt_idx != usize::MAX {
+            if !previous_block.is_none() {
+                let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
+                    self.transactions[cv.gt_idx].get_message().to_vec(),
+                );
+                let solution = GoldenTicket::generate_solution(
+                    golden_ticket.get_random(),
+                    golden_ticket.get_publickey(),
+                );
+                if !GoldenTicket::is_valid_solution(
+                    previous_block.unwrap().get_hash(),
+                    solution,
+                    previous_block.unwrap().get_difficulty(),
+                ) {
+                    println!("ERROR: Golden Ticket solution does not validate against previous block hash and difficulty");
+                    return false;
+                }
+            }
+        }
 
         //
         // VALIDATE transactions

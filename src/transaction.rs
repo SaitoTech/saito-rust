@@ -22,6 +22,8 @@ pub const TRANSACTION_SIZE: usize = 85;
 #[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone, TryFromByte)]
 pub enum TransactionType {
     Normal,
+    Fee,
+    GoldenTicket,
     Other,
 }
 
@@ -86,6 +88,14 @@ pub struct Transaction {
     core: TransactionCore,
     // hash used for merkle_root (does not include signature), and slip uuid
     hash_for_signature: SaitoHash,
+
+    pub total_in: u64,
+    pub total_out: u64,
+    pub total_fees: u64,
+    pub cumulative_fees: u64,
+
+    pub routing_work_to_me: u64,
+    pub routing_work_to_creator: u64,
 }
 
 impl Transaction {
@@ -93,6 +103,12 @@ impl Transaction {
         Self {
             core,
             hash_for_signature: [0; 32],
+            total_in: 0,
+            total_out: 0,
+            total_fees: 0,
+            cumulative_fees: 0,
+            routing_work_to_me: 0,
+            routing_work_to_creator: 0,
         }
     }
 
@@ -102,6 +118,24 @@ impl Transaction {
 
     pub fn add_output(&mut self, output_slip: Slip) {
         self.core.outputs.push(output_slip);
+    }
+
+    pub fn is_fee_transaction(&self) -> bool {
+        if self.core.transaction_type == TransactionType::Fee {
+            return true;
+        }
+        return false;
+    }
+
+    pub fn is_golden_ticket(&self) -> bool {
+        if self.core.transaction_type == TransactionType::GoldenTicket {
+            return true;
+        }
+        return false;
+    }
+
+    pub fn get_total_fees(&self) -> u64 {
+        self.total_fees
     }
 
     pub fn get_timestamp(&self) -> u64 {
@@ -114,6 +148,14 @@ impl Transaction {
 
     pub fn get_inputs(&self) -> &Vec<Slip> {
         &self.core.inputs
+    }
+
+    pub fn get_mut_inputs(&mut self) -> &mut Vec<Slip> {
+        &mut self.core.inputs
+    }
+
+    pub fn get_mut_outputs(&mut self) -> &mut Vec<Slip> {
+        &mut self.core.outputs
     }
 
     pub fn get_outputs(&self) -> &Vec<Slip> {
@@ -153,6 +195,17 @@ impl Transaction {
     }
 
     pub fn sign(&mut self, privatekey: SaitoPrivateKey) {
+        //
+        // we set slip ordinals when signing
+        //
+        let mut slip_ordinal = 0;
+        println!("signing tx with {} outputs: ", self.get_outputs().len());
+        for output in self.get_mut_outputs() {
+            println!("updating slip ordinal: {}", slip_ordinal);
+            output.set_slip_ordinal(slip_ordinal);
+            slip_ordinal += 1;
+        }
+
         let hash_for_signature = hash(&self.serialize_for_signature());
         self.set_signature(sign(&hash_for_signature, privatekey));
         self.set_hash_for_signature(hash_for_signature);
@@ -274,12 +327,44 @@ impl Transaction {
         }
     }
 
-    pub fn validate_pre_calculations(&mut self) -> bool {
+    //
+    // we have to calculate cumulative fees sequentially.
+    //
+    pub fn pre_validation_calculations_cumulative_fees(&mut self, cumulative_fees: u64) -> u64 {
+        self.cumulative_fees = cumulative_fees + self.total_fees;
+        return self.cumulative_fees;
+    }
+    pub fn pre_validation_calculations_parallelizable(&mut self) -> bool {
         //
         // and save the hash_for_signature so we can use it later...
         //
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         self.set_hash_for_signature(hash_for_signature);
+
+        //
+        // calculate nolan in / out, fees
+        //
+        let mut nolan_in: u64 = 0;
+        let mut nolan_out: u64 = 0;
+        for input in &self.core.inputs {
+            nolan_in += input.get_amount();
+        }
+        for output in &self.core.outputs {
+            nolan_out += output.get_amount();
+        }
+        self.total_in = nolan_in;
+        self.total_out = nolan_out;
+        self.total_fees = 0;
+
+        //
+        // note that this is not validation code, permitting this. we may have
+        // some transactions that do insert NOLAN, such as during testing of
+        // monetary policy. All sanity checks need to be in the validate()
+        // function.
+        //
+        if nolan_in > nolan_out {
+            self.total_fees = nolan_in - nolan_out;
+        }
 
         true
     }
@@ -315,18 +400,7 @@ impl Transaction {
         //
         // VALIDATE no negative payments
         //
-        let mut nolan_in: u64 = 0;
-        let mut nolan_out: u64 = 0;
-        for input in &self.core.inputs {
-            nolan_in += input.get_amount();
-        }
-        for output in &self.core.outputs {
-            nolan_out += output.get_amount();
-        }
-
-        //
         // Rust Types prevent these variables being < 0
-        //
         //        if nolan_in < 0 {
         //            println!("ERROR 672939: negative payment in transaction from slip");
         //            return false;
@@ -335,7 +409,10 @@ impl Transaction {
         //            println!("ERROR 672940: negative payment in transaction to slip");
         //            return false;
         //        }
-        if nolan_out > nolan_in {
+        //
+        // we make an exception for fee transactions, which may be pulling revenue from the
+        // treasury in some amount.
+        if self.total_out > self.total_in && self.get_transaction_type() != TransactionType::Fee {
             println!("ERROR 672941: transaction spends more than it has available");
             return false;
         }
