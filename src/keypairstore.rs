@@ -3,6 +3,7 @@ extern crate rpassword;
 use clap::Clap;
 use std::fs::File;
 use std::io;
+use std::io::prelude::*;
 use std::io::Read;
 
 // cargo run -- --key-path boom
@@ -37,7 +38,7 @@ impl KeyPairStore {
         let _content = match data() {
             Err(_e) => {
                 // panic!("{}", e)
-                KeyPairStore::create_key_file()
+                KeyPairStore::create_key_file().expect("Failed to create file!")
             }
             Ok(s) => {
                 println!("PW File content: {}", s);
@@ -57,14 +58,19 @@ impl KeyPairStore {
         KeyPairStore {}
     }
 
-    pub fn create_key_file() -> String {
+    pub fn create_key_file() -> Result<String, io::Error> {
         // - ask for pw
         // - write pw to file to given path
 
-        println!("Let's create a file");
-        // "my_secure_password".to_owned()
-        let pass = rpassword::prompt_password_stdout("Password: ").unwrap();
-        println!("Your password is {}", pass);
-        pass.to_string()
+        // println!("File does not exist. Let's create it!");
+        let password = rpassword::prompt_password_stdout("Password: ").unwrap();
+        println!("Your password is {}", password);
+        // pass.to_string();
+
+        //btw, for directly reading/writing a whoel fiel to/from a string, there is std::fs::read_to_string and std::Fs::write
+
+        let mut file = File::create("foo.txt")?;
+        file.write_all(password.as_bytes())?;
+        Ok(password.to_string())
     }
 }
