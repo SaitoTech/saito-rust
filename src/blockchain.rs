@@ -287,6 +287,19 @@ impl Blockchain {
         }
     }
 
+    pub fn get_latest_block_difficulty(&self) -> u64 {
+        let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block = self.blocks.get(&block_hash);
+        match block {
+            Some(block) => {
+                return block.get_difficulty();
+            }
+            None => {
+                return 0;
+            }
+        }
+    }
+
     pub fn get_latest_block_timestamp(&self) -> u64 {
         let block_hash = self.blockring.get_longest_chain_block_hash();
         let block = self.blocks.get(&block_hash);
@@ -550,8 +563,9 @@ pub async fn run(
 
 mod tests {
     use crate::test_utilities::mocks::make_mock_block;
-
+    use crate::miner::Miner;
     use super::*;
+
     #[tokio::test]
     async fn add_block_test_1() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));

@@ -30,6 +30,8 @@ pub struct DataToValidate {
     pub gt_num: u8,
     // index of GT in transactions if exists
     pub gt_idx: usize,
+    // expected difficulty
+    pub expected_difficulty: u64,
 }
 impl DataToValidate {
     #[allow(clippy::too_many_arguments)]
@@ -40,6 +42,7 @@ impl DataToValidate {
             ft_idx: usize::MAX,
             gt_num: 0,
             gt_idx: usize::MAX,
+            expected_difficulty: 0,
         }
     }
 }
@@ -67,6 +70,10 @@ pub struct Block {
     total_fees: u64,
     /// Is Block on longest chain
     lc: bool,
+    // has golden ticket
+    pub has_golden_ticket: bool,
+    // has fee transaction
+    pub has_fee_transaction: bool,
 }
 
 impl Block {
@@ -86,6 +93,8 @@ impl Block {
             hash: [0; 32],
             total_fees: 0,
             lc: false,
+	    has_golden_ticket: false,
+	    has_fee_transaction: false,
         }
     }
 
@@ -135,6 +144,22 @@ impl Block {
 
     pub fn get_difficulty(&self) -> u64 {
         self.difficulty
+    }
+
+    pub fn get_has_golden_ticket(&self) -> bool {
+        self.has_golden_ticket
+    }
+
+    pub fn get_has_fee_transaction(&self) -> bool {
+        self.has_fee_transaction
+    }
+
+    pub fn set_has_golden_ticket(&mut self, hgt : bool) {
+        self.has_golden_ticket = hgt;
+    }
+
+    pub fn set_has_fee_transaction(&mut self, hft : bool) {
+        self.has_fee_transaction = hft;
     }
 
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
@@ -431,7 +456,7 @@ impl Block {
     //
     //
     //
-    pub fn generate_data_to_validate(&self, _blockchain: &Blockchain) -> DataToValidate {
+    pub fn generate_data_to_validate(&self, blockchain: &Blockchain) -> DataToValidate {
         let mut cv = DataToValidate::new();
 
         let mut gt_num: u8 = 0;
@@ -465,6 +490,7 @@ impl Block {
         }
 
         if gt_num > 0 && gt_idx != usize::MAX {
+
             //
             // grab random solution from golden ticket
             //
@@ -566,7 +592,26 @@ impl Block {
             cv.ft_num = ft_num;
             cv.gt_idx = gt_idx;
             cv.gt_num = gt_num;
+
         }
+
+
+        //
+        // validate difficulty
+        //
+        let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
+        if !previous_block.is_none() {
+            if !previous_block.as_ref().unwrap().get_has_golden_ticket() && !self.get_has_golden_ticket() {
+                if previous_block.as_ref().unwrap().get_difficulty() > 0 {
+                    cv.expected_difficulty = previous_block.as_ref().unwrap().get_difficulty()-1;
+		}
+            } else if previous_block.as_ref().unwrap().get_has_golden_ticket() && self.get_has_golden_ticket() {
+                cv.expected_difficulty = previous_block.as_ref().unwrap().get_difficulty()+1; 
+           } else {
+                cv.expected_difficulty = previous_block.as_ref().unwrap().get_difficulty();
+            }
+        }   
+
 
         // and return
         return cv;
@@ -606,10 +651,25 @@ impl Block {
         // CUMULATIVE FEES only AFTER parallel calculations
         //
         let mut cumulative_fees = 0;
+	let mut hgt = false;
+	let mut hft = false;
         for transaction in &mut self.transactions {
             cumulative_fees =
                 transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
+
+	    //
+	    // also check the transactions for golden ticket and fees
+	    //
+	    if transaction.get_transaction_type() == TransactionType::Fee {
+	        hft = true;
+	    }
+	    if transaction.get_transaction_type() == TransactionType::GoldenTicket {
+		hgt = true;
+	    }
         }
+	self.set_has_fee_transaction(hft);
+	self.set_has_golden_ticket(hgt);
+
 
         //
         // update block with total fees
@@ -620,6 +680,7 @@ impl Block {
     }
 
     pub fn validate(&self, blockchain: &Blockchain) -> bool {
+
         //
         // validate burn fee
         //
@@ -644,11 +705,12 @@ impl Block {
             }
         }
 
+
         //
         // verify merkle root
         //
         if self.merkle_root == [0; 32] {
-            println!("merkle root is false 1");
+            println!("merkle root is unset / false 1");
             return false;
         }
 
@@ -660,11 +722,21 @@ impl Block {
             return false;
         }
 
+
         //
         // validate fee-transaction (miner/router/staker) payments
         //
         //
         let cv = self.generate_data_to_validate(&blockchain);
+
+	//
+	// validate difficulty
+	//
+	if cv.expected_difficulty != self.get_difficulty() {
+            println!("difficulty is false {} vs {}", cv.expected_difficulty, self.get_difficulty());
+            return false;
+	}
+
 
         //
         // validate golden ticket
@@ -688,6 +760,17 @@ impl Block {
                 }
             }
         }
+
+	//
+	// validate difficulty
+	//
+        if !previous_block.is_none() {
+	    if cv.expected_difficulty != self.get_difficulty() {
+	        println!("Block difficulty is {} but we expect {}", self.get_difficulty(), cv.expected_difficulty);
+		return false;
+	    }
+        }
+
 
         //
         // VALIDATE transactions
