@@ -41,7 +41,7 @@ impl Blockchain {
             block.get_id(),
             create_timestamp()
         );
-        //println!(" ... hash: {:?}", block.get_hash());
+        println!(" ... hash: {:?}", block.get_hash());
         //println!(" ... txs in block: {:?}", block.transactions.len());
         //println!(" ... w/ prev bhsh: {:?}", block.get_previous_block_hash());
 
@@ -164,12 +164,21 @@ impl Blockchain {
                 }
             }
         } else {
-            if self.blockring.get_longest_chain_block_id() != 0 {
-                println!("We have added a block without a parent block... triggering failure");
-                self.add_block_failure().await;
-                return;
-            }
+
+	    //
+	    // we can hit this point in the code if we have a block without a parent, 
+	    // in which case we want to process it without unwind/wind chain, or if
+	    // we are adding our very first block, in which case we do want to process
+	    // it.
+	    //
+	    // TODO more elegant handling of the first block and other non-longest-chain
+	    // blocks.
+	    //
+            println!("We have added a block without a parent block... ");
+
         }
+
+
         //
         // at this point we should have a shared ancestor or not
         //
@@ -194,7 +203,19 @@ impl Blockchain {
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             if does_new_chain_validate {
+
                 self.add_block_success(block_hash).await;
+
+        	//
+        	// TODO
+        	//
+        	// mutable update is hell -- we can do this but have to have
+        	// manually checked that the entry exists in order to pull
+        	// this trick. we did this check before validating.
+        	//
+        	{
+        	    self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+        	}
 
                 if !self.broadcast_channel_sender.is_none() {
                     self.broadcast_channel_sender
@@ -239,19 +260,10 @@ impl Blockchain {
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
-        //
-        // TODO -
-        //
-        // block is longest-chain
-        //
-        // mutable update is hell -- we can do this but have to have
-        // manually checked that the entry exists in order to pull
-        // this trick. we did this check before validating.
-        //
-        {
-            self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
-        }
 
+	//
+	// save to disk
+	//
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
 
@@ -266,6 +278,7 @@ impl Blockchain {
             wallet.add_block(&block);
             println!(" ... finsh wallet: {}", create_timestamp());
         }
+
     }
     pub async fn add_block_failure(&mut self) {}
 
@@ -405,7 +418,7 @@ impl Blockchain {
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        let does_block_validate = block.validate(self);
+        let does_block_validate = block.validate(&self, &self.utxoset);
 
         if does_block_validate {
             block.on_chain_reorganization(&mut self.utxoset, true);

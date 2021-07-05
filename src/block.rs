@@ -5,13 +5,17 @@ use crate::{
     golden_ticket::GoldenTicket,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
+    time::{create_timestamp},
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
+    wallet::Wallet,
 };
 use ahash::AHashMap;
 use bigint::uint::U256;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
+use std::{mem, sync::Arc};
+use tokio::sync::{RwLock};
 
 //
 // object used when generating and validation transactions, containing the
@@ -679,7 +683,7 @@ impl Block {
         true
     }
 
-    pub fn validate(&self, blockchain: &Blockchain) -> bool {
+    pub fn validate(&self, blockchain: &Blockchain, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
 
         //
         // validate burn fee
@@ -775,10 +779,123 @@ impl Block {
         //
         // VALIDATE transactions
         //
-        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate());
+        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate(utxoset));
 
         true
     }
+
+
+
+    pub async fn generate_block(
+	transactions: &mut Vec<Transaction>,
+	previous_block_hash: SaitoHash,
+        wallet_lock: Arc<RwLock<Wallet>>,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+    ) -> Block {
+
+        let blockchain = blockchain_lock.read().await;
+        let wallet = wallet_lock.read().await;
+
+	let mut previous_block_id = 0;
+	let mut previous_block_burnfee = 0;
+	let mut previous_block_timestamp = 0;
+	let mut previous_block_difficulty = 0;
+
+        let previous_block = blockchain.blocks.get(&previous_block_hash);
+
+	if !previous_block.is_none() {
+            previous_block_id = previous_block.unwrap().get_id();
+            previous_block_burnfee = previous_block.unwrap().get_burnfee();
+            previous_block_timestamp = previous_block.unwrap().get_timestamp();
+            previous_block_difficulty = previous_block.unwrap().get_difficulty();
+	}
+
+        let mut block = Block::new();
+
+        let current_timestamp = create_timestamp();
+        let current_burnfee: u64 =
+            BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
+                previous_block_burnfee,
+                current_timestamp,
+                previous_block_timestamp,
+            );
+
+        block.set_id(previous_block_id + 1);
+        block.set_previous_block_hash(previous_block_hash);
+        block.set_burnfee(current_burnfee);
+        block.set_timestamp(current_timestamp);
+        block.set_difficulty(previous_block_difficulty);
+
+	//
+	// in-memory swap of pointers, for instant copying of txs into block from mempool
+	//
+        mem::swap(&mut block.transactions, transactions);
+
+	//
+	// TODO - not ideal that we have to loop through the block.
+	// perhaps we can put GT in a specific location.
+	//
+        for transaction in &block.transactions {
+	    if transaction.is_golden_ticket() {
+		block.set_has_golden_ticket(true);
+		break;
+	    }
+	}
+
+        //
+        // create
+        //
+        let cv: DataToValidate = block.generate_data_to_validate(&blockchain);
+
+	//
+	// fee transactions and golden tickets
+        //
+        // set hash_for_signature for fee_tx as we cannot mutably fetch it
+        // during merkle_root generation as those functions require parallel
+        // processing in block validation. So some extra code here.
+        //
+        if !cv.fee_transaction.is_none() {
+
+            //
+            // fee-transaction must still pass validation rules
+            //
+            let mut fee_tx = cv.fee_transaction.unwrap();
+
+            for input in fee_tx.get_mut_inputs() {
+                input.set_publickey(wallet.get_publickey());
+            }
+            let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
+            fee_tx.set_hash_for_signature(hash_for_signature);
+
+            //
+            // sign the transaction and finalize it
+            //
+            fee_tx.sign(wallet.get_privatekey());
+
+            block.add_transaction(fee_tx);
+	    block.set_has_fee_transaction(true);
+
+        }
+
+
+	//
+	// validate difficulty
+	//
+        if cv.expected_difficulty != 0 {
+	    block.set_difficulty(cv.expected_difficulty);
+        }
+
+        let block_merkle_root = block.generate_merkle_root();
+        block.set_merkle_root(block_merkle_root);
+        let block_hash = block.generate_hash();
+        block.set_hash(block_hash);
+
+	block.sign(wallet.get_publickey(), wallet.get_privatekey());
+
+        block
+    }
+
+
 }
 
 
@@ -912,3 +1029,4 @@ mod tests {
         assert!(block.generate_merkle_root().len() == 32);
     }
 }
+

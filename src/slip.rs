@@ -48,7 +48,10 @@ impl Slip {
 	}
     }
 
-    pub fn validate(&self) -> bool {
+    pub fn validate(
+	&self,
+        _utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
+    ) -> bool {
         true
     }
 
@@ -60,7 +63,7 @@ impl Slip {
     ) {
         if self.get_amount() > 0 {
             let slip_key = self.get_utxoset_key();
-            println!("inserting slip into shashmap: {:?}", slip_key);
+            //println!("inserting slip into shashmap: {:?}", slip_key);
             utxoset.entry(slip_key).or_insert(slip_value);
         }
     }

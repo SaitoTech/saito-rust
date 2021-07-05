@@ -185,9 +185,7 @@ impl Transaction {
         // we set slip ordinals when signing
         //
         let mut slip_ordinal = 0;
-        println!("signing tx with {} outputs: ", self.get_outputs().len());
         for output in self.get_mut_outputs() {
-            println!("updating slip ordinal: {}", slip_ordinal);
             output.set_slip_ordinal(slip_ordinal);
             slip_ordinal += 1;
         }
@@ -289,7 +287,9 @@ impl Transaction {
         vbytes.extend(&self.message);
         vbytes
     }
-    /// Serialize a Transaction for transport or disk.
+
+
+    /// Runs when the chain is re-organized
     pub fn on_chain_reorganization(
         &self,
         utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
@@ -335,8 +335,12 @@ impl Transaction {
         for input in &self.inputs {
             nolan_in += input.get_amount();
         }
-        for output in &self.outputs {
+        for output in &mut self.outputs {
+
             nolan_out += output.get_amount();
+
+	    // and set the UUID needed for insertion to shashmap
+	    output.set_uuid(hash_for_signature);
         }
         self.total_in = nolan_in;
         self.total_out = nolan_out;
@@ -354,7 +358,8 @@ impl Transaction {
 
         true
     }
-    pub fn validate(&self) -> bool {
+    pub fn validate(&self, utxoset : &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+
         //
         // VALIDATE signature valid
         //
@@ -407,7 +412,7 @@ impl Transaction {
         // VALIDATE UTXO inputs
         //
         for input in &self.inputs {
-            if !input.validate() {
+            if !input.validate(utxoset) {
                 return false;
             }
         }
