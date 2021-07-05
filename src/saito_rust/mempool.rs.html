@@ -502,6 +502,33 @@
 <span id="499">499</span>
 <span id="500">500</span>
 <span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block</span>::{<span class="ident">Block</span>, <span class="ident">DataToValidate</span>},
@@ -604,15 +631,16 @@
     <span class="comment">// the right block. this pushes the golden ticket indiscriminately into the</span>
     <span class="comment">// transaction array -- we can do a better job.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_golden_ticket</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddTransactionResult</span> {
+
         <span class="comment">// convert into transaction</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">create_golden_ticket_transaction</span>(<span class="ident">golden_ticket</span>).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">create_golden_ticket_transaction</span>(<span class="ident">golden_ticket</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// create hash_for_signature to avoid failure generating merkle_root</span>
-        <span class="comment">//</span>
-        <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">transaction</span>.<span class="ident">serialize_for_signature</span>());
-        <span class="ident">transaction</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
+        <span class="comment">// - TODO - we can remove this</span>
+        <span class="comment">//let hash_for_signature: SaitoHash = hash(&amp;transaction.serialize_for_signature());</span>
+        <span class="comment">//transaction.set_hash_for_signature(hash_for_signature);</span>
 
         <span class="kw">if</span> <span class="self">self</span>
             .<span class="ident">transactions</span>
@@ -685,6 +713,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">previous_block_id</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>();
         <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
@@ -693,6 +722,8 @@
 
         <span class="kw">let</span> <span class="ident">previous_block_burnfee</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_burnfee</span>();
         <span class="kw">let</span> <span class="ident">previous_block_timestamp</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_timestamp</span>();
+        <span class="kw">let</span> <span class="ident">previous_block_difficulty</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_difficulty</span>();
+
         <span class="kw">let</span> <span class="ident">current_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
         <span class="kw">let</span> <span class="ident">current_burnfee</span>: <span class="ident">u64</span> <span class="op">=</span>
             <span class="ident">BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan</span>(
@@ -705,22 +736,39 @@
         <span class="ident">block</span>.<span class="ident">set_previous_block_hash</span>(<span class="ident">previous_block_hash</span>);
         <span class="ident">block</span>.<span class="ident">set_burnfee</span>(<span class="ident">current_burnfee</span>);
         <span class="ident">block</span>.<span class="ident">set_timestamp</span>(<span class="ident">current_timestamp</span>);
+        <span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="ident">previous_block_difficulty</span>);
 
         <span class="comment">//println!(&quot;pre-swap: {} vs {}&quot;, block.transactions.len(), self.transactions.len());</span>
         <span class="ident">mem::swap</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">block</span>.<span class="ident">transactions</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">transactions</span>);
         <span class="comment">//println!(&quot;post-swap: {} vs {}&quot;, block.transactions.len(), self.transactions.len());</span>
+
+	<span class="comment">//</span>
+	<span class="comment">// TODO - not ideal that we have to loop through the block</span>
+	<span class="comment">// can&#39;t we put GT in a specific location?</span>
+	<span class="comment">//</span>
+	<span class="comment">// check for golden ticket </span>
+	<span class="comment">//</span>
+        <span class="kw">for</span> <span class="ident">transaction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span> {
+	    <span class="kw">if</span> <span class="ident">transaction</span>.<span class="ident">is_golden_ticket</span>() {
+		<span class="ident">block</span>.<span class="ident">set_has_golden_ticket</span>(<span class="bool-val">true</span>);
+		<span class="kw">break</span>;
+	    }
+	}
 
         <span class="comment">//</span>
         <span class="comment">// create</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">cv</span>: <span class="ident">DataToValidate</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_data_to_validate</span>(<span class="kw-2">&amp;</span><span class="ident">blockchain</span>);
 
+	<span class="comment">//</span>
+	<span class="comment">// fee transactions and golden tickets</span>
         <span class="comment">//</span>
         <span class="comment">// set hash_for_signature for fee_tx as we cannot mutably fetch it</span>
         <span class="comment">// during merkle_root generation as those functions require parallel</span>
         <span class="comment">// processing in block validation. So some extra code here.</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">cv</span>.<span class="ident">fee_transaction</span>.<span class="ident">is_none</span>() {
+
             <span class="comment">//</span>
             <span class="comment">// fee-transaction must still pass validation rules</span>
             <span class="comment">//</span>
@@ -733,25 +781,31 @@
             <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">fee_tx</span>.<span class="ident">serialize_for_signature</span>());
             <span class="ident">fee_tx</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
 
-            <span class="macro">println!</span>(<span class="string">&quot;UUID in this is: {:?}&quot;</span>, <span class="ident">hash_for_signature</span>);
-
             <span class="comment">//</span>
             <span class="comment">// sign the transaction and finalize it</span>
             <span class="comment">//</span>
             <span class="ident">fee_tx</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
 
             <span class="ident">block</span>.<span class="ident">add_transaction</span>(<span class="ident">fee_tx</span>);
+	    <span class="ident">block</span>.<span class="ident">set_has_fee_transaction</span>(<span class="bool-val">true</span>);
+
+        }
+
+
+	<span class="comment">//</span>
+	<span class="comment">// validate difficulty</span>
+	<span class="comment">//</span>
+        <span class="kw">if</span> <span class="ident">cv</span>.<span class="ident">expected_difficulty</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
+	    <span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="ident">cv</span>.<span class="ident">expected_difficulty</span>);
         }
 
         <span class="kw">let</span> <span class="ident">block_merkle_root</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_merkle_root</span>();
         <span class="ident">block</span>.<span class="ident">set_merkle_root</span>(<span class="ident">block_merkle_root</span>);
-        <span class="macro">println!</span>(
-            <span class="string">&quot;merkle root set in mempool txs {} as: {:?}&quot;</span>,
-            <span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>(),
-            <span class="ident">block_merkle_root</span>
-        );
         <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_hash</span>();
         <span class="ident">block</span>.<span class="ident">set_hash</span>(<span class="ident">block_hash</span>);
+
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+	<span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>(), <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
 
         <span class="ident">block</span>
     }

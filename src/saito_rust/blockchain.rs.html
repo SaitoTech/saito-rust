@@ -680,6 +680,28 @@
 <span id="677">677</span>
 <span id="678">678</span>
 <span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -970,6 +992,19 @@
         }
     }
 
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_latest_block_difficulty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_hash</span>();
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>);
+        <span class="kw">match</span> <span class="ident">block</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">return</span> <span class="ident">block</span>.<span class="ident">get_difficulty</span>();
+            }
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">return</span> <span class="number">0</span>;
+            }
+        }
+    }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_latest_block_timestamp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_hash</span>();
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>);
@@ -1233,8 +1268,9 @@
 
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::mocks::make_mock_block</span>;
-
+    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_test_1</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
@@ -1304,6 +1340,7 @@
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_fork_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
+        <span class="kw">let</span> <span class="ident">miner</span> <span class="op">=</span> <span class="ident">Miner::new</span>();
 
         <span class="kw">let</span> <span class="ident">mock_block_1</span> <span class="op">=</span> <span class="ident">make_mock_block</span>(<span class="number">0</span>, <span class="number">10</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="number">1</span>);
         <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">mock_block_1</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
@@ -1333,12 +1370,16 @@
         <span class="ident">prev_block</span> <span class="op">=</span> <span class="ident">mock_block_1</span>.<span class="ident">clone</span>();
         <span class="comment">// extend the fork to match the height of LC, the latest block id/hash shouldn&#39;t change yet...</span>
         <span class="kw">for</span> <span class="ident">_n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">5</span> {
+
             <span class="kw">let</span> <span class="ident">next_block</span> <span class="op">=</span> <span class="ident">make_mock_block</span>(
                 <span class="ident">prev_block</span>.<span class="ident">get_timestamp</span>(),
                 <span class="ident">prev_block</span>.<span class="ident">get_burnfee</span>(),
                 <span class="ident">prev_block</span>.<span class="ident">get_hash</span>(),
                 <span class="ident">prev_block</span>.<span class="ident">get_id</span>() <span class="op">+</span> <span class="number">1</span>,
             );
+
+	    <span class="kw">let</span> <span class="ident">golden_ticket_transaction</span> <span class="op">=</span> <span class="ident">miner</span>.<span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="ident">prev_block</span>);
+	    <span class="ident">next_block</span>.<span class="ident">add_transaction</span>(<span class="ident">golden_ticket_transaction</span>);
 
             <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">next_block</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
 
@@ -1353,6 +1394,9 @@
             <span class="ident">prev_block</span>.<span class="ident">get_hash</span>(),
             <span class="ident">prev_block</span>.<span class="ident">get_id</span>() <span class="op">+</span> <span class="number">1</span>,
         );
+
+        <span class="kw">let</span> <span class="ident">golden_ticket_transaction</span> <span class="op">=</span> <span class="ident">miner</span>.<span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="ident">prev_block</span>);
+        <span class="ident">next_block</span>.<span class="ident">add_transaction</span>(<span class="ident">golden_ticket_transaction</span>);
 
         <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">next_block</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
         <span class="comment">// TODO: These tests are failing</span>
