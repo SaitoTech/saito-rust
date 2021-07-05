@@ -1,8 +1,8 @@
-use crate::block::{Block};
+use crate::block::Block;
 use crate::burnfee::BurnFee;
 use crate::crypto::SaitoHash;
 use crate::slip::{Slip, SlipType};
-use crate::transaction::{Transaction};
+use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 
 pub fn make_mock_block(
@@ -25,7 +25,7 @@ pub fn make_mock_block(
     mock_input.set_amount(1);
     mock_input.set_slip_ordinal(0);
     mock_input.set_slip_type(SlipType::Normal);
-   
+
     let mut mock_output = Slip::new();
     mock_output.set_publickey(wallet.get_publickey());
     mock_output.set_uuid([0; 32]);
