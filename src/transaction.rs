@@ -419,7 +419,7 @@ impl Transaction {
 #[cfg(test)]
 mod tests {
     use crate::slip::Slip;
-
+    use crate::time::{create_timestamp};
     use super::*;
 
     #[test]

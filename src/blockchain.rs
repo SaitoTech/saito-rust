@@ -287,6 +287,19 @@ impl Blockchain {
         }
     }
 
+    pub fn get_latest_block_difficulty(&self) -> u64 {
+        let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block = self.blocks.get(&block_hash);
+        match block {
+            Some(block) => {
+                return block.get_difficulty();
+            }
+            None => {
+                return 0;
+            }
+        }
+    }
+
     pub fn get_latest_block_timestamp(&self) -> u64 {
         let block_hash = self.blockring.get_longest_chain_block_hash();
         let block = self.blocks.get(&block_hash);
@@ -550,8 +563,9 @@ pub async fn run(
 
 mod tests {
     use crate::test_utilities::mocks::make_mock_block;
-
+    use crate::miner::Miner;
     use super::*;
+
     #[tokio::test]
     async fn add_block_test_1() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
@@ -621,6 +635,7 @@ mod tests {
     async fn add_fork_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mut blockchain = Blockchain::new(wallet_lock.clone());
+        let miner = Miner::new();
 
         let mock_block_1 = make_mock_block(0, 10, [0; 32], 1);
         blockchain.add_block(mock_block_1.clone()).await;
@@ -650,12 +665,16 @@ mod tests {
         prev_block = mock_block_1.clone();
         // extend the fork to match the height of LC, the latest block id/hash shouldn't change yet...
         for _n in 0..5 {
+
             let next_block = make_mock_block(
                 prev_block.get_timestamp(),
                 prev_block.get_burnfee(),
                 prev_block.get_hash(),
                 prev_block.get_id() + 1,
             );
+
+	    let golden_ticket_transaction = miner.mine_on_block_until_golden_ticket_found(prev_block);
+	    next_block.add_transaction(golden_ticket_transaction);
 
             blockchain.add_block(next_block.clone()).await;
 
@@ -670,6 +689,9 @@ mod tests {
             prev_block.get_hash(),
             prev_block.get_id() + 1,
         );
+
+        let golden_ticket_transaction = miner.mine_on_block_until_golden_ticket_found(prev_block);
+        next_block.add_transaction(golden_ticket_transaction);
 
         blockchain.add_block(next_block.clone()).await;
         // TODO: These tests are failing
