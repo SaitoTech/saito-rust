@@ -268,11 +268,11 @@ println!(" ... block save done:            {:?}", create_timestamp());
         // the routing client to process transactions in its
         // wallet.
         {
-            println!(" ... start wallet:    {}", create_timestamp());
+            println!(" ... wallet processing start:    {}", create_timestamp());
             let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
             wallet.add_block(&block);
-            println!(" ... finsh wallet:    {}", create_timestamp());
+            println!(" ... wallet processing stop:     {}", create_timestamp());
         }
     }
     pub async fn add_block_failure(&mut self) {}

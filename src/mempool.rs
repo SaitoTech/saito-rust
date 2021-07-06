@@ -273,7 +273,8 @@ pub async fn run(
                         let mempool_lock_clone_clone = mempool_lock_clone.clone();
 
 tokio::spawn(async move {
-			let txs_to_generate = 4000;
+			let txs_to_generate = 10_000;
+			let bytes_per_tx = 1024;
 			{
                             let mut mempool = mempool_lock_clone_clone.write().await;
 			    mempool.currently_generating_transactions = true;
@@ -300,7 +301,7 @@ tokio::spawn(async move {
 				}
                       		let mut transaction = Transaction::new();
 
-                    		transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
+                    		transaction.set_message((0..bytes_per_tx).map(|_| rand::random::<u8>()).collect());
 
                 		//
                 		// as fake transactions, we set the UUID arbitrarily
@@ -365,15 +366,12 @@ tokio::spawn(async move {
                         // For now, let's assume that the network has a reference
                         // to mempool and is adding the block through that reference
                         // then calls mempool to process the blocks in the queue
-println!("send mcs 3");
                         mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                     }
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
-println!(" 5 mempool lock request");
                         let mut _mempool = mempool_lock.write().await;
                     },
                     SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
-println!(" 6 mempool lock request");
                         let mut mempool = mempool_lock.write().await;
                         mempool.add_golden_ticket(golden_ticket).await;
                     },
