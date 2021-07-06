@@ -36,7 +36,7 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-        println!(" ... add_block start: {:?} txs: {}", create_timestamp(), block.transactions.len());
+        println!(" ... blockchain.add_block start: {:?} txs: {}", create_timestamp(), block.transactions.len());
         //println!(" ... txs in block: {:?}", block.transactions.len());
         //println!(" ... w/ prev bhsh: {:?}", block.get_previous_block_hash());
 
@@ -105,7 +105,7 @@ impl Blockchain {
             self.blocks.insert(block_hash, block);
         }
 
-        println!(" ... shared ancestor: {:?}", create_timestamp());
+        println!(" ... start shared ancestor hunt: {:?}", create_timestamp());
 
         //
         // find shared ancestor of new_block with old_chain
@@ -194,7 +194,7 @@ impl Blockchain {
         // with the BlockRing. We fail if the newly-preferred chain is not
         // viable.
         //
-println!(" ... pre-wind/unwind: {:?}", create_timestamp());
+println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             if does_new_chain_validate {
@@ -254,14 +254,14 @@ println!(" ... pre-wind/unwind: {:?}", create_timestamp());
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
-println!(" ... add blk success: {:?}", create_timestamp());
+println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
         //
         // save to disk
         //
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
 
-println!(" ... block save done: {:?}", create_timestamp());
+println!(" ... block save done:            {:?}", create_timestamp());
 
         //
         // TODO - this is merely for testing, we do not intend
@@ -390,6 +390,7 @@ println!(" ... block save done: {:?}", create_timestamp());
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
+println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
         //
         // if we are winding a non-existent chain with a wind_failure it
         // means our wind attempt failed and we should move directly into
@@ -416,16 +417,16 @@ println!(" ... block save done: {:?}", create_timestamp());
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-println!(" ... blk prevalidate: {:?}", create_timestamp());
+println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset);
-println!(" ... blk pstvalidate: {:?}", create_timestamp());
+println!(" ... after block.validate:       {:?}", create_timestamp());
 
         if does_block_validate {
             block.on_chain_reorganization(&mut self.utxoset, true);
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
+println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
-println!(" ... blk reorg done:  {:?}", create_timestamp());
             if current_wind_index == (new_chain.len() - 1) {
                 if wind_failure {
                     return false;

@@ -644,7 +644,7 @@ impl Block {
     // cumulative block fees they contain.
     //
     pub fn pre_validation_calculations(&mut self) -> bool {
-println!(" ... in blk.pre_val:  {:?}", create_timestamp());
+println!(" ... block.prevalid - pre hash:  {:?}", create_timestamp());
         //
         // PARALLEL PROCESSING of most data
         //
@@ -653,6 +653,7 @@ println!(" ... in blk.pre_val:  {:?}", create_timestamp());
             .par_iter_mut()
             .all(|tx| tx.pre_validation_calculations_parallelizable());
 
+println!(" ... block.prevalid - pst hash:  {:?}", create_timestamp());
         //
         // CUMULATIVE FEES only AFTER parallel calculations
         //
@@ -680,6 +681,7 @@ println!(" ... in blk.pre_val:  {:?}", create_timestamp());
         // update block with total fees
         //
         self.total_fees = cumulative_fees;
+println!(" ... block.pre_validation_done:  {:?}", create_timestamp());
 
         true
     }
@@ -690,7 +692,7 @@ println!(" ... in blk.pre_val:  {:?}", create_timestamp());
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
 
-println!(" ... in blk.validat:  {:?}", create_timestamp());
+println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
         //
         // validate burn fee
         //
@@ -714,6 +716,7 @@ println!(" ... in blk.validat:  {:?}", create_timestamp());
                 // TODO assert that this is the first (or second?) block! ?
             }
         }
+println!(" ... block.validate: (merkle rt) {:?}", create_timestamp());
 
         //
         // verify merkle root
@@ -731,6 +734,7 @@ println!(" ... in blk.validat:  {:?}", create_timestamp());
             return false;
         }
 
+println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
         //
         // validate fee-transaction (miner/router/staker) payments
         //
@@ -785,14 +789,14 @@ println!(" ... in blk.validat:  {:?}", create_timestamp());
                 return false;
             }
         }
-println!(" ... pre blk.val tx:  {:?}", create_timestamp());
+println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
 
         //
         // VALIDATE transactions
         //
         let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate(utxoset));
 
-println!(" ... pst blk.val tx:  {:?}", create_timestamp());
+println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         true
     }

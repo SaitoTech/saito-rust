@@ -215,13 +215,13 @@ pub async fn run(
             generate_transaction_sender
                 .send(MempoolMessage::GenerateTransaction)
                 .await
-                .expect("error: GenerateBlock message failed to send");
-            sleep(Duration::from_millis(1000));
+                .expect("error: GenerateTransaction message failed to send");
+            sleep(Duration::from_millis(500));
             generate_block_sender
                 .send(MempoolMessage::TryBundleBlock)
                 .await
-                .expect("error: GenerateBlock message failed to send");
-            sleep(Duration::from_millis(1000));
+                .expect("error: TryBundleBlock message failed to send");
+            sleep(Duration::from_millis(500));
         }
     });
 
@@ -229,32 +229,30 @@ pub async fn run(
         tokio::select! {
             Some(message) = mempool_channel_receiver.recv() => {
 
-println!("mesg rec: {:?}", message);
-
                 match message {
 
                     // TryBundleBlock makes periodic attempts to produce blocks and does so
                      // if the mempool can bundle blocks....
                     MempoolMessage::TryBundleBlock => {
-println!("Try Bundle Block!");
-                        let mut mempool = mempool_lock.write().await;
-                        let can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
+			let can_bundle;
+			{
+                            let mempool = mempool_lock.read().await;
+                            can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
+			}
                         if can_bundle {
+                            let mut mempool = mempool_lock.write().await;
                             let block = mempool.generate_block(blockchain_lock.clone()).await;
                             if AddBlockResult::Accepted == mempool.add_block(block) {
-println!("Try Bundle Block 2!");
                                 mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
-println!("Try Bundle Block 3!");
                             }
                         }
-println!("Done Try Bundle Block!");
                     },
 
                     // GenerateBlock makes periodic attempts to analyse the state of
                     // the mempool and produce blocks if possible.
                     MempoolMessage::GenerateBlock => {
                         let mut mempool = mempool_lock.write().await;
-                        let block = mempool.generate_block(blockchain_lock.clone()).await;
+			let block = mempool.generate_block(blockchain_lock.clone()).await;
                         if AddBlockResult::Accepted == mempool.add_block(block) {
                             mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
                         }
@@ -263,53 +261,84 @@ println!("Done Try Bundle Block!");
                     // GenerateTransaction makes a transaction and adds it to the mempool if possible
                     MempoolMessage::GenerateTransaction => {
 
+                        let mempool_lock_clone = mempool_lock.clone();
+			let already_generating_transactions;
+
+			{
+                            let mempool = mempool_lock_clone.read().await;
+			    already_generating_transactions = mempool.currently_generating_transactions;
+			}
+
+			if !already_generating_transactions {
+                        let mempool_lock_clone_clone = mempool_lock_clone.clone();
+
+tokio::spawn(async move {
 			let txs_to_generate = 4000;
-                        let mut mempool = mempool_lock.write().await;
-			mempool.currently_generating_transactions = true;
+			{
+                            let mut mempool = mempool_lock_clone_clone.write().await;
+			    mempool.currently_generating_transactions = true;
+			}
                         let wallet_publickey;
                         let wallet_privatekey;
+			let current_txs_in_mempool: u32;
 
-                    {
-                        let wallet = mempool.wallet_lock.read().await;
-                        wallet_publickey = wallet.get_publickey();
-                        wallet_privatekey = wallet.get_privatekey();
-                    }
+                        {
+                            let mempool = mempool_lock_clone.read().await;
+                            let wallet = mempool.wallet_lock.read().await;
+                            wallet_publickey = wallet.get_publickey();
+                            wallet_privatekey = wallet.get_privatekey();
+                            current_txs_in_mempool = mempool.transactions.len() as u32;
+                        }
 
-                    let current_txs_in_mempool: u32 = mempool.transactions.len() as u32;
-		    if mempool.transactions.len() < txs_to_generate {
+//                        let current_txs_in_mempool: u32 = mempool.transactions.len() as u32;
+		        if current_txs_in_mempool < txs_to_generate {
 
-                    for _i in 0..txs_to_generate {
+                            for _i in 0..txs_to_generate {
 
-                      println!("creating tx {:?}", (_i));
-                      let mut transaction = Transaction::new();
+				if _i % 100 == 0 {
+                      		    println!("creating tx {:?}", (_i));
+				}
+                      		let mut transaction = Transaction::new();
 
-                    transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
+                    		transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
 
-                //
-                // as fake transactions, we set the UUID arbitrarily
-                //
-                    let mut input1 = Slip::new();
-                    input1.set_publickey(wallet_publickey);
-                    input1.set_amount(1000000);
-		    let random_uuid = hash(&generate_random_bytes(32));
-                    input1.set_uuid(random_uuid);
+                		//
+                		// as fake transactions, we set the UUID arbitrarily
+                		//
+                		let mut input1 = Slip::new();
+                    		input1.set_publickey(wallet_publickey);
+                    		input1.set_amount(1000000);
+		    		let random_uuid = hash(&generate_random_bytes(32));
+                    		input1.set_uuid(random_uuid);
 
-                    let mut output1 = Slip::new();
-                    output1.set_publickey(wallet_publickey);
-                    output1.set_amount(1000000);
-                    output1.set_uuid([0; 32]);
+                    		let mut output1 = Slip::new();
+                    		output1.set_publickey(wallet_publickey);
+                    		output1.set_amount(1000000);
+                    		output1.set_uuid([0; 32]);
 
-                    transaction.add_input(input1);
-                    transaction.add_output(output1);
+                    		transaction.add_input(input1);
+                    		transaction.add_output(output1);
 
-                    // sign ...
-                    transaction.sign(wallet_privatekey);
-                    mempool.add_transaction(transaction);
+                    		// sign ...
+                    		transaction.sign(wallet_privatekey);
 
-                }
-                }
-			mempool.currently_generating_transactions = false;
-               },
+                        	{
+                         	    let mut mempool = mempool_lock_clone.write().await;
+                    		    mempool.add_transaction(transaction);
+				}
+
+                	    }
+
+                            {
+                                let mut mempool = mempool_lock_clone.write().await;
+			        mempool.currently_generating_transactions = false;
+                	    }
+
+                	}
+});
+		       }
+                   },
+
 
                    // ProcessBlocks will add blocks FIFO from the queue into blockchain
                    MempoolMessage::ProcessBlocks => {
@@ -336,12 +365,15 @@ println!("Done Try Bundle Block!");
                         // For now, let's assume that the network has a reference
                         // to mempool and is adding the block through that reference
                         // then calls mempool to process the blocks in the queue
+println!("send mcs 3");
                         mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                     }
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
+println!(" 5 mempool lock request");
                         let mut _mempool = mempool_lock.write().await;
                     },
                     SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
+println!(" 6 mempool lock request");
                         let mut mempool = mempool_lock.write().await;
                         mempool.add_golden_ticket(golden_ticket).await;
                     },
