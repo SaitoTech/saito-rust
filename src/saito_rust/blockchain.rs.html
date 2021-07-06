@@ -702,6 +702,12 @@
 <span id="699">699</span>
 <span id="700">700</span>
 <span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -746,7 +752,7 @@
             <span class="ident">block</span>.<span class="ident">get_id</span>(),
             <span class="ident">create_timestamp</span>()
         );
-        <span class="comment">//println!(&quot; ... hash: {:?}&quot;, block.get_hash());</span>
+        <span class="macro">println!</span>(<span class="string">&quot; ... hash: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_hash</span>());
         <span class="comment">//println!(&quot; ... txs in block: {:?}&quot;, block.transactions.len());</span>
         <span class="comment">//println!(&quot; ... w/ prev bhsh: {:?}&quot;, block.get_previous_block_hash());</span>
 
@@ -869,12 +875,18 @@
                 }
             }
         } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_id</span>() <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;We have added a block without a parent block... triggering failure&quot;</span>);
-                <span class="self">self</span>.<span class="ident">add_block_failure</span>().<span class="kw">await</span>;
-                <span class="kw">return</span>;
-            }
+            <span class="comment">//</span>
+            <span class="comment">// we can hit this point in the code if we have a block without a parent,</span>
+            <span class="comment">// in which case we want to process it without unwind/wind chain, or if</span>
+            <span class="comment">// we are adding our very first block, in which case we do want to process</span>
+            <span class="comment">// it.</span>
+            <span class="comment">//</span>
+            <span class="comment">// TODO more elegant handling of the first block and other non-longest-chain</span>
+            <span class="comment">// blocks.</span>
+            <span class="comment">//</span>
+            <span class="macro">println!</span>(<span class="string">&quot;We have added a block without a parent block... &quot;</span>);
         }
+
         <span class="comment">//</span>
         <span class="comment">// at this point we should have a shared ancestor or not</span>
         <span class="comment">//</span>
@@ -900,6 +912,17 @@
             <span class="kw">let</span> <span class="ident">does_new_chain_validate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">validate</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>);
             <span class="kw">if</span> <span class="ident">does_new_chain_validate</span> {
                 <span class="self">self</span>.<span class="ident">add_block_success</span>(<span class="ident">block_hash</span>).<span class="kw">await</span>;
+
+                <span class="comment">//</span>
+                <span class="comment">// TODO</span>
+                <span class="comment">//</span>
+                <span class="comment">// mutable update is hell -- we can do this but have to have</span>
+                <span class="comment">// manually checked that the entry exists in order to pull</span>
+                <span class="comment">// this trick. we did this check before validating.</span>
+                <span class="comment">//</span>
+                {
+                    <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>().<span class="ident">set_lc</span>(<span class="bool-val">true</span>);
+                }
 
                 <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
                     <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>
@@ -945,18 +968,8 @@
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_success</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span>) {
         <span class="comment">//</span>
-        <span class="comment">// TODO -</span>
+        <span class="comment">// save to disk</span>
         <span class="comment">//</span>
-        <span class="comment">// block is longest-chain</span>
-        <span class="comment">//</span>
-        <span class="comment">// mutable update is hell -- we can do this but have to have</span>
-        <span class="comment">// manually checked that the entry exists in order to pull</span>
-        <span class="comment">// this trick. we did this check before validating.</span>
-        <span class="comment">//</span>
-        {
-            <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>().<span class="ident">set_lc</span>(<span class="bool-val">true</span>);
-        }
-
         <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage::new</span>();
         <span class="ident">storage</span>.<span class="ident">write_block_to_disk</span>(<span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>());
 
@@ -1031,7 +1044,6 @@
         <span class="ident">new_chain</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>,
         <span class="ident">old_chain</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-
         <span class="kw">if</span> <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">new_chain</span>.<span class="ident">len</span>() {
             <span class="macro">println!</span>(<span class="string">&quot;ERROR 1&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
@@ -1110,7 +1122,7 @@
         }
 
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>]).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">does_block_validate</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">validate</span>(<span class="self">self</span>);
+        <span class="kw">let</span> <span class="ident">does_block_validate</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset</span>);
 
         <span class="kw">if</span> <span class="ident">does_block_validate</span> {
             <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>);
@@ -1267,9 +1279,9 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::mocks::make_mock_block</span>;
-    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
+    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::mocks::make_mock_block</span>;
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_test_1</span>() {
@@ -1370,7 +1382,6 @@
         <span class="ident">prev_block</span> <span class="op">=</span> <span class="ident">mock_block_1</span>.<span class="ident">clone</span>();
         <span class="comment">// extend the fork to match the height of LC, the latest block id/hash shouldn&#39;t change yet...</span>
         <span class="kw">for</span> <span class="ident">_n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">5</span> {
-
             <span class="kw">let</span> <span class="ident">next_block</span> <span class="op">=</span> <span class="ident">make_mock_block</span>(
                 <span class="ident">prev_block</span>.<span class="ident">get_timestamp</span>(),
                 <span class="ident">prev_block</span>.<span class="ident">get_burnfee</span>(),
@@ -1378,8 +1389,9 @@
                 <span class="ident">prev_block</span>.<span class="ident">get_id</span>() <span class="op">+</span> <span class="number">1</span>,
             );
 
-	    <span class="kw">let</span> <span class="ident">golden_ticket_transaction</span> <span class="op">=</span> <span class="ident">miner</span>.<span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="ident">prev_block</span>);
-	    <span class="ident">next_block</span>.<span class="ident">add_transaction</span>(<span class="ident">golden_ticket_transaction</span>);
+            <span class="kw">let</span> <span class="ident">golden_ticket_transaction</span> <span class="op">=</span>
+                <span class="ident">miner</span>.<span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="ident">prev_block</span>);
+            <span class="ident">next_block</span>.<span class="ident">add_transaction</span>(<span class="ident">golden_ticket_transaction</span>);
 
             <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">next_block</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
 

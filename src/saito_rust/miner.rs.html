@@ -169,9 +169,6 @@
 <span id="166">166</span>
 <span id="167">167</span>
 <span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -245,24 +242,21 @@
         }
     }
 
-
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span> : <span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">GoldenTicket</span> {
-
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">GoldenTicket</span> {
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-	<span class="kw">let</span> <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
+        <span class="kw">let</span> <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">random_bytes</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">generate_random_bytes</span>(<span class="number">32</span>));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">solution</span> <span class="op">=</span> <span class="ident">GoldenTicket::generate_solution</span>(<span class="ident">random_bytes</span>, <span class="ident">publickey</span>);
 
-	<span class="kw">while</span> <span class="op">!</span><span class="ident">GoldenTicket::is_valid_solution</span>(<span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="ident">solution</span>, <span class="ident">block</span>.<span class="ident">get_difficulty</span>()) {
+        <span class="kw">while</span> <span class="op">!</span><span class="ident">GoldenTicket::is_valid_solution</span>(<span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="ident">solution</span>, <span class="ident">block</span>.<span class="ident">get_difficulty</span>()) {
             <span class="ident">random_bytes</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">generate_random_bytes</span>(<span class="number">32</span>));
             <span class="ident">solution</span> <span class="op">=</span> <span class="ident">GoldenTicket::generate_solution</span>(<span class="ident">random_bytes</span>, <span class="ident">publickey</span>);
-	}
+        }
 
         <span class="kw">let</span> <span class="ident">vote</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="ident">golden_ticket</span> <span class="op">=</span> <span class="ident">GoldenTicket::new</span>(<span class="ident">vote</span>, <span class="self">self</span>.<span class="ident">target</span>, <span class="ident">random_bytes</span>, <span class="ident">publickey</span>);
-   
-        <span class="ident">golden_ticket</span>
 
+        <span class="ident">golden_ticket</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_is_active</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">is_active</span>: <span class="ident">bool</span>) {
