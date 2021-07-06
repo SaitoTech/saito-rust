@@ -6,7 +6,8 @@ pub static SHA256: &Algorithm = &sha256;
 pub use merkle::MerkleTree;
 
 pub type SaitoHash = [u8; 32];
-pub type SaitoUTXOSetKey = Vec<u8>;
+//pub type SaitoUTXOSetKey = Vec<u8>;
+pub type SaitoUTXOSetKey = [u8; 74];
 pub type SaitoPublicKey = [u8; 33];
 pub type SaitoPrivateKey = [u8; 32]; // 256-bit key
 pub type SaitoSignature = [u8; 64];

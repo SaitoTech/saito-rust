@@ -36,12 +36,7 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-        println!(
-            " ... add_block {} start: {:?}",
-            block.get_id(),
-            create_timestamp()
-        );
-        println!(" ... hash: {:?}", block.get_hash());
+        println!(" ... blockchain.add_block start: {:?} txs: {}", create_timestamp(), block.transactions.len());
         //println!(" ... txs in block: {:?}", block.transactions.len());
         //println!(" ... w/ prev bhsh: {:?}", block.get_previous_block_hash());
 
@@ -109,6 +104,8 @@ impl Blockchain {
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
         }
+
+        println!(" ... start shared ancestor hunt: {:?}", create_timestamp());
 
         //
         // find shared ancestor of new_block with old_chain
@@ -197,6 +194,7 @@ impl Blockchain {
         // with the BlockRing. We fail if the newly-preferred chain is not
         // viable.
         //
+println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             if does_new_chain_validate {
@@ -256,22 +254,25 @@ impl Blockchain {
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
+println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
         //
         // save to disk
         //
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
 
+println!(" ... block save done:            {:?}", create_timestamp());
+
         //
         // TODO - this is merely for testing, we do not intend
         // the routing client to process transactions in its
         // wallet.
         {
-            println!(" ... start wallet: {}", create_timestamp());
+            println!(" ... wallet processing start:    {}", create_timestamp());
             let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
             wallet.add_block(&block);
-            println!(" ... finsh wallet: {}", create_timestamp());
+            println!(" ... wallet processing stop:     {}", create_timestamp());
         }
     }
     pub async fn add_block_failure(&mut self) {}
@@ -389,6 +390,7 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
+println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
         //
         // if we are winding a non-existent chain with a wind_failure it
         // means our wind attempt failed and we should move directly into
@@ -398,25 +400,34 @@ impl Blockchain {
             return false;
         }
 
+	//
+	// winding the chain requires us to have certain data associated 
+	// with the block and the transactions, particularly the tx hashes
+	// that we need to generate the slip UUIDs and create the tx sigs.
+	//
+	// we fetch the block mutably first in order to update these vars.
+	// we cannot just send the block mutably into our regular validate()
+	// function because of limitatins imposed by Rust on mutable data
+	// structures. So validation is "read-only" and our "write" actions
+	// happen first.
+	//
         {
-            // yes, there is a warning here, but we need the mutable borrow to set the
-            // tx.hash_for_signature information inside AFAICT
             let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
-
-            //
-            // perform the pre-validation calculations needed to validate the block
-            // below, in-parallel with read-only access.
-            //
             block.pre_validation_calculations();
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
+println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset);
+println!(" ... after block.validate:       {:?}", create_timestamp());
 
         if does_block_validate {
+println!(" ... before block ocr            {:?}", create_timestamp());
             block.on_chain_reorganization(&mut self.utxoset, true);
+println!(" ... before blockring ocr:       {:?}", create_timestamp());
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
+println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
             if current_wind_index == (new_chain.len() - 1) {
                 if wind_failure {

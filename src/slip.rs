@@ -1,6 +1,5 @@
 use crate::crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey};
 use serde::{Deserialize, Serialize};
-
 use ahash::AHashMap;
 
 use enum_variant_count_derive::TryFromByte;
@@ -33,7 +32,13 @@ pub struct Slip {
     amount: u64,
     slip_ordinal: u8,
     slip_type: SlipType,
+    #[serde_as(as = "[_; 74]")]
+    utxoset_key: SaitoUTXOSetKey,
+    is_utxoset_key_set: bool,
 }
+
+
+
 
 impl Slip {
     pub fn new() -> Self {
@@ -43,11 +48,22 @@ impl Slip {
             amount: 0,
             slip_ordinal: 0,
             slip_type: SlipType::Normal,
+            utxoset_key: [0; 74],
+            is_utxoset_key_set: false,
         }
     }
 
-    pub fn validate(&self, _utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-        true
+    pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+        if self.get_amount() > 0 {
+	    let mut return_value = false;
+	    match utxoset.get(&self.utxoset_key) {
+	        Some(value) => {
+		    if *value == 1 { return_value = true; }
+		}
+	        None => {}
+    	    }
+        }
+	true
     }
 
     pub fn on_chain_reorganization(
@@ -57,11 +73,10 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
-            let slip_key = self.get_utxoset_key();
-            //println!("inserting slip into shashmap: {:?}", slip_key);
-            utxoset.entry(slip_key).or_insert(slip_value);
+            utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
+
 
     //
     // Getters and Setters
@@ -119,13 +134,25 @@ impl Slip {
         vbytes
     }
 
+    pub fn generate_utxoset_key(&mut self) {
+	self.utxoset_key = self.get_utxoset_key();
+	self.is_utxoset_key_set = true;
+    }
+
+    // 33 bytes publickey
+    // 32 bytes uuid
+    // 8 bytes amount
+    // 1 byte slip_ordinal  
     pub fn get_utxoset_key(&self) -> SaitoUTXOSetKey {
         let mut res: Vec<u8> = vec![];
         res.extend(&self.get_publickey());
         res.extend(&self.get_uuid());
         res.extend(&self.get_amount().to_be_bytes());
         res.extend(&self.get_slip_ordinal().to_be_bytes());
-        res
+
+        res[0..74].try_into().unwrap()
+
+//        res
     }
 
     pub fn deserialize_from_net(bytes: Vec<u8>) -> Slip {
