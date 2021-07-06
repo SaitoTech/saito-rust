@@ -6,7 +6,8 @@ use std::io;
 use std::io::prelude::*;
 use std::io::Read;
 
-// cargo run -- --key-path boom
+// cargo run -- --help
+// cargo run -- --key-path boom.txt
 
 #[derive(Clap, Debug)]
 #[clap(name = "saito_rust")]
@@ -41,7 +42,7 @@ impl KeyPairStore {
             Ok(s)
         };
 
-        let _content = match data() {
+        match data() {
             Err(_e) => {
                 // panic!("{}", e)
                 // @QUESTION: why is this failing if i leave out the expect?

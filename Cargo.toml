@@ -10,26 +10,26 @@ default-run = "saito_rust"
 
 [dependencies]
 ahash = "0.7.4"
+base58 = "0.1.0"
 bigint = "4.4.3"
+bincode = "1.3"
+blake3 = { version = "0.3.8", features = ["rayon"] }
+chrono = "0.4"
+clap = "3.0.0-beta.2"
 enum-variant-count-derive = { path = "enum-variant-count-derive" }
+hex = "0.4.3"
+jemalloc-ctl = "0.2.0"
+jemallocator = "0.1.9"
+lazy_static = "1.4.0"
+merkle = "1.11.0"
+rand = "0.8.4"
 rayon = "1.5"
+ring = "0.16.20"
+rpassword = "5.0"
+secp256k1 = { version = "0.20.3", features = ["global-context", "serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11"
 serde_with = "1.9.4"
-bincode = "1.3"
-chrono = "0.4"
-clap = "3.0.0-beta.2"
-secp256k1 = { version = "0.20.3", features = ["global-context", "serde"] }
-blake3 = { version = "0.3.8", features = ["rayon"] }
-base58 = "0.1.0"
-hex = "0.4.3"
-merkle = "1.11.0"
-ring = "0.16.20"
-jemallocator = "0.1.9"
-jemalloc-ctl = "0.2.0"
-lazy_static = "1.4.0"
-rand = "0.8.4"
-rpassword = "5.0"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"

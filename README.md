@@ -32,11 +32,24 @@ rustup component add clippy
 
 ### Run the node
 
-```
+```bash
 RUST_LOG=debug cargo run --bin saito_rust
 ```
 
 Possible log levels are Error, Warn, Info, Debug, Trace.
+
+#### Help/Options
+
+```
+cargo run -- --help
+```
+
+Will list possible options, i.e.
+
+```bash
+OPTIONS:
+    -k, --key-path <key-path>    Path to key-file [default: ./keyFile]
+```
 
 ### Tests
 
