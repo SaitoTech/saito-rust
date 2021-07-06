@@ -6,7 +6,7 @@ This project will serve as the reference implementation for other code-bases. It
 
 ## Contributing
 
-We're happy for an contribution.  
+We're happy for any contribution.  
 Please have a look at our [contributing guidelines](CONTRIBUTING.md) before you start.
 
 ## Roadmap
@@ -27,6 +27,7 @@ https://trello.com/b/gWPiQFZ1/saito-rust-project-management
 
 ```
 rustup component add rustfmt
+rustup component add clippy
 ```
 
 ### Run the node
@@ -57,6 +58,14 @@ cargo fmt
 
 Format code according to the [Rust style Guide](https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/guide.md).
 
+### Code linting
+
+```
+cargo clippy
+```
+
+[Clippy](https://github.com/rust-lang/rust-clippy) is a collection of lints to catch common mistakes and improve your Rust code.
+
 ### Benchmarks
 
 ```
@@ -76,8 +85,11 @@ GH Actions are located here: [.github/workflows](.github/workflows)
 - cargo build & test  
   Tries to build the code and run all tests
 
-- [Convo](https://convco.github.io/check/) commit format check (**required**)  
+- [Convco](https://convco.github.io/check/) commit format check (**required**)  
   Check all commits or range for errors against [the convention](CONTRIBUTING.md#commit-format)
+
+- [Clippy](https://github.com/rust-lang/rust-clippy) code linting  
+  A collection of lints to catch common mistakes and improve your Rust code
 
 ### VSCode
 
