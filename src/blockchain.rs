@@ -422,7 +422,9 @@ println!(" ... before block.validate:      {:?}", create_timestamp());
 println!(" ... after block.validate:       {:?}", create_timestamp());
 
         if does_block_validate {
+println!(" ... before block ocr            {:?}", create_timestamp());
             block.on_chain_reorganization(&mut self.utxoset, true);
+println!(" ... before blockring ocr:       {:?}", create_timestamp());
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
 println!(" ... after on-chain-reorg:       {:?}", create_timestamp());

@@ -794,7 +794,7 @@ println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
         //
         // VALIDATE transactions
         //
-        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate(utxoset));
+        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate(&utxoset));
 
 println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 

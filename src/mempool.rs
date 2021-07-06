@@ -212,16 +212,16 @@ pub async fn run(
     let generate_transaction_sender = mempool_channel_sender.clone();
     tokio::spawn(async move {
         loop {
-            generate_transaction_sender
-                .send(MempoolMessage::GenerateTransaction)
-                .await
-                .expect("error: GenerateTransaction message failed to send");
-            sleep(Duration::from_millis(500));
             generate_block_sender
                 .send(MempoolMessage::TryBundleBlock)
                 .await
                 .expect("error: TryBundleBlock message failed to send");
-            sleep(Duration::from_millis(500));
+            sleep(Duration::from_millis(2000));
+            generate_transaction_sender
+                .send(MempoolMessage::GenerateTransaction)
+                .await
+                .expect("error: GenerateTransaction message failed to send");
+            sleep(Duration::from_millis(2000));
         }
     });
 
@@ -263,22 +263,24 @@ pub async fn run(
 
                         let mempool_lock_clone = mempool_lock.clone();
 			let already_generating_transactions;
+			let txs_in_mempool: u32;
+			let txs_to_generate: u32 = 30000;
+			let bytes_per_tx: u32 = 1024;
 
 			{
                             let mempool = mempool_lock_clone.read().await;
 			    already_generating_transactions = mempool.currently_generating_transactions;
+			    txs_in_mempool = mempool.transactions.len() as u32;
 			}
 
-			if !already_generating_transactions {
-                        let mempool_lock_clone_clone = mempool_lock_clone.clone();
+			if !already_generating_transactions && txs_in_mempool < txs_to_generate {
 
 tokio::spawn(async move {
-			let txs_to_generate = 10_000;
-			let bytes_per_tx = 1024;
 			{
-                            let mut mempool = mempool_lock_clone_clone.write().await;
+                            let mut mempool = mempool_lock_clone.write().await;
 			    mempool.currently_generating_transactions = true;
 			}
+
                         let wallet_publickey;
                         let wallet_privatekey;
 			let current_txs_in_mempool: u32;
@@ -291,7 +293,6 @@ tokio::spawn(async move {
                             current_txs_in_mempool = mempool.transactions.len() as u32;
                         }
 
-//                        let current_txs_in_mempool: u32 = mempool.transactions.len() as u32;
 		        if current_txs_in_mempool < txs_to_generate {
 
                             for _i in 0..txs_to_generate {

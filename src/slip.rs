@@ -32,6 +32,8 @@ pub struct Slip {
     amount: u64,
     slip_ordinal: u8,
     slip_type: SlipType,
+    utxoset_key: SaitoUTXOSetKey,
+    is_utxoset_key_set: bool,
 }
 
 impl Slip {
@@ -42,14 +44,15 @@ impl Slip {
             amount: 0,
             slip_ordinal: 0,
             slip_type: SlipType::Normal,
+            utxoset_key: vec![],
+            is_utxoset_key_set: false,
         }
     }
 
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_amount() > 0 {
 	    let mut return_value = false;
-            let slip_key = self.get_utxoset_key();
-	    match utxoset.get(&slip_key) {
+	    match utxoset.get(&self.utxoset_key) {
 	        Some(value) => {
 		    if *value == 1 { return_value = true; }
 		}
@@ -66,9 +69,7 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
-            let slip_key = self.get_utxoset_key();
-            //println!("inserting slip into shashmap: {:?}", slip_key);
-            utxoset.entry(slip_key).or_insert(slip_value);
+            //utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
 
@@ -127,6 +128,11 @@ impl Slip {
         vbytes.extend(&(self.slip_ordinal.to_be_bytes()));
         vbytes.extend(&(self.slip_type as u32).to_be_bytes());
         vbytes
+    }
+
+    pub fn generate_utxoset_key(&mut self) {
+	self.utxoset_key = self.get_utxoset_key();
+	self.is_utxoset_key_set = true;
     }
 
     pub fn get_utxoset_key(&self) -> SaitoUTXOSetKey {
