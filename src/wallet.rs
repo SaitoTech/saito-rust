@@ -1,6 +1,6 @@
 use crate::block::Block;
 use crate::crypto::{
-    hash, generate_keys, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
+    generate_keys, hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
     SaitoUTXOSetKey,
 };
 use crate::golden_ticket::GoldenTicket;

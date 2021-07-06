@@ -24,7 +24,6 @@ pub enum SlipType {
     Other, // need more than one value for TryFromBytes
 }
 
-
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Slip {
@@ -37,18 +36,17 @@ pub struct Slip {
 }
 
 impl Slip {
-
     pub fn new() -> Self {
         Self {
-	    publickey: [0; 33],
-	    uuid: [0; 32],
-	    amount: 0,
-	    slip_ordinal: 0,
-	    slip_type: SlipType::Normal
-	}
+            publickey: [0; 33],
+            uuid: [0; 32],
+            amount: 0,
+            slip_ordinal: 0,
+            slip_type: SlipType::Normal,
+        }
     }
 
-    pub fn validate(&self) -> bool {
+    pub fn validate(&self, _utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         true
     }
 
@@ -60,7 +58,7 @@ impl Slip {
     ) {
         if self.get_amount() > 0 {
             let slip_key = self.get_utxoset_key();
-            println!("inserting slip into shashmap: {:?}", slip_key);
+            //println!("inserting slip into shashmap: {:?}", slip_key);
             utxoset.entry(slip_key).or_insert(slip_value);
         }
     }
@@ -108,7 +106,6 @@ impl Slip {
         self.slip_type = slip_type;
     }
 
-
     //
     // Serialization
     //
@@ -139,14 +136,13 @@ impl Slip {
         let slip_type: SlipType = SlipType::try_from(bytes[SLIP_SIZE - 1]).unwrap();
         let mut slip = Slip::new();
 
-	slip.set_publickey(publickey);
-	slip.set_uuid(uuid);
-	slip.set_amount(amount);
-	slip.set_slip_ordinal(slip_ordinal);
-	slip.set_slip_type(slip_type);
-	
-	slip
+        slip.set_publickey(publickey);
+        slip.set_uuid(uuid);
+        slip.set_amount(amount);
+        slip.set_slip_ordinal(slip_ordinal);
+        slip.set_slip_type(slip_type);
 
+        slip
     }
     pub fn serialize_for_net(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
@@ -158,7 +154,6 @@ impl Slip {
         vbytes
     }
 }
-
 
 #[cfg(test)]
 mod tests {

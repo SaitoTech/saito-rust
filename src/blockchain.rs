@@ -41,7 +41,7 @@ impl Blockchain {
             block.get_id(),
             create_timestamp()
         );
-        //println!(" ... hash: {:?}", block.get_hash());
+        println!(" ... hash: {:?}", block.get_hash());
         //println!(" ... txs in block: {:?}", block.transactions.len());
         //println!(" ... w/ prev bhsh: {:?}", block.get_previous_block_hash());
 
@@ -164,12 +164,18 @@ impl Blockchain {
                 }
             }
         } else {
-            if self.blockring.get_longest_chain_block_id() != 0 {
-                println!("We have added a block without a parent block... triggering failure");
-                self.add_block_failure().await;
-                return;
-            }
+            //
+            // we can hit this point in the code if we have a block without a parent,
+            // in which case we want to process it without unwind/wind chain, or if
+            // we are adding our very first block, in which case we do want to process
+            // it.
+            //
+            // TODO more elegant handling of the first block and other non-longest-chain
+            // blocks.
+            //
+            println!("We have added a block without a parent block... ");
         }
+
         //
         // at this point we should have a shared ancestor or not
         //
@@ -195,6 +201,17 @@ impl Blockchain {
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             if does_new_chain_validate {
                 self.add_block_success(block_hash).await;
+
+                //
+                // TODO
+                //
+                // mutable update is hell -- we can do this but have to have
+                // manually checked that the entry exists in order to pull
+                // this trick. we did this check before validating.
+                //
+                {
+                    self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+                }
 
                 if !self.broadcast_channel_sender.is_none() {
                     self.broadcast_channel_sender
@@ -240,18 +257,8 @@ impl Blockchain {
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         //
-        // TODO -
+        // save to disk
         //
-        // block is longest-chain
-        //
-        // mutable update is hell -- we can do this but have to have
-        // manually checked that the entry exists in order to pull
-        // this trick. we did this check before validating.
-        //
-        {
-            self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
-        }
-
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
 
@@ -326,7 +333,6 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
-
         if old_chain.len() > new_chain.len() {
             println!("ERROR 1");
             return false;
@@ -405,7 +411,7 @@ impl Blockchain {
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        let does_block_validate = block.validate(self);
+        let does_block_validate = block.validate(&self, &self.utxoset);
 
         if does_block_validate {
             block.on_chain_reorganization(&mut self.utxoset, true);
@@ -562,9 +568,9 @@ pub async fn run(
 #[cfg(test)]
 
 mod tests {
-    use crate::test_utilities::mocks::make_mock_block;
-    use crate::miner::Miner;
     use super::*;
+    use crate::miner::Miner;
+    use crate::test_utilities::mocks::make_mock_block;
 
     #[tokio::test]
     async fn add_block_test_1() {
@@ -665,7 +671,6 @@ mod tests {
         prev_block = mock_block_1.clone();
         // extend the fork to match the height of LC, the latest block id/hash shouldn't change yet...
         for _n in 0..5 {
-
             let next_block = make_mock_block(
                 prev_block.get_timestamp(),
                 prev_block.get_burnfee(),
@@ -673,8 +678,9 @@ mod tests {
                 prev_block.get_id() + 1,
             );
 
-	    let golden_ticket_transaction = miner.mine_on_block_until_golden_ticket_found(prev_block);
-	    next_block.add_transaction(golden_ticket_transaction);
+            let golden_ticket_transaction =
+                miner.mine_on_block_until_golden_ticket_found(prev_block);
+            next_block.add_transaction(golden_ticket_transaction);
 
             blockchain.add_block(next_block.clone()).await;
 
