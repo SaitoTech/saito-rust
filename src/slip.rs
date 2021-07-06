@@ -32,9 +32,13 @@ pub struct Slip {
     amount: u64,
     slip_ordinal: u8,
     slip_type: SlipType,
+    #[serde_as(as = "[_; 74]")]
     utxoset_key: SaitoUTXOSetKey,
     is_utxoset_key_set: bool,
 }
+
+
+
 
 impl Slip {
     pub fn new() -> Self {
@@ -44,7 +48,7 @@ impl Slip {
             amount: 0,
             slip_ordinal: 0,
             slip_type: SlipType::Normal,
-            utxoset_key: vec![],
+            utxoset_key: [0; 74],
             is_utxoset_key_set: false,
         }
     }
@@ -69,7 +73,7 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
-            //utxoset.entry(self.utxoset_key).or_insert(slip_value);
+            utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
 
@@ -135,13 +139,20 @@ impl Slip {
 	self.is_utxoset_key_set = true;
     }
 
+    // 33 bytes publickey
+    // 32 bytes uuid
+    // 8 bytes amount
+    // 1 byte slip_ordinal  
     pub fn get_utxoset_key(&self) -> SaitoUTXOSetKey {
         let mut res: Vec<u8> = vec![];
         res.extend(&self.get_publickey());
         res.extend(&self.get_uuid());
         res.extend(&self.get_amount().to_be_bytes());
         res.extend(&self.get_slip_ordinal().to_be_bytes());
-        res
+
+        res[0..74].try_into().unwrap()
+
+//        res
     }
 
     pub fn deserialize_from_net(bytes: Vec<u8>) -> Slip {

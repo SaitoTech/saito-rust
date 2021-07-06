@@ -331,12 +331,13 @@ impl Transaction {
         let mut nolan_out: u64 = 0;
         for input in &mut self.inputs {
             nolan_in += input.get_amount();
-	
+	    // generate utxoset key cache
 	    input.generate_utxoset_key();
         }
         for output in &mut self.outputs {
             nolan_out += output.get_amount();
 
+	    // generate utxoset key cache
             // and set the UUID needed for insertion to shashmap
 	    output.generate_utxoset_key();
             output.set_uuid(hash_for_signature);

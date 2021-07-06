@@ -114,11 +114,12 @@ pub struct WalletSlip {
     lc: bool,
     slip_ordinal: u8,
 }
+
 impl WalletSlip {
     pub fn new() -> Self {
         WalletSlip {
             uuid: [0; 32],
-            utxokey: vec![],
+            utxokey: [0; 74],
             amount: 0,
             block_id: 0,
             block_hash: [0; 32],

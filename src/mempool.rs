@@ -264,7 +264,7 @@ pub async fn run(
                         let mempool_lock_clone = mempool_lock.clone();
 			let already_generating_transactions;
 			let txs_in_mempool: u32;
-			let txs_to_generate: u32 = 30000;
+			let txs_to_generate: u32 = 10000;
 			let bytes_per_tx: u32 = 1024;
 
 			{
