@@ -195,6 +195,7 @@
 <span id="192">192</span>
 <span id="193">193</span>
 <span id="194">194</span>
+<span id="195">195</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{
@@ -312,11 +313,12 @@
     <span class="ident">lc</span>: <span class="ident">bool</span>,
     <span class="ident">slip_ordinal</span>: <span class="ident">u8</span>,
 }
+
 <span class="kw">impl</span> <span class="ident">WalletSlip</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">WalletSlip</span> {
             <span class="ident">uuid</span>: [<span class="number">0</span>; <span class="number">32</span>],
-            <span class="ident">utxokey</span>: <span class="macro">vec!</span>[],
+            <span class="ident">utxokey</span>: [<span class="number">0</span>; <span class="number">74</span>],
             <span class="ident">amount</span>: <span class="number">0</span>,
             <span class="ident">block_id</span>: <span class="number">0</span>,
             <span class="ident">block_hash</span>: [<span class="number">0</span>; <span class="number">32</span>],

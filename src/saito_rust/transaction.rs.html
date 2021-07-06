@@ -450,6 +450,11 @@
 <span id="447">447</span>
 <span id="448">448</span>
 <span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -588,6 +593,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_winning_routing_node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">random_hash</span>: <span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
+
         <span class="comment">//</span>
         <span class="comment">// find winning router</span>
         <span class="comment">//</span>
@@ -781,13 +787,17 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_in</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_out</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inputs</span> {
+        <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">inputs</span> {
             <span class="ident">nolan_in</span> <span class="op">+</span><span class="op">=</span> <span class="ident">input</span>.<span class="ident">get_amount</span>();
+	    <span class="comment">// generate utxoset key cache</span>
+	    <span class="ident">input</span>.<span class="ident">generate_utxoset_key</span>();
         }
         <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">outputs</span> {
             <span class="ident">nolan_out</span> <span class="op">+</span><span class="op">=</span> <span class="ident">output</span>.<span class="ident">get_amount</span>();
 
+	    <span class="comment">// generate utxoset key cache</span>
             <span class="comment">// and set the UUID needed for insertion to shashmap</span>
+	    <span class="ident">output</span>.<span class="ident">generate_utxoset_key</span>();
             <span class="ident">output</span>.<span class="ident">set_uuid</span>(<span class="ident">hash_for_signature</span>);
         }
         <span class="self">self</span>.<span class="ident">total_in</span> <span class="op">=</span> <span class="ident">nolan_in</span>;

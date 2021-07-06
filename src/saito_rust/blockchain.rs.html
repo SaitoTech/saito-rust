@@ -708,6 +708,17 @@
 <span id="705">705</span>
 <span id="706">706</span>
 <span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
+<span id="714">714</span>
+<span id="715">715</span>
+<span id="716">716</span>
+<span id="717">717</span>
+<span id="718">718</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -747,12 +758,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {
-        <span class="macro">println!</span>(
-            <span class="string">&quot; ... add_block {} start: {:?}&quot;</span>,
-            <span class="ident">block</span>.<span class="ident">get_id</span>(),
-            <span class="ident">create_timestamp</span>()
-        );
-        <span class="macro">println!</span>(<span class="string">&quot; ... hash: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_hash</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... blockchain.add_block start: {:?} txs: {}&quot;</span>, <span class="ident">create_timestamp</span>(), <span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>());
         <span class="comment">//println!(&quot; ... txs in block: {:?}&quot;, block.transactions.len());</span>
         <span class="comment">//println!(&quot; ... w/ prev bhsh: {:?}&quot;, block.get_previous_block_hash());</span>
 
@@ -820,6 +826,8 @@
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>) {
             <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">insert</span>(<span class="ident">block_hash</span>, <span class="ident">block</span>);
         }
+
+        <span class="macro">println!</span>(<span class="string">&quot; ... start shared ancestor hunt: {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="comment">//</span>
         <span class="comment">// find shared ancestor of new_block with old_chain</span>
@@ -908,6 +916,7 @@
         <span class="comment">// with the BlockRing. We fail if the newly-preferred chain is not</span>
         <span class="comment">// viable.</span>
         <span class="comment">//</span>
+<span class="macro">println!</span>(<span class="string">&quot; ... start unwind/wind chain:    {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="kw">if</span> <span class="ident">am_i_the_longest_chain</span> {
             <span class="kw">let</span> <span class="ident">does_new_chain_validate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">validate</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>);
             <span class="kw">if</span> <span class="ident">does_new_chain_validate</span> {
@@ -967,22 +976,25 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_success</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span>) {
+<span class="macro">println!</span>(<span class="string">&quot; ... blockchain.add_block_succe: {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="comment">//</span>
         <span class="comment">// save to disk</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage::new</span>();
         <span class="ident">storage</span>.<span class="ident">write_block_to_disk</span>(<span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>());
 
+<span class="macro">println!</span>(<span class="string">&quot; ... block save done:            {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+
         <span class="comment">//</span>
         <span class="comment">// TODO - this is merely for testing, we do not intend</span>
         <span class="comment">// the routing client to process transactions in its</span>
         <span class="comment">// wallet.</span>
         {
-            <span class="macro">println!</span>(<span class="string">&quot; ... start wallet: {}&quot;</span>, <span class="ident">create_timestamp</span>());
+            <span class="macro">println!</span>(<span class="string">&quot; ... wallet processing start:    {}&quot;</span>, <span class="ident">create_timestamp</span>());
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>();
             <span class="ident">wallet</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>);
-            <span class="macro">println!</span>(<span class="string">&quot; ... finsh wallet: {}&quot;</span>, <span class="ident">create_timestamp</span>());
+            <span class="macro">println!</span>(<span class="string">&quot; ... wallet processing stop:     {}&quot;</span>, <span class="ident">create_timestamp</span>());
         }
     }
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_failure</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {}
@@ -1100,6 +1112,7 @@
         <span class="ident">current_wind_index</span>: <span class="ident">usize</span>,
         <span class="ident">wind_failure</span>: <span class="ident">bool</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+<span class="macro">println!</span>(<span class="string">&quot; ... blockchain.wind_chain strt: {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="comment">//</span>
         <span class="comment">// if we are winding a non-existent chain with a wind_failure it</span>
         <span class="comment">// means our wind attempt failed and we should move directly into</span>
@@ -1109,25 +1122,34 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
+	<span class="comment">//</span>
+	<span class="comment">// winding the chain requires us to have certain data associated </span>
+	<span class="comment">// with the block and the transactions, particularly the tx hashes</span>
+	<span class="comment">// that we need to generate the slip UUIDs and create the tx sigs.</span>
+	<span class="comment">//</span>
+	<span class="comment">// we fetch the block mutably first in order to update these vars.</span>
+	<span class="comment">// we cannot just send the block mutably into our regular validate()</span>
+	<span class="comment">// function because of limitatins imposed by Rust on mutable data</span>
+	<span class="comment">// structures. So validation is &quot;read-only&quot; and our &quot;write&quot; actions</span>
+	<span class="comment">// happen first.</span>
+	<span class="comment">//</span>
         {
-            <span class="comment">// yes, there is a warning here, but we need the mutable borrow to set the</span>
-            <span class="comment">// tx.hash_for_signature information inside AFAICT</span>
             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>]).<span class="ident">unwrap</span>();
-
-            <span class="comment">//</span>
-            <span class="comment">// perform the pre-validation calculations needed to validate the block</span>
-            <span class="comment">// below, in-parallel with read-only access.</span>
-            <span class="comment">//</span>
             <span class="ident">block</span>.<span class="ident">pre_validation_calculations</span>();
         }
 
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>]).<span class="ident">unwrap</span>();
+<span class="macro">println!</span>(<span class="string">&quot; ... before block.validate:      {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="kw">let</span> <span class="ident">does_block_validate</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset</span>);
+<span class="macro">println!</span>(<span class="string">&quot; ... after block.validate:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="kw">if</span> <span class="ident">does_block_validate</span> {
+<span class="macro">println!</span>(<span class="string">&quot; ... before block ocr            {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
             <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>);
+<span class="macro">println!</span>(<span class="string">&quot; ... before blockring ocr:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
             <span class="self">self</span>.<span class="ident">blockring</span>
                 .<span class="ident">on_chain_reorganization</span>(<span class="ident">block</span>.<span class="ident">get_id</span>(), <span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
+<span class="macro">println!</span>(<span class="string">&quot; ... after on-chain-reorg:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
             <span class="kw">if</span> <span class="ident">current_wind_index</span> <span class="op">=</span><span class="op">=</span> (<span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>) {
                 <span class="kw">if</span> <span class="ident">wind_failure</span> {

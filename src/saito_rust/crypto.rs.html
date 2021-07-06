@@ -66,6 +66,7 @@
 <span id="63">63</span>
 <span id="64">64</span>
 <span id="65">65</span>
+<span id="66">66</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">base58::ToBase58</span>;
 <span class="kw">use</span> <span class="ident">blake3</span>::{<span class="ident">join::RayonJoin</span>, <span class="ident">Hasher</span>};
@@ -75,7 +76,8 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">merkle::MerkleTree</span>;
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">SaitoHash</span> <span class="op">=</span> [<span class="ident">u8</span>; <span class="number">32</span>];
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">SaitoUTXOSetKey</span> <span class="op">=</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
+<span class="comment">//pub type SaitoUTXOSetKey = Vec&lt;u8&gt;;</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">SaitoUTXOSetKey</span> <span class="op">=</span> [<span class="ident">u8</span>; <span class="number">74</span>];
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">SaitoPublicKey</span> <span class="op">=</span> [<span class="ident">u8</span>; <span class="number">33</span>];
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">SaitoPrivateKey</span> <span class="op">=</span> [<span class="ident">u8</span>; <span class="number">32</span>]; <span class="comment">// 256-bit key</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">SaitoSignature</span> <span class="op">=</span> [<span class="ident">u8</span>; <span class="number">64</span>];
