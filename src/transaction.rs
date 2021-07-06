@@ -135,6 +135,7 @@ impl Transaction {
     }
 
     pub fn get_winning_routing_node(&self, random_hash: SaitoHash) -> SaitoPublicKey {
+
         //
         // find winning router
         //

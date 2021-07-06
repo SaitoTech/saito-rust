@@ -444,7 +444,11 @@ impl Block {
             }
 
             stop_point = mrv.len();
-            keep_looping = start_point < stop_point - 1;
+	    if stop_point > 0 {
+                keep_looping = start_point < stop_point-1;
+            } else {
+		keep_looping = false;
+	    }
         }
 
         //
@@ -640,6 +644,7 @@ impl Block {
     // cumulative block fees they contain.
     //
     pub fn pre_validation_calculations(&mut self) -> bool {
+println!(" ... in blk.pre_val:  {:?}", create_timestamp());
         //
         // PARALLEL PROCESSING of most data
         //
@@ -684,6 +689,8 @@ impl Block {
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
+
+println!(" ... in blk.validat:  {:?}", create_timestamp());
         //
         // validate burn fee
         //
@@ -778,11 +785,14 @@ impl Block {
                 return false;
             }
         }
+println!(" ... pre blk.val tx:  {:?}", create_timestamp());
 
         //
         // VALIDATE transactions
         //
         let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate(utxoset));
+
+println!(" ... pst blk.val tx:  {:?}", create_timestamp());
 
         true
     }

@@ -1,5 +1,6 @@
 use crate::{
     block::Block, blockchain::Blockchain, burnfee::BurnFee, consensus::SaitoMessage,
+    crypto::{hash, generate_random_bytes},
     golden_ticket::GoldenTicket, slip::Slip, time::create_timestamp, transaction::Transaction,
     wallet::Wallet,
 };
@@ -37,6 +38,7 @@ pub struct Mempool {
     transactions: Vec<Transaction>, // vector so we just copy it over
     wallet_lock: Arc<RwLock<Wallet>>,
     currently_processing_block: bool,
+    currently_generating_transactions: bool,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
 }
 
@@ -48,6 +50,7 @@ impl Mempool {
             transactions: vec![],
             wallet_lock,
             currently_processing_block: false,
+            currently_generating_transactions: false,
             broadcast_channel_sender: None,
         }
     }
@@ -143,6 +146,12 @@ impl Mempool {
         if self.currently_processing_block {
             return false;
         }
+        if self.currently_generating_transactions == true {
+            return false;
+        }
+        if self.transactions.len() == 0 {
+            return false;
+        }
 
         let work_available = self.calculate_work_available().await;
         let work_needed = self.calculate_work_needed(blockchain_lock.clone()).await;
@@ -194,6 +203,9 @@ pub async fn run(
         mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
     }
 
+    //
+    // generate blocks 4000, w/ capacity of 4 fails
+    //
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
 
     let generate_block_sender = mempool_channel_sender.clone();
@@ -204,6 +216,7 @@ pub async fn run(
                 .send(MempoolMessage::GenerateTransaction)
                 .await
                 .expect("error: GenerateBlock message failed to send");
+            sleep(Duration::from_millis(1000));
             generate_block_sender
                 .send(MempoolMessage::TryBundleBlock)
                 .await
@@ -215,19 +228,26 @@ pub async fn run(
     loop {
         tokio::select! {
             Some(message) = mempool_channel_receiver.recv() => {
+
+println!("mesg rec: {:?}", message);
+
                 match message {
 
                     // TryBundleBlock makes periodic attempts to produce blocks and does so
                      // if the mempool can bundle blocks....
                     MempoolMessage::TryBundleBlock => {
+println!("Try Bundle Block!");
                         let mut mempool = mempool_lock.write().await;
                         let can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
                         if can_bundle {
                             let block = mempool.generate_block(blockchain_lock.clone()).await;
                             if AddBlockResult::Accepted == mempool.add_block(block) {
+println!("Try Bundle Block 2!");
                                 mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
+println!("Try Bundle Block 3!");
                             }
                         }
+println!("Done Try Bundle Block!");
                     },
 
                     // GenerateBlock makes periodic attempts to analyse the state of
@@ -243,8 +263,10 @@ pub async fn run(
                     // GenerateTransaction makes a transaction and adds it to the mempool if possible
                     MempoolMessage::GenerateTransaction => {
 
+			let txs_to_generate = 4000;
                         let mut mempool = mempool_lock.write().await;
-                    let wallet_publickey;
+			mempool.currently_generating_transactions = true;
+                        let wallet_publickey;
                         let wallet_privatekey;
 
                     {
@@ -253,11 +275,12 @@ pub async fn run(
                         wallet_privatekey = wallet.get_privatekey();
                     }
 
-                    let current_txs_in_mempool: u8 = mempool.transactions.len() as u8;
+                    let current_txs_in_mempool: u32 = mempool.transactions.len() as u32;
+		    if mempool.transactions.len() < txs_to_generate {
 
-                    for _i in 0..10 {
+                    for _i in 0..txs_to_generate {
 
-                        //println!("creating tx {:?}", (_i+current_txs_in_mempool+1));
+                      println!("creating tx {:?}", (_i));
                       let mut transaction = Transaction::new();
 
                     transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
@@ -268,7 +291,8 @@ pub async fn run(
                     let mut input1 = Slip::new();
                     input1.set_publickey(wallet_publickey);
                     input1.set_amount(1000000);
-                    input1.set_uuid([current_txs_in_mempool+(_i as u8); 32]);
+		    let random_uuid = hash(&generate_random_bytes(32));
+                    input1.set_uuid(random_uuid);
 
                     let mut output1 = Slip::new();
                     output1.set_publickey(wallet_publickey);
@@ -283,6 +307,8 @@ pub async fn run(
                     mempool.add_transaction(transaction);
 
                 }
+                }
+			mempool.currently_generating_transactions = false;
                },
 
                    // ProcessBlocks will add blocks FIFO from the queue into blockchain
@@ -310,7 +336,7 @@ pub async fn run(
                         // For now, let's assume that the network has a reference
                         // to mempool and is adding the block through that reference
                         // then calls mempool to process the blocks in the queue
-                        mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
+                        mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                     }
                     SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
                         let mut _mempool = mempool_lock.write().await;

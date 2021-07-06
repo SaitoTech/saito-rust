@@ -1,6 +1,5 @@
 use crate::crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey};
 use serde::{Deserialize, Serialize};
-
 use ahash::AHashMap;
 
 use enum_variant_count_derive::TryFromByte;
@@ -46,8 +45,18 @@ impl Slip {
         }
     }
 
-    pub fn validate(&self, _utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-        true
+    pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+        if self.get_amount() > 0 {
+	    let mut return_value = false;
+            let slip_key = self.get_utxoset_key();
+	    match utxoset.get(&slip_key) {
+	        Some(value) => {
+		    if *value == 1 { return_value = true; }
+		}
+	        None => {}
+    	    }
+        }
+	true
     }
 
     pub fn on_chain_reorganization(
@@ -62,6 +71,7 @@ impl Slip {
             utxoset.entry(slip_key).or_insert(slip_value);
         }
     }
+
 
     //
     // Getters and Setters
