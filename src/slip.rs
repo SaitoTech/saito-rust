@@ -24,7 +24,6 @@ pub enum SlipType {
     Other, // need more than one value for TryFromBytes
 }
 
-
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Slip {
@@ -37,15 +36,15 @@ pub struct Slip {
 }
 
 impl Slip {
-
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-	    publickey: [0; 33],
-	    uuid: [0; 32],
-	    amount: 0,
-	    slip_ordinal: 0,
-	    slip_type: SlipType::Normal
-	}
+            publickey: [0; 33],
+            uuid: [0; 32],
+            amount: 0,
+            slip_ordinal: 0,
+            slip_type: SlipType::Normal,
+        }
     }
 
     pub fn validate(&self) -> bool {
@@ -108,7 +107,6 @@ impl Slip {
         self.slip_type = slip_type;
     }
 
-
     //
     // Serialization
     //
@@ -139,14 +137,13 @@ impl Slip {
         let slip_type: SlipType = SlipType::try_from(bytes[SLIP_SIZE - 1]).unwrap();
         let mut slip = Slip::new();
 
-	slip.set_publickey(publickey);
-	slip.set_uuid(uuid);
-	slip.set_amount(amount);
-	slip.set_slip_ordinal(slip_ordinal);
-	slip.set_slip_type(slip_type);
-	
-	slip
+        slip.set_publickey(publickey);
+        slip.set_uuid(uuid);
+        slip.set_amount(amount);
+        slip.set_slip_ordinal(slip_ordinal);
+        slip.set_slip_type(slip_type);
 
+        slip
     }
     pub fn serialize_for_net(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
@@ -159,19 +156,45 @@ impl Slip {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn slip_new_test() {
+        let mut slip = Slip::new();
+        assert_eq!(slip.get_publickey(), [0; 33]);
+        assert_eq!(slip.get_uuid(), [0; 32]);
+        assert_eq!(slip.get_amount(), 0);
+        assert_eq!(slip.get_slip_type(), SlipType::Normal);
+        assert_eq!(slip.get_slip_ordinal(), 0);
+
+        slip.set_publickey([1; 33]);
+        assert_eq!(slip.get_publickey(), [1; 33]);
+
+        slip.set_amount(100);
+        assert_eq!(slip.get_amount(), 100);
+
+        slip.set_uuid([30; 32]);
+        assert_eq!(slip.get_uuid(), [30; 32]);
+
+        slip.set_slip_ordinal(1);
+        assert_eq!(slip.get_slip_ordinal(), 1);
+
+        slip.set_slip_type(SlipType::MinerInput);
+        assert_eq!(slip.get_slip_type(), SlipType::MinerInput);
+    }
+
+    #[test]
+    fn slip_serialize_for_signature_test() {
         let slip = Slip::new();
-        assert_eq!(slip.publickey, [0; 33]);
-        assert_eq!(slip.uuid, [0; 32]);
-        assert_eq!(slip.amount, 0);
-        assert_eq!(slip.slip_type, SlipType::Normal);
-        assert_eq!(slip.slip_ordinal, 0);
+        assert_eq!(slip.serialize_for_signature(), vec![0; 78]);
+    }
+
+    #[test]
+    fn slip_get_utxoset_key_test() {
+        let slip = Slip::new();
+        assert_eq!(slip.get_utxoset_key(), vec![0; 74]);
     }
 
     #[test]

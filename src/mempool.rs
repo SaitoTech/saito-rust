@@ -99,7 +99,6 @@ impl Mempool {
     // the right block. this pushes the golden ticket indiscriminately into the
     // transaction array -- we can do a better job.
     pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) -> AddTransactionResult {
-
         // convert into transaction
         let mut wallet = self.wallet_lock.write().await;
         let transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
@@ -181,7 +180,6 @@ impl Mempool {
         &mut self,
         blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Block {
-
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
@@ -210,33 +208,32 @@ impl Mempool {
         mem::swap(&mut block.transactions, &mut self.transactions);
         //println!("post-swap: {} vs {}", block.transactions.len(), self.transactions.len());
 
-	//
-	// TODO - not ideal that we have to loop through the block
-	// can't we put GT in a specific location?
-	//
-	// check for golden ticket 
-	//
+        //
+        // TODO - not ideal that we have to loop through the block
+        // can't we put GT in a specific location?
+        //
+        // check for golden ticket
+        //
         for transaction in &self.transactions {
-	    if transaction.is_golden_ticket() {
-		block.set_has_golden_ticket(true);
-		break;
-	    }
-	}
+            if transaction.is_golden_ticket() {
+                block.set_has_golden_ticket(true);
+                break;
+            }
+        }
 
         //
         // create
         //
         let cv: DataToValidate = block.generate_data_to_validate(&blockchain);
 
-	//
-	// fee transactions and golden tickets
+        //
+        // fee transactions and golden tickets
         //
         // set hash_for_signature for fee_tx as we cannot mutably fetch it
         // during merkle_root generation as those functions require parallel
         // processing in block validation. So some extra code here.
         //
         if !cv.fee_transaction.is_none() {
-
             //
             // fee-transaction must still pass validation rules
             //
@@ -255,16 +252,14 @@ impl Mempool {
             fee_tx.sign(wallet.get_privatekey());
 
             block.add_transaction(fee_tx);
-	    block.set_has_fee_transaction(true);
-
+            block.set_has_fee_transaction(true);
         }
 
-
-	//
-	// validate difficulty
-	//
+        //
+        // validate difficulty
+        //
         if cv.expected_difficulty != 0 {
-	    block.set_difficulty(cv.expected_difficulty);
+            block.set_difficulty(cv.expected_difficulty);
         }
 
         let block_merkle_root = block.generate_merkle_root();
@@ -273,7 +268,7 @@ impl Mempool {
         block.set_hash(block_hash);
 
         let wallet = self.wallet_lock.read().await;
-	block.sign(wallet.get_publickey(), wallet.get_privatekey());
+        block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
         block
     }

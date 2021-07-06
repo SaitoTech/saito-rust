@@ -227,7 +227,7 @@ mod test {
 
     use super::*;
     #[test]
-    fn blockring_test1() {
+    fn blockring_reorganization_test() {
         let mut blockring = BlockRing::new();
 
         //
@@ -330,7 +330,7 @@ mod test {
     }
 
     #[test]
-    fn blockring_test2() {
+    fn blockring_test() {
         let mut blockring = BlockRing::new();
         // TODO: This is wrong, the latest block is null, not 0
         assert_eq!(0, blockring.get_longest_chain_block_id());

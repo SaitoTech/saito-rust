@@ -70,24 +70,21 @@ impl Miner {
         }
     }
 
-
-    pub async fn mine_on_block_until_golden_ticket_found(&mut self, block : Block) -> GoldenTicket {
-
+    pub async fn mine_on_block_until_golden_ticket_found(&mut self, block: Block) -> GoldenTicket {
         let wallet = self.wallet_lock.read().await;
-	let publickey = wallet.get_publickey();
+        let publickey = wallet.get_publickey();
         let mut random_bytes = hash(&generate_random_bytes(32));
         let mut solution = GoldenTicket::generate_solution(random_bytes, publickey);
 
-	while !GoldenTicket::is_valid_solution(block.get_hash(), solution, block.get_difficulty()) {
+        while !GoldenTicket::is_valid_solution(block.get_hash(), solution, block.get_difficulty()) {
             random_bytes = hash(&generate_random_bytes(32));
             solution = GoldenTicket::generate_solution(random_bytes, publickey);
-	}
+        }
 
         let vote = 0;
         let golden_ticket = GoldenTicket::new(vote, self.target, random_bytes, publickey);
-   
-        golden_ticket
 
+        golden_ticket
     }
 
     pub fn set_is_active(&mut self, is_active: bool) {
