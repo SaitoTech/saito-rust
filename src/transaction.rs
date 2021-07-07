@@ -135,7 +135,6 @@ impl Transaction {
     }
 
     pub fn get_winning_routing_node(&self, random_hash: SaitoHash) -> SaitoPublicKey {
-
         //
         // find winning router
         //
@@ -331,15 +330,15 @@ impl Transaction {
         let mut nolan_out: u64 = 0;
         for input in &mut self.inputs {
             nolan_in += input.get_amount();
-	    // generate utxoset key cache
-	    input.generate_utxoset_key();
+            // generate utxoset key cache
+            input.generate_utxoset_key();
         }
         for output in &mut self.outputs {
             nolan_out += output.get_amount();
 
-	    // generate utxoset key cache
+            // generate utxoset key cache
             // and set the UUID needed for insertion to shashmap
-	    output.generate_utxoset_key();
+            output.generate_utxoset_key();
             output.set_uuid(hash_for_signature);
         }
         self.total_in = nolan_in;
