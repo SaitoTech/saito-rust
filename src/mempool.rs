@@ -169,11 +169,7 @@ impl Mempool {
             );
         }
 
-        if work_available >= work_needed {
-            return true;
-        }
-
-        return false;
+        work_available >= work_needed
     }
 
     pub async fn generate_block_from_mempool(
