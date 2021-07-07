@@ -1,6 +1,6 @@
 use crate::crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey};
-use serde::{Deserialize, Serialize};
 use ahash::AHashMap;
+use serde::{Deserialize, Serialize};
 
 use enum_variant_count_derive::TryFromByte;
 use std::convert::{TryFrom, TryInto};
@@ -37,9 +37,6 @@ pub struct Slip {
     is_utxoset_key_set: bool,
 }
 
-
-
-
 impl Slip {
     pub fn new() -> Self {
         Self {
@@ -55,15 +52,17 @@ impl Slip {
 
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_amount() > 0 {
-	    let mut return_value = false;
-	    match utxoset.get(&self.utxoset_key) {
-	        Some(value) => {
-		    if *value == 1 { return_value = true; }
-		}
-	        None => {}
-    	    }
+            let mut return_value = false;
+            match utxoset.get(&self.utxoset_key) {
+                Some(value) => {
+                    if *value == 1 {
+                        return_value = true;
+                    }
+                }
+                None => {}
+            }
         }
-	true
+        true
     }
 
     pub fn on_chain_reorganization(
@@ -76,7 +75,6 @@ impl Slip {
             utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
-
 
     //
     // Getters and Setters
@@ -135,14 +133,14 @@ impl Slip {
     }
 
     pub fn generate_utxoset_key(&mut self) {
-	self.utxoset_key = self.get_utxoset_key();
-	self.is_utxoset_key_set = true;
+        self.utxoset_key = self.get_utxoset_key();
+        self.is_utxoset_key_set = true;
     }
 
     // 33 bytes publickey
     // 32 bytes uuid
     // 8 bytes amount
-    // 1 byte slip_ordinal  
+    // 1 byte slip_ordinal
     pub fn get_utxoset_key(&self) -> SaitoUTXOSetKey {
         let mut res: Vec<u8> = vec![];
         res.extend(&self.get_publickey());
@@ -152,7 +150,7 @@ impl Slip {
 
         res[0..74].try_into().unwrap()
 
-//        res
+        //        res
     }
 
     pub fn deserialize_from_net(bytes: Vec<u8>) -> Slip {
