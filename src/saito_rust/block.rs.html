@@ -1038,7 +1038,6 @@
 <span id="1035">1035</span>
 <span id="1036">1036</span>
 <span id="1037">1037</span>
-<span id="1038">1038</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
@@ -1486,11 +1485,11 @@
             }
 
             <span class="ident">stop_point</span> <span class="op">=</span> <span class="ident">mrv</span>.<span class="ident">len</span>();
-	    <span class="kw">if</span> <span class="ident">stop_point</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                <span class="ident">keep_looping</span> <span class="op">=</span> <span class="ident">start_point</span> <span class="op">&lt;</span> <span class="ident">stop_point</span><span class="op">-</span><span class="number">1</span>;
+            <span class="kw">if</span> <span class="ident">stop_point</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                <span class="ident">keep_looping</span> <span class="op">=</span> <span class="ident">start_point</span> <span class="op">&lt;</span> <span class="ident">stop_point</span> <span class="op">-</span> <span class="number">1</span>;
             } <span class="kw">else</span> {
-		<span class="ident">keep_looping</span> <span class="op">=</span> <span class="bool-val">false</span>;
-	    }
+                <span class="ident">keep_looping</span> <span class="op">=</span> <span class="bool-val">false</span>;
+            }
         }
 
         <span class="comment">//</span>
@@ -1686,7 +1685,7 @@
     <span class="comment">// cumulative block fees they contain.</span>
     <span class="comment">//</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pre_validation_calculations</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-<span class="macro">println!</span>(<span class="string">&quot; ... block.prevalid - pre hash:  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... block.prevalid - pre hash:  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="comment">//</span>
         <span class="comment">// PARALLEL PROCESSING of most data</span>
         <span class="comment">//</span>
@@ -1695,7 +1694,7 @@
             .<span class="ident">par_iter_mut</span>()
             .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">pre_validation_calculations_parallelizable</span>());
 
-<span class="macro">println!</span>(<span class="string">&quot; ... block.prevalid - pst hash:  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... block.prevalid - pst hash:  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="comment">//</span>
         <span class="comment">// CUMULATIVE FEES only AFTER parallel calculations</span>
         <span class="comment">//</span>
@@ -1723,7 +1722,7 @@
         <span class="comment">// update block with total fees</span>
         <span class="comment">//</span>
         <span class="self">self</span>.<span class="ident">total_fees</span> <span class="op">=</span> <span class="ident">cumulative_fees</span>;
-<span class="macro">println!</span>(<span class="string">&quot; ... block.pre_validation_done:  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... block.pre_validation_done:  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="bool-val">true</span>
     }
@@ -1733,8 +1732,7 @@
         <span class="ident">blockchain</span>: <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>,
         <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoUTXOSetKey</span>, <span class="ident">u64</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-
-<span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (burn fee)  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (burn fee)  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="comment">//</span>
         <span class="comment">// validate burn fee</span>
         <span class="comment">//</span>
@@ -1758,7 +1756,7 @@
                 <span class="comment">// TODO assert that this is the first (or second?) block! ?</span>
             }
         }
-<span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (merkle rt) {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (merkle rt) {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="comment">//</span>
         <span class="comment">// verify merkle root</span>
@@ -1776,7 +1774,7 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-<span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (cv-data)   {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (cv-data)   {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="comment">//</span>
         <span class="comment">// validate fee-transaction (miner/router/staker) payments</span>
         <span class="comment">//</span>
@@ -1831,14 +1829,14 @@
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
         }
-<span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (txs valid) {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (txs valid) {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="comment">//</span>
         <span class="comment">// VALIDATE transactions</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">_transactions_valid</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">par_iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="ident">utxoset</span>));
 
-<span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (done all)  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (done all)  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="bool-val">true</span>
     }
