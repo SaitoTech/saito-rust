@@ -454,6 +454,9 @@
 <span id="451">451</span>
 <span id="452">452</span>
 <span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -795,8 +798,11 @@
 
             <span class="comment">// generate utxoset key cache</span>
             <span class="comment">// and set the UUID needed for insertion to shashmap</span>
-            <span class="ident">output</span>.<span class="ident">generate_utxoset_key</span>();
             <span class="ident">output</span>.<span class="ident">set_uuid</span>(<span class="ident">hash_for_signature</span>);
+            <span class="ident">output</span>.<span class="ident">generate_utxoset_key</span>();
+
+<span class="macro">println!</span>(<span class="string">&quot;setting output!&quot;</span>);
+
         }
         <span class="self">self</span>.<span class="ident">total_in</span> <span class="op">=</span> <span class="ident">nolan_in</span>;
         <span class="self">self</span>.<span class="ident">total_out</span> <span class="op">=</span> <span class="ident">nolan_out</span>;
