@@ -723,6 +723,124 @@
 <span id="720">720</span>
 <span id="721">721</span>
 <span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -1309,9 +1427,15 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 
 <span class="kw">mod</span> <span class="ident">tests</span> {
+    <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
+
+    <span class="kw">use</span> <span class="ident">rand::rngs::mock</span>;
+
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
-    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::mocks::make_mock_block</span>;
+    <span class="kw">use</span> <span class="kw">crate</span>::{
+        <span class="ident">test_utilities::mocks</span>::{<span class="ident">make_mock_block</span>, <span class="ident">make_mock_tx</span>},
+        <span class="ident">transaction::Transaction</span>,
+    };
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_test_1</span>() {
@@ -1377,12 +1501,131 @@
         <span class="macro">assert_eq!</span>(<span class="ident">mock_block_2</span>.<span class="ident">get_id</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
         <span class="macro">assert_eq!</span>(<span class="ident">mock_block_2</span>.<span class="ident">get_hash</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
     }
+    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_test_2</span>() {
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
+        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_block_1</span>: <span class="ident">Block</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">next_block</span>: <span class="ident">Block</span>;
+        <span class="comment">// make the first block</span>
+        {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">make_mock_tx</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>];
+            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">10</span>));
+            <span class="ident">mock_block_1</span> <span class="op">=</span> <span class="ident">Block::generate_block</span>(
+                <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">txs</span>,
+                [<span class="number">0</span>; <span class="number">32</span>],
+                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            )
+            .<span class="kw">await</span>;
+            <span class="ident">next_block</span> <span class="op">=</span> <span class="ident">mock_block_1</span>.<span class="ident">clone</span>();
+        }
+        <span class="comment">// add the first block</span>
+        {
+            <span class="kw">let</span> <span class="ident">blockchain_mutex</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_mutex</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+            <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">mock_block_1</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+            <span class="macro">assert_eq!</span>(<span class="ident">mock_block_1</span>.<span class="ident">get_id</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
+            <span class="macro">assert_eq!</span>(<span class="ident">mock_block_1</span>.<span class="ident">get_hash</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
+        }
+        <span class="comment">// make and add 5 more blocks onto the chain</span>
+        <span class="kw">for</span> <span class="ident">n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">5</span> {
+            {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">make_mock_tx</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>];
+                <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">10</span>));
+                <span class="ident">next_block</span> <span class="op">=</span> <span class="ident">Block::generate_block</span>(
+                    <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">txs</span>,
+                    <span class="ident">next_block</span>.<span class="ident">get_hash</span>(),
+                    <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+                    <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+                )
+                .<span class="kw">await</span>;
+            }
+            {
+                <span class="kw">let</span> <span class="ident">blockchain_mutex</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_mutex</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">next_block</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+                <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_id</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
+
+                <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_hash</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
+                <span class="macro">println!</span>(<span class="string">&quot;hashhashhashhashhashhash {:?}&quot;</span>, <span class="ident">next_block</span>.<span class="ident">get_hash</span>());
+            }
+        }
+        <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_id</span>(), <span class="number">6</span>);
+        <span class="kw">let</span> <span class="ident">latest_block_id</span> <span class="op">=</span> <span class="ident">next_block</span>.<span class="ident">get_id</span>();
+        <span class="kw">let</span> <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">next_block</span>.<span class="ident">get_hash</span>();
+        <span class="comment">// make a fork from block 1, a new block 2</span>
+        {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">make_mock_tx</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>];
+            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">10</span>));
+            <span class="ident">next_block</span> <span class="op">=</span> <span class="ident">Block::generate_block</span>(
+                <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">txs</span>,
+                <span class="ident">mock_block_1</span>.<span class="ident">get_hash</span>(),
+                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            )
+            .<span class="kw">await</span>;
+        }
+        <span class="comment">// add new block 2</span>
+        {
+            <span class="kw">let</span> <span class="ident">blockchain_mutex</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_mutex</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+            <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">next_block</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+            <span class="macro">assert_eq!</span>(<span class="ident">latest_block_id</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
+            <span class="macro">assert_eq!</span>(<span class="ident">latest_block_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
+        }
+        <span class="comment">// extend the fork 4 more blocks</span>
+        <span class="kw">for</span> <span class="ident">n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">4</span> {
+            {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">make_mock_tx</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>];
+                <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">10</span>));
+                <span class="ident">next_block</span> <span class="op">=</span> <span class="ident">Block::generate_block</span>(
+                    <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">txs</span>,
+                    <span class="ident">next_block</span>.<span class="ident">get_hash</span>(),
+                    <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+                    <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+                )
+                .<span class="kw">await</span>;
+            }
+            {
+                <span class="kw">let</span> <span class="ident">blockchain_mutex</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_mutex</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">next_block</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+                <span class="macro">assert_eq!</span>(<span class="ident">latest_block_id</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
+                <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_id</span>(), <span class="ident">n</span> <span class="op">+</span> <span class="number">3</span>);
+                <span class="macro">assert_eq!</span>(<span class="ident">latest_block_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
+            }
+        }
+        <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_id</span>(), <span class="number">6</span>);
+        <span class="comment">// make one more block on the fork, should be block id</span>
+        {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">make_mock_tx</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>];
+            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">10</span>));
+            <span class="ident">next_block</span> <span class="op">=</span> <span class="ident">Block::generate_block</span>(
+                <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">txs</span>,
+                <span class="ident">next_block</span>.<span class="ident">get_hash</span>(),
+                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            )
+            .<span class="kw">await</span>;
+        }
+        <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_id</span>(), <span class="number">7</span>);
+        <span class="comment">// this should become the LC</span>
+        {
+            <span class="kw">let</span> <span class="ident">blockchain_mutex</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_mutex</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+            <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">next_block</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+            <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_id</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
+            <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_id</span>(), <span class="number">7</span>);
+            <span class="macro">assert_eq!</span>(<span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>(), <span class="number">7</span>);
+            <span class="macro">assert_eq!</span>(<span class="ident">next_block</span>.<span class="ident">get_hash</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
+        }
+    }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_fork_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
-        <span class="kw">let</span> <span class="ident">miner</span> <span class="op">=</span> <span class="ident">Miner::new</span>();
 
         <span class="kw">let</span> <span class="ident">mock_block_1</span> <span class="op">=</span> <span class="ident">make_mock_block</span>(<span class="number">0</span>, <span class="number">10</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="number">1</span>);
         <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">mock_block_1</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
@@ -1419,10 +1662,6 @@
                 <span class="ident">prev_block</span>.<span class="ident">get_id</span>() <span class="op">+</span> <span class="number">1</span>,
             );
 
-            <span class="kw">let</span> <span class="ident">golden_ticket_transaction</span> <span class="op">=</span>
-                <span class="ident">miner</span>.<span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="ident">prev_block</span>);
-            <span class="ident">next_block</span>.<span class="ident">add_transaction</span>(<span class="ident">golden_ticket_transaction</span>);
-
             <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">next_block</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
 
             <span class="macro">assert_eq!</span>(<span class="ident">longest_chain_block_id</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
@@ -1436,9 +1675,6 @@
             <span class="ident">prev_block</span>.<span class="ident">get_hash</span>(),
             <span class="ident">prev_block</span>.<span class="ident">get_id</span>() <span class="op">+</span> <span class="number">1</span>,
         );
-
-        <span class="kw">let</span> <span class="ident">golden_ticket_transaction</span> <span class="op">=</span> <span class="ident">miner</span>.<span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="ident">prev_block</span>);
-        <span class="ident">next_block</span>.<span class="ident">add_transaction</span>(<span class="ident">golden_ticket_transaction</span>);
 
         <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">next_block</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
         <span class="comment">// TODO: These tests are failing</span>
