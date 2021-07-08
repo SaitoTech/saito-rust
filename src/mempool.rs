@@ -125,19 +125,17 @@ impl Mempool {
     ///
     /// Calculates the work available in mempool to produce a block
     ///
-    pub async fn calculate_work_available(&self) -> u64 {
-        return 2 * 100_000_000;
+    pub fn calculate_work_available(&self) -> u64 {
+        2 * 100_000_000
     }
 
     //
     // Return work needed in Nolan
     //
-    pub async fn calculate_work_needed(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> u64 {
-        let blockchain = blockchain_lock.read().await;
-        let previous_block_timestamp = blockchain.get_latest_block_timestamp();
+    pub fn calculate_work_needed(&self, previous_block: &Block) -> u64 {
+        let previous_block_timestamp = previous_block.get_timestamp();
+        let previous_block_burnfee = previous_block.get_burnfee();
         let current_timestamp = create_timestamp();
-
-        let previous_block_burnfee = blockchain.get_latest_block_burnfee();
 
         let work_needed: u64 = BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
             previous_block_burnfee,
@@ -156,20 +154,20 @@ impl Mempool {
             return false;
         }
 
-        let work_available = self.calculate_work_available().await;
-        let work_needed = self.calculate_work_needed(blockchain_lock.clone()).await;
+        let blockchain = blockchain_lock.read().await;
 
-        {
-            let blockchain = blockchain_lock.read().await;
-            let previous_block_timestamp = blockchain.get_latest_block_timestamp();
-            let time_elapsed = create_timestamp() - previous_block_timestamp;
+        if let Some(previous_block) = blockchain.get_latest_block() {
+            let work_available = self.calculate_work_available();
+            let work_needed = self.calculate_work_needed(previous_block);
+            let time_elapsed = create_timestamp() - previous_block.get_timestamp();
             println!(
                 "WA: {:?} -- WN: {:?} -- TE: {:?}",
                 work_available, work_needed, time_elapsed
             );
+            work_available >= work_needed
+        } else {
+            true
         }
-
-        work_available >= work_needed
     }
 
     pub async fn generate_block_from_mempool(
@@ -179,26 +177,25 @@ impl Mempool {
         let blockchain = blockchain_lock.read().await;
         let previous_block_id = blockchain.get_latest_block_id();
         let previous_block_hash = blockchain.get_latest_block_hash();
+        let current_timestamp = create_timestamp();
 
         let mut block = Block::new();
 
-        let previous_block_burnfee = blockchain.get_latest_block_burnfee();
-        let previous_block_timestamp = blockchain.get_latest_block_timestamp();
-        let previous_block_difficulty = blockchain.get_latest_block_difficulty();
+        if let Some(previous_block) = blockchain.get_latest_block() {
+            let current_burnfee: u64 =
+                BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
+                    previous_block.get_burnfee(),
+                    current_timestamp,
+                    previous_block.get_timestamp(),
+                );
 
-        let current_timestamp = create_timestamp();
-        let current_burnfee: u64 =
-            BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-                previous_block_burnfee,
-                current_timestamp,
-                previous_block_timestamp,
-            );
+            block.set_burnfee(current_burnfee);
+            block.set_difficulty(previous_block.get_difficulty());
+        }
 
         block.set_id(previous_block_id + 1);
         block.set_previous_block_hash(previous_block_hash);
-        block.set_burnfee(current_burnfee);
         block.set_timestamp(current_timestamp);
-        block.set_difficulty(previous_block_difficulty);
 
         //println!("pre-swap: {} vs {}", block.transactions.len(), self.transactions.len());
         mem::swap(&mut block.transactions, &mut self.transactions);
@@ -266,29 +263,26 @@ impl Mempool {
 
     pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
         let blockchain = blockchain_lock.read().await;
-        let previous_block_id = blockchain.get_latest_block_id();
-        let previous_block_hash = blockchain.get_latest_block_hash();
 
         let mut block = Block::new();
 
-        let previous_block_burnfee = blockchain.get_latest_block_burnfee();
-        let previous_block_timestamp = blockchain.get_latest_block_timestamp();
+        let previous_block_id = blockchain.get_latest_block_id();
+        let previous_block_hash = blockchain.get_latest_block_hash();
         let current_timestamp = create_timestamp();
 
-        //println!("BUILDING FROM BF: {}", previous_block_burnfee);
-        //println!("BUILDING FROM TS: {}", previous_block_timestamp);
-        //println!("BUILDING FROM ID: {}", previous_block_id);
+        if let Some(previous_block) = blockchain.get_latest_block() {
+            let new_burnfee: u64 =
+                BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
+                    previous_block.get_burnfee(),
+                    current_timestamp,
+                    previous_block.get_timestamp(),
+                );
 
-        let new_burnfee: u64 =
-            BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-                previous_block_burnfee,
-                current_timestamp,
-                previous_block_timestamp,
-            );
+            block.set_burnfee(new_burnfee);
+        }
 
         block.set_id(previous_block_id + 1);
         block.set_previous_block_hash(previous_block_hash);
-        block.set_burnfee(new_burnfee);
         block.set_timestamp(current_timestamp);
 
         let wallet = self.wallet_lock.read().await;
