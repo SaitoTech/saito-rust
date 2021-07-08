@@ -112,7 +112,7 @@ impl Mempool {
         if self
             .transactions
             .iter()
-            .any(|transaction| transaction.is_golden_ticket() == true)
+            .any(|transaction| transaction.is_golden_ticket())
         {
             return AddTransactionResult::Exists;
         } else {
@@ -210,12 +210,7 @@ impl Mempool {
         //
         // check for golden ticket
         //
-        for transaction in &self.transactions {
-            if transaction.is_golden_ticket() {
-                block.set_has_golden_ticket(true);
-                break;
-            }
-        }
+        block.set_has_golden_ticket(self.transactions.iter().any(|tx| tx.is_golden_ticket()));
 
         //
         // create
@@ -409,54 +404,52 @@ pub async fn run(
                     MempoolMessage::GenerateTransaction => {
 
                         let mut mempool = mempool_lock.write().await;
-                let wallet_publickey;
-                let wallet_privatekey;
+                        let wallet_publickey;
+                        let wallet_privatekey;
 
-            {
-                let wallet = mempool.wallet_lock.read().await;
-                wallet_publickey = wallet.get_publickey();
-                wallet_privatekey = wallet.get_privatekey();
-            }
+                        {
+                            let wallet = mempool.wallet_lock.read().await;
+                            wallet_publickey = wallet.get_publickey();
+                            wallet_privatekey = wallet.get_privatekey();
+                        }
 
-            let current_txs_in_mempool = mempool.transactions.len();
+                        let current_txs_in_mempool = mempool.transactions.len();
+                        for _i in 0..10 {
+                            println!("creating tx {:?}", (_i+current_txs_in_mempool+1));
 
-                for _i in 0..10 {
+                            let mut transaction = Transaction::new();
 
-                        println!("creating tx {:?}", (_i+current_txs_in_mempool+1));
+                            transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
 
-                        let mut transaction = Transaction::new();
+                            let mut input1 = Slip::new();
+                            input1.set_publickey(wallet_publickey);
+                                input1.set_amount(1000000);
+                            input1.set_uuid([1; 32]);
 
-                    transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
+                            let mut output1 = Slip::new();
+                            output1.set_publickey(wallet_publickey);
+                            output1.set_amount(1000000);
+                            output1.set_uuid([1; 32]);
 
-                    let mut input1 = Slip::new();
-                    input1.set_publickey(wallet_publickey);
-                           input1.set_amount(1000000);
-                    input1.set_uuid([1; 32]);
+                            transaction.add_input(input1);
+                            transaction.add_output(output1);
 
-                    let mut output1 = Slip::new();
-                    output1.set_publickey(wallet_publickey);
-                    output1.set_amount(1000000);
-                    output1.set_uuid([1; 32]);
+                            // sign ...
+                            transaction.sign(wallet_privatekey);
+                            mempool.add_transaction(transaction);
 
-                    transaction.add_input(input1);
-                       transaction.add_output(output1);
-
-                    // sign ...
-                    transaction.sign(wallet_privatekey);
-                        mempool.add_transaction(transaction);
-
-                }
+                        }
                     },
 
                     // ProcessBlocks will add blocks FIFO from the queue into blockchain
                     MempoolMessage::ProcessBlocks => {
                         let mut mempool = mempool_lock.write().await;
-                    mempool.currently_processing_block = true;
+                        mempool.currently_processing_block = true;
                         let mut blockchain = blockchain_lock.write().await;
                         while let Some(block) = mempool.blocks.pop_front() {
                             blockchain.add_block(block).await;
                         }
-                    mempool.currently_processing_block = false;
+                        mempool.currently_processing_block = false;
                     },
                 }
             }

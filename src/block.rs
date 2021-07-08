@@ -508,9 +508,9 @@ impl Block {
             //
             // TODO - y cannot be zero or divide by zero
             //
-            let y  = match total_fees {
+            let y = match total_fees {
                 0 => 100,
-                diff => diff
+                diff => diff,
             };
 
             let z = U256::from_big_endian(&y.to_be_bytes());
@@ -596,15 +596,11 @@ impl Block {
         //
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
             let difficulty = previous_block.get_difficulty();
-            if !previous_block.get_has_golden_ticket()
-                && !self.get_has_golden_ticket()
-            {
+            if !previous_block.get_has_golden_ticket() && !self.get_has_golden_ticket() {
                 if difficulty > 0 {
                     cv.expected_difficulty = previous_block.get_difficulty() - 1;
                 }
-            } else if previous_block.get_has_golden_ticket()
-                && self.get_has_golden_ticket()
-            {
+            } else if previous_block.get_has_golden_ticket() && self.get_has_golden_ticket() {
                 cv.expected_difficulty = difficulty + 1;
             } else {
                 cv.expected_difficulty = difficulty;
@@ -648,7 +644,7 @@ impl Block {
         //
         let mut cumulative_fees = 0;
         let mut has_golden_ticket = false;
-        let mut has_fee_transaction= false;
+        let mut has_fee_transaction = false;
 
         for transaction in &mut self.transactions {
             cumulative_fees =
@@ -660,7 +656,7 @@ impl Block {
             match transaction.get_transaction_type() {
                 TransactionType::Fee => has_fee_transaction = true,
                 TransactionType::GoldenTicket => has_golden_ticket = true,
-                _ => {},
+                _ => {}
             };
         }
 
@@ -676,7 +672,7 @@ impl Block {
     }
 
     pub fn validate(&self, blockchain: &Blockchain) -> bool {
-                //
+        //
         // verify merkle root
         //
         if self.merkle_root == [0; 32] {
@@ -715,11 +711,11 @@ impl Block {
         //
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
             let new_burnfee: u64 =
-            BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-                previous_block.get_burnfee(),
-                self.get_timestamp(),
-                previous_block.get_timestamp(),
-            );
+                BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
+                    previous_block.get_burnfee(),
+                    self.get_timestamp(),
+                    previous_block.get_timestamp(),
+                );
 
             if new_burnfee != self.get_burnfee() {
                 println!(
@@ -924,9 +920,6 @@ mod tests {
     fn block_generate_data_to_validate() {
         let wallet = Wallet::new();
         let blockchain = Blockchain::new(Arc::new(RwLock::new(wallet)));
-
-
-
     }
 
     #[test]

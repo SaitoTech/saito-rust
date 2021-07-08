@@ -14,7 +14,7 @@ pub const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
 //
 #[derive(Debug)]
 pub struct RingItem {
-    lc_pos: usize, // which idx in the vectors below points to the longest-chain block
+    lc_pos: Option<usize>, // which idx in the vectors below points to the longest-chain block
     block_hashes: Vec<SaitoHash>,
     block_ids: Vec<u64>,
 }
@@ -23,7 +23,8 @@ impl RingItem {
     #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
-            lc_pos: usize::MAX,
+            lc_pos: None,
+            // lc_pos: usize::MAX,
             block_hashes: vec![],
             block_ids: vec![],
         }
@@ -40,43 +41,47 @@ impl RingItem {
 
     pub fn on_chain_reorganization(&mut self, hash: SaitoHash, lc: bool) -> bool {
         if !lc {
-            self.lc_pos = usize::MAX;
+            self.lc_pos = None;
         } else {
             //
             // update new longest-chain
             //
-            for i in 0..self.block_hashes.len() {
-                if self.block_hashes[i] == hash {
-                    self.lc_pos = i;
-                }
-            }
+            // for i in 0..self.block_hashes.len() {
+            //     if self.block_hashes[i] == hash {
+            //         self.lc_pos = i;
+            //     }
+            // }
+
+            self.lc_pos = self.block_hashes.iter().position(|b_hash| b_hash == &hash);
 
             //
             // this hash does not exist
             //
-            if self.block_ids.len() < self.lc_pos {
-                return false;
-            }
+            // if self.block_ids.len() < self.lc_pos {
+            //     return false;
+            // }
 
             //
             // remove any old indices
             //
-            let current_block_id = self.block_ids[self.lc_pos];
+            if let Some(lc_pos) = self.lc_pos {
+                let current_block_id = self.block_ids[lc_pos];
 
-            let mut new_block_hashes: Vec<SaitoHash> = vec![];
-            let mut new_block_ids: Vec<u64> = vec![];
+                let mut new_block_hashes: Vec<SaitoHash> = vec![];
+                let mut new_block_ids: Vec<u64> = vec![];
 
-            for i in 0..self.block_ids.len() {
-                if self.block_ids[i] < current_block_id {
-                    self.lc_pos = i;
-                } else {
-                    new_block_hashes.push(self.block_hashes[i]);
-                    new_block_ids.push(self.block_ids[i]);
+                for i in 0..self.block_ids.len() {
+                    if self.block_ids[i] < current_block_id {
+                        self.lc_pos = Some(i);
+                    } else {
+                        new_block_hashes.push(self.block_hashes[i]);
+                        new_block_ids.push(self.block_ids[i]);
+                    }
                 }
-            }
 
-            self.block_hashes = new_block_hashes;
-            self.block_ids = new_block_ids;
+                self.block_hashes = new_block_hashes;
+                self.block_ids = new_block_ids;
+            }
         }
 
         true
@@ -98,7 +103,7 @@ pub struct BlockRing {
     //
     block_ring: Vec<RingItem>,
     /// a ring of blocks, index is not the block_id.
-    block_ring_lc_pos: usize,
+    block_ring_lc_pos: Option<usize>,
 }
 
 impl BlockRing {
@@ -115,7 +120,7 @@ impl BlockRing {
 
         BlockRing {
             block_ring: init_block_ring,
-            block_ring_lc_pos: usize::MAX,
+            block_ring_lc_pos: None,
         }
     }
 
@@ -151,27 +156,32 @@ impl BlockRing {
             return false;
         }
         if lc {
-            self.block_ring_lc_pos = insert_pos as usize;
+            self.block_ring_lc_pos = Some(insert_pos as usize);
         } else {
             //
             // only adjust longest_chain if this is it
             //
-            if self.block_ring_lc_pos == insert_pos as usize {
-                let previous_block_idx = self.block_ring_lc_pos - 1;
+            if let Some(block_ring_lc_pos) = self.block_ring_lc_pos {
+                if block_ring_lc_pos == insert_pos as usize {
+                    let previous_block_idx = block_ring_lc_pos - 1;
 
-                // reset to lc_pos to unknown
-                self.block_ring_lc_pos = usize::MAX;
+                    // reset to lc_pos to unknown
+                    self.block_ring_lc_pos = None;
 
-                // but try to find it
-                let previous_block_idx_lc_pos = self.block_ring[previous_block_idx as usize].lc_pos;
-                if previous_block_idx_lc_pos != usize::MAX {
-                    if self.block_ring[previous_block_idx].block_ids.len()
-                        > previous_block_idx_lc_pos
+                    // but try to find it
+                    // let previous_block_idx_lc_pos = self.block_ring[previous_block_idx as usize].lc_pos;
+                    if let Some(previous_block_idx_lc_pos) =
+                        self.block_ring[previous_block_idx as usize].lc_pos
                     {
-                        if self.block_ring[previous_block_idx].block_ids[previous_block_idx_lc_pos]
-                            == block_id - 1
+                        if self.block_ring[previous_block_idx].block_ids.len()
+                            > previous_block_idx_lc_pos
                         {
-                            self.block_ring_lc_pos = previous_block_idx;
+                            if self.block_ring[previous_block_idx].block_ids
+                                [previous_block_idx_lc_pos]
+                                == block_id - 1
+                            {
+                                self.block_ring_lc_pos = Some(previous_block_idx);
+                            }
                         }
                     }
                 }
@@ -181,42 +191,30 @@ impl BlockRing {
     }
 
     pub fn get_longest_chain_block_hash_by_block_id(&self, id: u64) -> SaitoHash {
-        let insert_pos = id % RING_BUFFER_LENGTH;
-        let lc_pos = self.block_ring[(insert_pos as usize)].lc_pos;
-        if lc_pos != usize::MAX {
-            self.block_ring[(insert_pos as usize)].block_hashes[lc_pos]
-        } else {
-            [0; 32]
+        let insert_pos = (id % RING_BUFFER_LENGTH) as usize;
+        match self.block_ring[insert_pos].lc_pos {
+            Some(lc_pos) => self.block_ring[insert_pos].block_hashes[lc_pos],
+            None => [0; 32],
         }
     }
 
     pub fn get_longest_chain_block_hash(&self) -> SaitoHash {
-        if self.block_ring_lc_pos == usize::MAX
-            || self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX
-        {
-            [0; 32]
-        } else {
-            let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
-            if lc_pos != usize::MAX {
-                self.block_ring[self.block_ring_lc_pos].block_hashes[lc_pos]
-            } else {
-                [0; 32]
-            }
+        match self.block_ring_lc_pos {
+            Some(block_ring_lc_pos) => match self.block_ring[block_ring_lc_pos].lc_pos {
+                Some(lc_pos) => self.block_ring[block_ring_lc_pos].block_hashes[lc_pos],
+                None => [0; 32],
+            },
+            None => [0; 32],
         }
     }
 
     pub fn get_longest_chain_block_id(&self) -> u64 {
-        if self.block_ring_lc_pos == usize::MAX
-            || self.block_ring[self.block_ring_lc_pos].lc_pos == usize::MAX
-        {
-            0
-        } else {
-            let lc_pos = self.block_ring[self.block_ring_lc_pos].lc_pos;
-            if lc_pos != usize::MAX {
-                self.block_ring[self.block_ring_lc_pos].block_ids[lc_pos]
-            } else {
-                0
-            }
+        match self.block_ring_lc_pos {
+            Some(block_ring_lc_pos) => match self.block_ring[block_ring_lc_pos].lc_pos {
+                Some(lc_pos) => self.block_ring[block_ring_lc_pos].block_ids[lc_pos],
+                None => 0,
+            },
+            None => 0,
         }
     }
 }

@@ -405,12 +405,7 @@ impl Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        slip::Slip,
-        time::create_timestamp,
-        wallet::Wallet,
-    };
-
+    use crate::{slip::Slip, time::create_timestamp, wallet::Wallet};
 
     #[test]
     fn transaction_new_test() {
