@@ -338,8 +338,11 @@ impl Transaction {
 
             // generate utxoset key cache
             // and set the UUID needed for insertion to shashmap
-            output.generate_utxoset_key();
             output.set_uuid(hash_for_signature);
+            output.generate_utxoset_key();
+
+println!("setting output!");
+
         }
         self.total_in = nolan_in;
         self.total_out = nolan_out;
