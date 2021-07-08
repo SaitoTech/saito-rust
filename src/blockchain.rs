@@ -344,11 +344,7 @@ impl Blockchain {
         }
 
         if self.blockring.get_longest_chain_block_id()
-            >= self
-                .blocks
-                .get(&new_chain[new_chain.len() - 1])
-                .unwrap()
-                .get_id()
+            >= self.blocks.get(&new_chain[0]).unwrap().get_id()
         {
             println!("{:?}", new_chain);
             println!("ERROR 2-1: {}", self.blockring.get_longest_chain_block_id());
@@ -416,11 +412,17 @@ impl Blockchain {
         // happen first.
         //
         {
-            let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+            let block = self
+                .blocks
+                .get_mut(&new_chain[new_chain.len() - current_wind_index - 1])
+                .unwrap();
             block.pre_validation_calculations();
         }
 
-        let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
+        let block = self
+            .blocks
+            .get(&new_chain[new_chain.len() - current_wind_index - 1])
+            .unwrap();
         println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset);
         println!(" ... after block.validate:       {:?}", create_timestamp());
@@ -585,8 +587,6 @@ pub async fn run(
 mod tests {
     use std::{thread::sleep, time::Duration};
 
-    use rand::rngs::mock;
-
     use super::*;
     use crate::{
         test_utilities::mocks::{make_mock_block, make_mock_tx},
@@ -658,10 +658,10 @@ mod tests {
         assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
     }
     #[tokio::test]
-    async fn add_block_test_2() {
+    async fn add_fork_test_2() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let mut mock_block_1: Block;
+        let mock_block_1: Block;
         let mut next_block: Block;
         // make the first block
         {
@@ -685,7 +685,7 @@ mod tests {
             assert_eq!(mock_block_1.get_hash(), blockchain.get_latest_block_hash());
         }
         // make and add 5 more blocks onto the chain
-        for n in 0..5 {
+        for _n in 0..5 {
             {
                 let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
                 sleep(Duration::from_millis(10));
@@ -704,7 +704,6 @@ mod tests {
                 assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
 
                 assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
-                println!("hashhashhashhashhashhash {:?}", next_block.get_hash());
             }
         }
         assert_eq!(next_block.get_id(), 6);
