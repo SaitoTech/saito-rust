@@ -344,11 +344,7 @@ impl Blockchain {
         }
 
         if self.blockring.get_longest_chain_block_id()
-            >= self
-                .blocks
-                .get(&new_chain[new_chain.len() - 1])
-                .unwrap()
-                .get_id()
+            >= self.blocks.get(&new_chain[0]).unwrap().get_id()
         {
             println!("{:?}", new_chain);
             println!("ERROR 2-1: {}", self.blockring.get_longest_chain_block_id());
@@ -416,11 +412,17 @@ impl Blockchain {
         // happen first.
         //
         {
-            let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+            let block = self
+                .blocks
+                .get_mut(&new_chain[new_chain.len() - current_wind_index - 1])
+                .unwrap();
             block.pre_validation_calculations();
         }
 
-        let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
+        let block = self
+            .blocks
+            .get(&new_chain[new_chain.len() - current_wind_index - 1])
+            .unwrap();
         println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset);
         println!(" ... after block.validate:       {:?}", create_timestamp());
@@ -583,9 +585,13 @@ pub async fn run(
 #[cfg(test)]
 
 mod tests {
+    use std::{thread::sleep, time::Duration};
+
     use super::*;
-    use crate::miner::Miner;
-    use crate::test_utilities::mocks::make_mock_block;
+    use crate::{
+        test_utilities::mocks::{make_mock_block, make_mock_tx},
+        transaction::Transaction,
+    };
 
     #[tokio::test]
     async fn add_block_test_1() {
@@ -651,12 +657,130 @@ mod tests {
         assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
         assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
     }
+    #[tokio::test]
+    async fn add_fork_test_2() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mock_block_1: Block;
+        let mut next_block: Block;
+        // make the first block
+        {
+            let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+            sleep(Duration::from_millis(10));
+            mock_block_1 = Block::generate_block(
+                &mut txs,
+                [0; 32],
+                wallet_lock.clone(),
+                blockchain_lock.clone(),
+            )
+            .await;
+            next_block = mock_block_1.clone();
+        }
+        // add the first block
+        {
+            let blockchain_mutex = blockchain_lock.clone();
+            let mut blockchain = blockchain_mutex.write().await;
+            blockchain.add_block(mock_block_1.clone()).await;
+            assert_eq!(mock_block_1.get_id(), blockchain.get_latest_block_id());
+            assert_eq!(mock_block_1.get_hash(), blockchain.get_latest_block_hash());
+        }
+        // make and add 5 more blocks onto the chain
+        for _n in 0..5 {
+            {
+                let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+                sleep(Duration::from_millis(10));
+                next_block = Block::generate_block(
+                    &mut txs,
+                    next_block.get_hash(),
+                    wallet_lock.clone(),
+                    blockchain_lock.clone(),
+                )
+                .await;
+            }
+            {
+                let blockchain_mutex = blockchain_lock.clone();
+                let mut blockchain = blockchain_mutex.write().await;
+                blockchain.add_block(next_block.clone()).await;
+                assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
+
+                assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
+            }
+        }
+        assert_eq!(next_block.get_id(), 6);
+        let latest_block_id = next_block.get_id();
+        let latest_block_hash = next_block.get_hash();
+        // make a fork from block 1, a new block 2
+        {
+            let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+            sleep(Duration::from_millis(10));
+            next_block = Block::generate_block(
+                &mut txs,
+                mock_block_1.get_hash(),
+                wallet_lock.clone(),
+                blockchain_lock.clone(),
+            )
+            .await;
+        }
+        // add new block 2
+        {
+            let blockchain_mutex = blockchain_lock.clone();
+            let mut blockchain = blockchain_mutex.write().await;
+            blockchain.add_block(next_block.clone()).await;
+            assert_eq!(latest_block_id, blockchain.get_latest_block_id());
+            assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+        }
+        // extend the fork 4 more blocks
+        for n in 0..4 {
+            {
+                let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+                sleep(Duration::from_millis(10));
+                next_block = Block::generate_block(
+                    &mut txs,
+                    next_block.get_hash(),
+                    wallet_lock.clone(),
+                    blockchain_lock.clone(),
+                )
+                .await;
+            }
+            {
+                let blockchain_mutex = blockchain_lock.clone();
+                let mut blockchain = blockchain_mutex.write().await;
+                blockchain.add_block(next_block.clone()).await;
+                assert_eq!(latest_block_id, blockchain.get_latest_block_id());
+                assert_eq!(next_block.get_id(), n + 3);
+                assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+            }
+        }
+        assert_eq!(next_block.get_id(), 6);
+        // make one more block on the fork, should be block id
+        {
+            let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+            sleep(Duration::from_millis(10));
+            next_block = Block::generate_block(
+                &mut txs,
+                next_block.get_hash(),
+                wallet_lock.clone(),
+                blockchain_lock.clone(),
+            )
+            .await;
+        }
+        assert_eq!(next_block.get_id(), 7);
+        // this should become the LC
+        {
+            let blockchain_mutex = blockchain_lock.clone();
+            let mut blockchain = blockchain_mutex.write().await;
+            blockchain.add_block(next_block.clone()).await;
+            assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
+            assert_eq!(next_block.get_id(), 7);
+            assert_eq!(blockchain.get_latest_block_id(), 7);
+            assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
+        }
+    }
 
     #[tokio::test]
     async fn add_fork_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mut blockchain = Blockchain::new(wallet_lock.clone());
-        let miner = Miner::new();
 
         let mock_block_1 = make_mock_block(0, 10, [0; 32], 1);
         blockchain.add_block(mock_block_1.clone()).await;
@@ -693,10 +817,6 @@ mod tests {
                 prev_block.get_id() + 1,
             );
 
-            let golden_ticket_transaction =
-                miner.mine_on_block_until_golden_ticket_found(prev_block);
-            next_block.add_transaction(golden_ticket_transaction);
-
             blockchain.add_block(next_block.clone()).await;
 
             assert_eq!(longest_chain_block_id, blockchain.get_latest_block_id());
@@ -710,9 +830,6 @@ mod tests {
             prev_block.get_hash(),
             prev_block.get_id() + 1,
         );
-
-        let golden_ticket_transaction = miner.mine_on_block_until_golden_ticket_found(prev_block);
-        next_block.add_transaction(golden_ticket_transaction);
 
         blockchain.add_block(next_block.clone()).await;
         // TODO: These tests are failing

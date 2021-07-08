@@ -52,11 +52,11 @@ impl Slip {
 
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_amount() > 0 {
-            let mut return_value = false;
+            let mut _return_value = false;
             match utxoset.get(&self.utxoset_key) {
                 Some(value) => {
                     if *value == 1 {
-                        return_value = true;
+                        _return_value = true;
                     }
                 }
                 None => {}
