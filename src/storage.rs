@@ -50,7 +50,6 @@ impl Storage {
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
                 let mut block = Block::deserialize_for_net(encoded);
-                println!("loading block with hash: {:?}", block.get_hash());
 
                 //
                 // the hash needs calculation separately after loading

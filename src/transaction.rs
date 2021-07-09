@@ -279,7 +279,7 @@ impl Transaction {
         vbytes
     }
 
-    /// Serialize a Transaction for transport or disk.
+    /// Runs when the chain is re-organized
     pub fn on_chain_reorganization(
         &self,
         utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>,
@@ -340,8 +340,7 @@ impl Transaction {
 
         true
     }
-
-    pub fn validate(&self) -> bool {
+    pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         //
         // VALIDATE signature valid
         //
@@ -394,7 +393,7 @@ impl Transaction {
         // VALIDATE UTXO inputs
         //
         for input in &self.inputs {
-            if !input.validate() {
+            if !input.validate(utxoset) {
                 return false;
             }
         }

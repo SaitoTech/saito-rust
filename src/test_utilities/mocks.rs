@@ -1,9 +1,11 @@
 use crate::block::Block;
 use crate::burnfee::BurnFee;
-use crate::crypto::SaitoHash;
+use crate::crypto::{generate_random_bytes, hash, SaitoHash};
 use crate::slip::{Slip, SlipType};
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 pub fn make_mock_block(
     prev_timestamp: u64,
@@ -57,4 +59,28 @@ pub fn make_mock_block(
     block.set_hash(block.generate_hash());
 
     block
+}
+
+pub async fn make_mock_tx(wallet_mutex: Arc<RwLock<Wallet>>) -> Transaction {
+    let wallet = wallet_mutex.read().await;
+    let mut transaction = Transaction::new();
+    transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
+    let wallet_publickey = wallet.get_publickey();
+    let wallet_privatekey = wallet.get_privatekey();
+    let mut input1 = Slip::new();
+    input1.set_publickey(wallet_publickey);
+    input1.set_amount(1000000);
+    let random_uuid = hash(&generate_random_bytes(32));
+    input1.set_uuid(random_uuid);
+
+    let mut output1 = Slip::new();
+    output1.set_publickey(wallet_publickey);
+    output1.set_amount(1000000);
+    output1.set_uuid([0; 32]);
+
+    transaction.add_input(input1);
+    transaction.add_output(output1);
+
+    transaction.sign(wallet_privatekey);
+    transaction
 }

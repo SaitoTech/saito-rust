@@ -10,6 +10,16 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 
 use ahash::AHashMap;
 
+pub fn bit_pack(top: u32, bottom: u32) -> u64 {
+    ((top as u64) << 32) + (bottom as u64)
+}
+pub fn bit_unpack(packed: u64) -> (u32, u32) {
+    // Casting from a larger integer to a smaller integer (e.g. u32 -> u8) will truncate, no need to mask this
+    let bottom = packed as u32;
+    let top = (packed >> 32) as u32;
+    (top, bottom)
+}
+
 #[derive(Debug)]
 pub struct Blockchain {
     pub utxoset: AHashMap<SaitoUTXOSetKey, u64>,
@@ -37,11 +47,10 @@ impl Blockchain {
 
     pub async fn add_block(&mut self, block: Block) {
         println!(
-            " ... add_block {} start: {:?}",
-            block.get_id(),
-            create_timestamp()
+            " ... blockchain.add_block start: {:?} txs: {}",
+            create_timestamp(),
+            block.transactions.len()
         );
-        //println!(" ... hash: {:?}", block.get_hash());
         //println!(" ... txs in block: {:?}", block.transactions.len());
         //println!(" ... w/ prev bhsh: {:?}", block.get_previous_block_hash());
 
@@ -110,6 +119,8 @@ impl Blockchain {
             self.blocks.insert(block_hash, block);
         }
 
+        println!(" ... start shared ancestor hunt: {:?}", create_timestamp());
+
         //
         // find shared ancestor of new_block with old_chain
         //
@@ -164,12 +175,18 @@ impl Blockchain {
                 }
             }
         } else {
-            if self.blockring.get_longest_chain_block_id() != 0 {
-                println!("We have added a block without a parent block... triggering failure");
-                self.add_block_failure().await;
-                return;
-            }
+            //
+            // we can hit this point in the code if we have a block without a parent,
+            // in which case we want to process it without unwind/wind chain, or if
+            // we are adding our very first block, in which case we do want to process
+            // it.
+            //
+            // TODO more elegant handling of the first block and other non-longest-chain
+            // blocks.
+            //
+            println!("We have added a block without a parent block... ");
         }
+
         //
         // at this point we should have a shared ancestor or not
         //
@@ -191,10 +208,22 @@ impl Blockchain {
         // with the BlockRing. We fail if the newly-preferred chain is not
         // viable.
         //
+        println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             if does_new_chain_validate {
                 self.add_block_success(block_hash).await;
+
+                //
+                // TODO
+                //
+                // mutable update is hell -- we can do this but have to have
+                // manually checked that the entry exists in order to pull
+                // this trick. we did this check before validating.
+                //
+                {
+                    self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
+                }
 
                 if !self.broadcast_channel_sender.is_none() {
                     self.broadcast_channel_sender
@@ -239,32 +268,25 @@ impl Blockchain {
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
+        println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
         //
-        // TODO -
+        // save to disk
         //
-        // block is longest-chain
-        //
-        // mutable update is hell -- we can do this but have to have
-        // manually checked that the entry exists in order to pull
-        // this trick. we did this check before validating.
-        //
-        {
-            self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
-        }
-
         let storage = Storage::new();
         storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
+
+        println!(" ... block save done:            {:?}", create_timestamp());
 
         //
         // TODO - this is merely for testing, we do not intend
         // the routing client to process transactions in its
         // wallet.
         {
-            println!(" ... start wallet: {}", create_timestamp());
+            println!(" ... wallet processing start:    {}", create_timestamp());
             let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
             wallet.add_block(&block);
-            println!(" ... finsh wallet: {}", create_timestamp());
+            println!(" ... wallet processing stop:     {}", create_timestamp());
         }
     }
     pub async fn add_block_failure(&mut self) {}
@@ -293,11 +315,7 @@ impl Blockchain {
         }
 
         if self.blockring.get_longest_chain_block_id()
-            >= self
-                .blocks
-                .get(&new_chain[new_chain.len() - 1])
-                .unwrap()
-                .get_id()
+            >= self.blocks.get(&new_chain[0]).unwrap().get_id()
         {
             println!("{:?}", new_chain);
             println!("ERROR 2-1: {}", self.blockring.get_longest_chain_block_id());
@@ -343,6 +361,7 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
+        println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
         //
         // if we are winding a non-existent chain with a wind_failure it
         // means our wind attempt failed and we should move directly into
@@ -352,25 +371,40 @@ impl Blockchain {
             return false;
         }
 
+        //
+        // winding the chain requires us to have certain data associated
+        // with the block and the transactions, particularly the tx hashes
+        // that we need to generate the slip UUIDs and create the tx sigs.
+        //
+        // we fetch the block mutably first in order to update these vars.
+        // we cannot just send the block mutably into our regular validate()
+        // function because of limitatins imposed by Rust on mutable data
+        // structures. So validation is "read-only" and our "write" actions
+        // happen first.
+        //
         {
-            // yes, there is a warning here, but we need the mutable borrow to set the
-            // tx.hash_for_signature information inside AFAICT
-            let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
-
-            //
-            // perform the pre-validation calculations needed to validate the block
-            // below, in-parallel with read-only access.
-            //
+            let block = self
+                .blocks
+                .get_mut(&new_chain[new_chain.len() - current_wind_index - 1])
+                .unwrap();
             block.pre_validation_calculations();
         }
 
-        let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        let does_block_validate = block.validate(self);
+        let block = self
+            .blocks
+            .get(&new_chain[new_chain.len() - current_wind_index - 1])
+            .unwrap();
+        println!(" ... before block.validate:      {:?}", create_timestamp());
+        let does_block_validate = block.validate(&self, &self.utxoset);
+        println!(" ... after block.validate:       {:?}", create_timestamp());
 
         if does_block_validate {
+            println!(" ... before block ocr            {:?}", create_timestamp());
             block.on_chain_reorganization(&mut self.utxoset, true);
+            println!(" ... before blockring ocr:       {:?}", create_timestamp());
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
+            println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
             if current_wind_index == (new_chain.len() - 1) {
                 if wind_failure {
@@ -522,9 +556,38 @@ pub async fn run(
 #[cfg(test)]
 
 mod tests {
+    use std::{thread::sleep, time::Duration};
+
     use super::*;
-    use crate::miner::Miner;
-    use crate::test_utilities::mocks::make_mock_block;
+    use crate::{
+        test_utilities::mocks::{make_mock_block, make_mock_tx},
+        transaction::Transaction,
+    };
+
+    #[test]
+    fn bit_pack_test() {
+        let top = 157171715;
+        let bottom = 11661612;
+        let packed = bit_pack(top, bottom);
+        assert_eq!(packed, 157171715 * (u64::pow(2, 32)) + 11661612);
+        let (new_top, new_bottom) = bit_unpack(packed);
+        assert_eq!(top, new_top);
+        assert_eq!(bottom, new_bottom);
+
+        let top = u32::MAX;
+        let bottom = u32::MAX;
+        let packed = bit_pack(top, bottom);
+        let (new_top, new_bottom) = bit_unpack(packed);
+        assert_eq!(top, new_top);
+        assert_eq!(bottom, new_bottom);
+
+        let top = 0;
+        let bottom = 1;
+        let packed = bit_pack(top, bottom);
+        let (new_top, new_bottom) = bit_unpack(packed);
+        assert_eq!(top, new_top);
+        assert_eq!(bottom, new_bottom);
+    }
 
     #[tokio::test]
     async fn add_block_test_1() {
@@ -590,12 +653,130 @@ mod tests {
         assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
         assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
     }
+    #[tokio::test]
+    async fn add_fork_test_2() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mock_block_1: Block;
+        let mut next_block: Block;
+        // make the first block
+        {
+            let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+            sleep(Duration::from_millis(10));
+            mock_block_1 = Block::generate_block(
+                &mut txs,
+                [0; 32],
+                wallet_lock.clone(),
+                blockchain_lock.clone(),
+            )
+            .await;
+            next_block = mock_block_1.clone();
+        }
+        // add the first block
+        {
+            let blockchain_mutex = blockchain_lock.clone();
+            let mut blockchain = blockchain_mutex.write().await;
+            blockchain.add_block(mock_block_1.clone()).await;
+            assert_eq!(mock_block_1.get_id(), blockchain.get_latest_block_id());
+            assert_eq!(mock_block_1.get_hash(), blockchain.get_latest_block_hash());
+        }
+        // make and add 5 more blocks onto the chain
+        for _n in 0..5 {
+            {
+                let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+                sleep(Duration::from_millis(10));
+                next_block = Block::generate_block(
+                    &mut txs,
+                    next_block.get_hash(),
+                    wallet_lock.clone(),
+                    blockchain_lock.clone(),
+                )
+                .await;
+            }
+            {
+                let blockchain_mutex = blockchain_lock.clone();
+                let mut blockchain = blockchain_mutex.write().await;
+                blockchain.add_block(next_block.clone()).await;
+                assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
+
+                assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
+            }
+        }
+        assert_eq!(next_block.get_id(), 6);
+        let latest_block_id = next_block.get_id();
+        let latest_block_hash = next_block.get_hash();
+        // make a fork from block 1, a new block 2
+        {
+            let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+            sleep(Duration::from_millis(10));
+            next_block = Block::generate_block(
+                &mut txs,
+                mock_block_1.get_hash(),
+                wallet_lock.clone(),
+                blockchain_lock.clone(),
+            )
+            .await;
+        }
+        // add new block 2
+        {
+            let blockchain_mutex = blockchain_lock.clone();
+            let mut blockchain = blockchain_mutex.write().await;
+            blockchain.add_block(next_block.clone()).await;
+            assert_eq!(latest_block_id, blockchain.get_latest_block_id());
+            assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+        }
+        // extend the fork 4 more blocks
+        for n in 0..4 {
+            {
+                let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+                sleep(Duration::from_millis(10));
+                next_block = Block::generate_block(
+                    &mut txs,
+                    next_block.get_hash(),
+                    wallet_lock.clone(),
+                    blockchain_lock.clone(),
+                )
+                .await;
+            }
+            {
+                let blockchain_mutex = blockchain_lock.clone();
+                let mut blockchain = blockchain_mutex.write().await;
+                blockchain.add_block(next_block.clone()).await;
+                assert_eq!(latest_block_id, blockchain.get_latest_block_id());
+                assert_eq!(next_block.get_id(), n + 3);
+                assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+            }
+        }
+        assert_eq!(next_block.get_id(), 6);
+        // make one more block on the fork, should be block id
+        {
+            let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+            sleep(Duration::from_millis(10));
+            next_block = Block::generate_block(
+                &mut txs,
+                next_block.get_hash(),
+                wallet_lock.clone(),
+                blockchain_lock.clone(),
+            )
+            .await;
+        }
+        assert_eq!(next_block.get_id(), 7);
+        // this should become the LC
+        {
+            let blockchain_mutex = blockchain_lock.clone();
+            let mut blockchain = blockchain_mutex.write().await;
+            blockchain.add_block(next_block.clone()).await;
+            assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
+            assert_eq!(next_block.get_id(), 7);
+            assert_eq!(blockchain.get_latest_block_id(), 7);
+            assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
+        }
+    }
 
     #[tokio::test]
     async fn add_fork_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mut blockchain = Blockchain::new(wallet_lock.clone());
-        let mut miner = Miner::new(wallet_lock);
 
         let mock_block_1 = make_mock_block(0, 10, [0; 32], 1);
         blockchain.add_block(mock_block_1.clone()).await;
@@ -625,7 +806,7 @@ mod tests {
         prev_block = mock_block_1.clone();
 
         // extend the fork to match the height of LC, the latest block id/hash shouldn't change yet...
-        for _ in 0..5 as i8 {
+        for _n in 0..5 {
             let next_block = make_mock_block(
                 prev_block.get_timestamp(),
                 prev_block.get_burnfee(),
@@ -633,17 +814,9 @@ mod tests {
                 prev_block.get_id() + 1,
             );
 
-            // let golden_ticket_transaction =
-            //     miner.mine_on_block_until_golden_ticket_found(prev_block).await;
-            // next_block.add_transaction(golden_ticket_transaction);
-
             blockchain.add_block(next_block.clone()).await;
-
-            assert_eq!(longest_chain_block_id, blockchain.get_latest_block_id());
-            assert_eq!(longest_chain_block_hash, blockchain.get_latest_block_hash());
-            prev_block = next_block;
         }
-        // adding another block should now affect the LC
+
         let next_block = make_mock_block(
             prev_block.get_timestamp(),
             prev_block.get_burnfee(),
@@ -651,10 +824,8 @@ mod tests {
             prev_block.get_id() + 1,
         );
 
-        // let golden_ticket_transaction = miner.mine_on_block_until_golden_ticket_found(prev_block);
-        // next_block.add_transaction(golden_ticket_transaction);
-
         blockchain.add_block(next_block.clone()).await;
+
         // TODO: These tests are failing
         assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
         assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
