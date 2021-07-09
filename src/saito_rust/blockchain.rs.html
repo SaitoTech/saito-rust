@@ -840,6 +840,42 @@
 <span id="837">837</span>
 <span id="838">838</span>
 <span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
+<span id="844">844</span>
+<span id="845">845</span>
+<span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -852,6 +888,16 @@
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bit_pack</span>(<span class="ident">top</span>: <span class="ident">u32</span>, <span class="ident">bottom</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+    ((<span class="ident">top</span> <span class="kw">as</span> <span class="ident">u64</span>) <span class="op">&lt;</span><span class="op">&lt;</span> <span class="number">32</span>) <span class="op">+</span> (<span class="ident">bottom</span> <span class="kw">as</span> <span class="ident">u64</span>)
+}
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bit_unpack</span>(<span class="ident">packed</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">u32</span>, <span class="ident">u32</span>) {
+    <span class="comment">// Casting from a larger integer to a smaller integer (e.g. u32 -&gt; u8) will truncate, no need to mask this</span>
+    <span class="kw">let</span> <span class="ident">bottom</span> <span class="op">=</span> <span class="ident">packed</span> <span class="kw">as</span> <span class="ident">u32</span>;
+    <span class="kw">let</span> <span class="ident">top</span> <span class="op">=</span> (<span class="ident">packed</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">32</span>) <span class="kw">as</span> <span class="ident">u32</span>;
+    (<span class="ident">top</span>, <span class="ident">bottom</span>)
+}
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Blockchain</span> {
@@ -1435,6 +1481,32 @@
         <span class="ident">test_utilities::mocks</span>::{<span class="ident">make_mock_block</span>, <span class="ident">make_mock_tx</span>},
         <span class="ident">transaction::Transaction</span>,
     };
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">bit_pack_test</span>() {
+        <span class="kw">let</span> <span class="ident">top</span> <span class="op">=</span> <span class="number">157171715</span>;
+        <span class="kw">let</span> <span class="ident">bottom</span> <span class="op">=</span> <span class="number">11661612</span>;
+        <span class="kw">let</span> <span class="ident">packed</span> <span class="op">=</span> <span class="ident">bit_pack</span>(<span class="ident">top</span>, <span class="ident">bottom</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">packed</span> , <span class="number">157171715</span><span class="kw-2">*</span>(<span class="ident">u64::pow</span>(<span class="number">2</span>,<span class="number">32</span>)) <span class="op">+</span> <span class="number">11661612</span>);
+        <span class="kw">let</span> (<span class="ident">new_top</span>, <span class="ident">new_bottom</span>) <span class="op">=</span> <span class="ident">bit_unpack</span>(<span class="ident">packed</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">top</span>, <span class="ident">new_top</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">bottom</span>, <span class="ident">new_bottom</span>);   
+
+        <span class="kw">let</span> <span class="ident">top</span> <span class="op">=</span> <span class="ident">u32::MAX</span>;
+        <span class="kw">let</span> <span class="ident">bottom</span> <span class="op">=</span> <span class="ident">u32::MAX</span>;
+        <span class="kw">let</span> <span class="ident">packed</span> <span class="op">=</span> <span class="ident">bit_pack</span>(<span class="ident">top</span>, <span class="ident">bottom</span>);
+        <span class="kw">let</span> (<span class="ident">new_top</span>, <span class="ident">new_bottom</span>) <span class="op">=</span> <span class="ident">bit_unpack</span>(<span class="ident">packed</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">top</span>, <span class="ident">new_top</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">bottom</span>, <span class="ident">new_bottom</span>);   
+
+
+        <span class="kw">let</span> <span class="ident">top</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="ident">bottom</span> <span class="op">=</span> <span class="number">1</span>;
+        <span class="kw">let</span> <span class="ident">packed</span> <span class="op">=</span> <span class="ident">bit_pack</span>(<span class="ident">top</span>, <span class="ident">bottom</span>);
+        <span class="kw">let</span> (<span class="ident">new_top</span>, <span class="ident">new_bottom</span>) <span class="op">=</span> <span class="ident">bit_unpack</span>(<span class="ident">packed</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">top</span>, <span class="ident">new_top</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">bottom</span>, <span class="ident">new_bottom</span>);   
+    }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_test_1</span>() {
