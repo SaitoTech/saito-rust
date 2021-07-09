@@ -387,7 +387,7 @@ impl Blockchain {
     //
     // when new_chain and old_chain are generated the block_hashes are added
     // to their vectors from tip-to-shared-ancestors. if the shared ancestors
-    // is at position [0] for instance, we may receive:
+    // is at position [0] in our blockchain for instance, we may receive:
     //
     // new_chain --> adds the hashes in this order
     //   [5] [4] [3] [2] [1] 
@@ -401,7 +401,7 @@ impl Blockchain {
     //
     pub fn validate(&mut self, new_chain: Vec<[u8; 32]>, old_chain: Vec<[u8; 32]>) -> bool {
         if !old_chain.is_empty() {
-            self.unwind_chain(old_chain, &chain_to_unwind, old_chain.len()-1, true)
+            self.unwind_chain(&new_chain, &old_chain, old_chain.len()-1, true)
         } else if !new_chain.is_empty() {
             self.wind_chain(&new_chain, &old_chain, new_chain.len()-1, false)
         } else {
