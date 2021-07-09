@@ -234,11 +234,11 @@ pub async fn run(
                     // TryBundleBlock makes periodic attempts to produce blocks and does so
                      // if the mempool can bundle blocks....
                     MempoolMessage::TryBundleBlock => {
-            let can_bundle;
-            {
+                        let can_bundle;
+                        {
                             let mempool = mempool_lock.read().await;
                             can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
-            }
+                        }
                         if can_bundle {
                             let mut mempool = mempool_lock.write().await;
                             let block = mempool.generate_block(blockchain_lock.clone()).await;
@@ -252,7 +252,7 @@ pub async fn run(
                     // the mempool and produce blocks if possible.
                     MempoolMessage::GenerateBlock => {
                         let mut mempool = mempool_lock.write().await;
-            let block = mempool.generate_block(blockchain_lock.clone()).await;
+                        let block = mempool.generate_block(blockchain_lock.clone()).await;
                         if AddBlockResult::Accepted == mempool.add_block(block) {
                             mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
                         }
@@ -262,84 +262,83 @@ pub async fn run(
                     MempoolMessage::GenerateTransaction => {
 
                         let mempool_lock_clone = mempool_lock.clone();
-                    let already_generating_transactions;
-                    let txs_in_mempool: u32;
-                    let txs_to_generate: u32 = 10;
-                    let bytes_per_tx: u32 = 1024;
-
-                    {
-                            let mempool = mempool_lock_clone.read().await;
-                        already_generating_transactions = mempool.currently_generating_transactions;
-                        txs_in_mempool = mempool.transactions.len() as u32;
-                    }
-
-                    if !already_generating_transactions && txs_in_mempool < txs_to_generate {
-                tokio::spawn(async move {
+                        let already_generating_transactions;
+                        let txs_in_mempool: u32;
+                        let txs_to_generate: u32 = 10;
+                        let bytes_per_tx: u32 = 1024;
 
                         {
-                                let mut mempool = mempool_lock_clone.write().await;
-                            mempool.currently_generating_transactions = true;
+                            let mempool = mempool_lock_clone.read().await;
+                            already_generating_transactions = mempool.currently_generating_transactions;
+                            txs_in_mempool = mempool.transactions.len() as u32;
                         }
 
-                            let wallet_publickey;
-                            let wallet_privatekey;
-                        let current_txs_in_mempool: u32;
-
-                            {
-                                let mempool = mempool_lock_clone.read().await;
-                                let wallet = mempool.wallet_lock.read().await;
-                                wallet_publickey = wallet.get_publickey();
-                                wallet_privatekey = wallet.get_privatekey();
-                                current_txs_in_mempool = mempool.transactions.len() as u32;
-                            }
-
-                        if current_txs_in_mempool < txs_to_generate {
-                                for _i in 0..txs_to_generate {
-                            if _i % 100 == 0 {
-                                        println!("creating tx {:?}", (_i));
-                            }
-
-                                      let mut transaction = Transaction::new();
-                                    transaction.set_message((0..bytes_per_tx).map(|_| rand::random::<u8>()).collect());
-
-                                //
-                                // as fake transactions, we set the UUID arbitrarily
-                                //
-                                let mut input1 = Slip::new();
-                                    input1.set_publickey(wallet_publickey);
-                                      input1.set_amount(1000000);
-                             let random_uuid = hash(&generate_random_bytes(32));
-                                input1.set_uuid(random_uuid);
-
-                                    let mut output1 = Slip::new();
-                                    output1.set_publickey(wallet_publickey);
-                                    output1.set_amount(1000000);
-                                    output1.set_uuid([0; 32]);
-
-                                    transaction.add_input(input1);
-                                    transaction.add_output(output1);
-
-                                    // sign ...
-                                    transaction.sign(wallet_privatekey);
-
-                                    {
-                                         let mut mempool = mempool_lock_clone.write().await;
-                                        mempool.add_transaction(transaction);
-                            }
-                                }
-
-                                    {
+                        if !already_generating_transactions && txs_in_mempool < txs_to_generate {
+                            tokio::spawn(async move {
+                                {
                                     let mut mempool = mempool_lock_clone.write().await;
-                                mempool.currently_generating_transactions = false;
+                                    mempool.currently_generating_transactions = true;
                                 }
-                            }
-                });
-                       }
-                   },
+
+                                let wallet_publickey;
+                                let wallet_privatekey;
+                                let current_txs_in_mempool: u32;
+
+                                {
+                                    let mempool = mempool_lock_clone.read().await;
+                                    let wallet = mempool.wallet_lock.read().await;
+                                    wallet_publickey = wallet.get_publickey();
+                                    wallet_privatekey = wallet.get_privatekey();
+                                    current_txs_in_mempool = mempool.transactions.len() as u32;
+                                }
+
+                                if current_txs_in_mempool < txs_to_generate {
+                                    for _i in 0..txs_to_generate {
+                                        if _i % 100 == 0 {
+                                            println!("creating tx {:?}", (_i));
+                                        }
+
+                                        let mut transaction = Transaction::new();
+                                        transaction.set_message((0..bytes_per_tx).map(|_| rand::random::<u8>()).collect());
+
+                                        //
+                                        // as fake transactions, we set the UUID arbitrarily
+                                        //
+                                        let mut input1 = Slip::new();
+                                        input1.set_publickey(wallet_publickey);
+                                        input1.set_amount(1000000);
+                                        let random_uuid = hash(&generate_random_bytes(32));
+                                        input1.set_uuid(random_uuid);
+
+                                        let mut output1 = Slip::new();
+                                        output1.set_publickey(wallet_publickey);
+                                        output1.set_amount(1000000);
+                                        output1.set_uuid([0; 32]);
+
+                                        transaction.add_input(input1);
+                                        transaction.add_output(output1);
+
+                                        // sign ...
+                                        transaction.sign(wallet_privatekey);
+
+                                        {
+                                            let mut mempool = mempool_lock_clone.write().await;
+                                            mempool.add_transaction(transaction);
+                                        }
+                                    }
+
+                                    {
+                                        let mut mempool = mempool_lock_clone.write().await;
+                                        mempool.currently_generating_transactions = false;
+                                    }
+                                }
+                            });
+                        }
+                    },
 
 
-                   // ProcessBlocks will add blocks FIFO from the queue into blockchain
-                   MempoolMessage::ProcessBlocks => {
+                    // ProcessBlocks will add blocks FIFO from the queue into blockchain
+                    MempoolMessage::ProcessBlocks => {
                        let mut mempool = mempool_lock.write().await;
                        mempool.currently_processing_block = true;
                        let mut blockchain = blockchain_lock.write().await;
