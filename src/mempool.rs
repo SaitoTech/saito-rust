@@ -293,6 +293,8 @@ pub async fn run(
                                 }
 
                                 if current_txs_in_mempool < txs_to_generate {
+
+                                    let client = reqwest::Client::new();
                                     for _i in 0..txs_to_generate {
                                         if _i % 100 == 0 {
                                             println!("creating tx {:?}", (_i));
@@ -321,10 +323,17 @@ pub async fn run(
                                         // sign ...
                                         transaction.sign(wallet_privatekey);
 
-                                        {
-                                            let mut mempool = mempool_lock_clone.write().await;
-                                            mempool.add_transaction(transaction);
-                                        }
+
+                                        let bytes: Vec<u8> = transaction.serialize_for_net();
+                                        let _res = client.post("http://localhost:3030/transactions")
+                                            .body(bytes)
+                                            .send()
+                                            .await;
+
+                                        // {
+                                        //     let mut mempool = mempool_lock_clone.write().await;
+                                        //     mempool.add_transaction(transaction);
+                                        // }
                                     }
 
                                     {
@@ -364,8 +373,9 @@ pub async fn run(
                         // then calls mempool to process the blocks in the queue
                         mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                     }
-                    SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
-                        let mut _mempool = mempool_lock.write().await;
+                    SaitoMessage::MempoolNewTransaction { transaction } => {
+                        let mut mempool = mempool_lock.write().await;
+                        mempool.add_transaction(transaction);
                     },
                     SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
                         let mut mempool = mempool_lock.write().await;
