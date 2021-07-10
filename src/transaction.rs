@@ -2,16 +2,20 @@ use std::convert::TryInto;
 
 use crate::{
     crypto::{
-        hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
+        generate_random_bytes, hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
         SaitoUTXOSetKey,
     },
     slip::{Slip, SLIP_SIZE},
+    wallet::Wallet,
 };
 use ahash::AHashMap;
 use bigint::uint::U256;
 use enum_variant_count_derive::TryFromByte;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+
+use std::{sync::Arc};
+use tokio::sync::{RwLock};
 
 pub const TRANSACTION_SIZE: usize = 85;
 
@@ -70,6 +74,113 @@ impl Transaction {
             routing_work_to_me: 0,
             routing_work_to_creator: 0,
         }
+    }
+
+
+    //
+    // this function exists largely for testing. It attempts to attach the requested fee
+    // to the transaction if possible. If not possible it reverts back to a transaction
+    // with 1 zero-fee input and 1 zero-fee output.
+    //
+    pub async fn generate_transaction(wallet_lock : Arc<RwLock<Wallet>>, to_publickey: SaitoPublicKey, with_payment: u64, with_fee: u64) -> Transaction {
+
+        let wallet = wallet_lock.write().await;
+	let wallet_publickey = wallet.get_publickey();
+
+        let available_balance = wallet.get_available_balance();
+        let total_requested = with_payment + with_fee;
+
+	if available_balance >= total_requested {
+
+	    let mut transaction = Transaction::new();
+
+            let mut input1 = Slip::new();
+            input1.set_publickey(to_publickey);
+            input1.set_amount(0);
+            let random_uuid = hash(&generate_random_bytes(32));
+            input1.set_uuid(random_uuid);
+
+            let mut output1 = Slip::new();
+            output1.set_publickey(wallet_publickey);
+            output1.set_amount(0);
+            output1.set_uuid([0; 32]);
+
+            transaction.add_input(input1);
+            transaction.add_output(output1);
+		
+	    return transaction;
+
+        } else {
+
+	    if available_balance > with_payment {
+
+	        let mut transaction = Transaction::new();
+
+                let mut input1 = Slip::new();
+                input1.set_publickey(to_publickey);
+                input1.set_amount(0);
+                let random_uuid = hash(&generate_random_bytes(32));
+                input1.set_uuid(random_uuid);
+
+                let mut output1 = Slip::new();
+                output1.set_publickey(wallet_publickey);
+                output1.set_amount(0);
+                output1.set_uuid([0; 32]);
+
+                transaction.add_input(input1);
+                transaction.add_output(output1);
+		
+		return transaction;
+
+	    }
+
+	    if available_balance > with_fee {
+
+	        let mut transaction = Transaction::new();
+
+                let mut input1 = Slip::new();
+                input1.set_publickey(to_publickey);
+                input1.set_amount(0);
+                let random_uuid = hash(&generate_random_bytes(32));
+                input1.set_uuid(random_uuid);
+
+                let mut output1 = Slip::new();
+                output1.set_publickey(wallet_publickey);
+                output1.set_amount(0);
+                output1.set_uuid([0; 32]);
+
+                transaction.add_input(input1);
+                transaction.add_output(output1);
+
+		return transaction;
+
+	    }
+
+	    //
+	    // we have neither enough for the payment OR the fee, so 
+	    // we just create a transaction that has no payment AND no
+	    // attached fee.
+	    //
+	    let mut transaction = Transaction::new();
+
+            let mut input1 = Slip::new();
+            input1.set_publickey(to_publickey);
+            input1.set_amount(0);
+            let random_uuid = hash(&generate_random_bytes(32));
+            input1.set_uuid(random_uuid);
+
+            let mut output1 = Slip::new();
+            output1.set_publickey(wallet_publickey);
+            output1.set_amount(0);
+            output1.set_uuid([0; 32]);
+
+            transaction.add_input(input1);
+            transaction.add_output(output1);
+
+	    return transaction;
+
+	}
+
     }
 
     pub fn add_input(&mut self, input_slip: Slip) {

@@ -269,12 +269,14 @@ pub async fn run(
 
                                 let mempool_lock_clone = mempool_lock.clone();
                     		let already_generating_transactions;
+				let wallet_lock;
                     		let txs_in_mempool: u32;
                     		let txs_to_generate: u32 = 10;
                     		let bytes_per_tx: u32 = 1024;
-	
+
         	                {
                                     let mempool = mempool_lock_clone.read().await;
+				    wallet_lock = mempool.wallet_lock.clone();
                     		    already_generating_transactions = mempool.currently_generating_transactions;
                     		    txs_in_mempool = mempool.transactions.len() as u32;
                     		}
@@ -305,27 +307,8 @@ pub async fn run(
                 	                            println!("creating tx {:?}", (_i));
                 			        }
 
-                                      		let mut transaction = Transaction::new();
+                                      		let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), wallet_publickey, 0, 0).await;
                                     		transaction.set_message((0..bytes_per_tx).map(|_| rand::random::<u8>()).collect());
-
-		                                //
-		                                // as fake transactions, we set the UUID arbitrarily
-		                                //
-		                                let mut input1 = Slip::new();
-	                                        input1.set_publickey(wallet_publickey);
-             	 	                        input1.set_amount(1000000);
-                         			let random_uuid = hash(&generate_random_bytes(32));
-                                		input1.set_uuid(random_uuid);
-
-                                    		let mut output1 = Slip::new();
-                                    		output1.set_publickey(wallet_publickey);
-                                    		output1.set_amount(1000000);
-                                    		output1.set_uuid([0; 32]);
-
-                                    		transaction.add_input(input1);
-                                    		transaction.add_output(output1);
-
-                                    		// sign ...
                                     		transaction.sign(wallet_privatekey);
 
                                     		{

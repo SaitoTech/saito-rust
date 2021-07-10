@@ -65,6 +65,10 @@ impl Wallet {
         self.publickey
     }
 
+    pub fn get_available_balance(&self) -> u64 {
+	0
+    }
+
     pub fn sign(&self, message_bytes: &[u8]) -> SaitoSignature {
         sign(message_bytes, self.privatekey)
     }
