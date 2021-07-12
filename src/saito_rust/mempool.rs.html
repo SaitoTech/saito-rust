@@ -410,12 +410,6 @@
 <span id="407">407</span>
 <span id="408">408</span>
 <span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-<span id="413">413</span>
-<span id="414">414</span>
-<span id="415">415</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -528,7 +522,7 @@
         <span class="kw">if</span> <span class="self">self</span>
             .<span class="ident">transactions</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> <span class="ident">transaction</span>.<span class="ident">is_golden_ticket</span>() <span class="op">=</span><span class="op">=</span> <span class="bool-val">true</span>)
+            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> <span class="ident">transaction</span>.<span class="ident">is_golden_ticket</span>())
         {
             <span class="kw">return</span> <span class="ident">AddTransactionResult::Exists</span>;
         } <span class="kw">else</span> {
@@ -541,19 +535,17 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Calculates the work available in mempool to produce a block</span>
     <span class="doccomment">///</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">calculate_work_available</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="kw">return</span> <span class="number">2</span> <span class="op">*</span> <span class="number">100_000_000</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">calculate_work_available</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="number">2</span> <span class="op">*</span> <span class="number">100_000_000</span>
     }
 
     <span class="comment">//</span>
     <span class="comment">// Return work needed in Nolan</span>
     <span class="comment">//</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">calculate_work_needed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">previous_block_timestamp</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_timestamp</span>();
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">calculate_work_needed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">previous_block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="kw">let</span> <span class="ident">previous_block_timestamp</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_timestamp</span>();
+        <span class="kw">let</span> <span class="ident">previous_block_burnfee</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_burnfee</span>();
         <span class="kw">let</span> <span class="ident">current_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
-
-        <span class="kw">let</span> <span class="ident">previous_block_burnfee</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_burnfee</span>();
 
         <span class="kw">let</span> <span class="ident">work_needed</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">BurnFee::return_routing_work_needed_to_produce_block_in_nolan</span>(
             <span class="ident">previous_block_burnfee</span>,
@@ -578,24 +570,20 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-        <span class="kw">let</span> <span class="ident">work_available</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">calculate_work_available</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">work_needed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">calculate_work_needed</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
 
-        {
-            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="kw">let</span> <span class="ident">previous_block_timestamp</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_timestamp</span>();
-            <span class="kw">let</span> <span class="ident">time_elapsed</span> <span class="op">=</span> <span class="ident">create_timestamp</span>() <span class="op">-</span> <span class="ident">previous_block_timestamp</span>;
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">previous_block</span>) <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>() {
+            <span class="kw">let</span> <span class="ident">work_available</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">calculate_work_available</span>();
+            <span class="kw">let</span> <span class="ident">work_needed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">calculate_work_needed</span>(<span class="ident">previous_block</span>);
+            <span class="kw">let</span> <span class="ident">time_elapsed</span> <span class="op">=</span> <span class="ident">create_timestamp</span>() <span class="op">-</span> <span class="ident">previous_block</span>.<span class="ident">get_timestamp</span>();
             <span class="macro">println!</span>(
                 <span class="string">&quot;WA: {:?} -- WN: {:?} -- TE: {:?}&quot;</span>,
                 <span class="ident">work_available</span>, <span class="ident">work_needed</span>, <span class="ident">time_elapsed</span>
             );
+            <span class="ident">work_available</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">work_needed</span>
+        } <span class="kw">else</span> {
+            <span class="bool-val">true</span>
         }
-
-        <span class="kw">if</span> <span class="ident">work_available</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">work_needed</span> {
-            <span class="kw">return</span> <span class="bool-val">true</span>;
-        }
-
-        <span class="kw">return</span> <span class="bool-val">false</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">generate_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {

@@ -206,6 +206,34 @@
 <span id="203">203</span>
 <span id="204">204</span>
 <span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoUTXOSetKey</span>};
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
@@ -247,6 +275,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Slip</span> {
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::clippy::new_without_default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">publickey</span>: [<span class="number">0</span>; <span class="number">33</span>],
@@ -395,12 +424,39 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">slip_new_test</span>() {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slip</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_publickey</span>(), [<span class="number">0</span>; <span class="number">33</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_uuid</span>(), [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_amount</span>(), <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_slip_type</span>(), <span class="ident">SlipType::Normal</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_slip_ordinal</span>(), <span class="number">0</span>);
+
+        <span class="ident">slip</span>.<span class="ident">set_publickey</span>([<span class="number">1</span>; <span class="number">33</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_publickey</span>(), [<span class="number">1</span>; <span class="number">33</span>]);
+
+        <span class="ident">slip</span>.<span class="ident">set_amount</span>(<span class="number">100</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_amount</span>(), <span class="number">100</span>);
+
+        <span class="ident">slip</span>.<span class="ident">set_uuid</span>([<span class="number">30</span>; <span class="number">32</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_uuid</span>(), [<span class="number">30</span>; <span class="number">32</span>]);
+
+        <span class="ident">slip</span>.<span class="ident">set_slip_ordinal</span>(<span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_slip_ordinal</span>(), <span class="number">1</span>);
+
+        <span class="ident">slip</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::MinerInput</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_slip_type</span>(), <span class="ident">SlipType::MinerInput</span>);
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">slip_serialize_for_signature_test</span>() {
         <span class="kw">let</span> <span class="ident">slip</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
-        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">publickey</span>, [<span class="number">0</span>; <span class="number">33</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">uuid</span>, [<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">amount</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">slip_type</span>, <span class="ident">SlipType::Normal</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">slip_ordinal</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">serialize_for_signature</span>(), <span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">78</span>]);
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">slip_get_utxoset_key_test</span>() {
+        <span class="kw">let</span> <span class="ident">slip</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+        <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>(), [<span class="number">0</span>; <span class="number">74</span>]);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>

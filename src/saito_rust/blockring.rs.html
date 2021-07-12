@@ -358,8 +358,6 @@
 <span id="355">355</span>
 <span id="356">356</span>
 <span id="357">357</span>
-<span id="358">358</span>
-<span id="359">359</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
@@ -377,7 +375,7 @@
 <span class="comment">//</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RingItem</span> {
-    <span class="ident">lc_pos</span>: <span class="ident">usize</span>, <span class="comment">// which idx in the vectors below points to the longest-chain block</span>
+    <span class="ident">lc_pos</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>, <span class="comment">// which idx in the vectors below points to the longest-chain block</span>
     <span class="ident">block_hashes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span>,
     <span class="ident">block_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
 }
@@ -386,7 +384,8 @@
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::clippy::new_without_default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">lc_pos</span>: <span class="ident">usize::MAX</span>,
+            <span class="ident">lc_pos</span>: <span class="prelude-val">None</span>,
+            <span class="comment">// lc_pos: usize::MAX,</span>
             <span class="ident">block_hashes</span>: <span class="macro">vec!</span>[],
             <span class="ident">block_ids</span>: <span class="macro">vec!</span>[],
         }
@@ -403,43 +402,47 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">lc</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="ident">lc</span> {
-            <span class="self">self</span>.<span class="ident">lc_pos</span> <span class="op">=</span> <span class="ident">usize::MAX</span>;
+            <span class="self">self</span>.<span class="ident">lc_pos</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         } <span class="kw">else</span> {
             <span class="comment">//</span>
             <span class="comment">// update new longest-chain</span>
             <span class="comment">//</span>
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">block_hashes</span>.<span class="ident">len</span>() {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_hashes</span>[<span class="ident">i</span>] <span class="op">=</span><span class="op">=</span> <span class="ident">hash</span> {
-                    <span class="self">self</span>.<span class="ident">lc_pos</span> <span class="op">=</span> <span class="ident">i</span>;
-                }
-            }
+            <span class="comment">// for i in 0..self.block_hashes.len() {</span>
+            <span class="comment">//     if self.block_hashes[i] == hash {</span>
+            <span class="comment">//         self.lc_pos = i;</span>
+            <span class="comment">//     }</span>
+            <span class="comment">// }</span>
+
+            <span class="self">self</span>.<span class="ident">lc_pos</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_hashes</span>.<span class="ident">iter</span>().<span class="ident">position</span>(<span class="op">|</span><span class="ident">b_hash</span><span class="op">|</span> <span class="ident">b_hash</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">hash</span>);
 
             <span class="comment">//</span>
             <span class="comment">// this hash does not exist</span>
             <span class="comment">//</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ids</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">lc_pos</span> {
-                <span class="kw">return</span> <span class="bool-val">false</span>;
-            }
+            <span class="comment">// if self.block_ids.len() &lt; self.lc_pos {</span>
+            <span class="comment">//     return false;</span>
+            <span class="comment">// }</span>
 
             <span class="comment">//</span>
             <span class="comment">// remove any old indices</span>
             <span class="comment">//</span>
-            <span class="kw">let</span> <span class="ident">current_block_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ids</span>[<span class="self">self</span>.<span class="ident">lc_pos</span>];
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lc_pos</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">lc_pos</span> {
+                <span class="kw">let</span> <span class="ident">current_block_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ids</span>[<span class="ident">lc_pos</span>];
 
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_block_hashes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_block_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_block_hashes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_block_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">block_ids</span>.<span class="ident">len</span>() {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ids</span>[<span class="ident">i</span>] <span class="op">&lt;</span> <span class="ident">current_block_id</span> {
-                    <span class="self">self</span>.<span class="ident">lc_pos</span> <span class="op">=</span> <span class="ident">i</span>;
-                } <span class="kw">else</span> {
-                    <span class="ident">new_block_hashes</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">block_hashes</span>[<span class="ident">i</span>]);
-                    <span class="ident">new_block_ids</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">block_ids</span>[<span class="ident">i</span>]);
+                <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">block_ids</span>.<span class="ident">len</span>() {
+                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ids</span>[<span class="ident">i</span>] <span class="op">&lt;</span> <span class="ident">current_block_id</span> {
+                        <span class="self">self</span>.<span class="ident">lc_pos</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">i</span>);
+                    } <span class="kw">else</span> {
+                        <span class="ident">new_block_hashes</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">block_hashes</span>[<span class="ident">i</span>]);
+                        <span class="ident">new_block_ids</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">block_ids</span>[<span class="ident">i</span>]);
+                    }
                 }
-            }
 
-            <span class="self">self</span>.<span class="ident">block_hashes</span> <span class="op">=</span> <span class="ident">new_block_hashes</span>;
-            <span class="self">self</span>.<span class="ident">block_ids</span> <span class="op">=</span> <span class="ident">new_block_ids</span>;
+                <span class="self">self</span>.<span class="ident">block_hashes</span> <span class="op">=</span> <span class="ident">new_block_hashes</span>;
+                <span class="self">self</span>.<span class="ident">block_ids</span> <span class="op">=</span> <span class="ident">new_block_ids</span>;
+            }
         }
 
         <span class="bool-val">true</span>
@@ -461,7 +464,7 @@
     <span class="comment">//</span>
     <span class="ident">block_ring</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RingItem</span><span class="op">&gt;</span>,
     <span class="doccomment">/// a ring of blocks, index is not the block_id.</span>
-    <span class="ident">block_ring_lc_pos</span>: <span class="ident">usize</span>,
+    <span class="ident">block_ring_lc_pos</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">BlockRing</span> {
@@ -478,7 +481,7 @@
 
         <span class="ident">BlockRing</span> {
             <span class="ident">block_ring</span>: <span class="ident">init_block_ring</span>,
-            <span class="ident">block_ring_lc_pos</span>: <span class="ident">usize::MAX</span>,
+            <span class="ident">block_ring_lc_pos</span>: <span class="prelude-val">None</span>,
         }
     }
 
@@ -514,27 +517,32 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
         <span class="kw">if</span> <span class="ident">lc</span> {
-            <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span>;
+            <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span>);
         } <span class="kw">else</span> {
             <span class="comment">//</span>
             <span class="comment">// only adjust longest_chain if this is it</span>
             <span class="comment">//</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span> {
-                <span class="kw">let</span> <span class="ident">previous_block_idx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">-</span> <span class="number">1</span>;
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_ring_lc_pos</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> {
+                <span class="kw">if</span> <span class="ident">block_ring_lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span> {
+                    <span class="kw">let</span> <span class="ident">previous_block_idx</span> <span class="op">=</span> <span class="ident">block_ring_lc_pos</span> <span class="op">-</span> <span class="number">1</span>;
 
-                <span class="comment">// reset to lc_pos to unknown</span>
-                <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="ident">usize::MAX</span>;
+                    <span class="comment">// reset to lc_pos to unknown</span>
+                    <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="prelude-val">None</span>;
 
-                <span class="comment">// but try to find it</span>
-                <span class="kw">let</span> <span class="ident">previous_block_idx_lc_pos</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">lc_pos</span>;
-                <span class="kw">if</span> <span class="ident">previous_block_idx_lc_pos</span> <span class="op">!</span><span class="op">=</span> <span class="ident">usize::MAX</span> {
-                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span>].<span class="ident">block_ids</span>.<span class="ident">len</span>()
-                        <span class="op">&gt;</span> <span class="ident">previous_block_idx_lc_pos</span>
+                    <span class="comment">// but try to find it</span>
+                    <span class="comment">// let previous_block_idx_lc_pos = self.block_ring[previous_block_idx as usize].lc_pos;</span>
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">previous_block_idx_lc_pos</span>) <span class="op">=</span>
+                        <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">lc_pos</span>
                     {
-                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span>].<span class="ident">block_ids</span>[<span class="ident">previous_block_idx_lc_pos</span>]
-                            <span class="op">=</span><span class="op">=</span> <span class="ident">block_id</span> <span class="op">-</span> <span class="number">1</span>
+                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span>].<span class="ident">block_ids</span>.<span class="ident">len</span>()
+                            <span class="op">&gt;</span> <span class="ident">previous_block_idx_lc_pos</span>
                         {
-                            <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="ident">previous_block_idx</span>;
+                            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">previous_block_idx</span>].<span class="ident">block_ids</span>
+                                [<span class="ident">previous_block_idx_lc_pos</span>]
+                                <span class="op">=</span><span class="op">=</span> <span class="ident">block_id</span> <span class="op">-</span> <span class="number">1</span>
+                            {
+                                <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">previous_block_idx</span>);
+                            }
                         }
                     }
                 }
@@ -544,42 +552,30 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
-        <span class="kw">let</span> <span class="ident">insert_pos</span> <span class="op">=</span> <span class="ident">id</span> <span class="op">%</span> <span class="ident">RING_BUFFER_LENGTH</span>;
-        <span class="kw">let</span> <span class="ident">lc_pos</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring</span>[(<span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span>)].<span class="ident">lc_pos</span>;
-        <span class="kw">if</span> <span class="ident">lc_pos</span> <span class="op">!</span><span class="op">=</span> <span class="ident">usize::MAX</span> {
-            <span class="self">self</span>.<span class="ident">block_ring</span>[(<span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span>)].<span class="ident">block_hashes</span>[<span class="ident">lc_pos</span>]
-        } <span class="kw">else</span> {
-            [<span class="number">0</span>; <span class="number">32</span>]
+        <span class="kw">let</span> <span class="ident">insert_pos</span> <span class="op">=</span> (<span class="ident">id</span> <span class="op">%</span> <span class="ident">RING_BUFFER_LENGTH</span>) <span class="kw">as</span> <span class="ident">usize</span>;
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">insert_pos</span>].<span class="ident">lc_pos</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">lc_pos</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">insert_pos</span>].<span class="ident">block_hashes</span>[<span class="ident">lc_pos</span>],
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> [<span class="number">0</span>; <span class="number">32</span>],
         }
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_longest_chain_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">usize::MAX</span>
-            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="self">self</span>.<span class="ident">block_ring_lc_pos</span>].<span class="ident">lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">usize::MAX</span>
-        {
-            [<span class="number">0</span>; <span class="number">32</span>]
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">lc_pos</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="self">self</span>.<span class="ident">block_ring_lc_pos</span>].<span class="ident">lc_pos</span>;
-            <span class="kw">if</span> <span class="ident">lc_pos</span> <span class="op">!</span><span class="op">=</span> <span class="ident">usize::MAX</span> {
-                <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="self">self</span>.<span class="ident">block_ring_lc_pos</span>].<span class="ident">block_hashes</span>[<span class="ident">lc_pos</span>]
-            } <span class="kw">else</span> {
-                [<span class="number">0</span>; <span class="number">32</span>]
-            }
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">block_ring_lc_pos</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">block_ring_lc_pos</span>].<span class="ident">lc_pos</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">lc_pos</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">block_ring_lc_pos</span>].<span class="ident">block_hashes</span>[<span class="ident">lc_pos</span>],
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> [<span class="number">0</span>; <span class="number">32</span>],
+            },
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> [<span class="number">0</span>; <span class="number">32</span>],
         }
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_longest_chain_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">usize::MAX</span>
-            <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="self">self</span>.<span class="ident">block_ring_lc_pos</span>].<span class="ident">lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">usize::MAX</span>
-        {
-            <span class="number">0</span>
-        } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">lc_pos</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="self">self</span>.<span class="ident">block_ring_lc_pos</span>].<span class="ident">lc_pos</span>;
-            <span class="kw">if</span> <span class="ident">lc_pos</span> <span class="op">!</span><span class="op">=</span> <span class="ident">usize::MAX</span> {
-                <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="self">self</span>.<span class="ident">block_ring_lc_pos</span>].<span class="ident">block_ids</span>[<span class="ident">lc_pos</span>]
-            } <span class="kw">else</span> {
-                <span class="number">0</span>
-            }
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">block_ring_lc_pos</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">block_ring_lc_pos</span>].<span class="ident">lc_pos</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">lc_pos</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">block_ring</span>[<span class="ident">block_ring_lc_pos</span>].<span class="ident">block_ids</span>[<span class="ident">lc_pos</span>],
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">0</span>,
+            },
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">0</span>,
         }
     }
 }
@@ -590,7 +586,7 @@
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">blockring_test1</span>() {
+    <span class="kw">fn</span> <span class="ident">blockring_reorganization_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockring</span> <span class="op">=</span> <span class="ident">BlockRing::new</span>();
 
         <span class="comment">//</span>
@@ -693,7 +689,7 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">blockring_test2</span>() {
+    <span class="kw">fn</span> <span class="ident">blockring_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockring</span> <span class="op">=</span> <span class="ident">BlockRing::new</span>();
         <span class="comment">// TODO: This is wrong, the latest block is null, not 0</span>
         <span class="macro">assert_eq!</span>(<span class="number">0</span>, <span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_id</span>());
