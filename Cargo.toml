@@ -8,6 +8,10 @@ authors = [
 edition = "2018"
 default-run = "saito_rust"
 
+[[bin]]
+name = "saito-spammer"
+path = "src/bin/spammer.rs"
+
 [dependencies]
 ahash = "0.7.4"
 bigint = "4.4.3"
