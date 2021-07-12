@@ -705,6 +705,10 @@ impl Block {
         let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
         {
             if !previous_block.is_none() {
+
+		//
+		// new burn fee must be correct
+		//
                 let new_burnfee: u64 =
                     BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
                         previous_block.unwrap().get_burnfee(),
@@ -718,6 +722,22 @@ impl Block {
                     );
                     return false;
                 }
+
+
+		//
+		// routing work must be adequate given block time difference
+		//
+	        let amount_of_routing_work_needed: u64 = 
+		    BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
+	                previous_block.unwrap().get_burnfee(),
+                        self.get_timestamp(),
+                        previous_block.unwrap().get_timestamp(),
+    	            );
+		if self.routing_work_for_creator < amount_of_routing_work_needed {
+	            println!("Error 510293: block lacking adequate routing work from creator");
+	            return false;
+	        }
+
             } else {
                 // TODO assert that this is the first (or second?) block! ?
             }
@@ -798,24 +818,6 @@ impl Block {
             }
         }
         println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
-
-	//
-	// VALIDATE adequate routing work given previous burn fee
-	//
-	    //
-	    // TODO - update after Stephen merge
-	    //
-	    //let amount_of_routing_work_needed = BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
-	    //    burn_fee_previous_block: u64,
-            //    current_block_timestamp: u64,
-            //    previous_block_timestamp: u64,
-    	    //);
-	    //if self.routing_work_for_creator < amount_of_routing_work_needed {
-	    //
-	    //    println!("Error 510293: block lacking adequate routing work from creator");
-	    //    return false;
-	    //
-	    //}
 
 
         //
