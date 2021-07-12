@@ -74,6 +74,8 @@ pub struct Block {
     hash: SaitoHash,
     /// total fees paid into block
     total_fees: u64,
+    /// total fees paid into block
+    routing_work_for_creator: u64,
     /// Is Block on longest chain
     lc: bool,
     // has golden ticket
@@ -98,6 +100,7 @@ impl Block {
             transactions: vec![],
             hash: [0; 32],
             total_fees: 0,
+            routing_work_for_creator: 0,
             lc: false,
             has_golden_ticket: false,
             has_fee_transaction: false,
@@ -642,21 +645,29 @@ impl Block {
         //
         // PARALLEL PROCESSING of most data
         //
+	let creator_publickey = self.get_creator();
+
         let _transactions_pre_calculated = &self
             .transactions
             .par_iter_mut()
-            .all(|tx| tx.pre_validation_calculations_parallelizable());
+            .all(|tx| tx.pre_validation_calculations_parallelizable(creator_publickey));
 
         println!(" ... block.prevalid - pst hash:  {:?}", create_timestamp());
+
         //
         // CUMULATIVE FEES only AFTER parallel calculations
         //
+	// we need to calculate the cumulative figures AFTER the 
+	// transactions have been fleshed out with all of the 
+	// original figures.
+	//
         let mut cumulative_fees = 0;
+        let mut cumulative_work = 0;
         let mut hgt = false;
         let mut hft = false;
         for transaction in &mut self.transactions {
-            cumulative_fees =
-                transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
+            cumulative_fees = transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
+            cumulative_work = transaction.pre_validation_calculations_cumulative_work(cumulative_work);
 
             //
             // also check the transactions for golden ticket and fees
@@ -675,6 +686,7 @@ impl Block {
         // update block with total fees
         //
         self.total_fees = cumulative_fees;
+        self.routing_work_for_creator = cumulative_work;
         println!(" ... block.pre_validation_done:  {:?}", create_timestamp());
 
         true
@@ -686,6 +698,7 @@ impl Block {
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
         println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
+
         //
         // validate burn fee
         //
@@ -728,11 +741,13 @@ impl Block {
         }
 
         println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
+
         //
         // validate fee-transaction (miner/router/staker) payments
         //
         //
         let cv = self.generate_data_to_validate(&blockchain);
+
 
         //
         // validate difficulty
@@ -783,6 +798,25 @@ impl Block {
             }
         }
         println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
+
+	//
+	// VALIDATE adequate routing work given previous burn fee
+	//
+	    //
+	    // TODO - update after Stephen merge
+	    //
+	    //let amount_of_routing_work_needed = BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
+	    //    burn_fee_previous_block: u64,
+            //    current_block_timestamp: u64,
+            //    previous_block_timestamp: u64,
+    	    //);
+	    //if self.routing_work_for_creator < amount_of_routing_work_needed {
+	    //
+	    //    println!("Error 510293: block lacking adequate routing work from creator");
+	    //    return false;
+	    //
+	    //}
+
 
         //
         // VALIDATE transactions

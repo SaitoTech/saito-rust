@@ -385,7 +385,7 @@ pub async fn run(
 					//
 					// calculating routing work requires this stuff done
 					//
-					transaction.pre_validation_calculations_parallelizable();
+					transaction.pre_validation_calculations_parallelizable(wallet_publickey);
 
 //println!("tx has fees: {}", transaction.get_total_fees());
 

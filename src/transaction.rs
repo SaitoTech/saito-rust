@@ -55,8 +55,8 @@ pub struct Transaction {
     pub total_fees: u64,
     pub cumulative_fees: u64,
 
-    pub routing_work_to_me: u64,
-    pub routing_work_to_creator: u64,
+    pub routing_work_for_me: u64,
+    pub routing_work_for_creator: u64,
 }
 
 impl Transaction {
@@ -75,8 +75,8 @@ impl Transaction {
             total_out: 0,
             total_fees: 0,
             cumulative_fees: 0,
-            routing_work_to_me: 0,
-            routing_work_to_creator: 0,
+            routing_work_for_me: 0,
+            routing_work_for_creator: 0,
         }
     }
 
@@ -100,6 +100,29 @@ impl Transaction {
         //
         self.path.push(hop);
     }
+
+    pub fn validate_routing_path(&self) -> bool {
+	for i in 0..self.path.len() {
+
+            //
+            // msg is transaction signature and next peer
+            //
+            let mut vbytes: Vec<u8> = vec![];
+            vbytes.extend(&self.get_signature());
+            vbytes.extend(&self.path[i].get_to());
+
+	    // check sig is valid
+	    if !verify(&hash(&vbytes), self.path[i].get_sig(), self.path[i].get_from()) { return false; }
+
+	    // check path is continuous
+	    if i > 0 { if self.path[i].get_from() != self.path[i-1].get_to() { return false; } }
+
+	}
+
+	return true;
+    }
+
+
 
     //
     // this function exists largely for testing. It attempts to attach the requested fee
@@ -213,7 +236,7 @@ impl Transaction {
     // this blockchain a reality. you deserve it.
     //
     pub async fn generate_vip_transaction(
-        wallet_lock: Arc<RwLock<Wallet>>,
+        _wallet_lock: Arc<RwLock<Wallet>>,
         from_publickey: SaitoPublicKey,
         to_publickey: SaitoPublicKey,
         with_fee: u64,
@@ -238,6 +261,7 @@ impl Transaction {
     }
 
     pub fn get_routing_work_for_publickey(&self, publickey: SaitoPublicKey) -> u64 {
+
         // there is not routing path
         if self.path.len() == 0 {
             return 0;
@@ -257,6 +281,11 @@ impl Transaction {
         // halving from the 2nd hop in the routing path
         //
         for _i in 1..self.path.len() {
+
+	    // return nothing if the path is broken
+	    if self.path[_i].get_to() != self.path[_i-1].get_from() { return 0; }
+
+	    // otherwise halve the work
             let half_of_routing_work: u64 = routing_work_available_to_publickey / 2;
             routing_work_available_to_publickey -= half_of_routing_work;
         }
@@ -506,13 +535,18 @@ impl Transaction {
     }
 
     //
-    // we have to calculate cumulative fees sequentially.
+    // we have to calculate cumulative fees and work sequentially.
     //
     pub fn pre_validation_calculations_cumulative_fees(&mut self, cumulative_fees: u64) -> u64 {
         self.cumulative_fees = cumulative_fees + self.total_fees;
         return self.cumulative_fees;
     }
-    pub fn pre_validation_calculations_parallelizable(&mut self) -> bool {
+    pub fn pre_validation_calculations_cumulative_work(&mut self, cumulative_work: u64) -> u64 {
+        return cumulative_work + self.routing_work_for_creator;
+    }
+
+    pub fn pre_validation_calculations_parallelizable(&mut self, creator_publickey : SaitoPublicKey) -> bool {
+
         //
         // and save the hash_for_signature so we can use it later...
         //
@@ -556,9 +590,18 @@ impl Transaction {
             self.total_fees = nolan_in - nolan_out;
         }
 
+	//
+	// we also need to know how much routing work exists and is available
+	// for the block producer, to ensure that they have met the conditions
+	// required by the burn fee for block production.
+	//
+        self.routing_work_for_creator = self.get_routing_work_for_publickey(creator_publickey);
+
+
         true
     }
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+
         //
         // VALIDATE signature valid
         //
@@ -574,6 +617,15 @@ impl Transaction {
             println!("message verifies not");
             return false;
         }
+
+	//
+	// VALIDATE path sigs valid
+	//
+	if !self.validate_routing_path() {
+            println!("routing path does not validate, transaction invalid");
+            return false;
+	}
+
 
         //
         // VALIDATE min one sender and receiver
