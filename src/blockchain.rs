@@ -608,25 +608,24 @@ mod tests {
         let top = 157171715;
         let bottom = 11661612;
         let packed = bit_pack(top, bottom);
-        assert_eq!(packed , 157171715*(u64::pow(2,32)) + 11661612);
+        assert_eq!(packed, 157171715 * (u64::pow(2, 32)) + 11661612);
         let (new_top, new_bottom) = bit_unpack(packed);
         assert_eq!(top, new_top);
-        assert_eq!(bottom, new_bottom);   
+        assert_eq!(bottom, new_bottom);
 
         let top = u32::MAX;
         let bottom = u32::MAX;
         let packed = bit_pack(top, bottom);
         let (new_top, new_bottom) = bit_unpack(packed);
         assert_eq!(top, new_top);
-        assert_eq!(bottom, new_bottom);   
-
+        assert_eq!(bottom, new_bottom);
 
         let top = 0;
         let bottom = 1;
         let packed = bit_pack(top, bottom);
         let (new_top, new_bottom) = bit_unpack(packed);
         assert_eq!(top, new_top);
-        assert_eq!(bottom, new_bottom);   
+        assert_eq!(bottom, new_bottom);
     }
 
     #[tokio::test]
