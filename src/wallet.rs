@@ -17,7 +17,6 @@ pub struct Wallet {
 }
 
 impl Wallet {
-
     #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         let (publickey, privatekey) = generate_keys();
@@ -34,7 +33,7 @@ impl Wallet {
                 self.delete_slip(input);
             }
             for output in tx.get_outputs() {
-		if output.get_amount() > 0 {
+                if output.get_amount() > 0 {
                     self.add_slip(block, tx, output, block.get_lc());
                 }
             }
@@ -42,7 +41,6 @@ impl Wallet {
     }
 
     pub fn add_slip(&mut self, block: &Block, transaction: &Transaction, slip: &Slip, lc: bool) {
-
         let mut wallet_slip = WalletSlip::new();
 
         wallet_slip.set_uuid(transaction.get_hash_for_signature());
@@ -54,7 +52,6 @@ impl Wallet {
         wallet_slip.set_lc(lc);
 
         self.slips.push(wallet_slip);
-
     }
 
     pub fn delete_slip(&mut self, slip: &Slip) {
@@ -74,79 +71,69 @@ impl Wallet {
     pub fn get_available_balance(&self) -> u64 {
         let mut available_balance: u64 = 0;
         for slip in &self.slips {
-	    if !slip.get_spent() {
-		available_balance += slip.get_amount();
-	    }
-	}
-	return available_balance;
+            if !slip.get_spent() {
+                available_balance += slip.get_amount();
+            }
+        }
+        return available_balance;
     }
 
-    pub fn generate_slips(&mut self, nolan_requested : u64) -> (Vec<Slip>, Vec<Slip>) {
-
+    pub fn generate_slips(&mut self, nolan_requested: u64) -> (Vec<Slip>, Vec<Slip>) {
         let mut inputs: Vec<Slip> = vec![];
         let mut outputs: Vec<Slip> = vec![];
         let mut nolan_in: u64 = 0;
         let mut nolan_out: u64 = 0;
-	let my_publickey = self.get_publickey();
+        let my_publickey = self.get_publickey();
 
         //
         // grab inputs
         //
         for slip in &mut self.slips {
             if !slip.get_spent() {
+                if nolan_in < nolan_requested {
+                    nolan_in += slip.get_amount();
 
-		if nolan_in < nolan_requested {
-
-  	            nolan_in += slip.get_amount();
-
-	            let mut input = Slip::new();
+                    let mut input = Slip::new();
                     input.set_publickey(my_publickey);
-	            input.set_amount(slip.get_amount());
-        	    input.set_uuid(slip.get_uuid());
-		    inputs.push(input);
+                    input.set_amount(slip.get_amount());
+                    input.set_uuid(slip.get_uuid());
+                    inputs.push(input);
 
-		    slip.set_spent(true);
+                    slip.set_spent(true);
+                }
+            }
+        }
 
-		}
-
-	    }
-	}
-
-
-        // 
-        // create outputs 
-        // 
+        //
+        // create outputs
+        //
         if nolan_in > nolan_requested {
-	    nolan_out = nolan_in - nolan_requested;
-	}
+            nolan_out = nolan_in - nolan_requested;
+        }
 
-	// change address
+        // change address
         let mut output = Slip::new();
         output.set_publickey(my_publickey);
         output.set_amount(nolan_out);
-	outputs.push(output);
+        outputs.push(output);
 
-
-	//
-	// ensure not empty
-	//
-	if inputs.len() == 0 {
-
-	    let mut input = Slip::new();
+        //
+        // ensure not empty
+        //
+        if inputs.len() == 0 {
+            let mut input = Slip::new();
             input.set_publickey(my_publickey);
-	    input.set_amount(0);
+            input.set_amount(0);
             input.set_uuid([0; 32]);
-	    inputs.push(input);
-
-	}
-	if outputs.len() == 0 {
-
-	    let mut output = Slip::new();
+            inputs.push(input);
+        }
+        if outputs.len() == 0 {
+            let mut output = Slip::new();
             output.set_publickey(my_publickey);
-	    output.set_amount(0);
+            output.set_amount(0);
             output.set_uuid([0; 32]);
-	    outputs.push(output);
-	}
+            outputs.push(output);
+        }
 
         return (inputs, outputs);
     }
@@ -220,7 +207,7 @@ impl WalletSlip {
             block_hash: [0; 32],
             lc: true,
             slip_ordinal: 0,
-	    spent: false,
+            spent: false,
         }
     }
 

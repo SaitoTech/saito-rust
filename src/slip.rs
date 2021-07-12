@@ -139,14 +139,14 @@ impl Slip {
     //
     // output slips are signed as zero'd out byte arrays. we have
     // a separate function to handle them as otherwise we may
-    // generate an incorrect signature after we have updated the 
+    // generate an incorrect signature after we have updated the
     // transaction outputs with the proper UUID for insertion into
     // the utxoset.
     //
     pub fn serialize_output_for_signature(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&self.publickey);
-        vbytes.extend(&[0; 32]); 
+        vbytes.extend(&[0; 32]);
         vbytes.extend(&self.amount.to_be_bytes());
         vbytes.extend(&(self.slip_ordinal.to_be_bytes()));
         vbytes.extend(&(self.slip_type as u32).to_be_bytes());

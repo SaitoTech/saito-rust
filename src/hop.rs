@@ -1,8 +1,8 @@
-use crate::crypto::{sign, SaitoPublicKey, SaitoSignature, SaitoHash};
+use crate::crypto::{sign, SaitoHash, SaitoPublicKey, SaitoSignature};
 use crate::wallet::Wallet;
 use serde::{Deserialize, Serialize};
-use std::{sync::Arc};
-use tokio::sync::{RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -24,17 +24,19 @@ impl Hop {
         }
     }
 
-    pub async fn generate_hop(wallet_lock : Arc<RwLock<Wallet>>, to_publickey : SaitoPublicKey, hash_to_sign : SaitoHash) -> Hop {
-
-	let wallet = wallet_lock.read().await;
+    pub async fn generate_hop(
+        wallet_lock: Arc<RwLock<Wallet>>,
+        to_publickey: SaitoPublicKey,
+        hash_to_sign: SaitoHash,
+    ) -> Hop {
+        let wallet = wallet_lock.read().await;
         let mut hop = Hop::new();
 
         hop.set_from(wallet.get_publickey());
         hop.set_to(to_publickey);
         hop.set_sig(sign(&hash_to_sign, wallet.get_privatekey()));
 
-	hop
-
+        hop
     }
 
     pub fn get_from(&self) -> SaitoPublicKey {
@@ -49,20 +51,18 @@ impl Hop {
         self.sig
     }
 
-    pub fn set_from(&mut self, from : SaitoPublicKey) {
+    pub fn set_from(&mut self, from: SaitoPublicKey) {
         self.from = from
     }
 
-    pub fn set_to(&mut self, to : SaitoPublicKey) {
+    pub fn set_to(&mut self, to: SaitoPublicKey) {
         self.to = to
     }
 
-    pub fn set_sig(&mut self, sig : SaitoSignature) {
+    pub fn set_sig(&mut self, sig: SaitoSignature) {
         self.sig = sig
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -75,4 +75,3 @@ mod tests {
         assert_eq!(1, 1);
     }
 }
-
