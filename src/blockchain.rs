@@ -878,7 +878,7 @@ mod tests {
 
         let mut prev_block = mock_block_1.clone();
 
-        for _ in 0..5 as i8 {
+        for _n in 0..5 {
             let next_block = make_mock_block(
                 prev_block.get_timestamp(),
                 prev_block.get_burnfee(),
@@ -899,7 +899,6 @@ mod tests {
         let longest_chain_block_id = prev_block.get_id();
         let longest_chain_block_hash = prev_block.get_hash();
         prev_block = mock_block_1.clone();
-
         // extend the fork to match the height of LC, the latest block id/hash shouldn't change yet...
         for _n in 0..5 {
             let next_block = make_mock_block(
@@ -910,8 +909,12 @@ mod tests {
             );
 
             blockchain.add_block(next_block.clone()).await;
-        }
 
+            assert_eq!(longest_chain_block_id, blockchain.get_latest_block_id());
+            assert_eq!(longest_chain_block_hash, blockchain.get_latest_block_hash());
+            prev_block = next_block;
+        }
+        // adding another block should now affect the LC
         let next_block = make_mock_block(
             prev_block.get_timestamp(),
             prev_block.get_burnfee(),
@@ -920,7 +923,6 @@ mod tests {
         );
 
         blockchain.add_block(next_block.clone()).await;
-
         // TODO: These tests are failing
         assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
         assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
