@@ -875,7 +875,6 @@
 <span id="872">872</span>
 <span id="873">873</span>
 <span id="874">874</span>
-<span id="875">875</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -1487,25 +1486,24 @@
         <span class="kw">let</span> <span class="ident">top</span> <span class="op">=</span> <span class="number">157171715</span>;
         <span class="kw">let</span> <span class="ident">bottom</span> <span class="op">=</span> <span class="number">11661612</span>;
         <span class="kw">let</span> <span class="ident">packed</span> <span class="op">=</span> <span class="ident">bit_pack</span>(<span class="ident">top</span>, <span class="ident">bottom</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">packed</span> , <span class="number">157171715</span><span class="kw-2">*</span>(<span class="ident">u64::pow</span>(<span class="number">2</span>,<span class="number">32</span>)) <span class="op">+</span> <span class="number">11661612</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">packed</span>, <span class="number">157171715</span> <span class="op">*</span> (<span class="ident">u64::pow</span>(<span class="number">2</span>, <span class="number">32</span>)) <span class="op">+</span> <span class="number">11661612</span>);
         <span class="kw">let</span> (<span class="ident">new_top</span>, <span class="ident">new_bottom</span>) <span class="op">=</span> <span class="ident">bit_unpack</span>(<span class="ident">packed</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">top</span>, <span class="ident">new_top</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">bottom</span>, <span class="ident">new_bottom</span>);   
+        <span class="macro">assert_eq!</span>(<span class="ident">bottom</span>, <span class="ident">new_bottom</span>);
 
         <span class="kw">let</span> <span class="ident">top</span> <span class="op">=</span> <span class="ident">u32::MAX</span>;
         <span class="kw">let</span> <span class="ident">bottom</span> <span class="op">=</span> <span class="ident">u32::MAX</span>;
         <span class="kw">let</span> <span class="ident">packed</span> <span class="op">=</span> <span class="ident">bit_pack</span>(<span class="ident">top</span>, <span class="ident">bottom</span>);
         <span class="kw">let</span> (<span class="ident">new_top</span>, <span class="ident">new_bottom</span>) <span class="op">=</span> <span class="ident">bit_unpack</span>(<span class="ident">packed</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">top</span>, <span class="ident">new_top</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">bottom</span>, <span class="ident">new_bottom</span>);   
-
+        <span class="macro">assert_eq!</span>(<span class="ident">bottom</span>, <span class="ident">new_bottom</span>);
 
         <span class="kw">let</span> <span class="ident">top</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="ident">bottom</span> <span class="op">=</span> <span class="number">1</span>;
         <span class="kw">let</span> <span class="ident">packed</span> <span class="op">=</span> <span class="ident">bit_pack</span>(<span class="ident">top</span>, <span class="ident">bottom</span>);
         <span class="kw">let</span> (<span class="ident">new_top</span>, <span class="ident">new_bottom</span>) <span class="op">=</span> <span class="ident">bit_unpack</span>(<span class="ident">packed</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">top</span>, <span class="ident">new_top</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">bottom</span>, <span class="ident">new_bottom</span>);   
+        <span class="macro">assert_eq!</span>(<span class="ident">bottom</span>, <span class="ident">new_bottom</span>);
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
