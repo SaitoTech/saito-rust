@@ -875,6 +875,117 @@
 <span id="872">872</span>
 <span id="873">873</span>
 <span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
+<span id="945">945</span>
+<span id="946">946</span>
+<span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
+<span id="954">954</span>
+<span id="955">955</span>
+<span id="956">956</span>
+<span id="957">957</span>
+<span id="958">958</span>
+<span id="959">959</span>
+<span id="960">960</span>
+<span id="961">961</span>
+<span id="962">962</span>
+<span id="963">963</span>
+<span id="964">964</span>
+<span id="965">965</span>
+<span id="966">966</span>
+<span id="967">967</span>
+<span id="968">968</span>
+<span id="969">969</span>
+<span id="970">970</span>
+<span id="971">971</span>
+<span id="972">972</span>
+<span id="973">973</span>
+<span id="974">974</span>
+<span id="975">975</span>
+<span id="976">976</span>
+<span id="977">977</span>
+<span id="978">978</span>
+<span id="979">979</span>
+<span id="980">980</span>
+<span id="981">981</span>
+<span id="982">982</span>
+<span id="983">983</span>
+<span id="984">984</span>
+<span id="985">985</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -1261,16 +1372,50 @@
         <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">&amp;&amp;</span> <span class="ident">old_bf</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">new_bf</span>
     }
 
+
+    <span class="comment">//</span>
+    <span class="comment">// when new_chain and old_chain are generated the block_hashes are added</span>
+    <span class="comment">// to their vectors from tip-to-shared-ancestors. if the shared ancestors</span>
+    <span class="comment">// is at position [0] in our blockchain for instance, we may receive:</span>
+    <span class="comment">//</span>
+    <span class="comment">// new_chain --&gt; adds the hashes in this order</span>
+    <span class="comment">//   [5] [4] [3] [2] [1] </span>
+    <span class="comment">//</span>
+    <span class="comment">// old_chain --&gt; adds the hashes in this order</span>
+    <span class="comment">//   [4] [3] [2] [1]</span>
+    <span class="comment">//</span>
+    <span class="comment">// unwinding requires starting from the BEGINNING of the vector, while </span>
+    <span class="comment">// winding requires starting from th END of the vector. the loops move </span>
+    <span class="comment">// in opposite directions.</span>
+    <span class="comment">//</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">new_chain</span>: <span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>, <span class="ident">old_chain</span>: <span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="ident">old_chain</span>.<span class="ident">is_empty</span>() {
-            <span class="self">self</span>.<span class="ident">unwind_chain</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>, <span class="kw-2">&amp;</span><span class="ident">old_chain</span>, <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">false</span>)
+            <span class="self">self</span>.<span class="ident">unwind_chain</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>, <span class="kw-2">&amp;</span><span class="ident">old_chain</span>, <span class="ident">old_chain</span>.<span class="ident">len</span>()<span class="op">-</span><span class="number">1</span>, <span class="bool-val">true</span>)
         } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">new_chain</span>.<span class="ident">is_empty</span>() {
-            <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>, <span class="kw-2">&amp;</span><span class="ident">old_chain</span>, <span class="number">0</span>, <span class="bool-val">false</span>)
+            <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>, <span class="kw-2">&amp;</span><span class="ident">old_chain</span>, <span class="ident">new_chain</span>.<span class="ident">len</span>()<span class="op">-</span><span class="number">1</span>, <span class="bool-val">false</span>)
         } <span class="kw">else</span> {
             <span class="bool-val">true</span>
         }
     }
 
+
+    <span class="comment">//</span>
+    <span class="comment">// when new_chain and old_chain are generated the block_hashes are added</span>
+    <span class="comment">// to their vectors from tip-to-shared-ancestors. if the shared ancestors</span>
+    <span class="comment">// is at position [0] for instance, we may receive:</span>
+    <span class="comment">//</span>
+    <span class="comment">// new_chain --&gt; adds the hashes in this order</span>
+    <span class="comment">//   [5] [4] [3] [2] [1] </span>
+    <span class="comment">//</span>
+    <span class="comment">// old_chain --&gt; adds the hashes in this order</span>
+    <span class="comment">//   [4] [3] [2] [1]</span>
+    <span class="comment">//</span>
+    <span class="comment">// unwinding requires starting from the BEGINNING of the vector, while </span>
+    <span class="comment">// winding requires starting from the END of the vector. the loops move </span>
+    <span class="comment">// in opposite directions. the argument current_wind_index is the </span>
+    <span class="comment">// position in the vector NOT the ordinal number of the block_hash </span>
+    <span class="comment">// being processed. we start winding with current_wind_index 4 not 0.</span>
+    <span class="comment">//</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wind_chain</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">new_chain</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>,
@@ -1302,20 +1447,22 @@
         {
             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">blocks</span>
-                .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">current_wind_index</span> <span class="op">-</span> <span class="number">1</span>])
+                .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>])
                 .<span class="ident">unwrap</span>();
             <span class="ident">block</span>.<span class="ident">pre_validation_calculations</span>();
         }
 
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">blocks</span>
-            .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">current_wind_index</span> <span class="op">-</span> <span class="number">1</span>])
+            .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>])
             .<span class="ident">unwrap</span>();
+
         <span class="macro">println!</span>(<span class="string">&quot; ... before block.validate:      {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="kw">let</span> <span class="ident">does_block_validate</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset</span>);
         <span class="macro">println!</span>(<span class="string">&quot; ... after block.validate:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="kw">if</span> <span class="ident">does_block_validate</span> {
+
             <span class="macro">println!</span>(<span class="string">&quot; ... before block ocr            {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
             <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>);
             <span class="macro">println!</span>(<span class="string">&quot; ... before blockring ocr:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
@@ -1323,19 +1470,38 @@
                 .<span class="ident">on_chain_reorganization</span>(<span class="ident">block</span>.<span class="ident">get_id</span>(), <span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
             <span class="macro">println!</span>(<span class="string">&quot; ... after on-chain-reorg:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
-            <span class="kw">if</span> <span class="ident">current_wind_index</span> <span class="op">=</span><span class="op">=</span> (<span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>) {
-                <span class="kw">if</span> <span class="ident">wind_failure</span> {
+	    <span class="comment">//</span>
+            <span class="comment">// we have received the first entry in new_blocks() which means we</span>
+	    <span class="comment">// have added the latest tip. if the variable wind_failure is set </span>
+	    <span class="comment">// that indicates that we ran into an issue when winding the new_chain</span>
+	    <span class="comment">// and what we have just processed is the old_chain (being rewound)</span>
+	    <span class="comment">// so we should exit with failure.</span>
+	    <span class="comment">//</span>
+	    <span class="comment">// otherwise we have successfully wound the new chain, and exit with</span>
+	    <span class="comment">// success.</span>
+            <span class="comment">//</span>
+            <span class="kw">if</span> <span class="ident">current_wind_index</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="ident">wind_failure</span> { 
                     <span class="kw">return</span> <span class="bool-val">false</span>;
                 }
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
 
-            <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_wind_index</span> <span class="op">+</span> <span class="number">1</span>, <span class="bool-val">false</span>)
+            <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_wind_index</span> <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">false</span>)
+
         } <span class="kw">else</span> {
+
             <span class="comment">//</span>
-            <span class="comment">// tough luck, go back to the old chain</span>
+            <span class="comment">// we have had an error while winding the chain. this requires us to</span>
+	    <span class="comment">// unwind any blocks we have already wound, and rewind any blocks we </span>
+	    <span class="comment">// have unwound.</span>
             <span class="comment">//</span>
-            <span class="kw">if</span> <span class="ident">current_wind_index</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+	    <span class="comment">// we set wind_failure to &quot;true&quot; so that when we reach the end of </span>
+	    <span class="comment">// the process of rewinding the old-chain, our wind_chain function </span>
+	    <span class="comment">// will know it has rewound the old chain successfully instead of </span>
+	    <span class="comment">// successfully added the new chain.</span>
+	    <span class="comment">//</span>
+            <span class="kw">if</span> <span class="ident">current_wind_index</span> <span class="op">=</span><span class="op">=</span> <span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span> {
                 <span class="comment">//</span>
                 <span class="comment">// this is the first block we have tried to add</span>
                 <span class="comment">// and so we can just roll out the older chain</span>
@@ -1349,17 +1515,60 @@
                 <span class="comment">//</span>
                 <span class="comment">// true -&gt; force -&gt; we had issues, is failure</span>
                 <span class="comment">//</span>
-                <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">old_chain</span>, <span class="ident">new_chain</span>, <span class="number">0</span>, <span class="bool-val">true</span>)
+    	        <span class="comment">// new_chain --&gt; hashes are still in this order</span>
+                <span class="comment">//   [5] [4] [3] [2] [1]</span>
+   	        <span class="comment">//</span>
+		<span class="comment">// we are at the beginning of our own vector so we have nothing</span>
+		<span class="comment">// to unwind. Because of this, we start WINDING the old chain back</span>
+		<span class="comment">// which requires us to start at the END of the new chain vector.</span>
+		<span class="comment">//</span>
+                <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">old_chain</span>, <span class="ident">new_chain</span>, <span class="ident">new_chain</span>.<span class="ident">len</span>()<span class="op">-</span><span class="number">1</span>, <span class="bool-val">true</span>)
+
             } <span class="kw">else</span> {
+
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chain_to_unwind</span>: <span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-                <span class="kw">for</span> <span class="ident">hash</span> <span class="kw">in</span> <span class="ident">new_chain</span>.<span class="ident">iter</span>().<span class="ident">skip</span>(<span class="ident">current_wind_index</span>) {
-                    <span class="ident">chain_to_unwind</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">hash</span>);
+
+		<span class="comment">//</span>
+		<span class="comment">// if we run into a problem winding our chain after we have</span>
+		<span class="comment">// wound any blocks, we take the subset of the blocks we have</span>
+		<span class="comment">// already pushed through on_chain_reorganization (i.e. not </span>
+		<span class="comment">// including this block!) and put them onto a new vector we </span>
+		<span class="comment">// will unwind in turn.</span>
+		<span class="comment">//</span>
+                <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="ident">current_wind_index</span><span class="op">+</span><span class="number">1</span>..<span class="ident">new_chain</span>.<span class="ident">len</span>() {
+                    <span class="ident">chain_to_unwind</span>.<span class="ident">push</span>(<span class="ident">new_chain</span>[<span class="ident">i</span>].<span class="ident">clone</span>());
                 }
-                <span class="self">self</span>.<span class="ident">unwind_chain</span>(<span class="ident">old_chain</span>, <span class="kw-2">&amp;</span><span class="ident">chain_to_unwind</span>, <span class="ident">chain_to_unwind</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">true</span>)
+
+		<span class="comment">//</span>
+		<span class="comment">// chain to unwind is now something like this...</span>
+		<span class="comment">//</span>
+		<span class="comment">//  [3] [2] [1]</span>
+		<span class="comment">//</span>
+		<span class="comment">// unwinding starts from the BEGINNING of the vector</span>
+		<span class="comment">//</span>
+                <span class="self">self</span>.<span class="ident">unwind_chain</span>(<span class="ident">old_chain</span>, <span class="kw-2">&amp;</span><span class="ident">chain_to_unwind</span>, <span class="number">0</span>, <span class="bool-val">true</span>)
             }
         }
     }
 
+
+
+    <span class="comment">//</span>
+    <span class="comment">// when new_chain and old_chain are generated the block_hashes are pushed</span>
+    <span class="comment">// to their vectors from tip-to-shared-ancestors. if the shared ancestors</span>
+    <span class="comment">// is at position [0] for instance, we may receive:</span>
+    <span class="comment">//</span>
+    <span class="comment">// new_chain --&gt; adds the hashes in this order</span>
+    <span class="comment">//   [5] [4] [3] [2] [1]</span>
+    <span class="comment">//</span>
+    <span class="comment">// old_chain --&gt; adds the hashes in this order</span>
+    <span class="comment">//   [4] [3] [2] [1]</span>
+    <span class="comment">//</span>
+    <span class="comment">// unwinding requires starting from the BEGINNING of the vector, while</span>
+    <span class="comment">// winding requires starting from the END of the vector. the first </span>
+    <span class="comment">// block we have to remove in the old_chain is thus at position 0, and </span>
+    <span class="comment">// walking up the vector from there until we reach the end.</span>
+    <span class="comment">//</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unwind_chain</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">new_chain</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>,
@@ -1367,22 +1576,35 @@
         <span class="ident">current_unwind_index</span>: <span class="ident">usize</span>,
         <span class="ident">wind_failure</span>: <span class="ident">bool</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">blocks</span>[<span class="kw-2">&amp;</span><span class="ident">old_chain</span>[<span class="ident">current_unwind_index</span>]];
 
         <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">false</span>);
         <span class="self">self</span>.<span class="ident">blockring</span>
             .<span class="ident">on_chain_reorganization</span>(<span class="ident">block</span>.<span class="ident">get_id</span>(), <span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="bool-val">false</span>);
 
-        <span class="kw">if</span> <span class="ident">current_unwind_index</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="ident">current_unwind_index</span> <span class="op">=</span><span class="op">=</span> <span class="ident">old_chain</span>.<span class="ident">len</span>()<span class="op">-</span><span class="number">1</span> {
             <span class="comment">//</span>
             <span class="comment">// start winding new chain</span>
             <span class="comment">//</span>
-            <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="number">0</span>, <span class="ident">wind_failure</span>)
+    	    <span class="comment">// new_chain --&gt; adds the hashes in this order</span>
+    	    <span class="comment">//   [5] [4] [3] [2] [1]</span>
+	    <span class="comment">//</span>
+    	    <span class="comment">// old_chain --&gt; adds the hashes in this order</span>
+    	    <span class="comment">//   [4] [3] [2] [1]</span>
+	    <span class="comment">//</span>
+	    <span class="comment">// winding requires starting at the END of the vector and rolling</span>
+	    <span class="comment">// backwards until we have added block #5, etc.</span>
+	    <span class="comment">//</span>
+            <span class="self">self</span>.<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">new_chain</span>.<span class="ident">len</span>()<span class="op">-</span><span class="number">1</span>, <span class="ident">wind_failure</span>)
         } <span class="kw">else</span> {
             <span class="comment">//</span>
-            <span class="comment">// continue unwinding</span>
+            <span class="comment">// continue unwinding,, which means </span>
             <span class="comment">//</span>
-            <span class="self">self</span>.<span class="ident">unwind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_unwind_index</span> <span class="op">-</span> <span class="number">1</span>, <span class="ident">wind_failure</span>)
+	    <span class="comment">// unwinding requires moving FORWARD in our vector (and backwards in </span>
+	    <span class="comment">// the blockchain). So we increment our unwind index.</span>
+	    <span class="comment">//</span>
+            <span class="self">self</span>.<span class="ident">unwind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_unwind_index</span> <span class="op">+</span> <span class="number">1</span>, <span class="ident">wind_failure</span>)
         }
     }
 }
