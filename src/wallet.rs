@@ -116,6 +116,7 @@ pub struct WalletSlip {
 }
 
 impl WalletSlip {
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         WalletSlip {
             uuid: [0; 32],

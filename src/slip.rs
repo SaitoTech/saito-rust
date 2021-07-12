@@ -38,6 +38,7 @@ pub struct Slip {
 }
 
 impl Slip {
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             publickey: [0; 33],
@@ -186,12 +187,39 @@ mod tests {
 
     #[test]
     fn slip_new_test() {
+        let mut slip = Slip::new();
+        assert_eq!(slip.get_publickey(), [0; 33]);
+        assert_eq!(slip.get_uuid(), [0; 32]);
+        assert_eq!(slip.get_amount(), 0);
+        assert_eq!(slip.get_slip_type(), SlipType::Normal);
+        assert_eq!(slip.get_slip_ordinal(), 0);
+
+        slip.set_publickey([1; 33]);
+        assert_eq!(slip.get_publickey(), [1; 33]);
+
+        slip.set_amount(100);
+        assert_eq!(slip.get_amount(), 100);
+
+        slip.set_uuid([30; 32]);
+        assert_eq!(slip.get_uuid(), [30; 32]);
+
+        slip.set_slip_ordinal(1);
+        assert_eq!(slip.get_slip_ordinal(), 1);
+
+        slip.set_slip_type(SlipType::MinerInput);
+        assert_eq!(slip.get_slip_type(), SlipType::MinerInput);
+    }
+
+    #[test]
+    fn slip_serialize_for_signature_test() {
         let slip = Slip::new();
-        assert_eq!(slip.publickey, [0; 33]);
-        assert_eq!(slip.uuid, [0; 32]);
-        assert_eq!(slip.amount, 0);
-        assert_eq!(slip.slip_type, SlipType::Normal);
-        assert_eq!(slip.slip_ordinal, 0);
+        assert_eq!(slip.serialize_for_signature(), vec![0; 78]);
+    }
+
+    #[test]
+    fn slip_get_utxoset_key_test() {
+        let slip = Slip::new();
+        assert_eq!(slip.get_utxoset_key(), [0; 74]);
     }
 
     #[test]

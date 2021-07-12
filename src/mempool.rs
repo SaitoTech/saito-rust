@@ -109,7 +109,7 @@ impl Mempool {
         if self
             .transactions
             .iter()
-            .any(|transaction| transaction.is_golden_ticket() == true)
+            .any(|transaction| transaction.is_golden_ticket())
         {
             return AddTransactionResult::Exists;
         } else {
@@ -122,19 +122,17 @@ impl Mempool {
     ///
     /// Calculates the work available in mempool to produce a block
     ///
-    pub async fn calculate_work_available(&self) -> u64 {
-        return 2 * 100_000_000;
+    pub fn calculate_work_available(&self) -> u64 {
+        2 * 100_000_000
     }
 
     //
     // Return work needed in Nolan
     //
-    pub async fn calculate_work_needed(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> u64 {
-        let blockchain = blockchain_lock.read().await;
-        let previous_block_timestamp = blockchain.get_latest_block_timestamp();
+    pub fn calculate_work_needed(&self, previous_block: &Block) -> u64 {
+        let previous_block_timestamp = previous_block.get_timestamp();
+        let previous_block_burnfee = previous_block.get_burnfee();
         let current_timestamp = create_timestamp();
-
-        let previous_block_burnfee = blockchain.get_latest_block_burnfee();
 
         let work_needed: u64 = BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
             previous_block_burnfee,
@@ -159,24 +157,20 @@ impl Mempool {
             return false;
         }
 
-        let work_available = self.calculate_work_available().await;
-        let work_needed = self.calculate_work_needed(blockchain_lock.clone()).await;
+        let blockchain = blockchain_lock.read().await;
 
-        {
-            let blockchain = blockchain_lock.read().await;
-            let previous_block_timestamp = blockchain.get_latest_block_timestamp();
-            let time_elapsed = create_timestamp() - previous_block_timestamp;
+        if let Some(previous_block) = blockchain.get_latest_block() {
+            let work_available = self.calculate_work_available();
+            let work_needed = self.calculate_work_needed(previous_block);
+            let time_elapsed = create_timestamp() - previous_block.get_timestamp();
             println!(
                 "WA: {:?} -- WN: {:?} -- TE: {:?}",
                 work_available, work_needed, time_elapsed
             );
+            work_available >= work_needed
+        } else {
+            true
         }
-
-        if work_available >= work_needed {
-            return true;
-        }
-
-        return false;
     }
 
     pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
