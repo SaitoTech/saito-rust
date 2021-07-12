@@ -379,20 +379,18 @@ impl Block {
         block
     }
 
+    //
+    // TODO - this logic should probably be in the merkle-root class
+    //
     pub fn generate_merkle_root(&self) -> SaitoHash {
+
+	println!("how many txs: {}", self.transactions.len());
+
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
             .map(|tx| tx.get_hash_for_signature())
             .collect();
-
-        /*** KEEPING FOR SPEED REFERENCE TESTS ***
-                let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
-                mt.root_hash()
-                    .clone()
-                    .try_into()
-                    .expect("Failed to unwrao merkle root")
-        *****************************************/
 
         let mut mrv: Vec<MerkleTreeLayer> = vec![];
 
@@ -431,7 +429,6 @@ impl Block {
             start_point = mrv.len();
 
             for i in (start_point_old..stop_point).step_by(2) {
-                //println!("looping in hash loop with {:?}", i);
                 if (i + 1) < stop_point {
                     mrv.push(MerkleTreeLayer::new(
                         mrv[i].get_hash(),
@@ -691,6 +688,7 @@ impl Block {
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
+
         println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
         //
         // validate burn fee
@@ -896,7 +894,9 @@ impl Block {
         }
 
         let block_merkle_root = block.generate_merkle_root();
+println!("setting merkle root as: {:?}", block_merkle_root);
         block.set_merkle_root(block_merkle_root);
+
         let block_hash = block.generate_hash();
         block.set_hash(block_hash);
 

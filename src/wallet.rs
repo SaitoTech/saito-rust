@@ -17,6 +17,7 @@ pub struct Wallet {
 }
 
 impl Wallet {
+
     #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         let (publickey, privatekey) = generate_keys();
@@ -66,7 +67,76 @@ impl Wallet {
     }
 
     pub fn get_available_balance(&self) -> u64 {
-	0
+        let mut available_balance: u64 = 0;
+        for slip in &self.slips {
+	    if !slip.get_spent() {
+		available_balance += slip.get_amount();
+	    }
+	}
+	return available_balance;
+    }
+
+    pub fn generate_slips(&mut self, nolan_requested : u64) -> (Vec<Slip>, Vec<Slip>) {
+
+        let mut inputs: Vec<Slip> = vec![];
+        let mut outputs: Vec<Slip> = vec![];
+        let mut nolan_in: u64 = 0;
+        let mut nolan_out: u64 = 0;
+	let my_publickey = self.get_publickey();
+
+        for slip in &mut self.slips {
+            if !slip.get_spent() {
+
+		if nolan_in < nolan_requested {
+
+  	            nolan_in += slip.get_amount();
+
+	            let mut input = Slip::new();
+                    input.set_publickey(my_publickey);
+	            input.set_amount(slip.get_amount());
+        	    input.set_uuid(slip.get_uuid());
+		    inputs.push(input);
+
+		    slip.set_spent(true);
+
+		}
+
+	        if nolan_in > nolan_requested {
+		    nolan_out = nolan_in - nolan_requested;
+		}
+
+		// change address
+	        let mut output = Slip::new();
+                output.set_publickey(my_publickey);
+	        output.set_amount(nolan_out);
+		outputs.push(output);
+
+	    }
+	}
+
+
+	//
+	// ensure not empty
+	//
+	if inputs.len() == 0 {
+
+	    let mut input = Slip::new();
+            input.set_publickey(my_publickey);
+	    input.set_amount(0);
+            input.set_uuid([0; 32]);
+	    inputs.push(input);
+
+	}
+	if outputs.len() == 0 {
+
+	    let mut output = Slip::new();
+            output.set_publickey(my_publickey);
+	    output.set_amount(0);
+            output.set_uuid([0; 32]);
+	    outputs.push(output);
+	}
+
+        return (inputs, outputs);
     }
 
     pub fn sign(&self, message_bytes: &[u8]) -> SaitoSignature {
@@ -108,6 +178,14 @@ impl Wallet {
 /// The `WalletSlip` stores the essential information needed to track which
 /// slips are spendable and managing them as they move onto and off of the
 /// longest-chain.
+///
+/// Please note that the wallet in this Saito Rust client is intended primarily
+/// to hold the public/privatekey and that slip-spending and tracking code is
+/// not coded in a way intended to be robust against chain-reorganizations but
+/// rather for testing of basic functions like transaction creation. Slips that
+/// are spent on one fork are not recaptured on chains, for instance, and once
+/// a slip is spent it is marked as spent.
+///
 #[derive(Clone, Debug)]
 pub struct WalletSlip {
     uuid: SaitoHash,
@@ -117,6 +195,7 @@ pub struct WalletSlip {
     block_hash: SaitoHash,
     lc: bool,
     slip_ordinal: u8,
+    spent: bool,
 }
 
 impl WalletSlip {
@@ -129,6 +208,7 @@ impl WalletSlip {
             block_hash: [0; 32],
             lc: true,
             slip_ordinal: 0,
+	    spent: false,
         }
     }
 
@@ -158,6 +238,14 @@ impl WalletSlip {
 
     pub fn get_slip_ordinal(&self) -> u8 {
         self.slip_ordinal
+    }
+
+    pub fn get_spent(&self) -> bool {
+        self.spent
+    }
+
+    pub fn set_spent(&mut self, spent: bool) {
+        self.spent = spent;
     }
 
     pub fn set_uuid(&mut self, hash: SaitoHash) {
