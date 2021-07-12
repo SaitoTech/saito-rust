@@ -312,9 +312,45 @@ pub async fn run(
 
     loop {
         tokio::select! {
-                    Some(message) = mempool_channel_receiver.recv() => {
+            Some(message) = mempool_channel_receiver.recv() => {
 
-                        match message {
+                match message {
+
+                    // TryBundleBlock makes periodic attempts to produce blocks and does so
+                     // if the mempool can bundle blocks....
+                    MempoolMessage::TryBundleBlock => {
+            let can_bundle;
+            {
+                            let mempool = mempool_lock.read().await;
+                            can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
+            }
+                        if can_bundle {
+                            let mut mempool = mempool_lock.write().await;
+                            let block = mempool.generate_block(blockchain_lock.clone()).await;
+                            if AddBlockResult::Accepted == mempool.add_block(block) {
+                                mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
+                            }
+                        }
+                    },
+
+                    // GenerateBlock makes periodic attempts to analyse the state of
+                    // the mempool and produce blocks if possible.
+                    MempoolMessage::GenerateBlock => {
+                        let mut mempool = mempool_lock.write().await;
+            let block = mempool.generate_block(blockchain_lock.clone()).await;
+                        if AddBlockResult::Accepted == mempool.add_block(block) {
+                            mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
+                        }
+                    },
+
+                    // GenerateTransaction makes a transaction and adds it to the mempool if possible
+                    MempoolMessage::GenerateTransaction => {
+
+                        let mempool_lock_clone = mempool_lock.clone();
+                    let already_generating_transactions;
+                    let txs_in_mempool: u32;
+                    let txs_to_generate: u32 = 10;
+                    let bytes_per_tx: u32 = 1024;
 
                             // TryBundleBlock makes periodic attempts to produce blocks and does so
                              // if the mempool can bundle blocks....
@@ -434,33 +470,47 @@ pub async fn run(
                                mempool.currently_processing_block = false;
                            },
                        }
-                    }
+                   },
 
 
-                    Ok(message) = broadcast_channel_receiver.recv() => {
-                        match message {
-                            // triggered when a block is received over the network and
-                            // will be added to the `Blockchain`
-                            SaitoMessage::MempoolNewBlock { hash: _hash } => {
-                                // TODO: there is still an open question about how blocks
-                                // over the network will be placed into the mempool queue
-                                //
-                                // For now, let's assume that the network has a reference
-                                // to mempool and is adding the block through that reference
-                                // then calls mempool to process the blocks in the queue
-                                mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
-                            }
-                            SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
-                                let mut _mempool = mempool_lock.write().await;
-                            },
-                            SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
-                                let mut mempool = mempool_lock.write().await;
-                                mempool.add_golden_ticket(golden_ticket).await;
-                            },
-                            _ => {},
-                        }
+                   // ProcessBlocks will add blocks FIFO from the queue into blockchain
+                   MempoolMessage::ProcessBlocks => {
+                       let mut mempool = mempool_lock.write().await;
+                       mempool.currently_processing_block = true;
+                       let mut blockchain = blockchain_lock.write().await;
+                       while let Some(block) = mempool.blocks.pop_front() {
+                           blockchain.add_block(block).await;
+                       }
+                       mempool.currently_processing_block = false;
+                   },
+               }
+            }
+
+
+            Ok(message) = broadcast_channel_receiver.recv() => {
+                match message {
+                    // triggered when a block is received over the network and
+                    // will be added to the `Blockchain`
+                    SaitoMessage::MempoolNewBlock { hash: _hash } => {
+                        // TODO: there is still an open question about how blocks
+                        // over the network will be placed into the mempool queue
+                        //
+                        // For now, let's assume that the network has a reference
+                        // to mempool and is adding the block through that reference
+                        // then calls mempool to process the blocks in the queue
+                        mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                     }
+                    SaitoMessage::MempoolNewTransaction { transaction: _transaction } => {
+                        let mut _mempool = mempool_lock.write().await;
+                    },
+                    SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
+                        let mut mempool = mempool_lock.write().await;
+                        mempool.add_golden_ticket(golden_ticket).await;
+                    },
+                    _ => {},
                 }
+            }
+        }
     }
 }
 
