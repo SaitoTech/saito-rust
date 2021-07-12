@@ -89,6 +89,9 @@ impl Wallet {
         let mut nolan_out: u64 = 0;
 	let my_publickey = self.get_publickey();
 
+        //
+        // grab inputs
+        //
         for slip in &mut self.slips {
             if !slip.get_spent() {
 
@@ -102,24 +105,26 @@ impl Wallet {
         	    input.set_uuid(slip.get_uuid());
 		    inputs.push(input);
 
-println!("creating {} token-carrying tx with uuid {:?}", slip.get_amount(), slip.get_uuid());
-
 		    slip.set_spent(true);
 
 		}
 
-	        if nolan_in > nolan_requested {
-		    nolan_out = nolan_in - nolan_requested;
-		}
-
-		// change address
-	        let mut output = Slip::new();
-                output.set_publickey(my_publickey);
-	        output.set_amount(nolan_out);
-		outputs.push(output);
-
 	    }
 	}
+
+
+        // 
+        // create outputs 
+        // 
+        if nolan_in > nolan_requested {
+	    nolan_out = nolan_in - nolan_requested;
+	}
+
+	// change address
+        let mut output = Slip::new();
+        output.set_publickey(my_publickey);
+        output.set_amount(nolan_out);
+	outputs.push(output);
 
 
 	//
@@ -142,8 +147,6 @@ println!("creating {} token-carrying tx with uuid {:?}", slip.get_amount(), slip
             output.set_uuid([0; 32]);
 	    outputs.push(output);
 	}
-
-println!("created tx with # inputs: {}", inputs.len());
 
         return (inputs, outputs);
     }

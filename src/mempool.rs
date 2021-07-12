@@ -101,9 +101,9 @@ impl Mempool {
         let tx_sig_to_insert = transaction.get_signature();
 	let routing_work_available_for_me = transaction.get_routing_work_for_publickey(self.mempool_publickey);
 
-println!("total fees in tx: {}", transaction.get_total_fees());
-println!("routing paths: {:?}", transaction.get_path());
-println!("routing work for me in this tx: {}", routing_work_available_for_me);
+//println!("total fees in tx: {}", transaction.get_total_fees());
+//println!("routing paths: {:?}", transaction.get_path());
+//println!("routing work for me in this tx: {}", routing_work_available_for_me);
 
         if self
             .transactions
@@ -174,7 +174,7 @@ println!("routing work for me in this tx: {}", routing_work_available_for_me);
         {
             return AddTransactionResult::Exists;
         } else {
-            println!("adding goldten ticket to mempool...");
+            println!("adding golden ticket to mempool...");
             self.transactions.push(transaction);
             return AddTransactionResult::Accepted;
         }
@@ -184,7 +184,12 @@ println!("routing work for me in this tx: {}", routing_work_available_for_me);
     /// Calculates the work available in mempool to produce a block
     ///
     pub async fn calculate_work_available(&self) -> u64 {
-        return 2 * 100_000_000;
+	if self.routing_work_in_mempool > 0 {
+	    return self.routing_work_in_mempool;
+	}
+
+	return 1;
+//        return 2 * 100_000_000;
     }
 
     //
@@ -228,7 +233,7 @@ println!("routing work for me in this tx: {}", routing_work_available_for_me);
             let previous_block_timestamp = blockchain.get_latest_block_timestamp();
             let time_elapsed = create_timestamp() - previous_block_timestamp;
             println!(
-                "WA: {:?} -- WN: {:?} -- TE: {:?}",
+                "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
                 work_available, work_needed, time_elapsed
             );
         }
@@ -296,12 +301,12 @@ pub async fn run(
                 .send(MempoolMessage::TryBundleBlock)
                 .await
                 .expect("error: TryBundleBlock message failed to send");
-            sleep(Duration::from_millis(4000));
+            sleep(Duration::from_millis(1000));
             generate_transaction_sender
                 .send(MempoolMessage::GenerateTransaction)
                 .await
                 .expect("error: GenerateTransaction message failed to send");
-            sleep(Duration::from_millis(5000));
+            sleep(Duration::from_millis(1000));
         }
     });
 
@@ -381,7 +386,7 @@ pub async fn run(
                 	                            println!("creating tx {:?}", (_i));
                 			        }
 
-                                      		let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), wallet_publickey, 0, 0).await;
+                                      		let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), wallet_publickey, 1000, 1000).await;
                                     		transaction.set_message((0..bytes_per_tx).map(|_| rand::random::<u8>()).collect());
                                     		transaction.sign(wallet_privatekey);
 
@@ -389,6 +394,8 @@ pub async fn run(
 						// calculating routing work requires this stuff done
 						//
 						transaction.pre_validation_calculations_parallelizable();
+
+//println!("tx has fees: {}", transaction.get_total_fees());
 
 						// 
 						// TODO - remove routing path additions

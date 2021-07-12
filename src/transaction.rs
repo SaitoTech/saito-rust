@@ -117,8 +117,8 @@ impl Transaction {
 	let wallet_publickey = wallet.get_publickey();
 
         let available_balance = wallet.get_available_balance();
-println!("in generate transaction ab: {}", available_balance);
         let total_requested = with_payment + with_fee;
+//println!("in generate transaction ab: {} and pr: {} and fr: {}", available_balance, with_payment, with_fee);
 
 	if available_balance >= total_requested {
 
@@ -135,6 +135,8 @@ println!("in generate transaction ab: {}", available_balance);
             output.set_publickey(to_publickey);
             output.set_amount(with_payment);
             transaction.add_output(output);
+
+//println!("inputs are: {}", transaction.get_inputs().len());
 
 	    return transaction;
 
@@ -601,6 +603,11 @@ println!("in generate transaction ab: {}", available_balance);
         // we make an exception for fee and vip transactions, which may be pulling revenue from the
         // treasury in some amount.
         if self.total_out > self.total_in && self.get_transaction_type() != TransactionType::Fee && self.get_transaction_type() != TransactionType::Vip {
+
+println!("{} in and {} out", self.total_in, self.total_out);
+for z in self.get_outputs() {
+    println!("{:?} --- ", z.get_amount());
+}
             println!("ERROR 672941: transaction spends more than it has available");
             return false;
         }

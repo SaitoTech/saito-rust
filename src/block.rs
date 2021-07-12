@@ -859,7 +859,7 @@ impl Block {
 	let wallet_privatekey = wallet.get_privatekey();
 	if previous_block_id == 0 {
 	    for i in 0..10 {
-println!("waiting {}", i);
+println!("generating VIP transaction {}", i);
 		let mut transaction = Transaction::generate_vip_transaction(wallet_lock.clone(), wallet_publickey, wallet_publickey, 100000).await;
 		transaction.sign(wallet_privatekey);
 		block.add_transaction(transaction);
