@@ -340,6 +340,7 @@ impl Transaction {
 
         true
     }
+
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         //
         // VALIDATE signature valid
