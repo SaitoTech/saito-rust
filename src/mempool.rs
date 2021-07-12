@@ -329,11 +329,6 @@ pub async fn run(
                                             .body(bytes)
                                             .send()
                                             .await;
-
-                                        // {
-                                        //     let mut mempool = mempool_lock_clone.write().await;
-                                        //     mempool.add_transaction(transaction);
-                                        // }
                                     }
 
                                     {

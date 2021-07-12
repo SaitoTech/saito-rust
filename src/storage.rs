@@ -45,7 +45,9 @@ impl Storage {
                 .unwrap()
         });
         for (pos, path) in paths.iter().enumerate() {
-            if path.path().to_str().unwrap() != self.blocks_dir_path.clone() + "empty" {
+            if path.path().to_str().unwrap() != self.blocks_dir_path.clone() + "empty"
+                && path.path().to_str().unwrap() != self.blocks_dir_path.clone() + ".gitignore"
+            {
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
