@@ -2,7 +2,7 @@ use crate::{
     block::Block,
     blockchain::Blockchain,
     burnfee::BurnFee,
-    crypto::{SaitoHash, SaitoPublicKey, SaitoPrivateKey},
+    crypto::{SaitoPublicKey, SaitoPrivateKey},
     consensus::SaitoMessage,
     golden_ticket::GoldenTicket,
     time::create_timestamp,
@@ -100,6 +100,10 @@ impl Mempool {
 
         let tx_sig_to_insert = transaction.get_signature();
 	let routing_work_available_for_me = transaction.get_routing_work_for_publickey(self.mempool_publickey);
+
+println!("total fees in tx: {}", transaction.get_total_fees());
+println!("routing paths: {:?}", transaction.get_path());
+println!("routing work for me in this tx: {}", routing_work_available_for_me);
 
         if self
             .transactions

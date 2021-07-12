@@ -6,7 +6,7 @@ use crate::{
         SaitoUTXOSetKey,
     },
     hop::Hop,
-    slip::{Slip, SLIP_SIZE},
+    slip::{Slip, SlipType, SLIP_SIZE},
     wallet::Wallet,
 };
 use ahash::AHashMap;
@@ -29,6 +29,7 @@ pub enum TransactionType {
     Normal,
     Fee,
     GoldenTicket,
+    Vip,
     Other,
 }
 
@@ -57,15 +58,6 @@ pub struct Transaction {
     pub routing_work_to_me: u64,
     pub routing_work_to_creator: u64,
 
-    // measures what kind of validation is done, we use prime addition to 
-    // track stages as just applying an ENUM does not permit us to check
-    // which of multiple stages may have been performed
-    //
-    // 0 = unvalidated
-    // 2 = hash_calculated
-    // 3 = inputs validated
-    // ? 
-    pub validated: u32,
 }
 
 impl Transaction {
@@ -80,7 +72,6 @@ impl Transaction {
             signature: [0; 64],
 	    path: vec![],
             hash_for_signature: [0; 32],
-            validated: 0,
             total_in: 0,
             total_out: 0,
             total_fees: 0,
@@ -126,6 +117,7 @@ impl Transaction {
 	let wallet_publickey = wallet.get_publickey();
 
         let available_balance = wallet.get_available_balance();
+println!("in generate transaction ab: {}", available_balance);
         let total_requested = with_payment + with_fee;
 
 	if available_balance >= total_requested {
@@ -209,6 +201,39 @@ impl Transaction {
 
     }
 
+    //
+    // generate a transaction that has more outputs than inputs. this is primarily being used for testing
+    // but it will be used to populate the first block with the VIP transactions in the future. VIP 
+    // transactions are provided . they are distinct from normal transactions in that they do not have
+    // fees assessed for rebroadcasting. thank you to everyone who has supported Saito and help make
+    // this blockchain a reality. you deserve it.
+    //
+    pub async fn generate_vip_transaction(wallet_lock : Arc<RwLock<Wallet>>, from_publickey: SaitoPublicKey, to_publickey: SaitoPublicKey, with_fee: u64) -> Transaction {
+
+	let mut transaction = Transaction::new();
+	transaction.set_transaction_type(TransactionType::Vip);
+
+	let mut input = Slip::new();
+	input.set_publickey(from_publickey);
+	input.set_amount(0);
+	input.set_slip_type(SlipType::VipInput);
+
+        let mut output = Slip::new();
+        output.set_publickey(to_publickey);
+        output.set_amount(with_fee);
+	output.set_slip_type(SlipType::VipOutput);
+
+	transaction.add_input(input);
+	transaction.add_output(output);
+
+	transaction
+
+    }
+
+
+
+
+
     pub fn get_routing_work_for_publickey(&self, publickey : SaitoPublicKey) -> u64 {
 
 	// there is not routing path	
@@ -255,6 +280,10 @@ impl Transaction {
             return true;
         }
         return false;
+    }
+
+    pub fn get_path(&self) -> &Vec<Hop> {
+        &self.path
     }
 
     pub fn get_total_fees(&self) -> u64 {
@@ -488,12 +517,8 @@ impl Transaction {
 	// output slips created in this blog. Otherwise, our hash for the transaction
 	// will change since the slips will be generated with a different UUID.
 	//
-	//if self.validated%2 != 0 {
-println!("hashing for signature");
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         self.set_hash_for_signature(hash_for_signature);
-        //    self.validated *= 2;
-	//}
 
         //
         // calculate nolan in / out, fees
@@ -573,9 +598,9 @@ println!("hashing for signature");
         //            return false;
         //        }
         //
-        // we make an exception for fee transactions, which may be pulling revenue from the
+        // we make an exception for fee and vip transactions, which may be pulling revenue from the
         // treasury in some amount.
-        if self.total_out > self.total_in && self.get_transaction_type() != TransactionType::Fee {
+        if self.total_out > self.total_in && self.get_transaction_type() != TransactionType::Fee && self.get_transaction_type() != TransactionType::Vip {
             println!("ERROR 672941: transaction spends more than it has available");
             return false;
         }

@@ -384,8 +384,6 @@ impl Block {
     //
     pub fn generate_merkle_root(&self) -> SaitoHash {
 
-	println!("how many txs: {}", self.transactions.len());
-
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
@@ -594,6 +592,7 @@ impl Block {
             cv.gt_idx = gt_idx;
             cv.gt_num = gt_num;
         }
+
 
         //
         // validate difficulty
@@ -852,6 +851,21 @@ impl Block {
                 break;
             }
         }
+
+	//
+	// set our initial transactions
+	//
+	let wallet_publickey = wallet.get_publickey();
+	let wallet_privatekey = wallet.get_privatekey();
+	if previous_block_id == 0 {
+	    for i in 0..10 {
+println!("waiting {}", i);
+		let mut transaction = Transaction::generate_vip_transaction(wallet_lock.clone(), wallet_publickey, wallet_publickey, 100000).await;
+		transaction.sign(wallet_privatekey);
+		block.add_transaction(transaction);
+	    }
+	}
+
 
         //
         // create

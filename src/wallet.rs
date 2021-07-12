@@ -34,27 +34,32 @@ impl Wallet {
                 self.delete_slip(input);
             }
             for output in tx.get_outputs() {
-                self.add_slip(block, tx, output, block.get_lc());
+		if output.get_amount() > 0 {
+                    self.add_slip(block, tx, output, block.get_lc());
+                }
             }
         }
     }
 
     pub fn add_slip(&mut self, block: &Block, transaction: &Transaction, slip: &Slip, lc: bool) {
+
         let mut wallet_slip = WalletSlip::new();
 
         wallet_slip.set_uuid(transaction.get_hash_for_signature());
         wallet_slip.set_utxokey(slip.get_utxoset_key());
         wallet_slip.set_amount(slip.get_amount());
+        wallet_slip.set_slip_ordinal(slip.get_slip_ordinal());
         wallet_slip.set_block_id(block.get_id());
         wallet_slip.set_block_hash(block.get_hash());
         wallet_slip.set_lc(lc);
 
-        self.slips.push(WalletSlip::new());
+        self.slips.push(wallet_slip);
+
     }
 
     pub fn delete_slip(&mut self, slip: &Slip) {
         self.slips.retain(|x| {
-            x.get_uuid() != slip.get_uuid() && x.get_slip_ordinal() != slip.get_slip_ordinal()
+            x.get_uuid() != slip.get_uuid() || x.get_slip_ordinal() != slip.get_slip_ordinal()
         });
     }
 
@@ -97,6 +102,8 @@ impl Wallet {
         	    input.set_uuid(slip.get_uuid());
 		    inputs.push(input);
 
+println!("creating {} token-carrying tx with uuid {:?}", slip.get_amount(), slip.get_uuid());
+
 		    slip.set_spent(true);
 
 		}
@@ -135,6 +142,8 @@ impl Wallet {
             output.set_uuid([0; 32]);
 	    outputs.push(output);
 	}
+
+println!("created tx with # inputs: {}", inputs.len());
 
         return (inputs, outputs);
     }
