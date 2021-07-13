@@ -455,10 +455,12 @@ impl Block {
         mrv[start_point].get_hash()
     }
 
+
     //
-    //
+    // generate hashes and payouts and fee calculations
     //
     pub fn generate_data_to_validate(&self, blockchain: &Blockchain) -> DataToValidate {
+
         let mut cv = DataToValidate::new();
 
         let mut gt_num: u8 = 0;
@@ -474,7 +476,8 @@ impl Block {
         //
         let mut idx: usize = 0;
         for transaction in &self.transactions {
-            // fee transaction
+ 
+           // fee transaction
             if !transaction.is_fee_transaction() {
                 total_fees += transaction.get_total_fees();
             } else {
@@ -491,7 +494,11 @@ impl Block {
             idx += 1;
         }
 
+	//
+	// generate payments to miner and router
+	//
         if gt_num > 0 && gt_idx != usize::MAX {
+
             //
             // grab random solution from golden ticket
             //
@@ -503,92 +510,103 @@ impl Block {
             //
             // create fee transaction
             //
-            let mut fee_transaction = Transaction::new();
-            fee_transaction.set_transaction_type(TransactionType::Fee);
+	    if total_fees == 0 {
 
-            //
-            // find winning router
-            //
-            let x = U256::from_big_endian(&miner_random);
-            let mut y = total_fees;
-            //
-            // TODO - y cannot be zero or divide by zero
-            //
-            if y == 0 {
-                y = 100;
-            }
-            let z = U256::from_big_endian(&y.to_be_bytes());
-            let (winning_router, _bolres) = x.overflowing_rem(z);
-            let winning_nolan_in_fees = winning_router.low_u64();
+		//
+		// no fees in the block, so no payout
+		//
 
-            //
-            // winning TX contains the winning nolan
-            //
-            // i.e. txs are picked based on fee contribution
-            //
-            // TODO - panics if no txs in block
-            //
-            let mut winning_tx = &self.transactions[0];
-            for transaction in &self.transactions {
-                if transaction.cumulative_fees > winning_nolan_in_fees {
-                    break;
+
+	    } else {
+
+                //
+                // find winning tx
+                //
+                let x = U256::from_big_endian(&miner_random);
+		// no risk of divide by zero with if / else check
+                let mut y = total_fees;
+
+		//
+		// random number mod total fees gives us th ewinning
+		// nolan. we are going to pick the transaction that
+		// contains this incremental nolan
+		//
+                let z = U256::from_big_endian(&y.to_be_bytes());
+                let (zy, _bolres) = x.overflowing_rem(z);
+                let winning_nolan_in_fees = zy.low_u64();
+
+                //
+                // winning TX contains the winning nolan
+                //
+                // i.e. txs are picked based on fee contribution
+                //
+                let mut winning_tx = &self.transactions[0];
+                for transaction in &self.transactions {
+                    if transaction.cumulative_fees > winning_nolan_in_fees {
+                        break;
+                    }
+                    winning_tx = &transaction;
                 }
-                winning_tx = &transaction;
+
+		//
+                // winning router is picked by sending a random 
+		// number into the transaction, which is then 
+		// used to select a routing node based on the 
+		// weighted lottery.
+                //
+            	let random_number2 = hash(&miner_random.to_vec());
+           	router_publickey = winning_tx.get_winning_routing_node(random_number2);
+
+                //
+                // winning miner from golden ticket
+                //
+                miner_publickey = golden_ticket.get_publickey();
+
+                //
+                // calculate miner and router payments
+                //
+                // TODO - REMOVE  - temporary to create additional tokens so we have circulating fees
+                //
+                total_fees += 10000;
+                //
+                let miner_payment = total_fees / 2;
+                let router_payment = total_fees - miner_payment;
+
+	        let mut transaction = Transaction::new();
+	        transaction.set_transaction_type(TransactionType::Fee);
+
+                let mut input1 = Slip::new();
+                input1.set_publickey(miner_publickey);
+                input1.set_amount(0);
+                input1.set_slip_type(SlipType::MinerInput);
+
+                let mut output1 = Slip::new();
+                output1.set_publickey([0; 33]);
+                output1.set_amount(miner_payment);
+                output1.set_slip_type(SlipType::MinerOutput);
+
+                let mut input2 = Slip::new();
+                input2.set_publickey(router_publickey);
+                input2.set_amount(0);
+                input2.set_slip_type(SlipType::RouterInput);
+
+                let mut output2 = Slip::new();
+                output2.set_publickey(router_publickey);
+                output2.set_amount(router_payment);
+                output2.set_slip_type(SlipType::RouterOutput);
+
+                transaction.add_input(input1);
+                transaction.add_output(output1);
+                transaction.add_input(input2);
+                transaction.add_output(output2);
+
+                //
+                // fee transaction added to consensus values
+                //
+                cv.fee_transaction = Some(transaction);
+
             }
 
-            //
-            // winning router is just tx sender for now
-            //
-            // TODO we need to add routing paths etc.
-            //
-            let random_number2 = hash(&miner_random.to_vec());
-            router_publickey = winning_tx.get_winning_routing_node(random_number2);
-
-            //
-            // winning miner from golden ticket
-            //
-            miner_publickey = golden_ticket.get_publickey();
-
-            //
-            // calculate miner and router payments
-            //
-
-            //
-            // TODO - REMOVE  - temporary to create tokens so we have circulating fees
-            total_fees = 10000;
-            //
-            let miner_payment = total_fees / 2;
-            let router_payment = total_fees - miner_payment;
-
-            let mut input1 = Slip::new();
-            input1.set_publickey(miner_publickey);
-            input1.set_amount(0);
-            input1.set_slip_type(SlipType::MinerInput);
-
-            let mut output1 = Slip::new();
-            output1.set_publickey([0; 33]);
-            output1.set_amount(miner_payment);
-            output1.set_slip_type(SlipType::MinerOutput);
-
-            let mut input2 = Slip::new();
-            input2.set_publickey(router_publickey);
-            input2.set_amount(0);
-            input2.set_slip_type(SlipType::RouterInput);
-
-            let mut output2 = Slip::new();
-            output2.set_publickey(router_publickey);
-            output2.set_amount(router_payment);
-            output2.set_slip_type(SlipType::RouterOutput);
-
-            fee_transaction.add_input(input1);
-            fee_transaction.add_output(output1);
-            fee_transaction.add_input(input2);
-            fee_transaction.add_output(output2);
-
-            //
-            // fee transaction added to consensus values
-            //
-            cv.fee_transaction = Some(fee_transaction);
             cv.ft_idx = ft_idx;
             cv.ft_num = ft_num;
             cv.gt_idx = gt_idx;
@@ -691,6 +709,7 @@ impl Block {
 
         true
     }
+
 
     pub fn validate(
         &self,

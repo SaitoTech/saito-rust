@@ -360,18 +360,58 @@ impl Transaction {
     }
 
     pub fn get_winning_routing_node(&self, random_hash: SaitoHash) -> SaitoPublicKey {
+
+	//
+	// if there are no routing paths, we return the sender of
+	// the payment, as they're got all of the routing work by
+	// definition. this is the edge-case where sending a tx
+	// can make you money.
+	//
+	if self.path.len() == 0 {
+	    if self.inputs.len() > 0 {
+		return self.inputs[0].get_publickey();
+	    } else {
+		return [0; 33];
+	    }
+	}
+
+	//
+	// if we have a routing path, we calculate the total amount
+	// of routing work that it is possible for this transaction
+	// to contain (2x the fee).
+	//
+	let mut aggregate_routing_work: u64 = self.get_total_fees();
+	let mut routing_work_this_hop: u64 = aggregate_routing_work;
+        let mut work_by_hop : Vec<u64> = vec![];
+
+	for i in 1..self.path.len() {
+	    let new_routing_work_this_hop: u64  = routing_work_this_hop / 2;
+	    aggregate_routing_work += new_routing_work_this_hop;
+	    work_by_hop.push(aggregate_routing_work);
+	}
+
+	//
         //
-        // find winning router
+        // find winning routing node
         //
         let x = U256::from_big_endian(&random_hash);
         let y: u64 = 10_000_000_000;
         let z = U256::from_big_endian(&y.to_be_bytes());
-        let (_winning_routing_node_random, _bolres) = x.overflowing_rem(z);
+        let (zy, _bolres) = x.overflowing_rem(z);
+        let winning_routing_work_in_nolan = zy.low_u64();
+
+	for i in 0.. work_by_hop.len() {
+	    if winning_routing_work_in_nolan <= work_by_hop[i] {
+		return self.path[i].get_to();
+	    }
+	}
 
         //
-        // TODO - process routing path, return winner
+        // we should never reach this
         //
-        return self.inputs[0].get_publickey();
+	println!("ERROR 993433: we should never reach this in tx.winning_routing_node");
+        return [0; 33];
+
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
