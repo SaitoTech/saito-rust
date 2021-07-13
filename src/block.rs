@@ -922,6 +922,7 @@ impl Block {
         }
 
         let block_merkle_root = block.generate_merkle_root();
+        println!("NEWLY CREATED MERKLE ROOT: {:?}", &block_merkle_root);
         block.set_merkle_root(block_merkle_root);
         let block_hash = block.generate_hash();
         block.set_hash(block_hash);

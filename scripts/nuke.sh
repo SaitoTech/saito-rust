@@ -18,5 +18,5 @@ echo "  NUKING YOUR SAITO INSTALL  "
 echo "  -------------------------  "
 echo ""
 
-find ../src/data/blocks -name '*.sai' | xargs rm
+find ../data/blocks -name '*.sai' | xargs rm
 find ../data/test/blocks -name '*.sai' | xargs rm
