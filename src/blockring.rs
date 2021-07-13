@@ -335,7 +335,6 @@ mod test {
         // TODO: This is wrong, the latest block is null, not 0
         assert_eq!(0, blockring.get_longest_chain_block_id());
         let mock_block = make_mock_block(0, 10, [0; 32], 0);
-        println!("mock block hash {:?}", mock_block.get_hash());
         blockring.add_block(&mock_block);
         // TODO: These next 3 are also wrong, they should probably return None or panic
         assert_eq!(0, blockring.get_longest_chain_block_id());

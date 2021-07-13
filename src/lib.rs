@@ -31,7 +31,7 @@ pub mod golden_ticket;
 pub mod mempool;
 pub mod merkle;
 pub mod miner;
-pub mod network;
+pub mod networking;
 pub mod slip;
 pub mod storage;
 pub mod time;
