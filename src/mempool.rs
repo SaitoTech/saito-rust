@@ -36,7 +36,6 @@ pub struct Mempool {
     transactions: Vec<Transaction>, // vector so we just copy it over
     wallet_lock: Arc<RwLock<Wallet>>,
     currently_processing_block: bool,
-    currently_generating_transactions: bool,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
 }
 
@@ -48,7 +47,6 @@ impl Mempool {
             transactions: vec![],
             wallet_lock,
             currently_processing_block: false,
-            currently_generating_transactions: false,
             broadcast_channel_sender: None,
         }
     }
@@ -140,9 +138,6 @@ impl Mempool {
     ///
     pub async fn can_bundle_block(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
         if self.currently_processing_block {
-            return false;
-        }
-        if self.currently_generating_transactions == true {
             return false;
         }
         if self.transactions.len() == 0 {
@@ -249,89 +244,6 @@ pub async fn run(
                             mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
                         }
                     },
-
-                    // GenerateTransaction makes a transaction and adds it to the mempool if possible
-                    // MempoolMessage::GenerateTransaction => {
-
-                    //     let mempool_lock_clone = mempool_lock.clone();
-                    //     let already_generating_transactions;
-                    //     let txs_in_mempool: u32;
-                    //     let txs_to_generate: u32 = 10;
-                    //     let bytes_per_tx: u32 = 1024;
-
-                    //     {
-                    //         let mempool = mempool_lock_clone.read().await;
-                    //         already_generating_transactions = mempool.currently_generating_transactions;
-                    //         txs_in_mempool = mempool.transactions.len() as u32;
-                    //     }
-
-                    //     if !already_generating_transactions && txs_in_mempool < txs_to_generate {
-                    //         tokio::spawn(async move {
-                    //             {
-                    //                 let mut mempool = mempool_lock_clone.write().await;
-                    //                 mempool.currently_generating_transactions = true;
-                    //             }
-
-                    //             let wallet_publickey;
-                    //             let wallet_privatekey;
-                    //             let current_txs_in_mempool: u32;
-
-                    //             {
-                    //                 let mempool = mempool_lock_clone.read().await;
-                    //                 let wallet = mempool.wallet_lock.read().await;
-                    //                 wallet_publickey = wallet.get_publickey();
-                    //                 wallet_privatekey = wallet.get_privatekey();
-                    //                 current_txs_in_mempool = mempool.transactions.len() as u32;
-                    //             }
-
-                    //             if current_txs_in_mempool < txs_to_generate {
-
-                    //                 let client = reqwest::Client::new();
-                    //                 for _i in 0..txs_to_generate {
-                    //                     if _i % 100 == 0 {
-                    //                         println!("creating tx {:?}", (_i));
-                    //                     }
-
-                    //                     let mut transaction = Transaction::new();
-                    //                     transaction.set_message((0..bytes_per_tx).map(|_| rand::random::<u8>()).collect());
-
-                    //                     //
-                    //                     // as fake transactions, we set the UUID arbitrarily
-                    //                     //
-                    //                     let mut input1 = Slip::new();
-                    //                     input1.set_publickey(wallet_publickey);
-                    //                     input1.set_amount(1000000);
-                    //                     let random_uuid = hash(&generate_random_bytes(32));
-                    //                     input1.set_uuid(random_uuid);
-
-                    //                     let mut output1 = Slip::new();
-                    //                     output1.set_publickey(wallet_publickey);
-                    //                     output1.set_amount(1000000);
-                    //                     output1.set_uuid([0; 32]);
-
-                    //                     transaction.add_input(input1);
-                    //                     transaction.add_output(output1);
-
-                    //                     // sign ...
-                    //                     transaction.sign(wallet_privatekey);
-
-
-                    //                     let bytes: Vec<u8> = transaction.serialize_for_net();
-                    //                     let _res = client.post("http://localhost:3030/transactions")
-                    //                         .body(bytes)
-                    //                         .send()
-                    //                         .await;
-                    //                 }
-
-                    //                 {
-                    //                     let mut mempool = mempool_lock_clone.write().await;
-                    //                     mempool.currently_generating_transactions = false;
-                    //                 }
-                    //             }
-                    //         });
-                    //     }
-                    // },
-
 
                     // ProcessBlocks will add blocks FIFO from the queue into blockchain
                     MempoolMessage::ProcessBlocks => {
