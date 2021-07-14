@@ -471,6 +471,8 @@ impl Block {
         let mut gt_idx_option: Option<usize> = None;
         let mut ft_idx_option: Option<usize> = None;
         let mut total_fees = 0;
+	let mut total_rebroadcast_slips: u64 = 0;
+	let mut total_rebroadcast_nolan: u64 = 0;
         let miner_publickey;
         let router_publickey;
 
@@ -655,8 +657,6 @@ impl Block {
         //
         // calculate automatic transaction rebroadcasts / ATR / atr
         //
-	let mut total_rebroadcast_slips: u64 = 0;
-	let mut total_rebroadcast_nolan: u64 = 0;
 	let pruned_block_hash = blockchain.blockring.get_longest_chain_block_hash_by_block_id(self.get_id()-2);
 println!("pruned block hash: {:?}", pruned_block_hash);
 
@@ -692,6 +692,10 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
 		    }
 		}
 	    }
+
+	    cv.total_rebroadcast_slips = total_rebroadcast_slips;
+	    cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
+
 	}
 
         cv
@@ -981,6 +985,7 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
         wallet_lock: Arc<RwLock<Wallet>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Block {
+
         let blockchain = blockchain_lock.read().await;
         let wallet = wallet_lock.read().await;
 
