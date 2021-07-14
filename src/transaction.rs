@@ -383,22 +383,27 @@ impl Transaction {
 	let mut aggregate_routing_work: u64 = self.get_total_fees();
 	let mut routing_work_this_hop: u64 = aggregate_routing_work;
         let mut work_by_hop : Vec<u64> = vec![];
+	work_by_hop.push(aggregate_routing_work);
 
-	for i in 1..self.path.len() {
+	for _i in 1..self.path.len() {
 	    let new_routing_work_this_hop: u64  = routing_work_this_hop / 2;
 	    aggregate_routing_work += new_routing_work_this_hop;
+            routing_work_this_hop = new_routing_work_this_hop;
 	    work_by_hop.push(aggregate_routing_work);
 	}
+
+println!("{:?}", work_by_hop);
 
 	//
         //
         // find winning routing node
         //
         let x = U256::from_big_endian(&random_hash);
-        let y: u64 = 10_000_000_000;
-        let z = U256::from_big_endian(&y.to_be_bytes());
+        let z = U256::from_big_endian(&aggregate_routing_work.to_be_bytes());
         let (zy, _bolres) = x.overflowing_rem(z);
         let winning_routing_work_in_nolan = zy.low_u64();
+
+println!("wrwin: {}", winning_routing_work_in_nolan);
 
 	for i in 0.. work_by_hop.len() {
 	    if winning_routing_work_in_nolan <= work_by_hop[i] {

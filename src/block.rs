@@ -524,7 +524,7 @@ impl Block {
                 //
                 let x = U256::from_big_endian(&miner_random);
 		// no risk of divide by zero with if / else check
-                let mut y = total_fees;
+                let y = total_fees;
 
 		//
 		// random number mod total fees gives us th ewinning
@@ -579,21 +579,25 @@ impl Block {
                 input1.set_publickey(miner_publickey);
                 input1.set_amount(0);
                 input1.set_slip_type(SlipType::MinerInput);
+                input1.set_slip_ordinal(0);
 
                 let mut output1 = Slip::new();
                 output1.set_publickey([0; 33]);
                 output1.set_amount(miner_payment);
                 output1.set_slip_type(SlipType::MinerOutput);
+                output1.set_slip_ordinal(0);
 
                 let mut input2 = Slip::new();
                 input2.set_publickey(router_publickey);
                 input2.set_amount(0);
                 input2.set_slip_type(SlipType::RouterInput);
+                input2.set_slip_ordinal(1);
 
                 let mut output2 = Slip::new();
                 output2.set_publickey(router_publickey);
                 output2.set_amount(router_payment);
                 output2.set_slip_type(SlipType::RouterOutput);
+                output2.set_slip_ordinal(1);
 
                 transaction.add_input(input1);
                 transaction.add_output(output1);
@@ -823,6 +827,36 @@ impl Block {
             }
         }
 
+
+
+
+        //
+        // fee transactions and golden tickets
+        //
+        // set hash_for_signature for fee_tx as we cannot mutably fetch it
+        // during merkle_root generation as those functions require parallel
+        // processing in block validation. So some extra code here.
+        //
+        if cv.ft_idx != usize::MAX {
+            if !cv.fee_transaction.is_none() {
+            
+                //
+            	// fee-transaction must still pass validation rules
+            	//
+            	let fee_tx = cv.fee_transaction.unwrap();
+	    	let cv_ft_hash = hash(&fee_tx.serialize_for_signature());
+	    	let block_ft_hash = hash(&self.transactions[cv.ft_idx].serialize_for_signature());
+
+println!("hashes {:?} {:?}", cv_ft_hash, block_ft_hash);
+
+	    	if cv_ft_hash != block_ft_hash {
+	            println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");
+		    return false;
+	        }
+            }
+        }
+
+
         //
         // validate difficulty
         //
@@ -937,14 +971,22 @@ impl Block {
         // processing in block validation. So some extra code here.
         //
         if !cv.fee_transaction.is_none() {
+
             //
             // fee-transaction must still pass validation rules
             //
             let mut fee_tx = cv.fee_transaction.unwrap();
 
+	    //
+	    // block creator sends transaction inputs
+	    //
             for input in fee_tx.get_mut_inputs() {
                 input.set_publickey(wallet.get_publickey());
             }
+
+	    //
+	    // create tx hash
+	    //
             let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
             fee_tx.set_hash_for_signature(hash_for_signature);
 
