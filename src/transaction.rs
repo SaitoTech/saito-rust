@@ -2,16 +2,21 @@ use std::convert::TryInto;
 
 use crate::{
     crypto::{
-        hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
-        SaitoUTXOSetKey,
+        generate_random_bytes, hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey,
+        SaitoSignature, SaitoUTXOSetKey,
     },
-    slip::{Slip, SLIP_SIZE},
+    hop::Hop,
+    slip::{Slip, SlipType, SLIP_SIZE},
+    wallet::Wallet,
 };
 use ahash::AHashMap;
 use bigint::uint::U256;
 use enum_variant_count_derive::TryFromByte;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 pub const TRANSACTION_SIZE: usize = 85;
 
@@ -24,6 +29,7 @@ pub enum TransactionType {
     Normal,
     Fee,
     GoldenTicket,
+    Vip,
     Other,
 }
 
@@ -39,6 +45,7 @@ pub struct Transaction {
     transaction_type: TransactionType,
     #[serde_as(as = "[_; 64]")]
     signature: SaitoSignature,
+    path: Vec<Hop>,
 
     // hash used for merkle_root (does not include signature), and slip uuid
     hash_for_signature: SaitoHash,
@@ -48,8 +55,8 @@ pub struct Transaction {
     pub total_fees: u64,
     pub cumulative_fees: u64,
 
-    pub routing_work_to_me: u64,
-    pub routing_work_to_creator: u64,
+    pub routing_work_for_me: u64,
+    pub routing_work_for_creator: u64,
 }
 
 impl Transaction {
@@ -62,14 +69,228 @@ impl Transaction {
             message: vec![],
             transaction_type: TransactionType::Normal,
             signature: [0; 64],
+            path: vec![],
             hash_for_signature: [0; 32],
             total_in: 0,
             total_out: 0,
             total_fees: 0,
             cumulative_fees: 0,
-            routing_work_to_me: 0,
-            routing_work_to_creator: 0,
+            routing_work_for_me: 0,
+            routing_work_for_creator: 0,
         }
+    }
+
+    pub async fn add_hop_to_path(
+        &mut self,
+        wallet_lock: Arc<RwLock<Wallet>>,
+        to_publickey: SaitoPublicKey,
+    ) {
+        //
+        // msg is transaction signature and next peer
+        //
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.get_signature());
+        vbytes.extend(&to_publickey);
+        let hash_to_sign = hash(&vbytes);
+
+        let hop = Hop::generate_hop(wallet_lock.clone(), to_publickey, hash_to_sign).await;
+
+        //
+        // add to path
+        //
+        self.path.push(hop);
+    }
+
+    pub fn validate_routing_path(&self) -> bool {
+	for i in 0..self.path.len() {
+
+            //
+            // msg is transaction signature and next peer
+            //
+            let mut vbytes: Vec<u8> = vec![];
+            vbytes.extend(&self.get_signature());
+            vbytes.extend(&self.path[i].get_to());
+
+	    // check sig is valid
+	    if !verify(&hash(&vbytes), self.path[i].get_sig(), self.path[i].get_from()) { return false; }
+
+	    // check path is continuous
+	    if i > 0 { if self.path[i].get_from() != self.path[i-1].get_to() { return false; } }
+
+	}
+
+	return true;
+    }
+
+
+
+    //
+    // this function exists largely for testing. It attempts to attach the requested fee
+    // to the transaction if possible. If not possible it reverts back to a transaction
+    // with 1 zero-fee input and 1 zero-fee output.
+    //
+    pub async fn generate_transaction(
+        wallet_lock: Arc<RwLock<Wallet>>,
+        to_publickey: SaitoPublicKey,
+        with_payment: u64,
+        with_fee: u64,
+    ) -> Transaction {
+        let mut wallet = wallet_lock.write().await;
+        let wallet_publickey = wallet.get_publickey();
+
+        let available_balance = wallet.get_available_balance();
+        let total_requested = with_payment + with_fee;
+        //println!("in generate transaction ab: {} and pr: {} and fr: {}", available_balance, with_payment, with_fee);
+
+        if available_balance >= total_requested {
+            let mut transaction = Transaction::new();
+            let (mut input_slips, mut output_slips) = wallet.generate_slips(total_requested);
+            let input_len = input_slips.len();
+            let output_len = output_slips.len();
+
+            for _i in 0..input_len {
+                transaction.add_input(input_slips.remove(0));
+            }
+            for _i in 0..output_len {
+                transaction.add_output(output_slips.remove(0));
+            }
+
+            // add the payment
+            let mut output = Slip::new();
+            output.set_publickey(to_publickey);
+            output.set_amount(with_payment);
+            transaction.add_output(output);
+
+            //println!("inputs are: {}", transaction.get_inputs().len());
+
+            return transaction;
+        } else {
+            if available_balance > with_payment {
+                let mut transaction = Transaction::new();
+                let (mut input_slips, mut output_slips) = wallet.generate_slips(total_requested);
+                let input_len = input_slips.len();
+                let output_len = output_slips.len();
+
+                for _i in 0..input_len {
+                    transaction.add_input(input_slips.remove(0));
+                }
+                for _i in 0..output_len {
+                    transaction.add_output(output_slips.remove(0));
+                }
+
+                // add the payment
+                let mut output = Slip::new();
+                output.set_publickey(to_publickey);
+                output.set_amount(with_payment);
+                transaction.add_output(output);
+
+                return transaction;
+            }
+
+            if available_balance > with_fee {
+                let mut transaction = Transaction::new();
+                let (mut input_slips, mut output_slips) = wallet.generate_slips(total_requested);
+                let input_len = input_slips.len();
+                let output_len = output_slips.len();
+
+                for _i in 0..input_len {
+                    transaction.add_input(input_slips.remove(0));
+                }
+                for _i in 0..output_len {
+                    transaction.add_output(output_slips.remove(0));
+                }
+
+                return transaction;
+            }
+
+            //
+            // we have neither enough for the payment OR the fee, so
+            // we just create a transaction that has no payment AND no
+            // attached fee.
+            //
+            let mut transaction = Transaction::new();
+
+            let mut input1 = Slip::new();
+            input1.set_publickey(to_publickey);
+            input1.set_amount(0);
+            let random_uuid = hash(&generate_random_bytes(32));
+            input1.set_uuid(random_uuid);
+
+            let mut output1 = Slip::new();
+            output1.set_publickey(wallet_publickey);
+            output1.set_amount(0);
+            output1.set_uuid([0; 32]);
+
+            transaction.add_input(input1);
+            transaction.add_output(output1);
+
+            return transaction;
+        }
+    }
+
+    //
+    // generate a transaction that has more outputs than inputs. this is primarily being used for testing
+    // but it will be used to populate the first block with the VIP transactions in the future. VIP
+    // transactions are provided . they are distinct from normal transactions in that they do not have
+    // fees assessed for rebroadcasting. thank you to everyone who has supported Saito and help make
+    // this blockchain a reality. you deserve it.
+    //
+    pub async fn generate_vip_transaction(
+        _wallet_lock: Arc<RwLock<Wallet>>,
+        from_publickey: SaitoPublicKey,
+        to_publickey: SaitoPublicKey,
+        with_fee: u64,
+    ) -> Transaction {
+        let mut transaction = Transaction::new();
+        transaction.set_transaction_type(TransactionType::Vip);
+
+        let mut input = Slip::new();
+        input.set_publickey(from_publickey);
+        input.set_amount(0);
+        input.set_slip_type(SlipType::VipInput);
+
+        let mut output = Slip::new();
+        output.set_publickey(to_publickey);
+        output.set_amount(with_fee);
+        output.set_slip_type(SlipType::VipOutput);
+
+        transaction.add_input(input);
+        transaction.add_output(output);
+
+        transaction
+    }
+
+    pub fn get_routing_work_for_publickey(&self, publickey: SaitoPublicKey) -> u64 {
+
+        // there is not routing path
+        if self.path.len() == 0 {
+            return 0;
+        }
+
+        // we are not the last routing node
+        let last_hop = &self.path[self.path.len() - 1];
+        if last_hop.get_to() != publickey {
+            return 0;
+        }
+
+        let total_fees = self.get_total_fees();
+        let mut routing_work_available_to_publickey = total_fees;
+
+        //
+        // first hop gets ALL the routing work, so we start
+        // halving from the 2nd hop in the routing path
+        //
+        for _i in 1..self.path.len() {
+
+	    // return nothing if the path is broken
+	    if self.path[_i].get_to() != self.path[_i-1].get_from() { return 0; }
+
+	    // otherwise halve the work
+            let half_of_routing_work: u64 = routing_work_available_to_publickey / 2;
+            routing_work_available_to_publickey -= half_of_routing_work;
+        }
+
+        return routing_work_available_to_publickey;
     }
 
     pub fn add_input(&mut self, input_slip: Slip) {
@@ -86,6 +307,10 @@ impl Transaction {
 
     pub fn is_golden_ticket(&self) -> bool {
         self.transaction_type == TransactionType::GoldenTicket
+    }
+
+    pub fn get_path(&self) -> &Vec<Hop> {
+        &self.path
     }
 
     pub fn get_total_fees(&self) -> u64 {
@@ -193,10 +418,10 @@ impl Transaction {
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&self.timestamp.to_be_bytes());
         for input in &self.inputs {
-            vbytes.extend(&input.serialize_for_signature());
+            vbytes.extend(&input.serialize_input_for_signature());
         }
         for output in &self.outputs {
-            vbytes.extend(&output.serialize_for_signature());
+            vbytes.extend(&output.serialize_output_for_signature());
         }
         vbytes.extend(&(self.transaction_type as u32).to_be_bytes());
         vbytes.extend(&self.message);
@@ -304,16 +529,22 @@ impl Transaction {
     }
 
     //
-    // we have to calculate cumulative fees sequentially.
+    // we have to calculate cumulative fees and work sequentially.
     //
     pub fn pre_validation_calculations_cumulative_fees(&mut self, cumulative_fees: u64) -> u64 {
         self.cumulative_fees = cumulative_fees + self.total_fees;
         self.cumulative_fees
     }
-
+    pub fn pre_validation_calculations_cumulative_work(&mut self, cumulative_work: u64) -> u64 {
+        return cumulative_work + self.routing_work_for_creator;
+    }
     pub fn pre_validation_calculations_parallelizable(&mut self) -> bool {
         //
         // and save the hash_for_signature so we can use it later...
+        //
+        // note that we must generate the HASH before we change the UUID in the
+        // output slips created in this blog. Otherwise, our hash for the transaction
+        // will change since the slips will be generated with a different UUID.
         //
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         self.set_hash_for_signature(hash_for_signature);
@@ -321,8 +552,23 @@ impl Transaction {
         //
         // calculate nolan in / out, fees
         //
-        let nolan_in: u64 = self.inputs.iter().map(|input| input.get_amount()).sum();
-        let nolan_out: u64 = self.outputs.iter().map(|output| output.get_amount()).sum();
+        let mut nolan_in: u64 = 0;
+        let mut nolan_out: u64 = 0;
+        let hash_for_signature = self.get_hash_for_signature();
+
+        for input in &mut self.inputs {
+            nolan_in += input.get_amount();
+            // generate utxoset key cache
+            input.generate_utxoset_key();
+        }
+        for output in &mut self.outputs {
+            nolan_out += output.get_amount();
+
+            // generate utxoset key cache
+            // and set the UUID needed for insertion to shashmap
+            output.set_uuid(hash_for_signature);
+            output.generate_utxoset_key();
+        }
 
         self.total_in = nolan_in;
         self.total_out = nolan_out;
@@ -338,10 +584,18 @@ impl Transaction {
             self.total_fees = nolan_in - nolan_out;
         }
 
+	      //
+	      // we also need to know how much routing work exists and is available
+	      // for the block producer, to ensure that they have met the conditions
+	      // required by the burn fee for block production.
+	      //
+        self.routing_work_for_creator = self.get_routing_work_for_publickey(creator_publickey);
+
         true
     }
 
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+
         //
         // VALIDATE signature valid
         //
@@ -357,6 +611,15 @@ impl Transaction {
             println!("message verifies not");
             return false;
         }
+
+	//
+	// VALIDATE path sigs valid
+	//
+	if !self.validate_routing_path() {
+            println!("routing path does not validate, transaction invalid");
+            return false;
+	}
+
 
         //
         // VALIDATE min one sender and receiver
@@ -383,9 +646,16 @@ impl Transaction {
         //            return false;
         //        }
         //
-        // we make an exception for fee transactions, which may be pulling revenue from the
+        // we make an exception for fee and vip transactions, which may be pulling revenue from the
         // treasury in some amount.
-        if self.total_out > self.total_in && self.get_transaction_type() != TransactionType::Fee {
+        if self.total_out > self.total_in
+            && self.get_transaction_type() != TransactionType::Fee
+            && self.get_transaction_type() != TransactionType::Vip
+        {
+            println!("{} in and {} out", self.total_in, self.total_out);
+            for z in self.get_outputs() {
+                println!("{:?} --- ", z.get_amount());
+            }
             println!("ERROR 672941: transaction spends more than it has available");
             return false;
         }

@@ -74,6 +74,8 @@ pub struct Block {
     hash: SaitoHash,
     /// total fees paid into block
     total_fees: u64,
+    /// total fees paid into block
+    routing_work_for_creator: u64,
     /// Is Block on longest chain
     lc: bool,
     // has golden ticket
@@ -98,6 +100,7 @@ impl Block {
             transactions: vec![],
             hash: [0; 32],
             total_fees: 0,
+            routing_work_for_creator: 0,
             lc: false,
             has_golden_ticket: false,
             has_fee_transaction: false,
@@ -379,20 +382,15 @@ impl Block {
         block
     }
 
+    //
+    // TODO - this logic should probably be in the merkle-root class
+    //
     pub fn generate_merkle_root(&self) -> SaitoHash {
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
             .map(|tx| tx.get_hash_for_signature())
             .collect();
-
-        /*** KEEPING FOR SPEED REFERENCE TESTS ***
-                let mt = MerkleTree::from_vec(SHA256, tx_sig_hashes);
-                mt.root_hash()
-                    .clone()
-                    .try_into()
-                    .expect("Failed to unwrao merkle root")
-        *****************************************/
 
         let mut mrv: Vec<MerkleTreeLayer> = vec![];
 
@@ -431,7 +429,6 @@ impl Block {
             start_point = mrv.len();
 
             for i in (start_point_old..stop_point).step_by(2) {
-                //println!("looping in hash loop with {:?}", i);
                 if (i + 1) < stop_point {
                     mrv.push(MerkleTreeLayer::new(
                         mrv[i].get_hash(),
@@ -644,21 +641,33 @@ impl Block {
         //
         // PARALLEL PROCESSING of most data
         //
-        self.transactions
+      	let creator_publickey = self.get_creator();
+
+        let _transactions_pre_calculated = &self
+            .transactions
             .par_iter_mut()
-            .all(|tx| tx.pre_validation_calculations_parallelizable());
+            .all(|tx| tx.pre_validation_calculations_parallelizable(creator_publickey));
 
         println!(" ... block.prevalid - pst hash:  {:?}", create_timestamp());
+
         //
         // CUMULATIVE FEES only AFTER parallel calculations
         //
+        // we need to calculate the cumulative figures AFTER the 
+        // transactions have been fleshed out with all of the 
+        // original figures.
+        //
         let mut cumulative_fees = 0;
+        let mut cumulative_work = 0;
+        let mut hgt = false;
+        let mut hft = false;
+
         let mut has_golden_ticket = false;
         let mut has_fee_transaction = false;
 
         for transaction in &mut self.transactions {
-            cumulative_fees =
-                transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
+            cumulative_fees = transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
+            cumulative_work = transaction.pre_validation_calculations_cumulative_work(cumulative_work);
 
             //
             // also check the transactions for golden ticket and fees
@@ -677,6 +686,7 @@ impl Block {
         // update block with total fees
         //
         self.total_fees = cumulative_fees;
+        self.routing_work_for_creator = cumulative_work;
         println!(" ... block.pre_validation_done:  {:?}", create_timestamp());
 
         true
@@ -688,12 +698,17 @@ impl Block {
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
         println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
+
         //
         // validate burn fee
         //
         let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
         {
             if !previous_block.is_none() {
+
+		//
+		// new burn fee must be correct
+		//
                 let new_burnfee: u64 =
                     BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
                         previous_block.unwrap().get_burnfee(),
@@ -707,6 +722,22 @@ impl Block {
                     );
                     return false;
                 }
+
+
+		//
+		// routing work must be adequate given block time difference
+		//
+	        let amount_of_routing_work_needed: u64 = 
+		    BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
+	                previous_block.unwrap().get_burnfee(),
+                        self.get_timestamp(),
+                        previous_block.unwrap().get_timestamp(),
+    	            );
+		if self.routing_work_for_creator < amount_of_routing_work_needed {
+	            println!("Error 510293: block lacking adequate routing work from creator");
+	            return false;
+	        }
+
             } else {
                 // TODO assert that this is the first (or second?) block! ?
             }
@@ -730,11 +761,13 @@ impl Block {
         }
 
         println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
+
         //
         // validate fee-transaction (miner/router/staker) payments
         //
         //
         let cv = self.generate_data_to_validate(&blockchain);
+
 
         //
         // validate difficulty
@@ -816,6 +849,7 @@ impl Block {
         }
         println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
 
+
         //
         // VALIDATE transactions
         //
@@ -882,6 +916,26 @@ impl Block {
         }
 
         //
+        // set our initial transactions
+        //
+        let wallet_publickey = wallet.get_publickey();
+        let wallet_privatekey = wallet.get_privatekey();
+        if previous_block_id == 0 {
+            for i in 0..10 {
+                println!("generating VIP transaction {}", i);
+                let mut transaction = Transaction::generate_vip_transaction(
+                    wallet_lock.clone(),
+                    wallet_publickey,
+                    wallet_publickey,
+                    100000,
+                )
+                .await;
+                transaction.sign(wallet_privatekey);
+                block.add_transaction(transaction);
+            }
+        }
+
+        //
         // create
         //
         let cv: DataToValidate = block.generate_data_to_validate(&blockchain);
@@ -922,8 +976,9 @@ impl Block {
         }
 
         let block_merkle_root = block.generate_merkle_root();
-        println!("NEWLY CREATED MERKLE ROOT: {:?}", &block_merkle_root);
+        println!("setting merkle root as: {:?}", block_merkle_root);
         block.set_merkle_root(block_merkle_root);
+
         let block_hash = block.generate_hash();
         block.set_hash(block_hash);
 
