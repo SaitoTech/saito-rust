@@ -14,6 +14,7 @@ pub const SLIP_SIZE: usize = 75;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq, TryFromByte)]
 pub enum SlipType {
     Normal,
+    ATR,
     VipInput,
     VipOutput,
     MinerInput,
@@ -52,6 +53,7 @@ impl Slip {
             is_utxoset_key_set: false,
         }
     }
+
 
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_amount() > 0 {

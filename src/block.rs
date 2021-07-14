@@ -38,6 +38,8 @@ pub struct DataToValidate {
     pub gt_idx: Option<usize>,
     // expected difficulty
     pub expected_difficulty: u64,
+    // rebroadcast txs
+    pub rebroadcasts: Vec<Transaction>
 }
 impl DataToValidate {
     #[allow(clippy::too_many_arguments)]
@@ -49,6 +51,7 @@ impl DataToValidate {
             gt_num: 0,
             gt_idx: None,
             expected_difficulty: 0,
+    	    rebroadcasts: vec![],
         }
     }
 }
@@ -472,7 +475,7 @@ impl Block {
         let router_publickey;
 
         //
-        // calculate total fees in block
+        // calculate total fees
         //
         let mut idx: usize = 0;
         for transaction in &self.transactions {
@@ -494,10 +497,14 @@ impl Block {
             idx += 1;
         }
 
+	//
+	// calculate payments
+	//
         if let Some(gt_idx) = gt_idx_option {
-            //
-            // grab random solution from golden ticket
-            //
+
+	    //
+            // grab random input from golden ticket
+	    //
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
@@ -627,8 +634,9 @@ impl Block {
             cv.gt_num = gt_num;
         }
 
+
         //
-        // validate difficulty
+        // calculate expected burn-fee given previous block
         //
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
             let difficulty = previous_block.get_difficulty();
@@ -642,6 +650,49 @@ impl Block {
                 cv.expected_difficulty = difficulty;
             }
         }
+
+
+        //
+        // calculate automatic transaction rebroadcasts / ATR / atr
+        //
+	let mut total_rebroadcast_slips: u64 = 0;
+	let mut total_rebroadcast_nolan: u64 = 0;
+	let pruned_block_hash = blockchain.blockring.get_longest_chain_block_hash_by_block_id(self.get_id()-2);
+println!("pruned block hash: {:?}", pruned_block_hash);
+
+        if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
+
+	    //
+	    // identify all unspent transactions
+	    //
+	    for transaction in &pruned_block.transactions {
+	        for output in transaction.get_outputs() {
+
+		    //
+		    // valid means spendable and non-zero
+		    //
+		    if output.validate(&blockchain.utxoset) {
+
+			total_rebroadcast_slips += 1;
+			total_rebroadcast_nolan += output.get_amount();
+
+			//
+			// create rebroadcast transaction
+			//
+			// TODO - floating fee based on previous block average
+			//
+			let rebroadcast_transaction = Transaction::generate_rebroadcast_transaction(
+			    &transaction,
+			    output,
+			    200_000_000,
+			);
+
+println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
+			cv.rebroadcasts.push(rebroadcast_transaction);
+		    }
+		}
+	    }
+	}
 
         cv
     }

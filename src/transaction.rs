@@ -29,6 +29,7 @@ pub enum TransactionType {
     Normal,
     Fee,
     GoldenTicket,
+    ATR,
     Vip,
     Other,
 }
@@ -256,6 +257,69 @@ impl Transaction {
 
         transaction.add_input(input);
         transaction.add_output(output);
+
+        transaction
+    }
+
+
+    // 
+    // 
+    // generate ATR transaction using source transaction and output slip
+    //
+    // this assumes that the 
+    //
+    pub fn generate_rebroadcast_transaction(
+        transaction_to_rebroadcast: &Transaction,
+        output_slip_to_rebroadcast: &Slip,
+        with_fee: u64,
+    ) -> Transaction {
+
+        let mut transaction = Transaction::new();
+        let mut output_payment = output_slip_to_rebroadcast.get_amount() - with_fee;
+	if (output_payment < 0) { output_payment = 0; }
+
+        transaction.set_transaction_type(TransactionType::ATR);
+
+        let mut input = Slip::new();
+        input.set_publickey(output_slip_to_rebroadcast.get_publickey());
+        input.set_amount(output_slip_to_rebroadcast.get_amount());
+        input.set_slip_type(output_slip_to_rebroadcast.get_slip_type());
+
+        let mut output = Slip::new();
+        output.set_publickey(output_slip_to_rebroadcast.get_publickey());
+        output.set_amount(output_payment);
+        output.set_slip_type(SlipType::ATR);
+        output.set_uuid(output_slip_to_rebroadcast.get_uuid());
+        
+	if input.get_slip_type() == SlipType::ATR {
+
+	    //
+	    // this is not our first rebroadcast, which means we just 
+	    // need to copy the rebroadcast message field when making
+	    // this transaction.
+	    //
+	    transaction.set_message(transaction_to_rebroadcast.get_message().to_vec());
+
+	} else {
+
+	    //
+	    // this is our first rebroadcast, so we need to set the 
+	    // message field in the transaction to the content of the 
+	    // original transaction being rebroadcast.
+	    //
+	    transaction.set_message(transaction_to_rebroadcast.serialize_for_net().to_vec());
+
+	}
+
+        transaction.add_input(input);
+        transaction.add_output(output);
+
+	//
+	// signature is the ORIGINAL signature. this transaction
+	// will fail its signature check and then get analysed as 
+	// a rebroadcast transaction because of its transaction type.
+	//
+	transaction.set_signature(transaction_to_rebroadcast.get_signature());
 
         transaction
     }
