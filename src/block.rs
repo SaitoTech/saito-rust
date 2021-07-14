@@ -1,16 +1,6 @@
-use crate::{
-    blockchain::Blockchain,
-    burnfee::BurnFee,
-    crypto::{
+use crate::{blockchain::{Blockchain, UtxoSet}, burnfee::BurnFee, crypto::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
-    },
-    golden_ticket::GoldenTicket,
-    merkle::MerkleTreeLayer,
-    slip::{Slip, SlipType, SLIP_SIZE},
-    time::create_timestamp,
-    transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
-    wallet::Wallet,
-};
+    }, golden_ticket::GoldenTicket, merkle::MerkleTreeLayer, slip::{Slip, SlipType, SLIP_SIZE}, time::create_timestamp, transaction::{Transaction, TransactionType, TRANSACTION_SIZE}, wallet::Wallet};
 use ahash::AHashMap;
 use bigint::uint::U256;
 use rayon::prelude::*;
@@ -682,113 +672,80 @@ impl Block {
         true
     }
 
-    // pub fn validate(
-    //     &self,
-    //     blockchain: &Blockchain,
-    //     utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
-    // ) -> bool {
-    //     println!(" ... block.validate: (merkle rt) {:?}", create_timestamp());
-    //     //
-    //     // verify merkle root
-    //     //
-    //     if self.merkle_root == [0; 32] {
-    //         println!("merkle root is unset / false 1");
-    //         return false;
-    //     }
+    pub fn validate(
+        &self,
+        blockchain: &Blockchain,
+        utxoset: &UtxoSet,
+    ) -> bool {
+        println!(" ... block.validate: (merkle rt) {:?}", create_timestamp());
+        // verify merkle root
+        if self.get_merkle_root() == [0; 32] && self.get_merkle_root() != self.generate_merkle_root() {
+            println!("merkle root is unset or is invalid false 1");
+            return false;
+        }
 
-    //     //
-    //     // verify merkle root
-    //     //
-    //     if self.merkle_root != self.generate_merkle_root() {
-    //         println!("merkle root is false 2");
-    //         return false;
-    //     }
+        // validate burn fee
+        if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+            println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
+            let new_burnfee: u64 =
+                BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
+                    previous_block.get_burnfee(),
+                    self.get_timestamp(),
+                    previous_block.get_timestamp(),
+                );
 
-    //     println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
-    //     //
-    //     // validate fee-transaction (miner/router/staker) payments
-    //     //
-    //     //
-    //     let cv = self.generate_data_to_validate(&blockchain);
+            if new_burnfee != self.get_burnfee() {
+                println!(
+                    "ERROR: burn fee does not validate, expected: {}",
+                    new_burnfee
+                );
+                return false;
+            }
 
-    //     //
-    //     // validate difficulty
-    //     //
-    //     if cv.expected_difficulty != self.get_difficulty() {
-    //         println!(
-    //             "difficulty is false {} vs {}",
-    //             cv.expected_difficulty,
-    //             self.get_difficulty()
-    //         );
-    //         return false;
-    //     }
+            println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
+            // validate fee-transaction (miner/router/staker) payments
+            let cv = self.generate_data_to_validate(&blockchain);
 
-    //     //
-    //     // validate burn fee
-    //     //
-    //     if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-    //         println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
-    //         let new_burnfee: u64 =
-    //             BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-    //                 previous_block.get_burnfee(),
-    //                 self.get_timestamp(),
-    //                 previous_block.get_timestamp(),
-    //             );
+            // validate difficulty
+            if cv.expected_difficulty != self.get_difficulty() {
+                println!(
+                    "difficulty is false {} vs {}",
+                    cv.expected_difficulty,
+                    self.get_difficulty()
+                );
+                return false;
+            }
 
-    //         if new_burnfee != self.get_burnfee() {
-    //             println!(
-    //                 "ERROR: burn fee does not validate, expected: {}",
-    //                 new_burnfee
-    //             );
-    //             return false;
-    //         }
+            // validate golden ticket
+            if let Some(gt_idx) = cv.gt_idx {
+                let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
+                    self.get_transactions()[gt_idx].get_message().to_vec(),
+                );
+                let solution = GoldenTicket::generate_solution(
+                    golden_ticket.get_random(),
+                    golden_ticket.get_publickey(),
+                );
+                if !GoldenTicket::is_valid_solution(
+                    previous_block.get_hash(),
+                    solution,
+                    previous_block.get_difficulty(),
+                ) {
+                    println!("ERROR: Golden Ticket solution does not validate against previous block hash and difficulty");
+                    return false;
+                }
+            }
+            println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
+        }
 
-    //         //
-    //         // validate difficulty
-    //         //
-    //         if cv.expected_difficulty != self.get_difficulty() {
-    //             println!(
-    //                 "Block difficulty is {} but we expect {}",
-    //                 self.get_difficulty(),
-    //                 cv.expected_difficulty
-    //             );
-    //             return false;
-    //         }
+        // VALIDATE transactions
+        let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset));
 
-    //         //
-    //         // validate golden ticket
-    //         //
-    //         if let Some(gt_idx) = cv.gt_idx {
-    //             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
-    //                 self.transactions[gt_idx].get_message().to_vec(),
-    //             );
-    //             let solution = GoldenTicket::generate_solution(
-    //                 golden_ticket.get_random(),
-    //                 golden_ticket.get_publickey(),
-    //             );
-    //             if !GoldenTicket::is_valid_solution(
-    //                 previous_block.get_hash(),
-    //                 solution,
-    //                 previous_block.get_difficulty(),
-    //             ) {
-    //                 println!("ERROR: Golden Ticket solution does not validate against previous block hash and difficulty");
-    //                 return false;
-    //             }
-    //         }
-    //         println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
-    //     }
+        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
-    //     //
-    //     // VALIDATE transactions
-    //     //
-    //     let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate(&utxoset));
+        transactions_valid
+    }
 
-    //     println!(" ... block.validate: (done all)  {:?}", create_timestamp());
-
-    //     true
-    // }
-
-    pub async fn generate_block(
+    pub async fn generate(
         transactions: &mut Vec<Transaction>,
         previous_block_hash: SaitoHash,
         wallet_lock: Arc<RwLock<Wallet>>,
@@ -893,6 +850,8 @@ impl Block {
         block.set_merkle_root(block_merkle_root);
         let block_hash = block.generate_hash();
         block.set_hash(block_hash);
+
+        block.pre_validation_calculations();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
 

@@ -1,4 +1,4 @@
-use crate::crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey};
+use crate::{blockchain::UtxoSet, crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey}};
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
 
@@ -51,20 +51,19 @@ impl Slip {
         }
     }
 
-    // pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-    //     if self.get_amount() > 0 {
-    //         let mut _return_value = false;
-    //         match utxoset.get(&self.utxoset_key) {
-    //             Some(value) => {
-    //                 if *value == 1 {
-    //                     _return_value = true;
-    //                 }
-    //             }
-    //             None => {}
-    //         }
-    //     }
-    //     true
-    // }
+    pub fn validate(
+        &self,
+        utxoset: &UtxoSet
+    ) -> bool {
+        if self.get_amount() > 0 {
+            match utxoset.get(&self.utxoset_key) {
+                Some(value) => *value == 1,
+                None => false
+            }
+        } else {
+            true
+        }
+    }
 
     pub fn on_chain_reorganization(
         &self,

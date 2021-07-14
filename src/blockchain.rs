@@ -27,9 +27,11 @@ pub fn bit_unpack(packed: u64) -> (u32, u32) {
     (top, bottom)
 }
 
+pub type UtxoSet = AHashMap<SaitoUTXOSetKey, u64>;
+
 #[derive(Debug)]
 pub struct Blockchain {
-    pub utxoset: AHashMap<SaitoUTXOSetKey, u64>,
+    pub utxoset: UtxoSet,
     pub blockring: BlockRing,
     pub blocks: AHashMap<SaitoHash, Block>,
     pub wallet_lock: Arc<RwLock<Wallet>>,
@@ -421,22 +423,16 @@ impl Blockchain {
         // structures. So validation is "read-only" and our "write" actions
         // happen first.
         //
-        // {
-        let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
-        // }
-
-        // let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
+        let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
         println!("BLOCK: {:?}", block);
 
         println!(" ... before block.validate:      {:?}", create_timestamp());
-        let does_block_validate = self.validate_block(block);
-        // block.validate(&self, &self.utxoset);
+        let does_block_validate = block.validate(&self, &self.utxoset);
         println!(" ... after block.validate:       {:?}", create_timestamp());
 
         if does_block_validate {
             println!(" ... before block ocr            {:?}", create_timestamp());
-            // block.on_chain_reorganization(&mut self.utxoset, true);
-            self.on_chain_reorganization(block, true);
+            block.on_chain_reorganization(&mut self.utxoset, true);
             println!(" ... before blockring ocr:       {:?}", create_timestamp());
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
@@ -573,176 +569,6 @@ impl Blockchain {
         }
     }
 
-    pub fn validate_block(
-        &self,
-        block: &mut Block
-    ) -> bool {
-        // true
-        block.pre_validation_calculations();
-
-        println!(" ... block.validate: (merkle rt) {:?}", create_timestamp());
-        //
-        // verify merkle root
-        //
-        if block.get_merkle_root() == [0; 32] && block.get_merkle_root() != block.generate_merkle_root() {
-            println!("merkle root is unset or is invalid false 1");
-            return false;
-        }
-
-        //
-        // validate burn fee
-        //
-        if let Some(previous_block) = self.blocks.get(&block.get_previous_block_hash()) {
-            println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
-            let new_burnfee: u64 =
-                BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-                    previous_block.get_burnfee(),
-                    block.get_timestamp(),
-                    previous_block.get_timestamp(),
-                );
-
-            if new_burnfee != block.get_burnfee() {
-                println!(
-                    "ERROR: burn fee does not validate, expected: {}",
-                    new_burnfee
-                );
-                return false;
-            }
-
-            println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
-            //
-            // validate fee-transaction (miner/router/staker) payments
-            //
-            //
-            let cv = block.generate_data_to_validate(&self);
-
-            //
-            // validate difficulty
-            //
-            if cv.expected_difficulty != block.get_difficulty() {
-                println!(
-                    "difficulty is false {} vs {}",
-                    cv.expected_difficulty,
-                    block.get_difficulty()
-                );
-                return false;
-            }
-
-            //
-            // validate golden ticket
-            //
-            if let Some(gt_idx) = cv.gt_idx {
-                let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
-                    block.get_transactions()[gt_idx].get_message().to_vec(),
-                );
-                let solution = GoldenTicket::generate_solution(
-                    golden_ticket.get_random(),
-                    golden_ticket.get_publickey(),
-                );
-                if !GoldenTicket::is_valid_solution(
-                    previous_block.get_hash(),
-                    solution,
-                    previous_block.get_difficulty(),
-                ) {
-                    println!("ERROR: Golden Ticket solution does not validate against previous block hash and difficulty");
-                    return false;
-                }
-            }
-            println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
-        }
-
-        //
-        // VALIDATE transactions
-        //
-        let transactions_valid = block.transactions.par_iter().all(|tx| self.validate_transaction(tx));
-
-        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
-
-        transactions_valid
-    }
-
-    fn validate_transaction(
-        &self,
-        transaction: &Transaction,
-    ) -> bool {
-        if let Some(hash_for_signature) = transaction.get_hash_for_signature() {
-            let sig: SaitoSignature = transaction.get_signature();
-
-            if transaction.get_inputs().is_empty() {
-                println!("Transaction must have at least 1 input");
-                return false;
-            }
-            let publickey: SaitoPublicKey = transaction.get_inputs()[0].get_publickey();
-
-            if !verify(&hash_for_signature, sig, publickey) {
-                println!("message verifies not");
-                return false;
-            }
-        }
-
-        //
-        // VALIDATE min one sender and receiver
-        //
-        if transaction.get_inputs().is_empty() {
-            println!("ERROR 582039: less than 1 input in transaction");
-            return false;
-        }
-        if transaction.get_outputs().is_empty() {
-            println!("ERROR 582039: less than 1 output in transaction");
-            return false;
-        }
-
-        // treasury in some amount.
-        if transaction.total_out > transaction.total_in && transaction.get_transaction_type() != TransactionType::Fee {
-            println!("ERROR 672941: transaction spends more than it has available");
-            return false;
-        }
-
-        transaction.inputs.par_iter().all(|input| self.validate_slip(input))
-    }
-
-    fn validate_slip(
-        &self,
-        slip: &Slip
-    ) -> bool {
-        if slip.get_amount() > 0 {
-            match self.utxoset.get(&slip.get_utxoset_key()) {
-                Some(value) => *value == 1,
-                None => false
-            }
-        } else {
-            true
-        }
-    }
-
-    pub fn on_chain_reorganization(
-        &mut self,
-        block: &Block,
-        longest_chain: bool,
-    ) {
-        let mut input_slip_value = 1;
-        let mut output_slip_value = 0;
-        if longest_chain {
-            input_slip_value = block.get_id();
-            output_slip_value = 1;
-        }
-        block.transactions.iter().for_each(|tx| {
-            tx.inputs.iter().for_each(|input| {
-                self.slip_reorganization(input, input_slip_value)
-            });
-            tx.outputs.iter().for_each(|output| {
-                self.slip_reorganization(output, output_slip_value)
-            })
-        });
-        self.blockring
-                .on_chain_reorganization(block.get_id(), block.get_hash(), true);
-    }
-
-    pub fn slip_reorganization(&mut self, slip: &Slip, value: u64) {
-        if slip.get_amount() > 0 {
-            self.utxoset.entry(slip.get_utxoset_key()).or_insert(value);
-        }
-    }
 }
 
 // This function is called on initialization to setup the sending
@@ -938,7 +764,7 @@ mod tests {
         {
             let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
             sleep(Duration::from_millis(10));
-            mock_block_1 = Block::generate_block(
+            mock_block_1 = Block::generate(
                 &mut txs,
                 [0; 32],
                 wallet_lock.clone(),
@@ -960,7 +786,7 @@ mod tests {
             {
                 let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
                 sleep(Duration::from_millis(10));
-                next_block = Block::generate_block(
+                next_block = Block::generate(
                     &mut txs,
                     next_block.get_hash(),
                     wallet_lock.clone(),
@@ -984,7 +810,7 @@ mod tests {
         {
             let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
             sleep(Duration::from_millis(10));
-            next_block = Block::generate_block(
+            next_block = Block::generate(
                 &mut txs,
                 mock_block_1.get_hash(),
                 wallet_lock.clone(),
@@ -1005,7 +831,7 @@ mod tests {
             {
                 let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
                 sleep(Duration::from_millis(10));
-                next_block = Block::generate_block(
+                next_block = Block::generate(
                     &mut txs,
                     next_block.get_hash(),
                     wallet_lock.clone(),
@@ -1027,7 +853,7 @@ mod tests {
         {
             let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
             sleep(Duration::from_millis(10));
-            next_block = Block::generate_block(
+            next_block = Block::generate(
                 &mut txs,
                 next_block.get_hash(),
                 wallet_lock.clone(),
