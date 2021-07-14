@@ -41,7 +41,7 @@ impl Wallet {
     pub fn add_slip(&mut self, block: &Block, transaction: &Transaction, slip: &Slip, lc: bool) {
         let mut wallet_slip = WalletSlip::new();
 
-        wallet_slip.set_uuid(transaction.get_hash_for_signature());
+        wallet_slip.set_uuid(transaction.get_hash_for_signature().unwrap());
         wallet_slip.set_utxokey(slip.get_utxoset_key());
         wallet_slip.set_amount(slip.get_amount());
         wallet_slip.set_block_id(block.get_id());

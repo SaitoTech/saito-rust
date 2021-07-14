@@ -51,20 +51,20 @@ impl Slip {
         }
     }
 
-    pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-        if self.get_amount() > 0 {
-            let mut _return_value = false;
-            match utxoset.get(&self.utxoset_key) {
-                Some(value) => {
-                    if *value == 1 {
-                        _return_value = true;
-                    }
-                }
-                None => {}
-            }
-        }
-        true
-    }
+    // pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+    //     if self.get_amount() > 0 {
+    //         let mut _return_value = false;
+    //         match utxoset.get(&self.utxoset_key) {
+    //             Some(value) => {
+    //                 if *value == 1 {
+    //                     _return_value = true;
+    //                 }
+    //             }
+    //             None => {}
+    //         }
+    //     }
+    //     true
+    // }
 
     pub fn on_chain_reorganization(
         &self,

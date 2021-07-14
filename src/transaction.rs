@@ -32,8 +32,8 @@ pub enum TransactionType {
 pub struct Transaction {
     // the bulk of the consensus transaction data
     timestamp: u64,
-    inputs: Vec<Slip>,
-    outputs: Vec<Slip>,
+    pub inputs: Vec<Slip>,
+    pub outputs: Vec<Slip>,
     #[serde(with = "serde_bytes")]
     message: Vec<u8>,
     transaction_type: TransactionType,
@@ -41,7 +41,7 @@ pub struct Transaction {
     signature: SaitoSignature,
 
     // hash used for merkle_root (does not include signature), and slip uuid
-    hash_for_signature: SaitoHash,
+    hash_for_signature: Option<SaitoHash>,
 
     pub total_in: u64,
     pub total_out: u64,
@@ -62,7 +62,7 @@ impl Transaction {
             message: vec![],
             transaction_type: TransactionType::Normal,
             signature: [0; 64],
-            hash_for_signature: [0; 32],
+            hash_for_signature: None,
             total_in: 0,
             total_out: 0,
             total_fees: 0,
@@ -120,7 +120,7 @@ impl Transaction {
         &self.message
     }
 
-    pub fn get_hash_for_signature(&self) -> SaitoHash {
+    pub fn get_hash_for_signature(&self) -> Option<SaitoHash> {
         self.hash_for_signature
     }
 
@@ -168,7 +168,7 @@ impl Transaction {
     }
 
     pub fn set_hash_for_signature(&mut self, hash: SaitoHash) {
-        self.hash_for_signature = hash;
+        self.hash_for_signature = Some(hash);
     }
 
     pub fn sign(&mut self, privatekey: SaitoPrivateKey) {
@@ -311,12 +311,12 @@ impl Transaction {
         self.cumulative_fees
     }
 
-    pub fn pre_validation_calculations_parallelizable(&mut self) -> bool {
+    pub fn calculate_total_fees(&mut self) -> bool {
         //
         // and save the hash_for_signature so we can use it later...
         //
-        let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
-        self.set_hash_for_signature(hash_for_signature);
+        // let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
+        // self.set_hash_for_signature(hash_for_signature);
 
         //
         // calculate nolan in / out, fees
@@ -341,65 +341,67 @@ impl Transaction {
         true
     }
 
-    pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-        //
-        // VALIDATE signature valid
-        //
-        let hash_for_signature: SaitoHash = self.get_hash_for_signature();
-        let sig: SaitoSignature = self.get_signature();
+    // pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+    //     //
+    //     // VALIDATE signature valid
+    //     //
+    //     if let Some(hash_for_signature) = self.get_hash_for_signature() {
+    //         let sig: SaitoSignature = self.get_signature();
 
-        if self.inputs.is_empty() {
-            panic!("transaction must have at least 1 input");
-        }
-        let publickey: SaitoPublicKey = self.inputs[0].get_publickey();
+    //         if self.inputs.is_empty() {
+    //             println!("Transaction must have at least 1 input");
+    //             return false;
+    //         }
+    //         let publickey: SaitoPublicKey = self.inputs[0].get_publickey();
 
-        if !verify(&hash_for_signature, sig, publickey) {
-            println!("message verifies not");
-            return false;
-        }
+    //         if !verify(&hash_for_signature, sig, publickey) {
+    //             println!("message verifies not");
+    //             return false;
+    //         }
+    //     }
 
-        //
-        // VALIDATE min one sender and receiver
-        //
-        if self.get_inputs().len() < 1 {
-            println!("ERROR 582039: less than 1 input in transaction");
-            return false;
-        }
-        if self.get_outputs().len() < 1 {
-            println!("ERROR 582039: less than 1 output in transaction");
-            return false;
-        }
+    //     //
+    //     // VALIDATE min one sender and receiver
+    //     //
+    //     if self.get_inputs().len() < 1 {
+    //         println!("ERROR 582039: less than 1 input in transaction");
+    //         return false;
+    //     }
+    //     if self.get_outputs().len() < 1 {
+    //         println!("ERROR 582039: less than 1 output in transaction");
+    //         return false;
+    //     }
 
-        //
-        // VALIDATE no negative payments
-        //
-        // Rust Types prevent these variables being < 0
-        //        if nolan_in < 0 {
-        //            println!("ERROR 672939: negative payment in transaction from slip");
-        //            return false;
-        //        }
-        //        if nolan_out < 0 {
-        //            println!("ERROR 672940: negative payment in transaction to slip");
-        //            return false;
-        //        }
-        //
-        // we make an exception for fee transactions, which may be pulling revenue from the
-        // treasury in some amount.
-        if self.total_out > self.total_in && self.get_transaction_type() != TransactionType::Fee {
-            println!("ERROR 672941: transaction spends more than it has available");
-            return false;
-        }
+    //     //
+    //     // VALIDATE no negative payments
+    //     //
+    //     // Rust Types prevent these variables being < 0
+    //     //        if nolan_in < 0 {
+    //     //            println!("ERROR 672939: negative payment in transaction from slip");
+    //     //            return false;
+    //     //        }
+    //     //        if nolan_out < 0 {
+    //     //            println!("ERROR 672940: negative payment in transaction to slip");
+    //     //            return false;
+    //     //        }
+    //     //
+    //     // we make an exception for fee transactions, which may be pulling revenue from the
+    //     // treasury in some amount.
+    //     if self.total_out > self.total_in && self.get_transaction_type() != TransactionType::Fee {
+    //         println!("ERROR 672941: transaction spends more than it has available");
+    //         return false;
+    //     }
 
-        //
-        // VALIDATE UTXO inputs
-        //
-        for input in &self.inputs {
-            if !input.validate(utxoset) {
-                return false;
-            }
-        }
-        true
-    }
+    //     //
+    //     // VALIDATE UTXO inputs
+    //     //
+    //     for input in &self.inputs {
+    //         if !input.validate(utxoset) {
+    //             return false;
+    //         }
+    //     }
+    //     true
+    // }
 }
 
 #[cfg(test)]
@@ -416,7 +418,7 @@ mod tests {
         assert_eq!(tx.message, Vec::<u8>::new());
         assert_eq!(tx.transaction_type, TransactionType::Normal);
         assert_eq!(tx.signature, [0; 64]);
-        assert_eq!(tx.hash_for_signature, [0; 32]);
+        assert_eq!(tx.hash_for_signature, None);
         assert_eq!(tx.total_in, 0);
         assert_eq!(tx.total_out, 0);
         assert_eq!(tx.total_fees, 0);
@@ -435,7 +437,7 @@ mod tests {
 
         assert_eq!(tx.get_outputs()[0].get_slip_ordinal(), 0);
         assert_ne!(tx.get_signature(), [0; 64]);
-        assert_ne!(tx.get_hash_for_signature(), [0; 32]);
+        assert_ne!(tx.get_hash_for_signature(), Some([0; 32]));
     }
 
     #[test]
