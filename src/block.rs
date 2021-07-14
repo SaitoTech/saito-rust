@@ -31,11 +31,11 @@ pub struct DataToValidate {
     // number of FEE in transactions if exists
     pub ft_num: u8,
     // index of FEE in transactions if exists
-    pub ft_idx: usize,
+    pub ft_idx: Option<usize>,
     // number of GT in transactions if exists
     pub gt_num: u8,
     // index of GT in transactions if exists
-    pub gt_idx: usize,
+    pub gt_idx: Option<usize>,
     // expected difficulty
     pub expected_difficulty: u64,
 }
@@ -45,9 +45,9 @@ impl DataToValidate {
         DataToValidate {
             fee_transaction: None,
             ft_num: 0,
-            ft_idx: usize::MAX,
+            ft_idx: None,
             gt_num: 0,
-            gt_idx: usize::MAX,
+            gt_idx: None,
             expected_difficulty: 0,
         }
     }
@@ -463,8 +463,8 @@ impl Block {
 
         let mut gt_num: u8 = 0;
         let mut ft_num: u8 = 0;
-        let mut gt_idx: usize = usize::MAX;
-        let mut ft_idx: usize = usize::MAX;
+        let mut gt_idx_option: Option<usize> = None;
+        let mut ft_idx_option: Option<usize> = None;
         let mut total_fees = 0;
         let miner_publickey;
         let router_publickey;
@@ -479,19 +479,19 @@ impl Block {
                 total_fees += transaction.get_total_fees();
             } else {
                 ft_num += 1;
-                ft_idx = idx;
+                ft_idx_option = Some(idx);
             }
 
             // gt transaction
             if transaction.is_golden_ticket() {
                 gt_num += 1;
-                gt_idx = idx;
+                gt_idx_option = Some(idx);
             }
 
             idx += 1;
         }
 
-        if gt_num > 0 && gt_idx != usize::MAX {
+        if let Some(gt_idx) = gt_idx_option {
             //
             // grab random solution from golden ticket
             //
@@ -510,13 +510,14 @@ impl Block {
             // find winning router
             //
             let x = U256::from_big_endian(&miner_random);
-            let mut y = total_fees;
             //
             // TODO - y cannot be zero or divide by zero
             //
-            if y == 0 {
-                y = 100;
-            }
+            let y = match total_fees {
+                0 => 100,
+                diff => diff,
+            };
+
             let z = U256::from_big_endian(&y.to_be_bytes());
             let (winning_router, _bolres) = x.overflowing_rem(z);
             let winning_nolan_in_fees = winning_router.low_u64();
@@ -589,34 +590,29 @@ impl Block {
             // fee transaction added to consensus values
             //
             cv.fee_transaction = Some(fee_transaction);
-            cv.ft_idx = ft_idx;
+            cv.ft_idx = ft_idx_option;
             cv.ft_num = ft_num;
-            cv.gt_idx = gt_idx;
+            cv.gt_idx = gt_idx_option;
             cv.gt_num = gt_num;
         }
 
         //
         // validate difficulty
         //
-        let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
-        if !previous_block.is_none() {
-            if !previous_block.as_ref().unwrap().get_has_golden_ticket()
-                && !self.get_has_golden_ticket()
-            {
-                if previous_block.as_ref().unwrap().get_difficulty() > 0 {
-                    cv.expected_difficulty = previous_block.as_ref().unwrap().get_difficulty() - 1;
+        if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+            let difficulty = previous_block.get_difficulty();
+            if !previous_block.get_has_golden_ticket() && !self.get_has_golden_ticket() {
+                if difficulty > 0 {
+                    cv.expected_difficulty = previous_block.get_difficulty() - 1;
                 }
-            } else if previous_block.as_ref().unwrap().get_has_golden_ticket()
-                && self.get_has_golden_ticket()
-            {
-                cv.expected_difficulty = previous_block.as_ref().unwrap().get_difficulty() + 1;
+            } else if previous_block.get_has_golden_ticket() && self.get_has_golden_ticket() {
+                cv.expected_difficulty = difficulty + 1;
             } else {
-                cv.expected_difficulty = previous_block.as_ref().unwrap().get_difficulty();
+                cv.expected_difficulty = difficulty;
             }
         }
 
-        // and return
-        return cv;
+        cv
     }
 
     pub fn on_chain_reorganization(
@@ -645,7 +641,7 @@ impl Block {
         //
         // PARALLEL PROCESSING of most data
         //
-	let creator_publickey = self.get_creator();
+      	let creator_publickey = self.get_creator();
 
         let _transactions_pre_calculated = &self
             .transactions
@@ -657,14 +653,18 @@ impl Block {
         //
         // CUMULATIVE FEES only AFTER parallel calculations
         //
-	// we need to calculate the cumulative figures AFTER the 
-	// transactions have been fleshed out with all of the 
-	// original figures.
-	//
+        // we need to calculate the cumulative figures AFTER the 
+        // transactions have been fleshed out with all of the 
+        // original figures.
+        //
         let mut cumulative_fees = 0;
         let mut cumulative_work = 0;
         let mut hgt = false;
         let mut hft = false;
+
+        let mut has_golden_ticket = false;
+        let mut has_fee_transaction = false;
+
         for transaction in &mut self.transactions {
             cumulative_fees = transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
             cumulative_work = transaction.pre_validation_calculations_cumulative_work(cumulative_work);
@@ -672,15 +672,15 @@ impl Block {
             //
             // also check the transactions for golden ticket and fees
             //
-            if transaction.get_transaction_type() == TransactionType::Fee {
-                hft = true;
-            }
-            if transaction.get_transaction_type() == TransactionType::GoldenTicket {
-                hgt = true;
-            }
+            match transaction.get_transaction_type() {
+                TransactionType::Fee => has_fee_transaction = true,
+                TransactionType::GoldenTicket => has_golden_ticket = true,
+                _ => {}
+            };
         }
-        self.set_has_fee_transaction(hft);
-        self.set_has_golden_ticket(hgt);
+
+        self.set_has_fee_transaction(has_fee_transaction);
+        self.set_has_golden_ticket(has_golden_ticket);
 
         //
         // update block with total fees
@@ -782,21 +782,51 @@ impl Block {
         }
 
         //
-        // validate golden ticket
+        // validate burn fee
         //
-        if cv.gt_idx != usize::MAX {
-            if !previous_block.is_none() {
+        if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+            let new_burnfee: u64 =
+                BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
+                    previous_block.get_burnfee(),
+                    self.get_timestamp(),
+                    previous_block.get_timestamp(),
+                );
+
+            if new_burnfee != self.get_burnfee() {
+                println!(
+                    "ERROR: burn fee does not validate, expected: {}",
+                    new_burnfee
+                );
+                return false;
+            }
+
+            //
+            // validate difficulty
+            //
+            if cv.expected_difficulty != self.get_difficulty() {
+                println!(
+                    "Block difficulty is {} but we expect {}",
+                    self.get_difficulty(),
+                    cv.expected_difficulty
+                );
+                return false;
+            }
+
+            //
+            // validate golden ticket
+            //
+            if let Some(gt_idx) = cv.gt_idx {
                 let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
-                    self.transactions[cv.gt_idx].get_message().to_vec(),
+                    self.transactions[gt_idx].get_message().to_vec(),
                 );
                 let solution = GoldenTicket::generate_solution(
                     golden_ticket.get_random(),
                     golden_ticket.get_publickey(),
                 );
                 if !GoldenTicket::is_valid_solution(
-                    previous_block.unwrap().get_hash(),
+                    previous_block.get_hash(),
                     solution,
-                    previous_block.unwrap().get_difficulty(),
+                    previous_block.get_difficulty(),
                 ) {
                     println!("ERROR: Golden Ticket solution does not validate against previous block hash and difficulty");
                     return false;
@@ -989,11 +1019,12 @@ mod tests {
         transaction::{Transaction, TransactionType},
         wallet::Wallet,
     };
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
 
     #[test]
     fn block_new_test() {
         let block = Block::new();
-
         assert_eq!(block.id, 0);
         assert_eq!(block.timestamp, 0);
         assert_eq!(block.previous_block_hash, [0; 32]);
@@ -1003,21 +1034,38 @@ mod tests {
         assert_eq!(block.treasury, 0);
         assert_eq!(block.burnfee, 0);
         assert_eq!(block.difficulty, 0);
+        assert_eq!(block.transactions, vec![]);
+        assert_eq!(block.hash, [0; 32]);
+        assert_eq!(block.total_fees, 0);
+        assert_eq!(block.lc, false);
+        assert_eq!(block.has_golden_ticket, false);
+        assert_eq!(block.has_fee_transaction, false);
     }
 
     #[test]
-    fn block_default_test() {
-        let block = Block::new();
+    fn block_sign_test() {
+        let wallet = Wallet::new();
+        let mut block = Block::new();
 
-        assert_eq!(block.id, 0);
-        assert_eq!(block.timestamp, 0);
-        assert_eq!(block.previous_block_hash, [0; 32]);
-        assert_eq!(block.creator, [0; 33]);
-        assert_eq!(block.merkle_root, [0; 32]);
-        assert_eq!(block.signature, [0; 64]);
-        assert_eq!(block.treasury, 0);
-        assert_eq!(block.burnfee, 0);
-        assert_eq!(block.difficulty, 0);
+        block.sign(wallet.get_publickey(), wallet.get_privatekey());
+
+        assert_eq!(block.creator, wallet.get_publickey());
+        assert_ne!(block.get_hash(), [0; 32]);
+        assert_ne!(block.get_signature(), [0; 64]);
+    }
+
+    #[test]
+    fn block_generate_hash() {
+        let block = Block::new();
+        let hash = block.generate_hash();
+        assert_ne!(hash, [0; 32]);
+    }
+
+    #[test]
+    fn block_serialize_for_signature_hash() {
+        let block = Block::new();
+        let serialized_body = block.serialize_for_signature();
+        assert_eq!(serialized_body.len(), 137);
     }
 
     #[test]
@@ -1086,4 +1134,19 @@ mod tests {
 
         assert!(block.generate_merkle_root().len() == 32);
     }
+
+    #[test]
+    fn block_generate_data_to_validate() {
+        let wallet = Wallet::new();
+        let blockchain = Blockchain::new(Arc::new(RwLock::new(wallet)));
+    }
+
+    #[test]
+    fn block_pre_validateion_calculations() {}
+
+    #[test]
+    fn block_onchain_reorganization_test() {}
+
+    #[test]
+    fn block_validation() {}
 }

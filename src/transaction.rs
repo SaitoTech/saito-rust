@@ -302,17 +302,11 @@ impl Transaction {
     }
 
     pub fn is_fee_transaction(&self) -> bool {
-        if self.transaction_type == TransactionType::Fee {
-            return true;
-        }
-        return false;
+        self.transaction_type == TransactionType::Fee
     }
 
     pub fn is_golden_ticket(&self) -> bool {
-        if self.transaction_type == TransactionType::GoldenTicket {
-            return true;
-        }
-        return false;
+        self.transaction_type == TransactionType::GoldenTicket
     }
 
     pub fn get_path(&self) -> &Vec<Hop> {
@@ -371,7 +365,7 @@ impl Transaction {
         //
         // TODO - process routing path, return winner
         //
-        return self.inputs[0].get_publickey();
+        self.inputs[0].get_publickey()
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
@@ -406,10 +400,10 @@ impl Transaction {
         //
         // we set slip ordinals when signing
         //
-        let mut slip_ordinal = 0;
-        for output in self.get_mut_outputs() {
-            output.set_slip_ordinal(slip_ordinal);
-            slip_ordinal += 1;
+        println!("signing tx with {} outputs: ", self.get_outputs().len());
+        for (i, output) in self.get_mut_outputs().iter_mut().enumerate() {
+            println!("updating slip ordinal: {}", i);
+            output.set_slip_ordinal(i as u8);
         }
 
         let hash_for_signature = hash(&self.serialize_for_signature());
@@ -539,14 +533,12 @@ impl Transaction {
     //
     pub fn pre_validation_calculations_cumulative_fees(&mut self, cumulative_fees: u64) -> u64 {
         self.cumulative_fees = cumulative_fees + self.total_fees;
-        return self.cumulative_fees;
+        self.cumulative_fees
     }
     pub fn pre_validation_calculations_cumulative_work(&mut self, cumulative_work: u64) -> u64 {
         return cumulative_work + self.routing_work_for_creator;
     }
-
-    pub fn pre_validation_calculations_parallelizable(&mut self, creator_publickey : SaitoPublicKey) -> bool {
-
+    pub fn pre_validation_calculations_parallelizable(&mut self) -> bool {
         //
         // and save the hash_for_signature so we can use it later...
         //
@@ -563,6 +555,7 @@ impl Transaction {
         let mut nolan_in: u64 = 0;
         let mut nolan_out: u64 = 0;
         let hash_for_signature = self.get_hash_for_signature();
+
         for input in &mut self.inputs {
             nolan_in += input.get_amount();
             // generate utxoset key cache
@@ -576,6 +569,7 @@ impl Transaction {
             output.set_uuid(hash_for_signature);
             output.generate_utxoset_key();
         }
+
         self.total_in = nolan_in;
         self.total_out = nolan_out;
         self.total_fees = 0;
@@ -590,16 +584,16 @@ impl Transaction {
             self.total_fees = nolan_in - nolan_out;
         }
 
-	//
-	// we also need to know how much routing work exists and is available
-	// for the block producer, to ensure that they have met the conditions
-	// required by the burn fee for block production.
-	//
+	      //
+	      // we also need to know how much routing work exists and is available
+	      // for the block producer, to ensure that they have met the conditions
+	      // required by the burn fee for block production.
+	      //
         self.routing_work_for_creator = self.get_routing_work_for_publickey(creator_publickey);
-
 
         true
     }
+
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
 
         //
@@ -681,8 +675,7 @@ impl Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::slip::Slip;
-    use crate::time::create_timestamp;
+    use crate::{slip::Slip, time::create_timestamp, wallet::Wallet};
 
     #[test]
     fn transaction_new_test() {
@@ -693,6 +686,39 @@ mod tests {
         assert_eq!(tx.message, Vec::<u8>::new());
         assert_eq!(tx.transaction_type, TransactionType::Normal);
         assert_eq!(tx.signature, [0; 64]);
+        assert_eq!(tx.hash_for_signature, [0; 32]);
+        assert_eq!(tx.total_in, 0);
+        assert_eq!(tx.total_out, 0);
+        assert_eq!(tx.total_fees, 0);
+        assert_eq!(tx.cumulative_fees, 0);
+        assert_eq!(tx.routing_work_to_me, 0);
+        assert_eq!(tx.routing_work_to_creator, 0);
+    }
+
+    #[test]
+    fn transaction_sign_test() {
+        let mut tx = Transaction::new();
+        let wallet = Wallet::new();
+
+        tx.set_outputs(vec![Slip::new()]);
+        tx.sign(wallet.get_privatekey());
+
+        assert_eq!(tx.get_outputs()[0].get_slip_ordinal(), 0);
+        assert_ne!(tx.get_signature(), [0; 64]);
+        assert_ne!(tx.get_hash_for_signature(), [0; 32]);
+    }
+
+    #[test]
+    fn test_serialize_for_signature() {
+        let tx = Transaction::new();
+        assert_eq!(tx.serialize_for_signature(), vec![0; 12]);
+    }
+
+    #[test]
+    fn transaction_pre_validation_cumulative_fees_test() {
+        let mut tx = Transaction::new();
+        tx.pre_validation_calculations_cumulative_fees(1_0000);
+        assert_eq!(tx.cumulative_fees, 1_0000);
     }
 
     #[test]
