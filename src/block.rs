@@ -831,11 +831,12 @@ impl Block {
 
 
         //
-        // fee transactions and golden tickets
+        // fee transactions
         //
-        // set hash_for_signature for fee_tx as we cannot mutably fetch it
-        // during merkle_root generation as those functions require parallel
-        // processing in block validation. So some extra code here.
+        // we grab the fee transaction created in the cv function and run
+	// a quick hash of it, comparing that with the hash of the fee-tx
+	// that exists in the block. if they match, we're OK with th block
+	// including this fee transaction.
         //
         if cv.ft_idx != usize::MAX {
             if !cv.fee_transaction.is_none() {
@@ -843,11 +844,12 @@ impl Block {
                 //
             	// fee-transaction must still pass validation rules
             	//
+		// we are OK with just doing a hash check as the other
+		// requirements are covered in the validation function.
+		//
             	let fee_tx = cv.fee_transaction.unwrap();
 	    	let cv_ft_hash = hash(&fee_tx.serialize_for_signature());
 	    	let block_ft_hash = hash(&self.transactions[cv.ft_idx].serialize_for_signature());
-
-println!("hashes {:?} {:?}", cv_ft_hash, block_ft_hash);
 
 	    	if cv_ft_hash != block_ft_hash {
 	            println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");
