@@ -258,6 +258,8 @@ impl Transaction {
         transaction.add_input(input);
         transaction.add_output(output);
 
+println!("VIP going to: {:?}", to_publickey);
+
         transaction
     }
 
@@ -507,9 +509,7 @@ println!("work by hop: {:?}", work_by_hop);
         //
         // we set slip ordinals when signing
         //
-        println!("signing tx with {} outputs: ", self.get_outputs().len());
         for (i, output) in self.get_mut_outputs().iter_mut().enumerate() {
-            println!("updating slip ordinal: {}", i);
             output.set_slip_ordinal(i as u8);
         }
 

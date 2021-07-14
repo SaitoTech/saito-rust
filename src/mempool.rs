@@ -86,16 +86,44 @@ impl Mempool {
 
     // this handles any transactions broadcast on the same system. it receives the transaction
     // directly and so does not validate against the UTXOset etc.
-    pub fn add_transaction(&mut self, transaction: Transaction) -> AddTransactionResult {
+    pub async fn add_transaction(&mut self, mut transaction: Transaction) -> AddTransactionResult {
         let tx_sig_to_insert = transaction.get_signature();
+
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+	// TODO -- this is just testing -- remove async too    // 
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+	let publickey;
+	{
+	    let wallet = self.wallet_lock.read().await;
+	    publickey = wallet.get_publickey();
+	}
+
+        transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
+        transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
+	//
+	// note that this calculates the total fees, so needs to 
+	// be handled well. Stephen may have some ideas on how we
+	// can better name these functions. what this is really 
+	// doing is filling in the total fee amounts so that we 
+	// can calculate the routing work below to know how much
+	// this contributes to our mempool.
+	//
+	transaction.pre_validation_calculations_parallelizable(publickey);
+	////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+	// REMOVE ONCE NETWORK CAN PASS ROUTING SIGS //
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////
+
+
         let routing_work_available_for_me =
             transaction.get_routing_work_for_publickey(self.mempool_publickey);
-
-
-println!("mempool pubkey is: {:?}", self.mempool_publickey);
-if transaction.get_path().len() > 0 {
-println!("hop 1 is: {:?}", transaction.get_path()[0].get_to());
-}
 
         //println!("total fees in tx: {}", transaction.get_total_fees());
         //println!("routing paths: {:?}", transaction.get_path());
@@ -109,7 +137,6 @@ println!("hop 1 is: {:?}", transaction.get_path()[0].get_to());
             return AddTransactionResult::Exists;
         } else {
             self.transactions.push(transaction);
-println!("routing work increasing: ");
             self.routing_work_in_mempool += routing_work_available_for_me;
             return AddTransactionResult::Accepted;
         }
@@ -354,7 +381,7 @@ pub async fn run(
                     }
                     SaitoMessage::MempoolNewTransaction { transaction } => {
                         let mut mempool = mempool_lock.write().await;
-                        mempool.add_transaction(transaction);
+                        mempool.add_transaction(transaction).await;
                     },
                     SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
                         let mut mempool = mempool_lock.write().await;
