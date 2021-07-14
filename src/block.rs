@@ -621,7 +621,6 @@ impl Block {
             //
             // fee transaction added to consensus values
             //
-            cv.fee_transaction = Some(fee_transaction);
             cv.ft_idx = ft_idx_option;
             cv.ft_num = ft_num;
             cv.gt_idx = gt_idx_option;
@@ -878,7 +877,7 @@ impl Block {
 	// that exists in the block. if they match, we're OK with th block
 	// including this fee transaction.
         //
-        if cv.ft_idx != usize::MAX {
+        if !cv.ft_idx.is_none() {
             if !cv.fee_transaction.is_none() {
             
                 //
@@ -889,7 +888,7 @@ impl Block {
 		//
             	let fee_tx = cv.fee_transaction.unwrap();
 	    	let cv_ft_hash = hash(&fee_tx.serialize_for_signature());
-	    	let block_ft_hash = hash(&self.transactions[cv.ft_idx].serialize_for_signature());
+	    	let block_ft_hash = hash(&self.transactions[cv.ft_idx.unwrap()].serialize_for_signature());
 
 	    	if cv_ft_hash != block_ft_hash {
 	            println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");

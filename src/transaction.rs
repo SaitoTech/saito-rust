@@ -581,7 +581,7 @@ println!("work by hop: {:?}", work_by_hop);
     pub fn pre_validation_calculations_cumulative_work(&mut self, cumulative_work: u64) -> u64 {
         return cumulative_work + self.routing_work_for_creator;
     }
-    pub fn pre_validation_calculations_parallelizable(&mut self) -> bool {
+    pub fn pre_validation_calculations_parallelizable(&mut self, creator_publickey : SaitoPublicKey) -> bool {
         //
         // and save the hash_for_signature so we can use it later...
         //
@@ -627,11 +627,11 @@ println!("work by hop: {:?}", work_by_hop);
             self.total_fees = nolan_in - nolan_out;
         }
 
-	      //
-	      // we also need to know how much routing work exists and is available
-	      // for the block producer, to ensure that they have met the conditions
-	      // required by the burn fee for block production.
-	      //
+        //
+        // we also need to know how much routing work exists and is available
+        // for the block producer, to ensure that they have met the conditions
+        // required by the burn fee for block production.
+        //
         self.routing_work_for_creator = self.get_routing_work_for_publickey(creator_publickey);
 
         true

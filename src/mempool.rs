@@ -167,11 +167,10 @@ impl Mempool {
     ///
     /// Calculates the work available in mempool to produce a block
     ///
-    pub async fn calculate_work_available(&self) -> u64 {
+    pub fn calculate_work_available(&self) -> u64 {
         if self.routing_work_in_mempool > 0 {
             return self.routing_work_in_mempool;
         }
-
         return 0;
     }
 
