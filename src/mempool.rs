@@ -91,6 +91,12 @@ impl Mempool {
         let routing_work_available_for_me =
             transaction.get_routing_work_for_publickey(self.mempool_publickey);
 
+
+println!("mempool pubkey is: {:?}", self.mempool_publickey);
+if transaction.get_path().len() > 0 {
+println!("hop 1 is: {:?}", transaction.get_path()[0].get_to());
+}
+
         //println!("total fees in tx: {}", transaction.get_total_fees());
         //println!("routing paths: {:?}", transaction.get_path());
         //println!("routing work for me in this tx: {}", routing_work_available_for_me);
@@ -103,7 +109,7 @@ impl Mempool {
             return AddTransactionResult::Exists;
         } else {
             self.transactions.push(transaction);
-println!("routing work increasing!");
+println!("routing work increasing: ");
             self.routing_work_in_mempool += routing_work_available_for_me;
             return AddTransactionResult::Accepted;
         }

@@ -1,9 +1,7 @@
 use saito_rust::{
     blockchain::Blockchain,
-    crypto::{generate_random_bytes, hash, SaitoPrivateKey, SaitoPublicKey},
     mempool::Mempool,
     miner::Miner,
-    slip::Slip,
     transaction::Transaction,
     wallet::Wallet,
 };
@@ -46,9 +44,31 @@ pub async fn main() -> saito_rust::Result<()> {
         let client = reqwest::Client::new();
         // sleep(Duration::from_millis(5000));
         loop {
-            let transactions =
-                generate_transactions(publickey, privatekey, txs_to_generate, bytes_per_tx);
-            for tx in transactions.iter() {
+
+            let mut transactions: Vec<Transaction> = vec![];
+
+	    for _i in 0..txs_to_generate {
+
+                let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), publickey, 5000, 5000).await;
+                transaction.set_message(
+                    (0..bytes_per_tx)
+                        .into_par_iter()
+                        .map(|_| rand::random::<u8>())
+                        .collect(),
+                );
+
+                // sign ...
+                transaction.sign(privatekey);
+
+                transactions.push(transaction);
+
+	    }
+
+            for mut tx in transactions {
+
+	        tx.add_hop_to_path(wallet_lock.clone(), publickey).await;
+	        tx.add_hop_to_path(wallet_lock.clone(), publickey).await;
+
                 let bytes: Vec<u8> = tx.serialize_for_net();
                 let _res = client
                     .post("http://localhost:3030/transactions")
@@ -113,40 +133,4 @@ pub async fn run(
     Ok(())
 }
 
-pub fn generate_transactions(
-    publickey: SaitoPublicKey,
-    privatekey: SaitoPrivateKey,
-    txs_to_generate: u32,
-    bytes_per_tx: u32,
-) -> Vec<Transaction> {
-    (0..txs_to_generate)
-        .into_par_iter()
-        .map(|_| {
-            let mut transaction = Transaction::new();
-            transaction.set_message(
-                (0..bytes_per_tx)
-                    .into_par_iter()
-                    .map(|_| rand::random::<u8>())
-                    .collect(),
-            );
 
-            // as fake transactions, we set the UUID arbitrarily
-            let mut input1 = Slip::new();
-            input1.set_publickey(publickey);
-            input1.set_amount(1000000);
-            input1.set_uuid(hash(&generate_random_bytes(32)));
-
-            let mut output1 = Slip::new();
-            output1.set_publickey(publickey);
-            output1.set_amount(1000000);
-            output1.set_uuid([0; 32]);
-
-            transaction.add_input(input1);
-            transaction.add_output(output1);
-
-            // sign ...
-            transaction.sign(privatekey);
-            transaction
-        })
-        .collect()
-}
