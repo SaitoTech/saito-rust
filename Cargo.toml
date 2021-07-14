@@ -8,6 +8,10 @@ authors = [
 edition = "2018"
 default-run = "saito_rust"
 
+[[bin]]
+name = "saito-spammer"
+path = "src/bin/spammer.rs"
+
 [dependencies]
 ahash = "0.7.4"
 bigint = "4.4.3"
@@ -29,6 +33,7 @@ jemalloc-ctl = "0.2.0"
 lazy_static = "1.4.0"
 rand = "0.8.4"
 warp = "0.3"
+reqwest = "0.11"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = "0.2"
