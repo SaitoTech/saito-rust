@@ -103,6 +103,7 @@ impl Mempool {
             return AddTransactionResult::Exists;
         } else {
             self.transactions.push(transaction);
+println!("routing work increasing!");
             self.routing_work_in_mempool += routing_work_available_for_me;
             return AddTransactionResult::Accepted;
         }

@@ -39,7 +39,11 @@ pub struct DataToValidate {
     // expected difficulty
     pub expected_difficulty: u64,
     // rebroadcast txs
-    pub rebroadcasts: Vec<Transaction>
+    pub rebroadcasts: Vec<Transaction>,
+    // number of rebroadcast slips
+    pub total_rebroadcast_slips: u64,
+    // number of rebroadcast txs
+    pub total_rebroadcast_nolan: u64,
 }
 impl DataToValidate {
     #[allow(clippy::too_many_arguments)]
@@ -52,6 +56,8 @@ impl DataToValidate {
             gt_idx: None,
             expected_difficulty: 0,
     	    rebroadcasts: vec![],
+    	    total_rebroadcast_slips: 0,
+    	    total_rebroadcast_nolan: 0,
         }
     }
 }
@@ -517,21 +523,6 @@ impl Block {
             //
 	    if total_fees == 0 {
 
-            //
-            // find winning router
-            //
-            let x = U256::from_big_endian(&miner_random);
-            //
-            // TODO - y cannot be zero or divide by zero
-            //
-            let y = match total_fees {
-                0 => 100,
-                diff => diff,
-            };
-
-            let z = U256::from_big_endian(&y.to_be_bytes());
-            let (winning_router, _bolres) = x.overflowing_rem(z);
-            let winning_nolan_in_fees = winning_router.low_u64();
 
 	    } else {
 
@@ -657,6 +648,8 @@ impl Block {
         //
         // calculate automatic transaction rebroadcasts / ATR / atr
         //
+	if self.get_id() > 2 {
+
 	let pruned_block_hash = blockchain.blockring.get_longest_chain_block_hash_by_block_id(self.get_id()-2);
 println!("pruned block hash: {:?}", pruned_block_hash);
 
@@ -696,6 +689,7 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
 	    cv.total_rebroadcast_slips = total_rebroadcast_slips;
 	    cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
 
+	}
 	}
 
         cv
@@ -745,8 +739,6 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
         //
         let mut cumulative_fees = 0;
         let mut cumulative_work = 0;
-        let mut hgt = false;
-        let mut hft = false;
 
         let mut has_golden_ticket = false;
         let mut has_fee_transaction = false;

@@ -276,7 +276,7 @@ impl Transaction {
 
         let mut transaction = Transaction::new();
         let mut output_payment = output_slip_to_rebroadcast.get_amount() - with_fee;
-	if (output_payment < 0) { output_payment = 0; }
+	if output_payment < 0 { output_payment = 0; }
 
         transaction.set_transaction_type(TransactionType::ATR);
 
