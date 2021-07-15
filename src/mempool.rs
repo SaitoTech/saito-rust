@@ -1,6 +1,13 @@
 use crate::{
-    block::Block, blockchain::Blockchain, burnfee::BurnFee, consensus::SaitoMessage, crypto::{SaitoPrivateKey, SaitoPublicKey},
-    golden_ticket::GoldenTicket, time::create_timestamp, transaction::Transaction, wallet::Wallet,
+    block::Block,
+    blockchain::Blockchain,
+    burnfee::BurnFee,
+    consensus::SaitoMessage,
+    crypto::{SaitoPrivateKey, SaitoPublicKey},
+    golden_ticket::GoldenTicket,
+    time::create_timestamp,
+    transaction::Transaction,
+    wallet::Wallet,
 };
 use std::{collections::HashMap, collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
@@ -89,41 +96,40 @@ impl Mempool {
     pub async fn add_transaction(&mut self, mut transaction: Transaction) -> AddTransactionResult {
         let tx_sig_to_insert = transaction.get_signature();
 
-	/////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////
-	// TODO -- this is just testing -- remove async too    // 
-	/////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////
-	let publickey;
-	{
-	    let wallet = self.wallet_lock.read().await;
-	    publickey = wallet.get_publickey();
-	}
-/***
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        // TODO -- this is just testing -- remove async too    //
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        let publickey;
+        {
+            let wallet = self.wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+        }
+        /***
 
-        transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
-        transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
-	//
-	// note that this calculates the total fees, so needs to 
-	// be handled well. Stephen may have some ideas on how we
-	// can better name these functions. what this is really 
-	// doing is filling in the total fee amounts so that we 
-	// can calculate the routing work below to know how much
-	// this contributes to our mempool.
-	//
-***/
-	transaction.generate_metadata(publickey);
+                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
+                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
+            //
+            // note that this calculates the total fees, so needs to
+            // be handled well. Stephen may have some ideas on how we
+            // can better name these functions. what this is really
+            // doing is filling in the total fee amounts so that we
+            // can calculate the routing work below to know how much
+            // this contributes to our mempool.
+            //
+        ***/
+        transaction.generate_metadata(publickey);
 
-	////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////
-	// REMOVE ONCE NETWORK CAN PASS ROUTING SIGS //
-	/////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////
-
+        ////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        // REMOVE ONCE NETWORK CAN PASS ROUTING SIGS //
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
 
         let routing_work_available_for_me =
             transaction.get_routing_work_for_publickey(self.mempool_publickey);
@@ -394,7 +400,6 @@ pub async fn run(
                 }
             }
         }
-
     }
 }
 

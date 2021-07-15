@@ -1,9 +1,9 @@
 use crate::crypto::{sign, SaitoHash, SaitoPublicKey, SaitoSignature};
 use crate::wallet::Wallet;
 use serde::{Deserialize, Serialize};
+use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::convert::{TryFrom, TryInto};
 
 //
 // TODO - we can reduce the size by eliminating the FROM record if
@@ -71,14 +71,12 @@ impl Hop {
         self.sig = sig
     }
 
-
     pub fn deserialize_from_net(bytes: Vec<u8>) -> Hop {
-
         let from: SaitoPublicKey = bytes[..33].try_into().unwrap();
         let to: SaitoPublicKey = bytes[33..66].try_into().unwrap();
         let sig: SaitoSignature = bytes[66..130].try_into().unwrap();
 
-	let mut hop = Hop::new();
+        let mut hop = Hop::new();
         hop.set_from(from);
         hop.set_to(to);
         hop.set_sig(sig);
@@ -93,7 +91,6 @@ impl Hop {
         vbytes.extend(&self.get_sig());
         vbytes
     }
-
 }
 
 #[cfg(test)]

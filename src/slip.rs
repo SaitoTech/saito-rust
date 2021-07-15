@@ -54,7 +54,6 @@ impl Slip {
         }
     }
 
-
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_amount() > 0 {
             let mut _return_value = false;

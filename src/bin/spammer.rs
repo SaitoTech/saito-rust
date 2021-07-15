@@ -1,8 +1,5 @@
 use saito_rust::{
-    blockchain::Blockchain,
-    mempool::Mempool,
-    miner::Miner,
-    transaction::Transaction,
+    blockchain::Blockchain, mempool::Mempool, miner::Miner, transaction::Transaction,
     wallet::Wallet,
 };
 
@@ -44,12 +41,12 @@ pub async fn main() -> saito_rust::Result<()> {
         let client = reqwest::Client::new();
         // sleep(Duration::from_millis(5000));
         loop {
-
             let mut transactions: Vec<Transaction> = vec![];
 
-	    for _i in 0..txs_to_generate {
-
-                let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), publickey, 5000, 5000).await;
+            for _i in 0..txs_to_generate {
+                let mut transaction =
+                    Transaction::generate_transaction(wallet_lock.clone(), publickey, 5000, 5000)
+                        .await;
                 transaction.set_message(
                     (0..bytes_per_tx)
                         .into_par_iter()
@@ -60,13 +57,16 @@ pub async fn main() -> saito_rust::Result<()> {
                 // sign ...
                 transaction.sign(privatekey);
 
-		// add some test hops ...
-        	transaction.add_hop_to_path(wallet_lock.clone(), publickey).await;
-        	transaction.add_hop_to_path(wallet_lock.clone(), publickey).await;
+                // add some test hops ...
+                transaction
+                    .add_hop_to_path(wallet_lock.clone(), publickey)
+                    .await;
+                transaction
+                    .add_hop_to_path(wallet_lock.clone(), publickey)
+                    .await;
 
                 transactions.push(transaction);
-
-	    }
+            }
 
             for mut tx in transactions {
                 let bytes: Vec<u8> = tx.serialize_for_net();
@@ -132,5 +132,3 @@ pub async fn run(
 
     Ok(())
 }
-
-

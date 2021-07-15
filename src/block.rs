@@ -47,7 +47,6 @@ pub struct DataToValidate {
     pub total_rebroadcast_nolan: u64,
     // all ATR txs hashed together
     pub rebroadcast_hash: [u8; 32],
-
 }
 impl DataToValidate {
     #[allow(clippy::too_many_arguments)]
@@ -59,10 +58,10 @@ impl DataToValidate {
             gt_num: 0,
             gt_idx: None,
             expected_difficulty: 0,
-    	    rebroadcasts: vec![],
-    	    total_rebroadcast_slips: 0,
-    	    total_rebroadcast_nolan: 0,
-	    // must be initialized zeroed-out for proper hashing
+            rebroadcasts: vec![],
+            total_rebroadcast_slips: 0,
+            total_rebroadcast_nolan: 0,
+            // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
         }
     }
@@ -125,9 +124,9 @@ impl Block {
             lc: false,
             has_golden_ticket: false,
             has_fee_transaction: false,
-    	    total_rebroadcast_slips: 0,
-    	    total_rebroadcast_nolan: 0,
-	    // must be initialized zeroed-out for proper hashing
+            total_rebroadcast_slips: 0,
+            total_rebroadcast_nolan: 0,
+            // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
         }
     }
@@ -486,12 +485,10 @@ impl Block {
         mrv[start_point].get_hash()
     }
 
-
     //
     // generate hashes and payouts and fee calculations
     //
     pub fn generate_data_to_validate(&self, blockchain: &Blockchain) -> DataToValidate {
-
         let mut cv = DataToValidate::new();
 
         let mut gt_num: u8 = 0;
@@ -499,12 +496,12 @@ impl Block {
         let mut gt_idx_option: Option<usize> = None;
         let mut ft_idx_option: Option<usize> = None;
         let mut total_fees = 0;
-	let mut total_rebroadcast_slips: u64 = 0;
-	let mut total_rebroadcast_nolan: u64 = 0;
-	// when we find a rebroadcast TX we hash it and put the hash 
-	// here. when validating a block we do the exact same. as long
-	// as the rebroadcast hash and the block hash match the set of
-	// transactions are exactly the same.
+        let mut total_rebroadcast_slips: u64 = 0;
+        let mut total_rebroadcast_nolan: u64 = 0;
+        // when we find a rebroadcast TX we hash it and put the hash
+        // here. when validating a block we do the exact same. as long
+        // as the rebroadcast hash and the block hash match the set of
+        // transactions are exactly the same.
         let mut rebroadcast_hash: SaitoHash = [0; 32];
         let miner_publickey;
         let router_publickey;
@@ -514,7 +511,6 @@ impl Block {
         //
         let mut idx: usize = 0;
         for transaction in &self.transactions {
- 
             // fee transaction
             if !transaction.is_fee_transaction() {
                 total_fees += transaction.get_total_fees();
@@ -532,14 +528,13 @@ impl Block {
             idx += 1;
         }
 
-	//
-	// calculate payments
-	//
+        //
+        // calculate payments
+        //
         if let Some(gt_idx) = gt_idx_option {
-
-	    //
+            //
             // grab random input from golden ticket
-	    //
+            //
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
@@ -548,23 +543,20 @@ impl Block {
             //
             // create fee transaction
             //
-	    if total_fees == 0 {
-
-
-	    } else {
-
+            if total_fees == 0 {
+            } else {
                 //
                 // find winning tx
                 //
                 let x = U256::from_big_endian(&miner_random);
-		// no risk of divide by zero with if / else check
+                // no risk of divide by zero with if / else check
                 let y = total_fees;
 
-		//
-		// random number mod total fees gives us th ewinning
-		// nolan. we are going to pick the transaction that
-		// contains this incremental nolan
-		//
+                //
+                // random number mod total fees gives us th ewinning
+                // nolan. we are going to pick the transaction that
+                // contains this incremental nolan
+                //
                 let z = U256::from_big_endian(&y.to_be_bytes());
                 let (zy, _bolres) = x.overflowing_rem(z);
                 let winning_nolan_in_fees = zy.low_u64();
@@ -582,14 +574,14 @@ impl Block {
                     winning_tx = &transaction;
                 }
 
-		//
-                // winning router is picked by sending a random 
-		// number into the transaction, which is then 
-		// used to select a routing node based on the 
-		// weighted lottery.
                 //
-            	let random_number2 = hash(&miner_random.to_vec());
-           	router_publickey = winning_tx.get_winning_routing_node(random_number2);
+                // winning router is picked by sending a random
+                // number into the transaction, which is then
+                // used to select a routing node based on the
+                // weighted lottery.
+                //
+                let random_number2 = hash(&miner_random.to_vec());
+                router_publickey = winning_tx.get_winning_routing_node(random_number2);
 
                 //
                 // winning miner from golden ticket
@@ -602,8 +594,8 @@ impl Block {
                 let miner_payment = total_fees / 2;
                 let router_payment = total_fees - miner_payment;
 
-	        let mut transaction = Transaction::new();
-	        transaction.set_transaction_type(TransactionType::Fee);
+                let mut transaction = Transaction::new();
+                transaction.set_transaction_type(TransactionType::Fee);
 
                 let mut input1 = Slip::new();
                 input1.set_publickey(miner_publickey);
@@ -638,7 +630,6 @@ impl Block {
                 // fee transaction added to consensus values
                 //
                 cv.fee_transaction = Some(transaction);
-
             }
 
             //
@@ -649,7 +640,6 @@ impl Block {
             cv.gt_idx = gt_idx_option;
             cv.gt_num = gt_num;
         }
-
 
         //
         // calculate expected burn-fee given previous block
@@ -667,61 +657,58 @@ impl Block {
             }
         }
 
-
         //
         // calculate automatic transaction rebroadcasts / ATR / atr
         //
-	if self.get_id() > 2 {
+        if self.get_id() > 2 {
+            let pruned_block_hash = blockchain
+                .blockring
+                .get_longest_chain_block_hash_by_block_id(self.get_id() - 2);
+            println!("pruned block hash: {:?}", pruned_block_hash);
 
-	let pruned_block_hash = blockchain.blockring.get_longest_chain_block_hash_by_block_id(self.get_id()-2);
-println!("pruned block hash: {:?}", pruned_block_hash);
+            if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
+                //
+                // identify all unspent transactions
+                //
+                for transaction in &pruned_block.transactions {
+                    for output in transaction.get_outputs() {
+                        //
+                        // valid means spendable and non-zero
+                        //
+                        if output.validate(&blockchain.utxoset) {
+                            total_rebroadcast_slips += 1;
+                            total_rebroadcast_nolan += output.get_amount();
 
-        if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
+                            //
+                            // create rebroadcast transaction
+                            //
+                            // TODO - floating fee based on previous block average
+                            //
+                            let rebroadcast_transaction =
+                                Transaction::generate_rebroadcast_transaction(
+                                    &transaction,
+                                    output,
+                                    200_000_000,
+                                );
 
-	    //
-	    // identify all unspent transactions
-	    //
-	    for transaction in &pruned_block.transactions {
-	        for output in transaction.get_outputs() {
+                            //
+                            // update cryptographic hash of all ATRs
+                            //
+                            let mut vbytes: Vec<u8> = vec![];
+                            vbytes.extend(&rebroadcast_hash);
+                            vbytes.extend(&rebroadcast_transaction.serialize_for_signature());
+                            rebroadcast_hash = hash(&vbytes);
 
-		    //
-		    // valid means spendable and non-zero
-		    //
-		    if output.validate(&blockchain.utxoset) {
+                            cv.rebroadcasts.push(rebroadcast_transaction);
+                        }
+                    }
+                }
 
-			total_rebroadcast_slips += 1;
-			total_rebroadcast_nolan += output.get_amount();
-
-			//
-			// create rebroadcast transaction
-			//
-			// TODO - floating fee based on previous block average
-			//
-			let rebroadcast_transaction = Transaction::generate_rebroadcast_transaction(
-			    &transaction,
-			    output,
-			    200_000_000,
-			);
-
-			//
-			// update cryptographic hash of all ATRs
-			//
-			let mut vbytes: Vec<u8> = vec![];
-			vbytes.extend(&rebroadcast_hash);
-			vbytes.extend(&rebroadcast_transaction.serialize_for_signature());
-			rebroadcast_hash = hash(&vbytes);
-
-			cv.rebroadcasts.push(rebroadcast_transaction);
-		    }
-		}
-	    }
-
-	    cv.total_rebroadcast_slips = total_rebroadcast_slips;
-	    cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
-	    cv.rebroadcast_hash = rebroadcast_hash;
-
-	}
-	}
+                cv.total_rebroadcast_slips = total_rebroadcast_slips;
+                cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
+                cv.rebroadcast_hash = rebroadcast_hash;
+            }
+        }
 
         cv
     }
@@ -752,7 +739,7 @@ println!("pruned block hash: {:?}", pruned_block_hash);
         //
         // PARALLEL PROCESSING of most data
         //
-      	let creator_publickey = self.get_creator();
+        let creator_publickey = self.get_creator();
 
         let _transactions_pre_calculated = &self
             .transactions
@@ -764,8 +751,8 @@ println!("pruned block hash: {:?}", pruned_block_hash);
         //
         // CUMULATIVE FEES only AFTER parallel calculations
         //
-        // we need to calculate the cumulative figures AFTER the 
-        // transactions have been fleshed out with all of the 
+        // we need to calculate the cumulative figures AFTER the
+        // transactions have been fleshed out with all of the
         // original figures.
         //
         let mut cumulative_fees = 0;
@@ -774,19 +761,17 @@ println!("pruned block hash: {:?}", pruned_block_hash);
         let mut has_golden_ticket = false;
         let mut has_fee_transaction = false;
 
-
-	//
-	// we have to do a single sweep through all of the transactions in 
-	// non-parallel to do things like generate the cumulative order of the
-	// transactions in the block for things like work and fee calculations
-	// for the lottery.
-	//
-	// we take advantage of the sweep to perform other pre-validation work 
-	// like counting up our ATR transactions and generating the hash 
-	// commitment for all of our rebroadcasts.
-	//
+        //
+        // we have to do a single sweep through all of the transactions in
+        // non-parallel to do things like generate the cumulative order of the
+        // transactions in the block for things like work and fee calculations
+        // for the lottery.
+        //
+        // we take advantage of the sweep to perform other pre-validation work
+        // like counting up our ATR transactions and generating the hash
+        // commitment for all of our rebroadcasts.
+        //
         for transaction in &mut self.transactions {
-
             cumulative_fees = transaction.generate_metadata_cumulative_fees(cumulative_fees);
             cumulative_work = transaction.generate_metadata_cumulative_work(cumulative_work);
 
@@ -797,18 +782,16 @@ println!("pruned block hash: {:?}", pruned_block_hash);
                 TransactionType::Fee => has_fee_transaction = true,
                 TransactionType::GoldenTicket => has_golden_ticket = true,
                 TransactionType::ATR => {
-
                     let mut vbytes: Vec<u8> = vec![];
                     vbytes.extend(&self.rebroadcast_hash);
                     vbytes.extend(&transaction.serialize_for_signature());
                     self.rebroadcast_hash = hash(&vbytes);
-		
-		    for input in transaction.get_inputs() {
+
+                    for input in transaction.get_inputs() {
                         self.total_rebroadcast_slips += 1;
                         self.total_rebroadcast_nolan += input.get_amount();
-		    }
-
-		},
+                    }
+                }
                 _ => {}
             };
         }
@@ -826,7 +809,6 @@ println!("pruned block hash: {:?}", pruned_block_hash);
         true
     }
 
-
     pub fn validate(
         &self,
         blockchain: &Blockchain,
@@ -840,10 +822,9 @@ println!("pruned block hash: {:?}", pruned_block_hash);
         let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
         {
             if !previous_block.is_none() {
-
-		//
-		// new burn fee must be correct
-		//
+                //
+                // new burn fee must be correct
+                //
                 let new_burnfee: u64 =
                     BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
                         previous_block.unwrap().get_burnfee(),
@@ -858,21 +839,19 @@ println!("pruned block hash: {:?}", pruned_block_hash);
                     return false;
                 }
 
-
-		//
-		// routing work must be adequate given block time difference
-		//
-	        let amount_of_routing_work_needed: u64 = 
-		    BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
-	                previous_block.unwrap().get_burnfee(),
+                //
+                // routing work must be adequate given block time difference
+                //
+                let amount_of_routing_work_needed: u64 =
+                    BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
+                        previous_block.unwrap().get_burnfee(),
                         self.get_timestamp(),
                         previous_block.unwrap().get_timestamp(),
-    	            );
-		if self.routing_work_for_creator < amount_of_routing_work_needed {
-	            println!("Error 510293: block lacking adequate routing work from creator");
-	            return false;
-	        }
-
+                    );
+                if self.routing_work_for_creator < amount_of_routing_work_needed {
+                    println!("Error 510293: block lacking adequate routing work from creator");
+                    return false;
+                }
             } else {
                 // TODO assert that this is the first (or second?) block! ?
             }
@@ -902,7 +881,6 @@ println!("pruned block hash: {:?}", pruned_block_hash);
         //
         //
         let cv = self.generate_data_to_validate(&blockchain);
-
 
         //
         // validate difficulty
@@ -969,37 +947,35 @@ println!("pruned block hash: {:?}", pruned_block_hash);
             }
         }
 
-
-
-
         //
         // fee transactions
         //
         // we grab the fee transaction created in the cv function and run
-	// a quick hash of it, comparing that with the hash of the fee-tx
-	// that exists in the block. if they match, we're OK with th block
-	// including this fee transaction.
+        // a quick hash of it, comparing that with the hash of the fee-tx
+        // that exists in the block. if they match, we're OK with th block
+        // including this fee transaction.
         //
         if !cv.ft_idx.is_none() {
             if !cv.fee_transaction.is_none() {
-            
                 //
-            	// fee-transaction must still pass validation rules
-            	//
-		// we are OK with just doing a hash check as the other
-		// requirements are covered in the validation function.
-		//
-            	let fee_tx = cv.fee_transaction.unwrap();
-	    	let cv_ft_hash = hash(&fee_tx.serialize_for_signature());
-	    	let block_ft_hash = hash(&self.transactions[cv.ft_idx.unwrap()].serialize_for_signature());
+                // fee-transaction must still pass validation rules
+                //
+                // we are OK with just doing a hash check as the other
+                // requirements are covered in the validation function.
+                //
+                let fee_tx = cv.fee_transaction.unwrap();
+                let cv_ft_hash = hash(&fee_tx.serialize_for_signature());
+                let block_ft_hash =
+                    hash(&self.transactions[cv.ft_idx.unwrap()].serialize_for_signature());
 
-	    	if cv_ft_hash != block_ft_hash {
-	            println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");
-		    return false;
-	        }
+                if cv_ft_hash != block_ft_hash {
+                    println!(
+                        "ERROR 627428: block fee transaction doesn't match cv fee transaction"
+                    );
+                    return false;
+                }
             }
         }
-
 
         //
         // validate difficulty
@@ -1016,23 +992,21 @@ println!("pruned block hash: {:?}", pruned_block_hash);
         }
         println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
 
-
-	//
-	// VALIDATE ATR
-	//
-	if cv.total_rebroadcast_slips != self.total_rebroadcast_slips {
-	    println!("ERROR 624442: rebroadcast slips total incorrect");
-	    return false;
-	}
-	if cv.total_rebroadcast_nolan != self.total_rebroadcast_nolan {
-	    println!("ERROR 294018: rebroadcast nolan amount incorrect");
-	    return false;
-	}
-	if cv.rebroadcast_hash != self.rebroadcast_hash {
-	    println!("ERROR 123422: hash of rebroadcast transactions incorrect");
-	    return false;
-	}
-
+        //
+        // VALIDATE ATR
+        //
+        if cv.total_rebroadcast_slips != self.total_rebroadcast_slips {
+            println!("ERROR 624442: rebroadcast slips total incorrect");
+            return false;
+        }
+        if cv.total_rebroadcast_nolan != self.total_rebroadcast_nolan {
+            println!("ERROR 294018: rebroadcast nolan amount incorrect");
+            return false;
+        }
+        if cv.rebroadcast_hash != self.rebroadcast_hash {
+            println!("ERROR 123422: hash of rebroadcast transactions incorrect");
+            return false;
+        }
 
         //
         // VALIDATE transactions
@@ -1050,7 +1024,6 @@ println!("pruned block hash: {:?}", pruned_block_hash);
         wallet_lock: Arc<RwLock<Wallet>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Block {
-
         let blockchain = blockchain_lock.read().await;
         let wallet = wallet_lock.read().await;
 
@@ -1133,22 +1106,21 @@ println!("pruned block hash: {:?}", pruned_block_hash);
         // processing in block validation. So some extra code here.
         //
         if !cv.fee_transaction.is_none() {
-
             //
             // fee-transaction must still pass validation rules
             //
             let mut fee_tx = cv.fee_transaction.unwrap();
 
-	    //
-	    // block creator sends transaction inputs
-	    //
+            //
+            // block creator sends transaction inputs
+            //
             for input in fee_tx.get_mut_inputs() {
                 input.set_publickey(wallet.get_publickey());
             }
 
-	    //
-	    // create tx hash
-	    //
+            //
+            // create tx hash
+            //
             let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
             fee_tx.set_hash_for_signature(hash_for_signature);
 
