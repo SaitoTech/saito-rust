@@ -101,6 +101,7 @@ impl Mempool {
 	    let wallet = self.wallet_lock.read().await;
 	    publickey = wallet.get_publickey();
 	}
+/***
 
         transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
         transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
@@ -112,7 +113,9 @@ impl Mempool {
 	// can calculate the routing work below to know how much
 	// this contributes to our mempool.
 	//
-	transaction.pre_validation_calculations_parallelizable(publickey);
+***/
+	transaction.generate_metadata(publickey);
+
 	////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////

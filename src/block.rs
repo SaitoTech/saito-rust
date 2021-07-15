@@ -5,6 +5,7 @@ use crate::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
     },
     golden_ticket::GoldenTicket,
+    hop::{Hop, HOP_SIZE},
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
     time::create_timestamp,
@@ -365,10 +366,16 @@ impl Block {
                     .try_into()
                     .unwrap(),
             ) as usize;
+            let path_len: usize = u32::from_be_bytes(
+                bytes[start_of_transaction_data + 12..start_of_transaction_data + 16]
+                    .try_into()
+                    .unwrap(),
+            ) as usize;
             let end_of_transaction_data = start_of_transaction_data
                 + TRANSACTION_SIZE
                 + ((inputs_len + outputs_len) as usize * SLIP_SIZE)
-                + message_len;
+                + message_len
+                + path_len as usize * HOP_SIZE;
             let transaction = Transaction::deserialize_from_net(
                 bytes[start_of_transaction_data..end_of_transaction_data].to_vec(),
             );
@@ -490,6 +497,7 @@ impl Block {
  
            // fee transaction
             if !transaction.is_fee_transaction() {
+println!("this transaction has fees of: {}", transaction.get_total_fees());
                 total_fees += transaction.get_total_fees();
             } else {
                 ft_num += 1;
@@ -716,7 +724,7 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
     // sweeping through the transactions to find out what percentage of the
     // cumulative block fees they contain.
     //
-    pub fn pre_validation_calculations(&mut self) -> bool {
+    pub fn generate_metadata(&mut self) -> bool {
         println!(" ... block.prevalid - pre hash:  {:?}", create_timestamp());
         //
         // PARALLEL PROCESSING of most data
@@ -726,7 +734,7 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
         let _transactions_pre_calculated = &self
             .transactions
             .par_iter_mut()
-            .all(|tx| tx.pre_validation_calculations_parallelizable(creator_publickey));
+            .all(|tx| tx.generate_metadata(creator_publickey));
 
         println!(" ... block.prevalid - pst hash:  {:?}", create_timestamp());
 
@@ -744,8 +752,9 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
         let mut has_fee_transaction = false;
 
         for transaction in &mut self.transactions {
-            cumulative_fees = transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
-            cumulative_work = transaction.pre_validation_calculations_cumulative_work(cumulative_work);
+
+            cumulative_fees = transaction.generate_metadata_cumulative_fees(cumulative_fees);
+            cumulative_work = transaction.generate_metadata_cumulative_work(cumulative_work);
 
             //
             // also check the transactions for golden ticket and fees
@@ -756,6 +765,8 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
                 _ => {}
             };
         }
+
+println!("now done cumulative work calculations...");
 
         self.set_has_fee_transaction(has_fee_transaction);
         self.set_has_golden_ticket(has_golden_ticket);

@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn slip_serialize_for_signature_test() {
         let slip = Slip::new();
-        assert_eq!(slip.serialize_for_signature(), vec![0; 78]);
+        assert_eq!(slip.serialize_input_for_signature(), vec![0; 78]);
     }
 
     #[test]

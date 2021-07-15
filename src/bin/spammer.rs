@@ -60,8 +60,10 @@ pub async fn main() -> saito_rust::Result<()> {
                 // sign ...
                 transaction.sign(privatekey);
 
-		// make sure we know fees etc.
-		transaction.pre_validation_calculations_parallelizable(publickey);
+		// add some test hops ...
+        	transaction.add_hop_to_path(wallet_lock.clone(), publickey).await;
+        	transaction.add_hop_to_path(wallet_lock.clone(), publickey).await;
+
                 transactions.push(transaction);
 
 	    }
