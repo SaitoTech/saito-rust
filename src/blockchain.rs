@@ -1,14 +1,14 @@
-use crate::burnfee::BurnFee;
 use crate::block::Block;
 use crate::blockring::BlockRing;
+use crate::burnfee::BurnFee;
 use crate::consensus::SaitoMessage;
-use crate::crypto::{verify, SaitoPublicKey, SaitoSignature, SaitoHash, SaitoUTXOSetKey};
+use crate::crypto::{verify, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
 use crate::golden_ticket::GoldenTicket;
+use crate::slip::Slip;
 use crate::storage::Storage;
 use crate::time::create_timestamp;
-use crate::wallet::Wallet;
-use crate::slip::Slip;
 use crate::transaction::{Transaction, TransactionType};
+use crate::wallet::Wallet;
 
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
@@ -568,7 +568,6 @@ impl Blockchain {
             self.unwind_chain(new_chain, old_chain, current_unwind_index + 1, wind_failure)
         }
     }
-
 }
 
 // This function is called on initialization to setup the sending

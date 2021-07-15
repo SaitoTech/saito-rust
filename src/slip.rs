@@ -1,4 +1,7 @@
-use crate::{blockchain::UtxoSet, crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey}};
+use crate::{
+    blockchain::UtxoSet,
+    crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
+};
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +17,9 @@ pub const SLIP_SIZE: usize = 75;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq, TryFromByte)]
 pub enum SlipType {
     Normal,
+    ATR,
+    VipInput,
+    VipOutput,
     MinerInput,
     MinerOutput,
     RouterInput,
@@ -51,14 +57,11 @@ impl Slip {
         }
     }
 
-    pub fn validate(
-        &self,
-        utxoset: &UtxoSet
-    ) -> bool {
+    pub fn validate(&self, utxoset: &UtxoSet) -> bool {
         if self.get_amount() > 0 {
             match utxoset.get(&self.utxoset_key) {
                 Some(value) => *value == 1,
-                None => false
+                None => false,
             }
         } else {
             true
@@ -122,10 +125,29 @@ impl Slip {
     //
     // Serialization
     //
-    pub fn serialize_for_signature(&self) -> Vec<u8> {
+    pub fn serialize_input_for_signature(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&self.publickey);
         vbytes.extend(&self.uuid);
+        vbytes.extend(&self.amount.to_be_bytes());
+        vbytes.extend(&(self.slip_ordinal.to_be_bytes()));
+        vbytes.extend(&(self.slip_type as u32).to_be_bytes());
+        vbytes
+    }
+
+    //
+    // Serialization
+    //
+    // output slips are signed as zero'd out byte arrays. we have
+    // a separate function to handle them as otherwise we may
+    // generate an incorrect signature after we have updated the
+    // transaction outputs with the proper UUID for insertion into
+    // the utxoset.
+    //
+    pub fn serialize_output_for_signature(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.publickey);
+        vbytes.extend(&[0; 32]);
         vbytes.extend(&self.amount.to_be_bytes());
         vbytes.extend(&(self.slip_ordinal.to_be_bytes()));
         vbytes.extend(&(self.slip_type as u32).to_be_bytes());
@@ -212,7 +234,7 @@ mod tests {
     #[test]
     fn slip_serialize_for_signature_test() {
         let slip = Slip::new();
-        assert_eq!(slip.serialize_for_signature(), vec![0; 78]);
+        assert_eq!(slip.serialize_input_for_signature(), vec![0; 78]);
     }
 
     #[test]

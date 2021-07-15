@@ -1,8 +1,15 @@
 use crate::{
-    block::Block, blockchain::Blockchain, burnfee::BurnFee, consensus::SaitoMessage,
-    golden_ticket::GoldenTicket, time::create_timestamp, transaction::Transaction, wallet::Wallet,
+    block::Block,
+    blockchain::Blockchain,
+    burnfee::BurnFee,
+    consensus::SaitoMessage,
+    crypto::{SaitoPrivateKey, SaitoPublicKey},
+    golden_ticket::GoldenTicket,
+    time::create_timestamp,
+    transaction::Transaction,
+    wallet::Wallet,
 };
-use std::{collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
+use std::{collections::HashMap, collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
 #[derive(Clone, Debug)]
@@ -34,9 +41,13 @@ pub enum AddTransactionResult {
 pub struct Mempool {
     blocks: VecDeque<Block>,
     transactions: Vec<Transaction>, // vector so we just copy it over
+    routing_work_in_mempool: u64,
     wallet_lock: Arc<RwLock<Wallet>>,
     currently_processing_block: bool,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
+
+    mempool_publickey: SaitoPublicKey,
+    mempool_privatekey: SaitoPrivateKey,
 }
 
 impl Mempool {
@@ -45,10 +56,21 @@ impl Mempool {
         Mempool {
             blocks: VecDeque::new(),
             transactions: vec![],
+            routing_work_in_mempool: 0,
             wallet_lock,
             currently_processing_block: false,
             broadcast_channel_sender: None,
+            mempool_publickey: [0; 33],
+            mempool_privatekey: [0; 32],
         }
+    }
+
+    pub fn set_mempool_publickey(&mut self, publickey: SaitoPublicKey) {
+        self.mempool_publickey = publickey;
+    }
+
+    pub fn set_mempool_privatekey(&mut self, privatekey: SaitoPrivateKey) {
+        self.mempool_privatekey = privatekey;
     }
 
     pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
@@ -71,8 +93,51 @@ impl Mempool {
 
     // this handles any transactions broadcast on the same system. it receives the transaction
     // directly and so does not validate against the UTXOset etc.
-    pub fn add_transaction(&mut self, transaction: Transaction) -> AddTransactionResult {
+    pub async fn add_transaction(&mut self, mut transaction: Transaction) -> AddTransactionResult {
         let tx_sig_to_insert = transaction.get_signature();
+
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        // TODO -- this is just testing -- remove async too    //
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        let publickey;
+        {
+            let wallet = self.wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+        }
+
+        transaction
+            .add_hop_to_path(self.wallet_lock.clone(), publickey)
+            .await;
+        transaction
+            .add_hop_to_path(self.wallet_lock.clone(), publickey)
+            .await;
+        //
+        // note that this calculates the total fees, so needs to
+        // be handled well. Stephen may have some ideas on how we
+        // can better name these functions. what this is really
+        // doing is filling in the total fee amounts so that we
+        // can calculate the routing work below to know how much
+        // this contributes to our mempool.
+        //
+        transaction.calculate_total_fees(publickey);
+        ////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        // REMOVE ONCE NETWORK CAN PASS ROUTING SIGS //
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////
+
+        let routing_work_available_for_me =
+            transaction.get_routing_work_for_publickey(self.mempool_publickey);
+
+        //println!("total fees in tx: {}", transaction.get_total_fees());
+        //println!("routing paths: {:?}", transaction.get_path());
+        //println!("routing work for me in this tx: {}", routing_work_available_for_me);
 
         if self
             .transactions
@@ -82,7 +147,41 @@ impl Mempool {
             return AddTransactionResult::Exists;
         } else {
             self.transactions.push(transaction);
+            self.routing_work_in_mempool += routing_work_available_for_me;
             return AddTransactionResult::Accepted;
+        }
+    }
+
+    //
+    // when we generate a block ourselves, we automatically prune the mempool but
+    // when we accept a block produced by others this may not be the case. So we
+    // have this function to manually remove the transactions in the blocks we
+    // are adding if their hash_for_signature matches.
+    //
+    pub fn delete_transactions(&mut self, transactions: &Vec<Transaction>) {
+        let mut tx_hashmap = HashMap::new();
+
+        for transaction in transactions {
+            let hash = transaction.get_hash_for_signature();
+            tx_hashmap.entry(hash).or_insert(true);
+        }
+
+        //
+        // TODO
+        //
+        // reorder the transactions vector so that all of the
+        // elements we want to delete are at the front, then
+        // sweep them out in a single operation.
+        //
+        // for now just delete
+        //
+        self.routing_work_in_mempool = 0;
+        self.transactions
+            .retain(|x| tx_hashmap.contains_key(&x.get_hash_for_signature()) != true);
+
+        for transaction in &self.transactions {
+            self.routing_work_in_mempool +=
+                transaction.get_routing_work_for_publickey(self.mempool_publickey);
         }
     }
 
@@ -103,7 +202,7 @@ impl Mempool {
         {
             return AddTransactionResult::Exists;
         } else {
-            println!("adding goldten ticket to mempool...");
+            println!("adding golden ticket to mempool...");
             self.transactions.push(transaction);
             return AddTransactionResult::Accepted;
         }
@@ -113,7 +212,10 @@ impl Mempool {
     /// Calculates the work available in mempool to produce a block
     ///
     pub fn calculate_work_available(&self) -> u64 {
-        2 * 100_000_000
+        if self.routing_work_in_mempool > 0 {
+            return self.routing_work_in_mempool;
+        }
+        return 0;
     }
 
     //
@@ -151,7 +253,7 @@ impl Mempool {
             let work_needed = self.calculate_work_needed(previous_block);
             let time_elapsed = create_timestamp() - previous_block.get_timestamp();
             println!(
-                "WA: {:?} -- WN: {:?} -- TE: {:?}",
+                "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
                 work_available, work_needed, time_elapsed
             );
             work_available >= work_needed
@@ -170,6 +272,9 @@ impl Mempool {
             blockchain_lock.clone(),
         )
         .await;
+
+        self.routing_work_in_mempool = 0;
+
         block
     }
 }
@@ -187,7 +292,17 @@ pub async fn run(
     //
     {
         let mut mempool = mempool_lock.write().await;
+        let publickey;
+        let privatekey;
         mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+        {
+            let wallet = mempool.wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+            privatekey = wallet.get_privatekey();
+        }
+
+        mempool.set_mempool_publickey(publickey);
+        mempool.set_mempool_privatekey(privatekey);
     }
 
     //
@@ -214,13 +329,12 @@ pub async fn run(
 
     loop {
         tokio::select! {
-            Some(message) = mempool_channel_receiver.recv() => {
+           Some(message) = mempool_channel_receiver.recv() => {
+               match message {
 
-                match message {
-
-                    // TryBundleBlock makes periodic attempts to produce blocks and does so
-                     // if the mempool can bundle blocks....
-                    MempoolMessage::TryBundleBlock => {
+                   // TryBundleBlock makes periodic attempts to produce blocks and does so
+                   // if the mempool can bundle blocks....
+                   MempoolMessage::TryBundleBlock => {
                         let can_bundle;
                         {
                             let mempool = mempool_lock.read().await;
@@ -245,12 +359,15 @@ pub async fn run(
                         }
                     },
 
-                    // ProcessBlocks will add blocks FIFO from the queue into blockchain
-                    MempoolMessage::ProcessBlocks => {
+
+                   // ProcessBlocks will add blocks FIFO from the queue into blockchain
+                   MempoolMessage::ProcessBlocks => {
+
                        let mut mempool = mempool_lock.write().await;
                        mempool.currently_processing_block = true;
                        let mut blockchain = blockchain_lock.write().await;
                        while let Some(block) = mempool.blocks.pop_front() {
+                           mempool.delete_transactions(&block.transactions);
                            blockchain.add_block(block).await;
                        }
                        mempool.currently_processing_block = false;
@@ -274,7 +391,7 @@ pub async fn run(
                     }
                     SaitoMessage::MempoolNewTransaction { transaction } => {
                         let mut mempool = mempool_lock.write().await;
-                        mempool.add_transaction(transaction);
+                        mempool.add_transaction(transaction).await;
                     },
                     SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
                         let mut mempool = mempool_lock.write().await;

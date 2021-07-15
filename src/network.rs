@@ -18,7 +18,7 @@ fn post_transaction(mut body: impl Buf) -> Transaction {
     // 1. It's sent along with other tx info
     // 2. regenerated in deserialization
     // 3. regenereted when fetched -> hash_for_signature would become an Option<SaitoHash> in that case
-    // 
+    //
     // let mut tx = Transaction::deserialize_from_net(buffer);
     // let hash_for_signature = hash(&tx.serialize_for_signature());
     // tx.set_hash_for_signature(hash_for_signature);
@@ -35,7 +35,7 @@ pub async fn run(
         .and(warp::path("transactions"))
         .and(warp::path::end())
         .and(body::aggregate().map(move |body| {
-            let transaction = post_transaction(body);
+            let mut transaction = post_transaction(body);
             broadcast_channel_sender
                 .send(SaitoMessage::MempoolNewTransaction { transaction })
                 .unwrap();
