@@ -497,7 +497,6 @@ impl Block {
  
            // fee transaction
             if !transaction.is_fee_transaction() {
-println!("this transaction has fees of: {}", transaction.get_total_fees());
                 total_fees += transaction.get_total_fees();
             } else {
                 ft_num += 1;
@@ -1107,7 +1106,6 @@ println!("now done cumulative work calculations...");
         }
 
         let block_merkle_root = block.generate_merkle_root();
-        println!("setting merkle root as: {:?}", block_merkle_root);
         block.set_merkle_root(block_merkle_root);
 
         let block_hash = block.generate_hash();

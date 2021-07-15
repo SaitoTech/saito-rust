@@ -889,9 +889,7 @@ mod tests {
         mock_tx.set_signature([1; 64]);
         let serialized_tx = mock_tx.serialize_for_net();
 
-println!("SERIALIZED: {:?}", mock_tx);
         let deserialized_tx = Transaction::deserialize_from_net(serialized_tx);
-println!("DESERIALIZED: {:?}", deserialized_tx);
         assert_eq!(mock_tx, deserialized_tx);
     }
 }

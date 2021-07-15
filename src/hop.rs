@@ -78,9 +78,6 @@ impl Hop {
         let to: SaitoPublicKey = bytes[33..66].try_into().unwrap();
         let sig: SaitoSignature = bytes[66..130].try_into().unwrap();
 
-println!("from: {:?}", from);
-println!("to: {:?}", to);
-
 	let mut hop = Hop::new();
         hop.set_from(from);
         hop.set_to(to);
