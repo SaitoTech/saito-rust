@@ -579,10 +579,6 @@ impl Block {
                 //
                 // calculate miner and router payments
                 //
-                // TODO - REMOVE  - temporary to create additional tokens so we have circulating fees
-                //
-                total_fees += 10000;
-                //
                 let miner_payment = total_fees / 2;
                 let router_payment = total_fees - miner_payment;
 
@@ -764,8 +760,6 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
                 _ => {}
             };
         }
-
-println!("now done cumulative work calculations...");
 
         self.set_has_fee_transaction(has_fee_transaction);
         self.set_has_golden_ticket(has_golden_ticket);

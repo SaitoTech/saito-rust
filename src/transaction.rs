@@ -258,8 +258,6 @@ impl Transaction {
         transaction.add_input(input);
         transaction.add_output(output);
 
-println!("VIP going to: {:?}", to_publickey);
-
         transaction
     }
 
@@ -661,9 +659,7 @@ println!("work by hop: {:?}", work_by_hop);
     // calculate cumulative fee share in block
     //
     pub fn generate_metadata_cumulative_fees(&mut self, cumulative_fees: u64) -> u64 {
-println!("1 {} {}", cumulative_fees, self.total_fees);
         self.cumulative_fees = cumulative_fees + self.total_fees;
-println!("2");
         self.cumulative_fees
     }
     //
@@ -878,7 +874,13 @@ mod tests {
     fn serialize_for_net_test() {
         let mock_input = Slip::new();
         let mock_output = Slip::new();
+	let mut mock_hop = Hop::new();
+	    mock_hop.set_from([0; 33]);
+	    mock_hop.set_to([0; 33]);
+	    mock_hop.set_sig([0; 64]);
         let mut mock_tx = Transaction::new();
+	let mut mock_path: Vec<Hop> = vec![];
+	    mock_path.push(mock_hop);
 	let ctimestamp = create_timestamp();
 	
         mock_tx.set_timestamp(ctimestamp);
@@ -887,6 +889,9 @@ mod tests {
         mock_tx.set_message(vec![104, 101, 108, 108, 111]);
         mock_tx.set_transaction_type(TransactionType::Normal);
         mock_tx.set_signature([1; 64]);
+        mock_tx.set_path(mock_path);
+
+
         let serialized_tx = mock_tx.serialize_for_net();
 
         let deserialized_tx = Transaction::deserialize_from_net(serialized_tx);
