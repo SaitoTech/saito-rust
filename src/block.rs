@@ -45,6 +45,9 @@ pub struct DataToValidate {
     pub total_rebroadcast_slips: u64,
     // number of rebroadcast txs
     pub total_rebroadcast_nolan: u64,
+    // all ATR txs hashed together
+    pub rebroadcast_hash: [u8; 32],
+
 }
 impl DataToValidate {
     #[allow(clippy::too_many_arguments)]
@@ -59,6 +62,8 @@ impl DataToValidate {
     	    rebroadcasts: vec![],
     	    total_rebroadcast_slips: 0,
     	    total_rebroadcast_nolan: 0,
+	    // must be initialized zeroed-out for proper hashing
+            rebroadcast_hash: [0; 32],
         }
     }
 }
@@ -92,6 +97,12 @@ pub struct Block {
     pub has_golden_ticket: bool,
     // has fee transaction
     pub has_fee_transaction: bool,
+    // number of rebroadcast slips
+    pub total_rebroadcast_slips: u64,
+    // number of rebroadcast txs
+    pub total_rebroadcast_nolan: u64,
+    // all ATR txs hashed together
+    pub rebroadcast_hash: [u8; 32],
 }
 
 impl Block {
@@ -114,6 +125,10 @@ impl Block {
             lc: false,
             has_golden_ticket: false,
             has_fee_transaction: false,
+    	    total_rebroadcast_slips: 0,
+    	    total_rebroadcast_nolan: 0,
+	    // must be initialized zeroed-out for proper hashing
+            rebroadcast_hash: [0; 32],
         }
     }
 
@@ -486,6 +501,11 @@ impl Block {
         let mut total_fees = 0;
 	let mut total_rebroadcast_slips: u64 = 0;
 	let mut total_rebroadcast_nolan: u64 = 0;
+	// when we find a rebroadcast TX we hash it and put the hash 
+	// here. when validating a block we do the exact same. as long
+	// as the rebroadcast hash and the block hash match the set of
+	// transactions are exactly the same.
+        let mut rebroadcast_hash: SaitoHash = [0; 32];
         let miner_publickey;
         let router_publickey;
 
@@ -495,7 +515,7 @@ impl Block {
         let mut idx: usize = 0;
         for transaction in &self.transactions {
  
-           // fee transaction
+            // fee transaction
             if !transaction.is_fee_transaction() {
                 total_fees += transaction.get_total_fees();
             } else {
@@ -683,7 +703,14 @@ println!("pruned block hash: {:?}", pruned_block_hash);
 			    200_000_000,
 			);
 
-println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
+			//
+			// update cryptographic hash of all ATRs
+			//
+			let mut vbytes: Vec<u8> = vec![];
+			vbytes.extend(&rebroadcast_hash);
+			vbytes.extend(&rebroadcast_transaction.serialize_for_signature());
+			rebroadcast_hash = hash(&vbytes);
+
 			cv.rebroadcasts.push(rebroadcast_transaction);
 		    }
 		}
@@ -691,6 +718,7 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
 
 	    cv.total_rebroadcast_slips = total_rebroadcast_slips;
 	    cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
+	    cv.rebroadcast_hash = rebroadcast_hash;
 
 	}
 	}
@@ -746,6 +774,17 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
         let mut has_golden_ticket = false;
         let mut has_fee_transaction = false;
 
+
+	//
+	// we have to do a single sweep through all of the transactions in 
+	// non-parallel to do things like generate the cumulative order of the
+	// transactions in the block for things like work and fee calculations
+	// for the lottery.
+	//
+	// we take advantage of the sweep to perform other pre-validation work 
+	// like counting up our ATR transactions and generating the hash 
+	// commitment for all of our rebroadcasts.
+	//
         for transaction in &mut self.transactions {
 
             cumulative_fees = transaction.generate_metadata_cumulative_fees(cumulative_fees);
@@ -757,6 +796,19 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
             match transaction.get_transaction_type() {
                 TransactionType::Fee => has_fee_transaction = true,
                 TransactionType::GoldenTicket => has_golden_ticket = true,
+                TransactionType::ATR => {
+
+                    let mut vbytes: Vec<u8> = vec![];
+                    vbytes.extend(&self.rebroadcast_hash);
+                    vbytes.extend(&transaction.serialize_for_signature());
+                    self.rebroadcast_hash = hash(&vbytes);
+		
+		    for input in transaction.get_inputs() {
+                        self.total_rebroadcast_slips += 1;
+                        self.total_rebroadcast_nolan += input.get_amount();
+		    }
+
+		},
                 _ => {}
             };
         }
@@ -963,6 +1015,23 @@ println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
             }
         }
         println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
+
+
+	//
+	// VALIDATE ATR
+	//
+	if cv.total_rebroadcast_slips != self.total_rebroadcast_slips {
+	    println!("ERROR 624442: rebroadcast slips total incorrect");
+	    return false;
+	}
+	if cv.total_rebroadcast_nolan != self.total_rebroadcast_nolan {
+	    println!("ERROR 294018: rebroadcast nolan amount incorrect");
+	    return false;
+	}
+	if cv.rebroadcast_hash != self.rebroadcast_hash {
+	    println!("ERROR 123422: hash of rebroadcast transactions incorrect");
+	    return false;
+	}
 
 
         //

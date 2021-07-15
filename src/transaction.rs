@@ -275,8 +275,10 @@ impl Transaction {
     ) -> Transaction {
 
         let mut transaction = Transaction::new();
-        let mut output_payment = output_slip_to_rebroadcast.get_amount() - with_fee;
-	if output_payment < 0 { output_payment = 0; }
+	let mut output_payment = 0;
+    	if output_slip_to_rebroadcast.get_amount() > with_fee {
+            output_payment = output_slip_to_rebroadcast.get_amount() - with_fee;
+	}
 
         transaction.set_transaction_type(TransactionType::ATR);
 
@@ -369,6 +371,10 @@ impl Transaction {
         self.transaction_type == TransactionType::Fee
     }
 
+    pub fn is_atr_transaction(&self) -> bool {
+        self.transaction_type == TransactionType::ATR
+    }
+
     pub fn is_golden_ticket(&self) -> bool {
         self.transaction_type == TransactionType::GoldenTicket
     }
@@ -425,13 +431,14 @@ impl Transaction {
 	// definition. this is the edge-case where sending a tx
 	// can make you money.
 	//
-	if self.path.len() == 0 {
+	if self.path.len() == 0 || self.get_total_fees() == 0 {
 	    if self.inputs.len() > 0 {
 		return self.inputs[0].get_publickey();
 	    } else {
 		return [0; 33];
 	    }
 	}
+
 
 	//
 	// if we have a routing path, we calculate the total amount
