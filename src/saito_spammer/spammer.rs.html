@@ -135,31 +135,11 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
-<span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">saito_rust</span>::{
     <span class="ident">blockchain::Blockchain</span>,
-    <span class="ident">crypto</span>::{<span class="ident">generate_random_bytes</span>, <span class="ident">hash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>},
     <span class="ident">mempool::Mempool</span>,
     <span class="ident">miner::Miner</span>,
-    <span class="ident">slip::Slip</span>,
     <span class="ident">transaction::Transaction</span>,
     <span class="ident">wallet::Wallet</span>,
 };
@@ -202,9 +182,29 @@
         <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">reqwest::Client::new</span>();
         <span class="comment">// sleep(Duration::from_millis(5000));</span>
         <span class="kw">loop</span> {
-            <span class="kw">let</span> <span class="ident">transactions</span> <span class="op">=</span>
-                <span class="ident">generate_transactions</span>(<span class="ident">publickey</span>, <span class="ident">privatekey</span>, <span class="ident">txs_to_generate</span>, <span class="ident">bytes_per_tx</span>);
-            <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">transactions</span>.<span class="ident">iter</span>() {
+
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+
+	    <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">txs_to_generate</span> {
+
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">5000</span>, <span class="number">5000</span>).<span class="kw">await</span>;
+                <span class="ident">transaction</span>.<span class="ident">set_message</span>(
+                    (<span class="number">0</span>..<span class="ident">bytes_per_tx</span>)
+                        .<span class="ident">into_par_iter</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">rand::random</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>())
+                        .<span class="ident">collect</span>(),
+                );
+
+                <span class="comment">// sign ...</span>
+                <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">privatekey</span>);
+
+		<span class="comment">// make sure we know fees etc.</span>
+		<span class="ident">transaction</span>.<span class="ident">pre_validation_calculations_parallelizable</span>(<span class="ident">publickey</span>);
+                <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
+
+	    }
+
+            <span class="kw">for</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">transactions</span> {
                 <span class="kw">let</span> <span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">serialize_for_net</span>();
                 <span class="kw">let</span> <span class="ident">_res</span> <span class="op">=</span> <span class="ident">client</span>
                     .<span class="ident">post</span>(<span class="string">&quot;http://localhost:3030/transactions&quot;</span>)
@@ -269,43 +269,7 @@
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_transactions</span>(
-    <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>,
-    <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>,
-    <span class="ident">txs_to_generate</span>: <span class="ident">u32</span>,
-    <span class="ident">bytes_per_tx</span>: <span class="ident">u32</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> {
-    (<span class="number">0</span>..<span class="ident">txs_to_generate</span>)
-        .<span class="ident">into_par_iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
-            <span class="ident">transaction</span>.<span class="ident">set_message</span>(
-                (<span class="number">0</span>..<span class="ident">bytes_per_tx</span>)
-                    .<span class="ident">into_par_iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">rand::random</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>())
-                    .<span class="ident">collect</span>(),
-            );
 
-            <span class="comment">// as fake transactions, we set the UUID arbitrarily</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
-            <span class="ident">input1</span>.<span class="ident">set_publickey</span>(<span class="ident">publickey</span>);
-            <span class="ident">input1</span>.<span class="ident">set_amount</span>(<span class="number">1000000</span>);
-            <span class="ident">input1</span>.<span class="ident">set_uuid</span>(<span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">generate_random_bytes</span>(<span class="number">32</span>)));
-
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
-            <span class="ident">output1</span>.<span class="ident">set_publickey</span>(<span class="ident">publickey</span>);
-            <span class="ident">output1</span>.<span class="ident">set_amount</span>(<span class="number">1000000</span>);
-            <span class="ident">output1</span>.<span class="ident">set_uuid</span>([<span class="number">0</span>; <span class="number">32</span>]);
-
-            <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">input1</span>);
-            <span class="ident">transaction</span>.<span class="ident">add_output</span>(<span class="ident">output1</span>);
-
-            <span class="comment">// sign ...</span>
-            <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">privatekey</span>);
-            <span class="ident">transaction</span>
-        })
-        .<span class="ident">collect</span>()
-}
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_spammer" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>

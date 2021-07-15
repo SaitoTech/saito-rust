@@ -83,7 +83,7 @@
         .<span class="ident">and</span>(<span class="ident">warp::path</span>(<span class="string">&quot;transactions&quot;</span>))
         .<span class="ident">and</span>(<span class="ident">warp::path::end</span>())
         .<span class="ident">and</span>(<span class="ident">body::aggregate</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">body</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">post_transaction</span>(<span class="ident">body</span>);
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">post_transaction</span>(<span class="ident">body</span>);
             <span class="ident">broadcast_channel_sender</span>
                 .<span class="ident">send</span>(<span class="ident">SaitoMessage::MempoolNewTransaction</span> { <span class="ident">transaction</span> })
                 .<span class="ident">unwrap</span>();

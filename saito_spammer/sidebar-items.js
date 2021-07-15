@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["generate_transactions",""],["main",""],["run",""]]});
+initSidebarItems({"fn":[["main",""],["run",""]]});
