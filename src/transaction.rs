@@ -29,6 +29,7 @@ pub enum TransactionType {
     Normal,
     Fee,
     GoldenTicket,
+    ATR,
     Vip,
     Other,
 }
@@ -257,6 +258,71 @@ impl Transaction {
         transaction.add_input(input);
         transaction.add_output(output);
 
+println!("VIP going to: {:?}", to_publickey);
+
+        transaction
+    }
+
+
+    // 
+    // 
+    // generate ATR transaction using source transaction and output slip
+    //
+    // this assumes that the 
+    //
+    pub fn generate_rebroadcast_transaction(
+        transaction_to_rebroadcast: &Transaction,
+        output_slip_to_rebroadcast: &Slip,
+        with_fee: u64,
+    ) -> Transaction {
+
+        let mut transaction = Transaction::new();
+        let mut output_payment = output_slip_to_rebroadcast.get_amount() - with_fee;
+	if output_payment < 0 { output_payment = 0; }
+
+        transaction.set_transaction_type(TransactionType::ATR);
+
+        let mut input = Slip::new();
+        input.set_publickey(output_slip_to_rebroadcast.get_publickey());
+        input.set_amount(output_slip_to_rebroadcast.get_amount());
+        input.set_slip_type(output_slip_to_rebroadcast.get_slip_type());
+
+        let mut output = Slip::new();
+        output.set_publickey(output_slip_to_rebroadcast.get_publickey());
+        output.set_amount(output_payment);
+        output.set_slip_type(SlipType::ATR);
+        output.set_uuid(output_slip_to_rebroadcast.get_uuid());
+        
+	if input.get_slip_type() == SlipType::ATR {
+
+	    //
+	    // this is not our first rebroadcast, which means we just 
+	    // need to copy the rebroadcast message field when making
+	    // this transaction.
+	    //
+	    transaction.set_message(transaction_to_rebroadcast.get_message().to_vec());
+
+	} else {
+
+	    //
+	    // this is our first rebroadcast, so we need to set the 
+	    // message field in the transaction to the content of the 
+	    // original transaction being rebroadcast.
+	    //
+	    transaction.set_message(transaction_to_rebroadcast.serialize_for_net().to_vec());
+
+	}
+
+        transaction.add_input(input);
+        transaction.add_output(output);
+
+	//
+	// signature is the ORIGINAL signature. this transaction
+	// will fail its signature check and then get analysed as 
+	// a rebroadcast transaction because of its transaction type.
+	//
+	transaction.set_signature(transaction_to_rebroadcast.get_signature());
+
         transaction
     }
 
@@ -354,18 +420,61 @@ impl Transaction {
     }
 
     pub fn get_winning_routing_node(&self, random_hash: SaitoHash) -> SaitoPublicKey {
-        //
-        // find winning router
-        //
-        let x = U256::from_big_endian(&random_hash);
-        let y: u64 = 10_000_000_000;
-        let z = U256::from_big_endian(&y.to_be_bytes());
-        let (_winning_routing_node_random, _bolres) = x.overflowing_rem(z);
+
+	//
+	// if there are no routing paths, we return the sender of
+	// the payment, as they're got all of the routing work by
+	// definition. this is the edge-case where sending a tx
+	// can make you money.
+	//
+	if self.path.len() == 0 {
+	    if self.inputs.len() > 0 {
+		return self.inputs[0].get_publickey();
+	    } else {
+		return [0; 33];
+	    }
+	}
+
+	//
+	// if we have a routing path, we calculate the total amount
+	// of routing work that it is possible for this transaction
+	// to contain (2x the fee).
+	//
+	let mut aggregate_routing_work: u64 = self.get_total_fees();
+	let mut routing_work_this_hop: u64 = aggregate_routing_work;
+        let mut work_by_hop : Vec<u64> = vec![];
+	work_by_hop.push(aggregate_routing_work);
+
+	for _i in 1..self.path.len() {
+	    let new_routing_work_this_hop: u64  = routing_work_this_hop / 2;
+	    aggregate_routing_work += new_routing_work_this_hop;
+            routing_work_this_hop = new_routing_work_this_hop;
+	    work_by_hop.push(aggregate_routing_work);
+	}
+
+println!("work by hop: {:?}", work_by_hop);
 
         //
-        // TODO - process routing path, return winner
+        // find winning routing node
         //
-        self.inputs[0].get_publickey()
+        let x = U256::from_big_endian(&random_hash);
+        let z = U256::from_big_endian(&aggregate_routing_work.to_be_bytes());
+        let (zy, _bolres) = x.overflowing_rem(z);
+        let winning_routing_work_in_nolan = zy.low_u64();
+
+        println!("wrwin: {}", winning_routing_work_in_nolan);
+
+	      for i in 0.. work_by_hop.len() {
+	          if winning_routing_work_in_nolan <= work_by_hop[i] {
+		             return self.path[i].get_to();
+	          }
+	      }
+
+        //
+        // we should never reach this
+        //
+        return [0; 33];
+
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
@@ -400,9 +509,7 @@ impl Transaction {
         //
         // we set slip ordinals when signing
         //
-        println!("signing tx with {} outputs: ", self.get_outputs().len());
         for (i, output) in self.get_mut_outputs().iter_mut().enumerate() {
-            println!("updating slip ordinal: {}", i);
             output.set_slip_ordinal(i as u8);
         }
 
@@ -538,7 +645,7 @@ impl Transaction {
     pub fn pre_validation_calculations_cumulative_work(&mut self, cumulative_work: u64) -> u64 {
         return cumulative_work + self.routing_work_for_creator;
     }
-    pub fn pre_validation_calculations_parallelizable(&mut self) -> bool {
+    pub fn pre_validation_calculations_parallelizable(&mut self, creator_publickey : SaitoPublicKey) -> bool {
         //
         // and save the hash_for_signature so we can use it later...
         //
@@ -584,11 +691,11 @@ impl Transaction {
             self.total_fees = nolan_in - nolan_out;
         }
 
-	      //
-	      // we also need to know how much routing work exists and is available
-	      // for the block producer, to ensure that they have met the conditions
-	      // required by the burn fee for block production.
-	      //
+        //
+        // we also need to know how much routing work exists and is available
+        // for the block producer, to ensure that they have met the conditions
+        // required by the burn fee for block production.
+        //
         self.routing_work_for_creator = self.get_routing_work_for_publickey(creator_publickey);
 
         true

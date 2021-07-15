@@ -38,6 +38,12 @@ pub struct DataToValidate {
     pub gt_idx: Option<usize>,
     // expected difficulty
     pub expected_difficulty: u64,
+    // rebroadcast txs
+    pub rebroadcasts: Vec<Transaction>,
+    // number of rebroadcast slips
+    pub total_rebroadcast_slips: u64,
+    // number of rebroadcast txs
+    pub total_rebroadcast_nolan: u64,
 }
 impl DataToValidate {
     #[allow(clippy::too_many_arguments)]
@@ -49,6 +55,9 @@ impl DataToValidate {
             gt_num: 0,
             gt_idx: None,
             expected_difficulty: 0,
+    	    rebroadcasts: vec![],
+    	    total_rebroadcast_slips: 0,
+    	    total_rebroadcast_nolan: 0,
         }
     }
 }
@@ -455,10 +464,12 @@ impl Block {
         mrv[start_point].get_hash()
     }
 
+
     //
-    //
+    // generate hashes and payouts and fee calculations
     //
     pub fn generate_data_to_validate(&self, blockchain: &Blockchain) -> DataToValidate {
+
         let mut cv = DataToValidate::new();
 
         let mut gt_num: u8 = 0;
@@ -466,15 +477,18 @@ impl Block {
         let mut gt_idx_option: Option<usize> = None;
         let mut ft_idx_option: Option<usize> = None;
         let mut total_fees = 0;
+	let mut total_rebroadcast_slips: u64 = 0;
+	let mut total_rebroadcast_nolan: u64 = 0;
         let miner_publickey;
         let router_publickey;
 
         //
-        // calculate total fees in block
+        // calculate total fees
         //
         let mut idx: usize = 0;
         for transaction in &self.transactions {
-            // fee transaction
+ 
+           // fee transaction
             if !transaction.is_fee_transaction() {
                 total_fees += transaction.get_total_fees();
             } else {
@@ -491,10 +505,14 @@ impl Block {
             idx += 1;
         }
 
+	//
+	// calculate payments
+	//
         if let Some(gt_idx) = gt_idx_option {
-            //
-            // grab random solution from golden ticket
-            //
+
+	    //
+            // grab random input from golden ticket
+	    //
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
@@ -503,101 +521,115 @@ impl Block {
             //
             // create fee transaction
             //
-            let mut fee_transaction = Transaction::new();
-            fee_transaction.set_transaction_type(TransactionType::Fee);
+	    if total_fees == 0 {
 
-            //
-            // find winning router
-            //
-            let x = U256::from_big_endian(&miner_random);
-            //
-            // TODO - y cannot be zero or divide by zero
-            //
-            let y = match total_fees {
-                0 => 100,
-                diff => diff,
-            };
 
-            let z = U256::from_big_endian(&y.to_be_bytes());
-            let (winning_router, _bolres) = x.overflowing_rem(z);
-            let winning_nolan_in_fees = winning_router.low_u64();
+	    } else {
 
-            //
-            // winning TX contains the winning nolan
-            //
-            // i.e. txs are picked based on fee contribution
-            //
-            // TODO - panics if no txs in block
-            //
-            let mut winning_tx = &self.transactions[0];
-            for transaction in &self.transactions {
-                if transaction.cumulative_fees > winning_nolan_in_fees {
-                    break;
+                //
+                // find winning tx
+                //
+                let x = U256::from_big_endian(&miner_random);
+		// no risk of divide by zero with if / else check
+                let y = total_fees;
+
+		//
+		// random number mod total fees gives us th ewinning
+		// nolan. we are going to pick the transaction that
+		// contains this incremental nolan
+		//
+                let z = U256::from_big_endian(&y.to_be_bytes());
+                let (zy, _bolres) = x.overflowing_rem(z);
+                let winning_nolan_in_fees = zy.low_u64();
+
+                //
+                // winning TX contains the winning nolan
+                //
+                // i.e. txs are picked based on fee contribution
+                //
+                let mut winning_tx = &self.transactions[0];
+                for transaction in &self.transactions {
+                    if transaction.cumulative_fees > winning_nolan_in_fees {
+                        break;
+                    }
+                    winning_tx = &transaction;
                 }
-                winning_tx = &transaction;
+
+		//
+                // winning router is picked by sending a random 
+		// number into the transaction, which is then 
+		// used to select a routing node based on the 
+		// weighted lottery.
+                //
+            	let random_number2 = hash(&miner_random.to_vec());
+           	router_publickey = winning_tx.get_winning_routing_node(random_number2);
+
+                //
+                // winning miner from golden ticket
+                //
+                miner_publickey = golden_ticket.get_publickey();
+
+                //
+                // calculate miner and router payments
+                //
+                // TODO - REMOVE  - temporary to create additional tokens so we have circulating fees
+                //
+                total_fees += 10000;
+                //
+                let miner_payment = total_fees / 2;
+                let router_payment = total_fees - miner_payment;
+
+	        let mut transaction = Transaction::new();
+	        transaction.set_transaction_type(TransactionType::Fee);
+
+                let mut input1 = Slip::new();
+                input1.set_publickey(miner_publickey);
+                input1.set_amount(0);
+                input1.set_slip_type(SlipType::MinerInput);
+                input1.set_slip_ordinal(0);
+
+                let mut output1 = Slip::new();
+                output1.set_publickey([0; 33]);
+                output1.set_amount(miner_payment);
+                output1.set_slip_type(SlipType::MinerOutput);
+                output1.set_slip_ordinal(0);
+
+                let mut input2 = Slip::new();
+                input2.set_publickey(router_publickey);
+                input2.set_amount(0);
+                input2.set_slip_type(SlipType::RouterInput);
+                input2.set_slip_ordinal(1);
+
+                let mut output2 = Slip::new();
+                output2.set_publickey(router_publickey);
+                output2.set_amount(router_payment);
+                output2.set_slip_type(SlipType::RouterOutput);
+                output2.set_slip_ordinal(1);
+
+                transaction.add_input(input1);
+                transaction.add_output(output1);
+                transaction.add_input(input2);
+                transaction.add_output(output2);
+
+                //
+                // fee transaction added to consensus values
+                //
+                cv.fee_transaction = Some(transaction);
+
             }
-
-            //
-            // winning router is just tx sender for now
-            //
-            // TODO we need to add routing paths etc.
-            //
-            let random_number2 = hash(&miner_random.to_vec());
-            router_publickey = winning_tx.get_winning_routing_node(random_number2);
-
-            //
-            // winning miner from golden ticket
-            //
-            miner_publickey = golden_ticket.get_publickey();
-
-            //
-            // calculate miner and router payments
-            //
-
-            //
-            // TODO - REMOVE  - temporary to create tokens so we have circulating fees
-            total_fees = 10000;
-            //
-            let miner_payment = total_fees / 2;
-            let router_payment = total_fees - miner_payment;
-
-            let mut input1 = Slip::new();
-            input1.set_publickey(miner_publickey);
-            input1.set_amount(0);
-            input1.set_slip_type(SlipType::MinerInput);
-
-            let mut output1 = Slip::new();
-            output1.set_publickey([0; 33]);
-            output1.set_amount(miner_payment);
-            output1.set_slip_type(SlipType::MinerOutput);
-
-            let mut input2 = Slip::new();
-            input2.set_publickey(router_publickey);
-            input2.set_amount(0);
-            input2.set_slip_type(SlipType::RouterInput);
-
-            let mut output2 = Slip::new();
-            output2.set_publickey(router_publickey);
-            output2.set_amount(router_payment);
-            output2.set_slip_type(SlipType::RouterOutput);
-
-            fee_transaction.add_input(input1);
-            fee_transaction.add_output(output1);
-            fee_transaction.add_input(input2);
-            fee_transaction.add_output(output2);
 
             //
             // fee transaction added to consensus values
             //
-            cv.fee_transaction = Some(fee_transaction);
             cv.ft_idx = ft_idx_option;
             cv.ft_num = ft_num;
             cv.gt_idx = gt_idx_option;
             cv.gt_num = gt_num;
         }
 
+
         //
-        // validate difficulty
+        // calculate expected burn-fee given previous block
         //
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
             let difficulty = previous_block.get_difficulty();
@@ -611,6 +643,54 @@ impl Block {
                 cv.expected_difficulty = difficulty;
             }
         }
+
+
+        //
+        // calculate automatic transaction rebroadcasts / ATR / atr
+        //
+	if self.get_id() > 2 {
+
+	let pruned_block_hash = blockchain.blockring.get_longest_chain_block_hash_by_block_id(self.get_id()-2);
+println!("pruned block hash: {:?}", pruned_block_hash);
+
+        if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
+
+	    //
+	    // identify all unspent transactions
+	    //
+	    for transaction in &pruned_block.transactions {
+	        for output in transaction.get_outputs() {
+
+		    //
+		    // valid means spendable and non-zero
+		    //
+		    if output.validate(&blockchain.utxoset) {
+
+			total_rebroadcast_slips += 1;
+			total_rebroadcast_nolan += output.get_amount();
+
+			//
+			// create rebroadcast transaction
+			//
+			// TODO - floating fee based on previous block average
+			//
+			let rebroadcast_transaction = Transaction::generate_rebroadcast_transaction(
+			    &transaction,
+			    output,
+			    200_000_000,
+			);
+
+println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
+			cv.rebroadcasts.push(rebroadcast_transaction);
+		    }
+		}
+	    }
+
+	    cv.total_rebroadcast_slips = total_rebroadcast_slips;
+	    cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
+
+	}
+	}
 
         cv
     }
@@ -659,8 +739,6 @@ impl Block {
         //
         let mut cumulative_fees = 0;
         let mut cumulative_work = 0;
-        let mut hgt = false;
-        let mut hft = false;
 
         let mut has_golden_ticket = false;
         let mut has_fee_transaction = false;
@@ -691,6 +769,7 @@ impl Block {
 
         true
     }
+
 
     pub fn validate(
         &self,
@@ -834,6 +913,38 @@ impl Block {
             }
         }
 
+
+
+
+        //
+        // fee transactions
+        //
+        // we grab the fee transaction created in the cv function and run
+	// a quick hash of it, comparing that with the hash of the fee-tx
+	// that exists in the block. if they match, we're OK with th block
+	// including this fee transaction.
+        //
+        if !cv.ft_idx.is_none() {
+            if !cv.fee_transaction.is_none() {
+            
+                //
+            	// fee-transaction must still pass validation rules
+            	//
+		// we are OK with just doing a hash check as the other
+		// requirements are covered in the validation function.
+		//
+            	let fee_tx = cv.fee_transaction.unwrap();
+	    	let cv_ft_hash = hash(&fee_tx.serialize_for_signature());
+	    	let block_ft_hash = hash(&self.transactions[cv.ft_idx.unwrap()].serialize_for_signature());
+
+	    	if cv_ft_hash != block_ft_hash {
+	            println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");
+		    return false;
+	        }
+            }
+        }
+
+
         //
         // validate difficulty
         //
@@ -866,6 +977,7 @@ impl Block {
         wallet_lock: Arc<RwLock<Wallet>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Block {
+
         let blockchain = blockchain_lock.read().await;
         let wallet = wallet_lock.read().await;
 
@@ -948,14 +1060,22 @@ impl Block {
         // processing in block validation. So some extra code here.
         //
         if !cv.fee_transaction.is_none() {
+
             //
             // fee-transaction must still pass validation rules
             //
             let mut fee_tx = cv.fee_transaction.unwrap();
 
+	    //
+	    // block creator sends transaction inputs
+	    //
             for input in fee_tx.get_mut_inputs() {
                 input.set_publickey(wallet.get_publickey());
             }
+
+	    //
+	    // create tx hash
+	    //
             let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
             fee_tx.set_hash_for_signature(hash_for_signature);
 

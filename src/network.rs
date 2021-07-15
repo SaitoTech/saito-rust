@@ -32,7 +32,7 @@ pub async fn run(
         .and(warp::path("transactions"))
         .and(warp::path::end())
         .and(body::aggregate().map(move |body| {
-            let transaction = post_transaction(body);
+            let mut transaction = post_transaction(body);
             broadcast_channel_sender
                 .send(SaitoMessage::MempoolNewTransaction { transaction })
                 .unwrap();
