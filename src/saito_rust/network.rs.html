@@ -48,6 +48,9 @@
 <span id="45">45</span>
 <span id="46">46</span>
 <span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">consensus::SaitoMessage</span>, <span class="ident">crypto::hash</span>, <span class="ident">transaction::Transaction</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync::broadcast</span>;
@@ -69,10 +72,13 @@
     <span class="comment">// 1. It&#39;s sent along with other tx info</span>
     <span class="comment">// 2. regenerated in deserialization</span>
     <span class="comment">// 3. regenereted when fetched -&gt; hash_for_signature would become an Option&lt;SaitoHash&gt; in that case</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::deserialize_from_net</span>(<span class="ident">buffer</span>);
-    <span class="kw">let</span> <span class="ident">hash_for_signature</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">tx</span>.<span class="ident">serialize_for_signature</span>());
-    <span class="ident">tx</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
-    <span class="ident">tx</span>
+    <span class="comment">//</span>
+    <span class="comment">// let mut tx = Transaction::deserialize_from_net(buffer);</span>
+    <span class="comment">// let hash_for_signature = hash(&amp;tx.serialize_for_signature());</span>
+    <span class="comment">// tx.set_hash_for_signature(hash_for_signature);</span>
+    <span class="comment">// tx</span>
+
+    <span class="ident">Transaction::deserialize_from_net</span>(<span class="ident">buffer</span>)
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(

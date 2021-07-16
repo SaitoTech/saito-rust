@@ -334,7 +334,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_slip</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>, <span class="ident">transaction</span>: <span class="kw-2">&amp;</span><span class="ident">Transaction</span>, <span class="ident">slip</span>: <span class="kw-2">&amp;</span><span class="ident">Slip</span>, <span class="ident">lc</span>: <span class="ident">bool</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet_slip</span> <span class="op">=</span> <span class="ident">WalletSlip::new</span>();
 
-        <span class="ident">wallet_slip</span>.<span class="ident">set_uuid</span>(<span class="ident">transaction</span>.<span class="ident">get_hash_for_signature</span>());
+        <span class="ident">wallet_slip</span>.<span class="ident">set_uuid</span>(<span class="ident">transaction</span>.<span class="ident">get_hash_for_signature</span>().<span class="ident">unwrap</span>());
         <span class="ident">wallet_slip</span>.<span class="ident">set_utxokey</span>(<span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>());
         <span class="ident">wallet_slip</span>.<span class="ident">set_amount</span>(<span class="ident">slip</span>.<span class="ident">get_amount</span>());
         <span class="ident">wallet_slip</span>.<span class="ident">set_slip_ordinal</span>(<span class="ident">slip</span>.<span class="ident">get_slip_ordinal</span>());

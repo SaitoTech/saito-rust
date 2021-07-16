@@ -877,30 +877,11 @@
 <span id="874">874</span>
 <span id="875">875</span>
 <span id="876">876</span>
-<span id="877">877</span>
-<span id="878">878</span>
-<span id="879">879</span>
-<span id="880">880</span>
-<span id="881">881</span>
-<span id="882">882</span>
-<span id="883">883</span>
-<span id="884">884</span>
-<span id="885">885</span>
-<span id="886">886</span>
-<span id="887">887</span>
-<span id="888">888</span>
-<span id="889">889</span>
-<span id="890">890</span>
-<span id="891">891</span>
-<span id="892">892</span>
-<span id="893">893</span>
-<span id="894">894</span>
-<span id="895">895</span>
-<span id="896">896</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">blockchain::UtxoSet</span>,
     <span class="ident">crypto</span>::{
         <span class="ident">generate_random_bytes</span>, <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">verify</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>,
         <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>,
@@ -915,6 +896,7 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 
+<span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 
@@ -939,8 +921,8 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Transaction</span> {
     <span class="comment">// the bulk of the consensus transaction data</span>
     <span class="ident">timestamp</span>: <span class="ident">u64</span>,
-    <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>,
-    <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>,
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">with</span> <span class="op">=</span> <span class="string">&quot;serde_bytes&quot;</span>)]</span>
     <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="ident">transaction_type</span>: <span class="ident">TransactionType</span>,
@@ -949,7 +931,7 @@
     <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Hop</span><span class="op">&gt;</span>,
 
     <span class="comment">// hash used for merkle_root (does not include signature), and slip uuid</span>
-    <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span>,
+    <span class="ident">hash_for_signature</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span>,
 
     <span class="kw">pub</span> <span class="ident">total_in</span>: <span class="ident">u64</span>,
     <span class="kw">pub</span> <span class="ident">total_out</span>: <span class="ident">u64</span>,
@@ -970,8 +952,8 @@
             <span class="ident">message</span>: <span class="macro">vec!</span>[],
             <span class="ident">transaction_type</span>: <span class="ident">TransactionType::Normal</span>,
             <span class="ident">signature</span>: [<span class="number">0</span>; <span class="number">64</span>],
+            <span class="ident">hash_for_signature</span>: <span class="prelude-val">None</span>,
             <span class="ident">path</span>: <span class="macro">vec!</span>[],
-            <span class="ident">hash_for_signature</span>: [<span class="number">0</span>; <span class="number">32</span>],
             <span class="ident">total_in</span>: <span class="number">0</span>,
             <span class="ident">total_out</span>: <span class="number">0</span>,
             <span class="ident">total_fees</span>: <span class="number">0</span>,
@@ -1315,7 +1297,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">message</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_hash_for_signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_hash_for_signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">hash_for_signature</span>
     }
 
@@ -1408,7 +1390,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_hash_for_signature</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">hash</span>: <span class="ident">SaitoHash</span>) {
-        <span class="self">self</span>.<span class="ident">hash_for_signature</span> <span class="op">=</span> <span class="ident">hash</span>;
+        <span class="self">self</span>.<span class="ident">hash_for_signature</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">hash</span>);
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) {
@@ -1542,21 +1524,20 @@
         <span class="ident">longest_chain</span>: <span class="ident">bool</span>,
         <span class="ident">block_id</span>: <span class="ident">u64</span>,
     ) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input_slip_value</span> <span class="op">=</span> <span class="number">1</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output_slip_value</span> <span class="op">=</span> <span class="number">0</span>;
+
         <span class="kw">if</span> <span class="ident">longest_chain</span> {
-            <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">get_inputs</span>() {
-                <span class="ident">input</span>.<span class="ident">on_chain_reorganization</span>(<span class="ident">utxoset</span>, <span class="ident">longest_chain</span>, <span class="ident">block_id</span>);
-            }
-            <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">get_outputs</span>() {
-                <span class="ident">output</span>.<span class="ident">on_chain_reorganization</span>(<span class="ident">utxoset</span>, <span class="ident">longest_chain</span>, <span class="number">1</span>);
-            }
-        } <span class="kw">else</span> {
-            <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">get_inputs</span>() {
-                <span class="ident">input</span>.<span class="ident">on_chain_reorganization</span>(<span class="ident">utxoset</span>, <span class="ident">longest_chain</span>, <span class="number">1</span>);
-            }
-            <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">get_outputs</span>() {
-                <span class="ident">output</span>.<span class="ident">on_chain_reorganization</span>(<span class="ident">utxoset</span>, <span class="ident">longest_chain</span>, <span class="number">0</span>);
-            }
+            <span class="ident">input_slip_value</span> <span class="op">=</span> <span class="ident">block_id</span>;
+            <span class="ident">output_slip_value</span> <span class="op">=</span> <span class="number">1</span>;
         }
+
+        <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+            <span class="ident">input</span>.<span class="ident">on_chain_reorganization</span>(<span class="ident">utxoset</span>, <span class="ident">longest_chain</span>, <span class="ident">input_slip_value</span>)
+        });
+        <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">output</span><span class="op">|</span> {
+            <span class="ident">output</span>.<span class="ident">on_chain_reorganization</span>(<span class="ident">utxoset</span>, <span class="ident">longest_chain</span>, <span class="ident">output_slip_value</span>)
+        });
     }
 
     <span class="comment">//</span>
@@ -1610,7 +1591,9 @@
 
             <span class="comment">// generate utxoset key cache</span>
             <span class="comment">// and set the UUID needed for insertion to shashmap</span>
-            <span class="ident">output</span>.<span class="ident">set_uuid</span>(<span class="ident">hash_for_signature</span>);
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">hash_for_signature</span>) <span class="op">=</span> <span class="ident">hash_for_signature</span> {
+                <span class="ident">output</span>.<span class="ident">set_uuid</span>(<span class="ident">hash_for_signature</span>);
+            }
             <span class="ident">output</span>.<span class="ident">generate_utxoset_key</span>();
         }
 
@@ -1642,21 +1625,20 @@
         <span class="bool-val">true</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoUTXOSetKey</span>, <span class="ident">u64</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="comment">//</span>
-        <span class="comment">// VALIDATE signature valid</span>
-        <span class="comment">//</span>
-        <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_hash_for_signature</span>();
-        <span class="kw">let</span> <span class="ident">sig</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_signature</span>();
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="ident">UtxoSet</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">hash_for_signature</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_hash_for_signature</span>() {
+            <span class="kw">let</span> <span class="ident">sig</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_signature</span>();
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">is_empty</span>() {
-            <span class="macro">panic!</span>(<span class="string">&quot;transaction must have at least 1 input&quot;</span>);
-        }
-        <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_publickey</span>();
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">is_empty</span>() {
+                <span class="macro">println!</span>(<span class="string">&quot;Transaction must have at least 1 input&quot;</span>);
+                <span class="kw">return</span> <span class="bool-val">false</span>;
+            }
+            <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_inputs</span>()[<span class="number">0</span>].<span class="ident">get_publickey</span>();
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">hash_for_signature</span>, <span class="ident">sig</span>, <span class="ident">publickey</span>) {
-            <span class="macro">println!</span>(<span class="string">&quot;message verifies not&quot;</span>);
-            <span class="kw">return</span> <span class="bool-val">false</span>;
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">hash_for_signature</span>, <span class="ident">sig</span>, <span class="ident">publickey</span>) {
+                <span class="macro">println!</span>(<span class="string">&quot;message verifies not&quot;</span>);
+                <span class="kw">return</span> <span class="bool-val">false</span>;
+            }
         }
 
         <span class="comment">//</span>
@@ -1670,29 +1652,15 @@
         <span class="comment">//</span>
         <span class="comment">// VALIDATE min one sender and receiver</span>
         <span class="comment">//</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_inputs</span>().<span class="ident">len</span>() <span class="op">&lt;</span> <span class="number">1</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_inputs</span>().<span class="ident">is_empty</span>() {
             <span class="macro">println!</span>(<span class="string">&quot;ERROR 582039: less than 1 input in transaction&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_outputs</span>().<span class="ident">len</span>() <span class="op">&lt;</span> <span class="number">1</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_outputs</span>().<span class="ident">is_empty</span>() {
             <span class="macro">println!</span>(<span class="string">&quot;ERROR 582039: less than 1 output in transaction&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-        <span class="comment">//</span>
-        <span class="comment">// VALIDATE no negative payments</span>
-        <span class="comment">//</span>
-        <span class="comment">// Rust Types prevent these variables being &lt; 0</span>
-        <span class="comment">//        if nolan_in &lt; 0 {</span>
-        <span class="comment">//            println!(&quot;ERROR 672939: negative payment in transaction from slip&quot;);</span>
-        <span class="comment">//            return false;</span>
-        <span class="comment">//        }</span>
-        <span class="comment">//        if nolan_out &lt; 0 {</span>
-        <span class="comment">//            println!(&quot;ERROR 672940: negative payment in transaction to slip&quot;);</span>
-        <span class="comment">//            return false;</span>
-        <span class="comment">//        }</span>
-        <span class="comment">//</span>
-        <span class="comment">// we make an exception for fee and vip transactions, which may be pulling revenue from the</span>
         <span class="comment">// treasury in some amount.</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">total_out</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">total_in</span>
             <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">get_transaction_type</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">TransactionType::Fee</span>
@@ -1706,15 +1674,7 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-        <span class="comment">//</span>
-        <span class="comment">// VALIDATE UTXO inputs</span>
-        <span class="comment">//</span>
-        <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inputs</span> {
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">input</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>) {
-                <span class="kw">return</span> <span class="bool-val">false</span>;
-            }
-        }
-        <span class="bool-val">true</span>
+        <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">par_iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>))
     }
 }
 
@@ -1732,7 +1692,7 @@
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">message</span>, <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="ident">::new</span>());
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">transaction_type</span>, <span class="ident">TransactionType::Normal</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">signature</span>, [<span class="number">0</span>; <span class="number">64</span>]);
-        <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">hash_for_signature</span>, [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">hash_for_signature</span>, <span class="prelude-val">None</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">total_in</span>, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">total_out</span>, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">total_fees</span>, <span class="number">0</span>);
@@ -1751,7 +1711,7 @@
 
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">get_outputs</span>()[<span class="number">0</span>].<span class="ident">get_slip_ordinal</span>(), <span class="number">0</span>);
         <span class="macro">assert_ne!</span>(<span class="ident">tx</span>.<span class="ident">get_signature</span>(), [<span class="number">0</span>; <span class="number">64</span>]);
-        <span class="macro">assert_ne!</span>(<span class="ident">tx</span>.<span class="ident">get_hash_for_signature</span>(), [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_ne!</span>(<span class="ident">tx</span>.<span class="ident">get_hash_for_signature</span>(), <span class="prelude-val">Some</span>([<span class="number">0</span>; <span class="number">32</span>]));
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
