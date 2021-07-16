@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::Blockchain,
+    blockchain::{Blockchain, UtxoSet},
     burnfee::BurnFee,
     crypto::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
@@ -419,7 +419,7 @@ impl Block {
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
-            .map(|tx| tx.get_hash_for_signature())
+            .map(|tx| tx.get_hash_for_signature().unwrap())
             .collect();
 
         let mut mrv: Vec<MerkleTreeLayer> = vec![];
@@ -809,95 +809,19 @@ impl Block {
         true
     }
 
-    pub fn validate(
-        &self,
-        blockchain: &Blockchain,
-        utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
-    ) -> bool {
-        println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
-
-        //
-        // validate burn fee
-        //
-        let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
-        {
-            if !previous_block.is_none() {
-                //
-                // new burn fee must be correct
-                //
-                let new_burnfee: u64 =
-                    BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-                        previous_block.unwrap().get_burnfee(),
-                        self.get_timestamp(),
-                        previous_block.unwrap().get_timestamp(),
-                    );
-                if new_burnfee != self.get_burnfee() {
-                    println!(
-                        "ERROR: burn fee does not validate, expected: {}",
-                        new_burnfee
-                    );
-                    return false;
-                }
-
-                //
-                // routing work must be adequate given block time difference
-                //
-                let amount_of_routing_work_needed: u64 =
-                    BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
-                        previous_block.unwrap().get_burnfee(),
-                        self.get_timestamp(),
-                        previous_block.unwrap().get_timestamp(),
-                    );
-                if self.routing_work_for_creator < amount_of_routing_work_needed {
-                    println!("Error 510293: block lacking adequate routing work from creator");
-                    return false;
-                }
-            } else {
-                // TODO assert that this is the first (or second?) block! ?
-            }
-        }
+    pub fn validate(&self, blockchain: &Blockchain, utxoset: &UtxoSet) -> bool {
         println!(" ... block.validate: (merkle rt) {:?}", create_timestamp());
-
-        //
         // verify merkle root
-        //
-        if self.merkle_root == [0; 32] {
-            println!("merkle root is unset / false 1");
+        if self.get_merkle_root() == [0; 32]
+            && self.get_merkle_root() != self.generate_merkle_root()
+        {
+            println!("merkle root is unset or is invalid false 1");
             return false;
         }
 
-        //
-        // verify merkle root
-        //
-        if self.merkle_root != self.generate_merkle_root() {
-            println!("merkle root is false 2");
-            return false;
-        }
-
-        println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
-
-        //
-        // validate fee-transaction (miner/router/staker) payments
-        //
-        //
-        let cv = self.generate_data_to_validate(&blockchain);
-
-        //
-        // validate difficulty
-        //
-        if cv.expected_difficulty != self.get_difficulty() {
-            println!(
-                "difficulty is false {} vs {}",
-                cv.expected_difficulty,
-                self.get_difficulty()
-            );
-            return false;
-        }
-
-        //
         // validate burn fee
-        //
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+            println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
             let new_burnfee: u64 =
                 BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
                     previous_block.get_burnfee(),
@@ -913,24 +837,74 @@ impl Block {
                 return false;
             }
 
+            // routing work must be adequate given block time difference
+            let amount_of_routing_work_needed: u64 =
+                BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
+                    previous_block.get_burnfee(),
+                    self.get_timestamp(),
+                    previous_block.get_timestamp(),
+                );
+
+            if self.routing_work_for_creator < amount_of_routing_work_needed {
+                println!("Error 510293: block lacking adequate routing work from creator");
+                return false;
+            }
+
+            println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
+            // validate fee-transaction (miner/router/staker) payments
+            let cv = self.generate_data_to_validate(&blockchain);
+
+            // fee transactions
             //
+            // we grab the fee transaction created in the cv function and run
+            // a quick hash of it, comparing that with the hash of the fee-tx
+            // that exists in the block. if they match, we're OK with th block
+            // including this fee transaction.
+            if let (Some(ft_idx), Some(fee_transaction)) = (cv.ft_idx, cv.fee_transaction) {
+                // fee-transaction must still pass validation rules
+                //
+                // we are OK with just doing a hash check as the other
+                // requirements are covered in the validation function.
+                let cv_ft_hash = hash(&fee_transaction.serialize_for_signature());
+                let block_ft_hash = hash(&self.transactions[ft_idx].serialize_for_signature());
+                if cv_ft_hash != block_ft_hash {
+                    println!(
+                        "ERROR 627428: block fee transaction doesn't match cv fee transaction"
+                    );
+                    return false;
+                }
+            }
+
             // validate difficulty
-            //
             if cv.expected_difficulty != self.get_difficulty() {
                 println!(
-                    "Block difficulty is {} but we expect {}",
-                    self.get_difficulty(),
-                    cv.expected_difficulty
+                    "difficulty is false {} vs {}",
+                    cv.expected_difficulty,
+                    self.get_difficulty()
                 );
                 return false;
             }
 
             //
-            // validate golden ticket
+            // VALIDATE ATR
             //
+            if cv.total_rebroadcast_slips != self.total_rebroadcast_slips {
+                println!("ERROR 624442: rebroadcast slips total incorrect");
+                return false;
+            }
+            if cv.total_rebroadcast_nolan != self.total_rebroadcast_nolan {
+                println!("ERROR 294018: rebroadcast nolan amount incorrect");
+                return false;
+            }
+            if cv.rebroadcast_hash != self.rebroadcast_hash {
+                println!("ERROR 123422: hash of rebroadcast transactions incorrect");
+                return false;
+            }
+
+            // validate golden ticket
             if let Some(gt_idx) = cv.gt_idx {
                 let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
-                    self.transactions[gt_idx].get_message().to_vec(),
+                    self.get_transactions()[gt_idx].get_message().to_vec(),
                 );
                 let solution = GoldenTicket::generate_solution(
                     golden_ticket.get_random(),
@@ -945,80 +919,18 @@ impl Block {
                     return false;
                 }
             }
+            println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
         }
 
-        //
-        // fee transactions
-        //
-        // we grab the fee transaction created in the cv function and run
-        // a quick hash of it, comparing that with the hash of the fee-tx
-        // that exists in the block. if they match, we're OK with th block
-        // including this fee transaction.
-        //
-        if !cv.ft_idx.is_none() {
-            if !cv.fee_transaction.is_none() {
-                //
-                // fee-transaction must still pass validation rules
-                //
-                // we are OK with just doing a hash check as the other
-                // requirements are covered in the validation function.
-                //
-                let fee_tx = cv.fee_transaction.unwrap();
-                let cv_ft_hash = hash(&fee_tx.serialize_for_signature());
-                let block_ft_hash =
-                    hash(&self.transactions[cv.ft_idx.unwrap()].serialize_for_signature());
-
-                if cv_ft_hash != block_ft_hash {
-                    println!(
-                        "ERROR 627428: block fee transaction doesn't match cv fee transaction"
-                    );
-                    return false;
-                }
-            }
-        }
-
-        //
-        // validate difficulty
-        //
-        if !previous_block.is_none() {
-            if cv.expected_difficulty != self.get_difficulty() {
-                println!(
-                    "Block difficulty is {} but we expect {}",
-                    self.get_difficulty(),
-                    cv.expected_difficulty
-                );
-                return false;
-            }
-        }
-        println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
-
-        //
-        // VALIDATE ATR
-        //
-        if cv.total_rebroadcast_slips != self.total_rebroadcast_slips {
-            println!("ERROR 624442: rebroadcast slips total incorrect");
-            return false;
-        }
-        if cv.total_rebroadcast_nolan != self.total_rebroadcast_nolan {
-            println!("ERROR 294018: rebroadcast nolan amount incorrect");
-            return false;
-        }
-        if cv.rebroadcast_hash != self.rebroadcast_hash {
-            println!("ERROR 123422: hash of rebroadcast transactions incorrect");
-            return false;
-        }
-
-        //
         // VALIDATE transactions
-        //
-        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate(&utxoset));
+        let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset));
 
         println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
-        true
+        transactions_valid
     }
 
-    pub async fn generate_block(
+    pub async fn generate(
         transactions: &mut Vec<Transaction>,
         previous_block_hash: SaitoHash,
         wallet_lock: Arc<RwLock<Wallet>>,
@@ -1032,13 +944,11 @@ impl Block {
         let mut previous_block_timestamp = 0;
         let mut previous_block_difficulty = 0;
 
-        let previous_block = blockchain.blocks.get(&previous_block_hash);
-
-        if !previous_block.is_none() {
-            previous_block_id = previous_block.unwrap().get_id();
-            previous_block_burnfee = previous_block.unwrap().get_burnfee();
-            previous_block_timestamp = previous_block.unwrap().get_timestamp();
-            previous_block_difficulty = previous_block.unwrap().get_difficulty();
+        if let Some(previous_block) = blockchain.blocks.get(&previous_block_hash) {
+            previous_block_id = previous_block.get_id();
+            previous_block_burnfee = previous_block.get_burnfee();
+            previous_block_timestamp = previous_block.get_timestamp();
+            previous_block_difficulty = previous_block.get_difficulty();
         }
 
         let mut block = Block::new();
@@ -1073,13 +983,20 @@ impl Block {
             }
         }
 
+        // repopulate the `hash_for_signature` fields on `Transaction`
+        // block.transactions.par_iter_mut().for_each(|tx| {
+        //     tx.set_hash_for_signature(
+        //         hash(&tx.serialize_for_signature())
+        //     );
+        // });
+
         //
         // set our initial transactions
         //
         let wallet_publickey = wallet.get_publickey();
         let wallet_privatekey = wallet.get_privatekey();
         if previous_block_id == 0 {
-            for i in 0..10 {
+            for i in 0..10 as i32 {
                 println!("generating VIP transaction {}", i);
                 let mut transaction = Transaction::generate_vip_transaction(
                     wallet_lock.clone(),

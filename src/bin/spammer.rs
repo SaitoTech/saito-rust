@@ -68,7 +68,7 @@ pub async fn main() -> saito_rust::Result<()> {
                 transactions.push(transaction);
             }
 
-            for mut tx in transactions {
+            for tx in transactions {
                 let bytes: Vec<u8> = tx.serialize_for_net();
                 let _res = client
                     .post("http://localhost:3030/transactions")
