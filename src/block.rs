@@ -45,6 +45,8 @@ pub struct DataToValidate {
     pub total_rebroadcast_slips: u64,
     // number of rebroadcast txs
     pub total_rebroadcast_nolan: u64,
+    // number of rebroadcast fees in block
+    pub total_rebroadcast_fees_nolan: u64,
     // all ATR txs hashed together
     pub rebroadcast_hash: [u8; 32],
 }
@@ -61,6 +63,7 @@ impl DataToValidate {
             rebroadcasts: vec![],
             total_rebroadcast_slips: 0,
             total_rebroadcast_nolan: 0,
+            total_rebroadcast_fees_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
         }
@@ -489,6 +492,7 @@ impl Block {
     // generate hashes and payouts and fee calculations
     //
     pub fn generate_data_to_validate(&self, blockchain: &Blockchain) -> DataToValidate {
+
         let mut cv = DataToValidate::new();
 
         let mut gt_num: u8 = 0;
@@ -498,6 +502,8 @@ impl Block {
         let mut total_fees = 0;
         let mut total_rebroadcast_slips: u64 = 0;
         let mut total_rebroadcast_nolan: u64 = 0;
+	let mut total_rebroadcast_fees_nolan: u64 = 0;
+
         // when we find a rebroadcast TX we hash it and put the hash
         // here. when validating a block we do the exact same. as long
         // as the rebroadcast hash and the block hash match the set of
@@ -505,6 +511,80 @@ impl Block {
         let mut rebroadcast_hash: SaitoHash = [0; 32];
         let miner_publickey;
         let router_publickey;
+
+
+        //
+        // calculate automatic transaction rebroadcasts / ATR / atr
+        //
+        if self.get_id() > 2 {
+            let pruned_block_hash = blockchain
+                .blockring
+                .get_longest_chain_block_hash_by_block_id(self.get_id() - 2);
+
+            println!("pruned block hash: {:?}", pruned_block_hash);
+
+            if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
+                //
+                // identify all unspent transactions
+                //
+                for transaction in &pruned_block.transactions {
+                    for output in transaction.get_outputs() {
+                        //
+                        // valid means spendable and non-zero
+                        //
+                        if output.validate(&blockchain.utxoset) {
+
+			    if output.get_amount() > 200_000_000 {
+
+                            	total_rebroadcast_nolan += output.get_amount();
+				total_rebroadcast_fees_nolan += 200_000_000;
+                                total_rebroadcast_slips += 1;
+
+                            	//
+                            	// create rebroadcast transaction
+                            	//
+                            	// TODO - floating fee based on previous block average
+                            	//
+                            	let rebroadcast_transaction =
+                            	    Transaction::generate_rebroadcast_transaction(
+                            	        &transaction,
+                            	        output,
+                            	        200_000_000,
+                            	    );
+
+                            	//
+                            	// update cryptographic hash of all ATRs
+                            	//
+                            	let mut vbytes: Vec<u8> = vec![];
+                            	vbytes.extend(&rebroadcast_hash);
+                            	vbytes.extend(&rebroadcast_transaction.serialize_for_signature());
+                            	rebroadcast_hash = hash(&vbytes);
+
+                            	cv.rebroadcasts.push(rebroadcast_transaction);
+
+			    } else {
+
+				//
+				// dust is collected as fee
+				//
+				total_rebroadcast_fees_nolan += output.get_amount();
+
+			    }
+                        }
+                    }
+                }
+
+                cv.total_rebroadcast_slips = total_rebroadcast_slips;
+                cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
+                cv.total_rebroadcast_fees_nolan = total_rebroadcast_fees_nolan;
+                cv.rebroadcast_hash = rebroadcast_hash;
+
+            }
+        }
+	total_fees  += total_rebroadcast_fees_nolan;
+
+
+
 
         //
         // calculate total fees
@@ -545,6 +625,7 @@ impl Block {
             //
             if total_fees == 0 {
             } else {
+
                 //
                 // find winning tx
                 //
@@ -604,7 +685,7 @@ impl Block {
                 input1.set_slip_ordinal(0);
 
                 let mut output1 = Slip::new();
-                output1.set_publickey([0; 33]);
+                output1.set_publickey(miner_publickey);
                 output1.set_amount(miner_payment);
                 output1.set_slip_type(SlipType::MinerOutput);
                 output1.set_slip_ordinal(0);
@@ -641,6 +722,7 @@ impl Block {
             cv.gt_num = gt_num;
         }
 
+
         //
         // calculate expected burn-fee given previous block
         //
@@ -657,58 +739,6 @@ impl Block {
             }
         }
 
-        //
-        // calculate automatic transaction rebroadcasts / ATR / atr
-        //
-        if self.get_id() > 2 {
-            let pruned_block_hash = blockchain
-                .blockring
-                .get_longest_chain_block_hash_by_block_id(self.get_id() - 2);
-            println!("pruned block hash: {:?}", pruned_block_hash);
-
-            if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
-                //
-                // identify all unspent transactions
-                //
-                for transaction in &pruned_block.transactions {
-                    for output in transaction.get_outputs() {
-                        //
-                        // valid means spendable and non-zero
-                        //
-                        if output.validate(&blockchain.utxoset) {
-                            total_rebroadcast_slips += 1;
-                            total_rebroadcast_nolan += output.get_amount();
-
-                            //
-                            // create rebroadcast transaction
-                            //
-                            // TODO - floating fee based on previous block average
-                            //
-                            let rebroadcast_transaction =
-                                Transaction::generate_rebroadcast_transaction(
-                                    &transaction,
-                                    output,
-                                    200_000_000,
-                                );
-
-                            //
-                            // update cryptographic hash of all ATRs
-                            //
-                            let mut vbytes: Vec<u8> = vec![];
-                            vbytes.extend(&rebroadcast_hash);
-                            vbytes.extend(&rebroadcast_transaction.serialize_for_signature());
-                            rebroadcast_hash = hash(&vbytes);
-
-                            cv.rebroadcasts.push(rebroadcast_transaction);
-                        }
-                    }
-                }
-
-                cv.total_rebroadcast_slips = total_rebroadcast_slips;
-                cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
-                cv.rebroadcast_hash = rebroadcast_hash;
-            }
-        }
 
         cv
     }
@@ -735,9 +765,13 @@ impl Block {
     // cumulative block fees they contain.
     //
     pub fn generate_metadata(&mut self) -> bool {
+
         println!(" ... block.prevalid - pre hash:  {:?}", create_timestamp());
+
         //
-        // PARALLEL PROCESSING of most data
+        // if we are generating the metadata for a block, we use the
+	// publickey of the block creator when we calculate the fees
+	// and the routing work.
         //
         let creator_publickey = self.get_creator();
 
@@ -772,6 +806,7 @@ impl Block {
         // commitment for all of our rebroadcasts.
         //
         for transaction in &mut self.transactions {
+
             cumulative_fees = transaction.generate_metadata_cumulative_fees(cumulative_fees);
             cumulative_work = transaction.generate_metadata_cumulative_work(cumulative_work);
 
@@ -814,6 +849,7 @@ impl Block {
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
+
         println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
 
         //
@@ -965,6 +1001,7 @@ impl Block {
                 //
                 let fee_tx = cv.fee_transaction.unwrap();
                 let cv_ft_hash = hash(&fee_tx.serialize_for_signature());
+
                 let block_ft_hash =
                     hash(&self.transactions[cv.ft_idx.unwrap()].serialize_for_signature());
 
@@ -1094,9 +1131,10 @@ impl Block {
         }
 
         //
-        // create
+        // contextual values
         //
-        let cv: DataToValidate = block.generate_data_to_validate(&blockchain);
+        let mut cv: DataToValidate = block.generate_data_to_validate(&blockchain);
+
 
         //
         // fee transactions and golden tickets
@@ -1129,6 +1167,8 @@ impl Block {
             //
             fee_tx.sign(wallet.get_privatekey());
 
+println!("fee transaction: {:?}", fee_tx);
+
             block.add_transaction(fee_tx);
             block.set_has_fee_transaction(true);
         }
@@ -1140,7 +1180,37 @@ impl Block {
             block.set_difficulty(cv.expected_difficulty);
         }
 
+
+
+        //
+        // hash the ATR transactions in parallel -- we will need this for generating merkle-root
+        //
+	// TODO - is there a way to generate the rebroadcast transactions in advance so we do not 
+	// have this as a bottleneck during block production? perhaps generate the rebroadcasts in
+	// advance of the blocks being pruned?
+	//
+	let num_rebroadcasts = cv.rebroadcasts.len();
+        let _tx_hashes_generated = cv.rebroadcasts[0..num_rebroadcasts].par_iter_mut().all(|tx| tx.generate_metadata_hashes());
+
+if num_rebroadcasts > 0 {
+let last_hash_for_sig = cv.rebroadcasts[num_rebroadcasts-1].get_hash_for_signature();
+println!("hash for sig of last TX: {:?}", last_hash_for_sig);
+}
+
+	//
+	// ATR / atr / automatic transaction rebroadcasting
+	//
+	if cv.rebroadcasts.len() > 0 {
+            block.transactions.append(&mut cv.rebroadcasts);
+println!("the last tx in the block is type: {:?}", block.transactions[block.transactions.len()-1].get_transaction_type());
+	}
+
+	//
+	// generate merkle root
+	//
         let block_merkle_root = block.generate_merkle_root();
+println!("total txs in merkle root gen: {}", block.transactions.len());
+println!("generating merkle root as {:?}", block_merkle_root);
         block.set_merkle_root(block_merkle_root);
 
         let block_hash = block.generate_hash();
