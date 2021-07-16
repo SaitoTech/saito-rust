@@ -108,22 +108,21 @@ impl Mempool {
             let wallet = self.wallet_lock.read().await;
             publickey = wallet.get_publickey();
         }
+        /***
 
-        transaction
-            .add_hop_to_path(self.wallet_lock.clone(), publickey)
-            .await;
-        transaction
-            .add_hop_to_path(self.wallet_lock.clone(), publickey)
-            .await;
-        //
-        // note that this calculates the total fees, so needs to
-        // be handled well. Stephen may have some ideas on how we
-        // can better name these functions. what this is really
-        // doing is filling in the total fee amounts so that we
-        // can calculate the routing work below to know how much
-        // this contributes to our mempool.
-        //
-        transaction.calculate_total_fees(publickey);
+                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
+                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
+            //
+            // note that this calculates the total fees, so needs to
+            // be handled well. Stephen may have some ideas on how we
+            // can better name these functions. what this is really
+            // doing is filling in the total fee amounts so that we
+            // can calculate the routing work below to know how much
+            // this contributes to our mempool.
+            //
+        ***/
+        transaction.generate_metadata(publickey);
+
         ////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////
         /////////////////////////////////////////////////////////

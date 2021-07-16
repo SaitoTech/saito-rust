@@ -57,12 +57,18 @@ pub async fn main() -> saito_rust::Result<()> {
                 // sign ...
                 transaction.sign(privatekey);
 
-                // make sure we know fees etc.
-                transaction.calculate_total_fees(publickey);
+                // add some test hops ...
+                transaction
+                    .add_hop_to_path(wallet_lock.clone(), publickey)
+                    .await;
+                transaction
+                    .add_hop_to_path(wallet_lock.clone(), publickey)
+                    .await;
+
                 transactions.push(transaction);
             }
 
-            for mut tx in transactions {
+            for tx in transactions {
                 let bytes: Vec<u8> = tx.serialize_for_net();
                 let _res = client
                     .post("http://localhost:3030/transactions")

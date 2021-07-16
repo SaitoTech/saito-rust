@@ -5,6 +5,7 @@ use crate::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
     },
     golden_ticket::GoldenTicket,
+    hop::{Hop, HOP_SIZE},
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
     time::create_timestamp,
@@ -44,6 +45,8 @@ pub struct DataToValidate {
     pub total_rebroadcast_slips: u64,
     // number of rebroadcast txs
     pub total_rebroadcast_nolan: u64,
+    // all ATR txs hashed together
+    pub rebroadcast_hash: [u8; 32],
 }
 impl DataToValidate {
     #[allow(clippy::too_many_arguments)]
@@ -58,6 +61,8 @@ impl DataToValidate {
             rebroadcasts: vec![],
             total_rebroadcast_slips: 0,
             total_rebroadcast_nolan: 0,
+            // must be initialized zeroed-out for proper hashing
+            rebroadcast_hash: [0; 32],
         }
     }
 }
@@ -91,6 +96,12 @@ pub struct Block {
     pub has_golden_ticket: bool,
     // has fee transaction
     pub has_fee_transaction: bool,
+    // number of rebroadcast slips
+    pub total_rebroadcast_slips: u64,
+    // number of rebroadcast txs
+    pub total_rebroadcast_nolan: u64,
+    // all ATR txs hashed together
+    pub rebroadcast_hash: [u8; 32],
 }
 
 impl Block {
@@ -113,6 +124,10 @@ impl Block {
             lc: false,
             has_golden_ticket: false,
             has_fee_transaction: false,
+            total_rebroadcast_slips: 0,
+            total_rebroadcast_nolan: 0,
+            // must be initialized zeroed-out for proper hashing
+            rebroadcast_hash: [0; 32],
         }
     }
 
@@ -365,10 +380,16 @@ impl Block {
                     .try_into()
                     .unwrap(),
             ) as usize;
+            let path_len: usize = u32::from_be_bytes(
+                bytes[start_of_transaction_data + 12..start_of_transaction_data + 16]
+                    .try_into()
+                    .unwrap(),
+            ) as usize;
             let end_of_transaction_data = start_of_transaction_data
                 + TRANSACTION_SIZE
                 + ((inputs_len + outputs_len) as usize * SLIP_SIZE)
-                + message_len;
+                + message_len
+                + path_len as usize * HOP_SIZE;
             let transaction = Transaction::deserialize_from_net(
                 bytes[start_of_transaction_data..end_of_transaction_data].to_vec(),
             );
@@ -477,6 +498,11 @@ impl Block {
         let mut total_fees = 0;
         let mut total_rebroadcast_slips: u64 = 0;
         let mut total_rebroadcast_nolan: u64 = 0;
+        // when we find a rebroadcast TX we hash it and put the hash
+        // here. when validating a block we do the exact same. as long
+        // as the rebroadcast hash and the block hash match the set of
+        // transactions are exactly the same.
+        let mut rebroadcast_hash: SaitoHash = [0; 32];
         let miner_publickey;
         let router_publickey;
 
@@ -564,10 +590,6 @@ impl Block {
 
                 //
                 // calculate miner and router payments
-                //
-                // TODO - REMOVE  - temporary to create additional tokens so we have circulating fees
-                //
-                total_fees += 10000;
                 //
                 let miner_payment = total_fees / 2;
                 let router_payment = total_fees - miner_payment;
@@ -669,7 +691,14 @@ impl Block {
                                     200_000_000,
                                 );
 
-                            println!("WE HAVE A TX TO PRUNE / REBROADCAST!");
+                            //
+                            // update cryptographic hash of all ATRs
+                            //
+                            let mut vbytes: Vec<u8> = vec![];
+                            vbytes.extend(&rebroadcast_hash);
+                            vbytes.extend(&rebroadcast_transaction.serialize_for_signature());
+                            rebroadcast_hash = hash(&vbytes);
+
                             cv.rebroadcasts.push(rebroadcast_transaction);
                         }
                     }
@@ -677,6 +706,7 @@ impl Block {
 
                 cv.total_rebroadcast_slips = total_rebroadcast_slips;
                 cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
+                cv.rebroadcast_hash = rebroadcast_hash;
             }
         }
 
@@ -704,7 +734,7 @@ impl Block {
     // sweeping through the transactions to find out what percentage of the
     // cumulative block fees they contain.
     //
-    pub fn pre_validation_calculations(&mut self) -> bool {
+    pub fn generate_metadata(&mut self) -> bool {
         println!(" ... block.prevalid - pre hash:  {:?}", create_timestamp());
         //
         // PARALLEL PROCESSING of most data
@@ -714,7 +744,7 @@ impl Block {
         let _transactions_pre_calculated = &self
             .transactions
             .par_iter_mut()
-            .all(|tx| tx.calculate_total_fees(creator_publickey));
+            .all(|tx| tx.generate_metadata(creator_publickey));
 
         println!(" ... block.prevalid - pst hash:  {:?}", create_timestamp());
 
@@ -731,11 +761,19 @@ impl Block {
         let mut has_golden_ticket = false;
         let mut has_fee_transaction = false;
 
+        //
+        // we have to do a single sweep through all of the transactions in
+        // non-parallel to do things like generate the cumulative order of the
+        // transactions in the block for things like work and fee calculations
+        // for the lottery.
+        //
+        // we take advantage of the sweep to perform other pre-validation work
+        // like counting up our ATR transactions and generating the hash
+        // commitment for all of our rebroadcasts.
+        //
         for transaction in &mut self.transactions {
-            cumulative_fees =
-                transaction.pre_validation_calculations_cumulative_fees(cumulative_fees);
-            cumulative_work =
-                transaction.pre_validation_calculations_cumulative_work(cumulative_work);
+            cumulative_fees = transaction.generate_metadata_cumulative_fees(cumulative_fees);
+            cumulative_work = transaction.generate_metadata_cumulative_work(cumulative_work);
 
             //
             // also check the transactions for golden ticket and fees
@@ -743,6 +781,17 @@ impl Block {
             match transaction.get_transaction_type() {
                 TransactionType::Fee => has_fee_transaction = true,
                 TransactionType::GoldenTicket => has_golden_ticket = true,
+                TransactionType::ATR => {
+                    let mut vbytes: Vec<u8> = vec![];
+                    vbytes.extend(&self.rebroadcast_hash);
+                    vbytes.extend(&transaction.serialize_for_signature());
+                    self.rebroadcast_hash = hash(&vbytes);
+
+                    for input in transaction.get_inputs() {
+                        self.total_rebroadcast_slips += 1;
+                        self.total_rebroadcast_nolan += input.get_amount();
+                    }
+                }
                 _ => {}
             };
         }
@@ -835,6 +884,23 @@ impl Block {
                 );
                 return false;
             }
+
+            //
+            // VALIDATE ATR
+            //
+            if cv.total_rebroadcast_slips != self.total_rebroadcast_slips {
+                println!("ERROR 624442: rebroadcast slips total incorrect");
+                return false;
+            }
+            if cv.total_rebroadcast_nolan != self.total_rebroadcast_nolan {
+                println!("ERROR 294018: rebroadcast nolan amount incorrect");
+                return false;
+            }
+            if cv.rebroadcast_hash != self.rebroadcast_hash {
+                println!("ERROR 123422: hash of rebroadcast transactions incorrect");
+                return false;
+            }
+
             // validate golden ticket
             if let Some(gt_idx) = cv.gt_idx {
                 let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
@@ -930,7 +996,7 @@ impl Block {
         let wallet_publickey = wallet.get_publickey();
         let wallet_privatekey = wallet.get_privatekey();
         if previous_block_id == 0 {
-            for i in 0..10 {
+            for i in 0..10 as i32 {
                 println!("generating VIP transaction {}", i);
                 let mut transaction = Transaction::generate_vip_transaction(
                     wallet_lock.clone(),
@@ -992,13 +1058,10 @@ impl Block {
         }
 
         let block_merkle_root = block.generate_merkle_root();
-        println!("setting merkle root as: {:?}", block_merkle_root);
         block.set_merkle_root(block_merkle_root);
 
         let block_hash = block.generate_hash();
         block.set_hash(block_hash);
-
-        block.pre_validation_calculations();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
 

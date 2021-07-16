@@ -423,6 +423,11 @@ impl Blockchain {
         // structures. So validation is "read-only" and our "write" actions
         // happen first.
         //
+        {
+            let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+            block.generate_metadata();
+        }
+
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
         println!("BLOCK: {:?}", block);
 
