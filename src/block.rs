@@ -1167,8 +1167,6 @@ impl Block {
             //
             fee_tx.sign(wallet.get_privatekey());
 
-println!("fee transaction: {:?}", fee_tx);
-
             block.add_transaction(fee_tx);
             block.set_has_fee_transaction(true);
         }
@@ -1192,25 +1190,17 @@ println!("fee transaction: {:?}", fee_tx);
 	let num_rebroadcasts = cv.rebroadcasts.len();
         let _tx_hashes_generated = cv.rebroadcasts[0..num_rebroadcasts].par_iter_mut().all(|tx| tx.generate_metadata_hashes());
 
-if num_rebroadcasts > 0 {
-let last_hash_for_sig = cv.rebroadcasts[num_rebroadcasts-1].get_hash_for_signature();
-println!("hash for sig of last TX: {:?}", last_hash_for_sig);
-}
-
 	//
 	// ATR / atr / automatic transaction rebroadcasting
 	//
 	if cv.rebroadcasts.len() > 0 {
             block.transactions.append(&mut cv.rebroadcasts);
-println!("the last tx in the block is type: {:?}", block.transactions[block.transactions.len()-1].get_transaction_type());
 	}
 
 	//
 	// generate merkle root
 	//
         let block_merkle_root = block.generate_merkle_root();
-println!("total txs in merkle root gen: {}", block.transactions.len());
-println!("generating merkle root as {:?}", block_merkle_root);
         block.set_merkle_root(block_merkle_root);
 
         let block_hash = block.generate_hash();
