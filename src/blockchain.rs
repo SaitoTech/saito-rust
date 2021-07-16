@@ -416,7 +416,7 @@ impl Blockchain {
         //
         {
             let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
-            block.pre_validation_calculations();
+            block.generate_metadata();
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();

@@ -5,7 +5,7 @@ use crate::{
         generate_random_bytes, hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey,
         SaitoSignature, SaitoUTXOSetKey,
     },
-    hop::Hop,
+    hop::{Hop, HOP_SIZE},
     slip::{Slip, SlipType, SLIP_SIZE},
     wallet::Wallet,
 };
@@ -18,7 +18,7 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub const TRANSACTION_SIZE: usize = 85;
+pub const TRANSACTION_SIZE: usize = 89;
 
 /// TransactionType is a human-readable indicator of the type of
 /// transaction such as a normal user-initiated transaction, a
@@ -103,8 +103,7 @@ impl Transaction {
     }
 
     pub fn validate_routing_path(&self) -> bool {
-	for i in 0..self.path.len() {
-
+        for i in 0..self.path.len() {
             //
             // msg is transaction signature and next peer
             //
@@ -112,18 +111,25 @@ impl Transaction {
             vbytes.extend(&self.get_signature());
             vbytes.extend(&self.path[i].get_to());
 
-	    // check sig is valid
-	    if !verify(&hash(&vbytes), self.path[i].get_sig(), self.path[i].get_from()) { return false; }
+            // check sig is valid
+            if !verify(
+                &hash(&vbytes),
+                self.path[i].get_sig(),
+                self.path[i].get_from(),
+            ) {
+                return false;
+            }
 
-	    // check path is continuous
-	    if i > 0 { if self.path[i].get_from() != self.path[i-1].get_to() { return false; } }
+            // check path is continuous
+            if i > 0 {
+                if self.path[i].get_from() != self.path[i - 1].get_to() {
+                    return false;
+                }
+            }
+        }
 
-	}
-
-	return true;
+        return true;
     }
-
-
 
     //
     // this function exists largely for testing. It attempts to attach the requested fee
@@ -258,27 +264,25 @@ impl Transaction {
         transaction.add_input(input);
         transaction.add_output(output);
 
-println!("VIP going to: {:?}", to_publickey);
-
         transaction
     }
 
-
-    // 
-    // 
+    //
+    //
     // generate ATR transaction using source transaction and output slip
     //
-    // this assumes that the 
+    // this assumes that the
     //
     pub fn generate_rebroadcast_transaction(
         transaction_to_rebroadcast: &Transaction,
         output_slip_to_rebroadcast: &Slip,
         with_fee: u64,
     ) -> Transaction {
-
         let mut transaction = Transaction::new();
-        let mut output_payment = output_slip_to_rebroadcast.get_amount() - with_fee;
-	if output_payment < 0 { output_payment = 0; }
+        let mut output_payment = 0;
+        if output_slip_to_rebroadcast.get_amount() > with_fee {
+            output_payment = output_slip_to_rebroadcast.get_amount() - with_fee;
+        }
 
         transaction.set_transaction_type(TransactionType::ATR);
 
@@ -292,42 +296,37 @@ println!("VIP going to: {:?}", to_publickey);
         output.set_amount(output_payment);
         output.set_slip_type(SlipType::ATR);
         output.set_uuid(output_slip_to_rebroadcast.get_uuid());
-        
-	if input.get_slip_type() == SlipType::ATR {
 
-	    //
-	    // this is not our first rebroadcast, which means we just 
-	    // need to copy the rebroadcast message field when making
-	    // this transaction.
-	    //
-	    transaction.set_message(transaction_to_rebroadcast.get_message().to_vec());
-
-	} else {
-
-	    //
-	    // this is our first rebroadcast, so we need to set the 
-	    // message field in the transaction to the content of the 
-	    // original transaction being rebroadcast.
-	    //
-	    transaction.set_message(transaction_to_rebroadcast.serialize_for_net().to_vec());
-
-	}
+        if input.get_slip_type() == SlipType::ATR {
+            //
+            // this is not our first rebroadcast, which means we just
+            // need to copy the rebroadcast message field when making
+            // this transaction.
+            //
+            transaction.set_message(transaction_to_rebroadcast.get_message().to_vec());
+        } else {
+            //
+            // this is our first rebroadcast, so we need to set the
+            // message field in the transaction to the content of the
+            // original transaction being rebroadcast.
+            //
+            transaction.set_message(transaction_to_rebroadcast.serialize_for_net().to_vec());
+        }
 
         transaction.add_input(input);
         transaction.add_output(output);
 
-	//
-	// signature is the ORIGINAL signature. this transaction
-	// will fail its signature check and then get analysed as 
-	// a rebroadcast transaction because of its transaction type.
-	//
-	transaction.set_signature(transaction_to_rebroadcast.get_signature());
+        //
+        // signature is the ORIGINAL signature. this transaction
+        // will fail its signature check and then get analysed as
+        // a rebroadcast transaction because of its transaction type.
+        //
+        transaction.set_signature(transaction_to_rebroadcast.get_signature());
 
         transaction
     }
 
     pub fn get_routing_work_for_publickey(&self, publickey: SaitoPublicKey) -> u64 {
-
         // there is not routing path
         if self.path.len() == 0 {
             return 0;
@@ -347,11 +346,12 @@ println!("VIP going to: {:?}", to_publickey);
         // halving from the 2nd hop in the routing path
         //
         for _i in 1..self.path.len() {
+            // return nothing if the path is broken
+            if self.path[_i].get_to() != self.path[_i - 1].get_from() {
+                return 0;
+            }
 
-	    // return nothing if the path is broken
-	    if self.path[_i].get_to() != self.path[_i-1].get_from() { return 0; }
-
-	    // otherwise halve the work
+            // otherwise halve the work
             let half_of_routing_work: u64 = routing_work_available_to_publickey / 2;
             routing_work_available_to_publickey -= half_of_routing_work;
         }
@@ -369,6 +369,10 @@ println!("VIP going to: {:?}", to_publickey);
 
     pub fn is_fee_transaction(&self) -> bool {
         self.transaction_type == TransactionType::Fee
+    }
+
+    pub fn is_atr_transaction(&self) -> bool {
+        self.transaction_type == TransactionType::ATR
     }
 
     pub fn is_golden_ticket(&self) -> bool {
@@ -420,39 +424,38 @@ println!("VIP going to: {:?}", to_publickey);
     }
 
     pub fn get_winning_routing_node(&self, random_hash: SaitoHash) -> SaitoPublicKey {
+        //
+        // if there are no routing paths, we return the sender of
+        // the payment, as they're got all of the routing work by
+        // definition. this is the edge-case where sending a tx
+        // can make you money.
+        //
+        if self.path.len() == 0 || self.get_total_fees() == 0 {
+            if self.inputs.len() > 0 {
+                return self.inputs[0].get_publickey();
+            } else {
+                return [0; 33];
+            }
+        }
 
-	//
-	// if there are no routing paths, we return the sender of
-	// the payment, as they're got all of the routing work by
-	// definition. this is the edge-case where sending a tx
-	// can make you money.
-	//
-	if self.path.len() == 0 {
-	    if self.inputs.len() > 0 {
-		return self.inputs[0].get_publickey();
-	    } else {
-		return [0; 33];
-	    }
-	}
+        //
+        // if we have a routing path, we calculate the total amount
+        // of routing work that it is possible for this transaction
+        // to contain (2x the fee).
+        //
+        let mut aggregate_routing_work: u64 = self.get_total_fees();
+        let mut routing_work_this_hop: u64 = aggregate_routing_work;
+        let mut work_by_hop: Vec<u64> = vec![];
+        work_by_hop.push(aggregate_routing_work);
 
-	//
-	// if we have a routing path, we calculate the total amount
-	// of routing work that it is possible for this transaction
-	// to contain (2x the fee).
-	//
-	let mut aggregate_routing_work: u64 = self.get_total_fees();
-	let mut routing_work_this_hop: u64 = aggregate_routing_work;
-        let mut work_by_hop : Vec<u64> = vec![];
-	work_by_hop.push(aggregate_routing_work);
-
-	for _i in 1..self.path.len() {
-	    let new_routing_work_this_hop: u64  = routing_work_this_hop / 2;
-	    aggregate_routing_work += new_routing_work_this_hop;
+        for _i in 1..self.path.len() {
+            let new_routing_work_this_hop: u64 = routing_work_this_hop / 2;
+            aggregate_routing_work += new_routing_work_this_hop;
             routing_work_this_hop = new_routing_work_this_hop;
-	    work_by_hop.push(aggregate_routing_work);
-	}
+            work_by_hop.push(aggregate_routing_work);
+        }
 
-println!("work by hop: {:?}", work_by_hop);
+        println!("work by hop: {:?}", work_by_hop);
 
         //
         // find winning routing node
@@ -464,17 +467,16 @@ println!("work by hop: {:?}", work_by_hop);
 
         println!("wrwin: {}", winning_routing_work_in_nolan);
 
-	      for i in 0.. work_by_hop.len() {
-	          if winning_routing_work_in_nolan <= work_by_hop[i] {
-		             return self.path[i].get_to();
-	          }
-	      }
+        for i in 0..work_by_hop.len() {
+            if winning_routing_work_in_nolan <= work_by_hop[i] {
+                return self.path[i].get_to();
+            }
+        }
 
         //
         // we should never reach this
         //
         return [0; 33];
-
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
@@ -499,6 +501,10 @@ println!("work by hop: {:?}", work_by_hop);
 
     pub fn set_signature(&mut self, sig: SaitoSignature) {
         self.signature = sig;
+    }
+
+    pub fn set_path(&mut self, path: Vec<Hop>) {
+        self.path = path;
     }
 
     pub fn set_hash_for_signature(&mut self, hash: SaitoHash) {
@@ -539,23 +545,26 @@ println!("work by hop: {:?}", work_by_hop);
     /// [len of inputs - 4 bytes - u32]
     /// [len of outputs - 4 bytes - u32]
     /// [len of message - 4 bytes - u32]
+    /// [len of path - 4 bytes - u32]
     /// [signature - 64 bytes - Secp25k1 sig]
     /// [timestamp - 8 bytes - u64]
     /// [transaction type - 1 byte]
     /// [input][input][input]...
     /// [output][output][output]...
     /// [message]
+    /// [hop][hpp][hop]
     pub fn deserialize_from_net(bytes: Vec<u8>) -> Transaction {
         let inputs_len: u32 = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
         let outputs_len: u32 = u32::from_be_bytes(bytes[4..8].try_into().unwrap());
         let message_len: usize = u32::from_be_bytes(bytes[8..12].try_into().unwrap()) as usize;
-        let signature: SaitoSignature = bytes[12..76].try_into().unwrap();
-
-        let timestamp: u64 = u64::from_be_bytes(bytes[76..84].try_into().unwrap());
-        let transaction_type: TransactionType = TransactionType::try_from(bytes[84]).unwrap();
+        let path_len: usize = u32::from_be_bytes(bytes[12..16].try_into().unwrap()) as usize;
+        let signature: SaitoSignature = bytes[16..80].try_into().unwrap();
+        let timestamp: u64 = u64::from_be_bytes(bytes[80..88].try_into().unwrap());
+        let transaction_type: TransactionType = TransactionType::try_from(bytes[88]).unwrap();
         let start_of_inputs = TRANSACTION_SIZE;
         let start_of_outputs = start_of_inputs + inputs_len as usize * SLIP_SIZE;
         let start_of_message = start_of_outputs + outputs_len as usize * SLIP_SIZE;
+        let start_of_path = start_of_message + message_len;
         let mut inputs: Vec<Slip> = vec![];
         for n in 0..inputs_len {
             let start_of_data: usize = start_of_inputs as usize + n as usize * SLIP_SIZE;
@@ -573,6 +582,14 @@ println!("work by hop: {:?}", work_by_hop);
         let message = bytes[start_of_message..start_of_message + message_len]
             .try_into()
             .unwrap();
+        let mut path: Vec<Hop> = vec![];
+        for n in 0..path_len {
+            let start_of_data: usize = start_of_path as usize + n as usize * HOP_SIZE;
+            let end_of_data: usize = start_of_data + HOP_SIZE;
+            let hop = Hop::deserialize_from_net(bytes[start_of_data..end_of_data].to_vec());
+            path.push(hop);
+        }
+
         let mut transaction = Transaction::new();
         transaction.set_timestamp(timestamp);
         transaction.set_inputs(inputs);
@@ -580,6 +597,7 @@ println!("work by hop: {:?}", work_by_hop);
         transaction.set_message(message);
         transaction.set_transaction_type(transaction_type);
         transaction.set_signature(signature);
+        transaction.set_path(path);
         transaction
     }
 
@@ -587,17 +605,20 @@ println!("work by hop: {:?}", work_by_hop);
     /// [len of inputs - 4 bytes - u32]
     /// [len of outputs - 4 bytes - u32]
     /// [len of message - 4 bytes - u32]
+    /// [len of path - 4 bytes - u32]
     /// [signature - 64 bytes - Secp25k1 sig]
     /// [timestamp - 8 bytes - u64]
     /// [transaction type - 1 byte]
     /// [input][input][input]...
     /// [output][output][output]...
     /// [message]
+    /// [hop][hop][hop]...
     pub fn serialize_for_net(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&(self.inputs.len() as u32).to_be_bytes());
         vbytes.extend(&(self.outputs.len() as u32).to_be_bytes());
         vbytes.extend(&(self.message.len() as u32).to_be_bytes());
+        vbytes.extend(&(self.path.len() as u32).to_be_bytes());
         vbytes.extend(&self.signature);
         vbytes.extend(&self.timestamp.to_be_bytes());
         vbytes.extend(&(self.transaction_type as u8).to_be_bytes());
@@ -608,6 +629,9 @@ println!("work by hop: {:?}", work_by_hop);
             vbytes.extend(&output.serialize_for_net());
         }
         vbytes.extend(&self.message);
+        for hop in &self.path {
+            vbytes.extend(&hop.serialize_for_net());
+        }
         vbytes
     }
 
@@ -636,16 +660,22 @@ println!("work by hop: {:?}", work_by_hop);
     }
 
     //
-    // we have to calculate cumulative fees and work sequentially.
+    // calculate cumulative fee share in block
     //
-    pub fn pre_validation_calculations_cumulative_fees(&mut self, cumulative_fees: u64) -> u64 {
+    pub fn generate_metadata_cumulative_fees(&mut self, cumulative_fees: u64) -> u64 {
         self.cumulative_fees = cumulative_fees + self.total_fees;
         self.cumulative_fees
     }
-    pub fn pre_validation_calculations_cumulative_work(&mut self, cumulative_work: u64) -> u64 {
+    //
+    // calculate cumulative routing work in block
+    //
+    pub fn generate_metadata_cumulative_work(&mut self, cumulative_work: u64) -> u64 {
         return cumulative_work + self.routing_work_for_creator;
     }
-    pub fn pre_validation_calculations_parallelizable(&mut self, creator_publickey : SaitoPublicKey) -> bool {
+    //
+    // calculate hashes used in signatures
+    //
+    pub fn generate_metadata_hashes(&mut self) {
         //
         // and save the hash_for_signature so we can use it later...
         //
@@ -655,7 +685,14 @@ println!("work by hop: {:?}", work_by_hop);
         //
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         self.set_hash_for_signature(hash_for_signature);
-
+    }
+    //
+    // calculate abstract metadata for fees
+    //
+    // note that this expects the hash_for_signature to have already
+    // been calculated.
+    //
+    pub fn generate_metadata_fees_and_slips(&mut self, publickey: SaitoPublicKey) {
         //
         // calculate nolan in / out, fees
         //
@@ -696,13 +733,16 @@ println!("work by hop: {:?}", work_by_hop);
         // for the block producer, to ensure that they have met the conditions
         // required by the burn fee for block production.
         //
-        self.routing_work_for_creator = self.get_routing_work_for_publickey(creator_publickey);
+        self.routing_work_for_creator = self.get_routing_work_for_publickey(publickey);
+    }
+    pub fn generate_metadata(&mut self, publickey: SaitoPublicKey) -> bool {
+        self.generate_metadata_hashes();
+        self.generate_metadata_fees_and_slips(publickey);
 
         true
     }
 
     pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-
         //
         // VALIDATE signature valid
         //
@@ -719,14 +759,13 @@ println!("work by hop: {:?}", work_by_hop);
             return false;
         }
 
-	//
-	// VALIDATE path sigs valid
-	//
-	if !self.validate_routing_path() {
+        //
+        // VALIDATE path sigs valid
+        //
+        if !self.validate_routing_path() {
             println!("routing path does not validate, transaction invalid");
             return false;
-	}
-
+        }
 
         //
         // VALIDATE min one sender and receiver
@@ -798,8 +837,8 @@ mod tests {
         assert_eq!(tx.total_out, 0);
         assert_eq!(tx.total_fees, 0);
         assert_eq!(tx.cumulative_fees, 0);
-        assert_eq!(tx.routing_work_to_me, 0);
-        assert_eq!(tx.routing_work_to_creator, 0);
+        assert_eq!(tx.routing_work_for_me, 0);
+        assert_eq!(tx.routing_work_for_creator, 0);
     }
 
     #[test]
@@ -822,9 +861,9 @@ mod tests {
     }
 
     #[test]
-    fn transaction_pre_validation_cumulative_fees_test() {
+    fn transaction_generate_metadata_cumulative_fees_test() {
         let mut tx = Transaction::new();
-        tx.pre_validation_calculations_cumulative_fees(1_0000);
+        tx.generate_metadata_cumulative_fees(1_0000);
         assert_eq!(tx.cumulative_fees, 1_0000);
     }
 
@@ -832,14 +871,25 @@ mod tests {
     fn serialize_for_net_test() {
         let mock_input = Slip::new();
         let mock_output = Slip::new();
+        let mut mock_hop = Hop::new();
+        mock_hop.set_from([0; 33]);
+        mock_hop.set_to([0; 33]);
+        mock_hop.set_sig([0; 64]);
         let mut mock_tx = Transaction::new();
-        mock_tx.set_timestamp(create_timestamp());
+        let mut mock_path: Vec<Hop> = vec![];
+        mock_path.push(mock_hop);
+        let ctimestamp = create_timestamp();
+
+        mock_tx.set_timestamp(ctimestamp);
         mock_tx.add_input(mock_input);
         mock_tx.add_output(mock_output);
         mock_tx.set_message(vec![104, 101, 108, 108, 111]);
         mock_tx.set_transaction_type(TransactionType::Normal);
         mock_tx.set_signature([1; 64]);
+        mock_tx.set_path(mock_path);
+
         let serialized_tx = mock_tx.serialize_for_net();
+
         let deserialized_tx = Transaction::deserialize_from_net(serialized_tx);
         assert_eq!(mock_tx, deserialized_tx);
     }
