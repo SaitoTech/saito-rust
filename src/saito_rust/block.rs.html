@@ -1273,6 +1273,50 @@
 <span id="1270">1270</span>
 <span id="1271">1271</span>
 <span id="1272">1272</span>
+<span id="1273">1273</span>
+<span id="1274">1274</span>
+<span id="1275">1275</span>
+<span id="1276">1276</span>
+<span id="1277">1277</span>
+<span id="1278">1278</span>
+<span id="1279">1279</span>
+<span id="1280">1280</span>
+<span id="1281">1281</span>
+<span id="1282">1282</span>
+<span id="1283">1283</span>
+<span id="1284">1284</span>
+<span id="1285">1285</span>
+<span id="1286">1286</span>
+<span id="1287">1287</span>
+<span id="1288">1288</span>
+<span id="1289">1289</span>
+<span id="1290">1290</span>
+<span id="1291">1291</span>
+<span id="1292">1292</span>
+<span id="1293">1293</span>
+<span id="1294">1294</span>
+<span id="1295">1295</span>
+<span id="1296">1296</span>
+<span id="1297">1297</span>
+<span id="1298">1298</span>
+<span id="1299">1299</span>
+<span id="1300">1300</span>
+<span id="1301">1301</span>
+<span id="1302">1302</span>
+<span id="1303">1303</span>
+<span id="1304">1304</span>
+<span id="1305">1305</span>
+<span id="1306">1306</span>
+<span id="1307">1307</span>
+<span id="1308">1308</span>
+<span id="1309">1309</span>
+<span id="1310">1310</span>
+<span id="1311">1311</span>
+<span id="1312">1312</span>
+<span id="1313">1313</span>
+<span id="1314">1314</span>
+<span id="1315">1315</span>
+<span id="1316">1316</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
@@ -1281,6 +1325,7 @@
         <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>,
     },
     <span class="ident">golden_ticket::GoldenTicket</span>,
+    <span class="ident">hop</span>::{<span class="ident">Hop</span>, <span class="ident">HOP_SIZE</span>},
     <span class="ident">merkle::MerkleTreeLayer</span>,
     <span class="ident">slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipType</span>, <span class="ident">SLIP_SIZE</span>},
     <span class="ident">time::create_timestamp</span>,
@@ -1320,6 +1365,8 @@
     <span class="kw">pub</span> <span class="ident">total_rebroadcast_slips</span>: <span class="ident">u64</span>,
     <span class="comment">// number of rebroadcast txs</span>
     <span class="kw">pub</span> <span class="ident">total_rebroadcast_nolan</span>: <span class="ident">u64</span>,
+    <span class="comment">// all ATR txs hashed together</span>
+    <span class="kw">pub</span> <span class="ident">rebroadcast_hash</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
 }
 <span class="kw">impl</span> <span class="ident">DataToValidate</span> {
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
@@ -1331,9 +1378,11 @@
             <span class="ident">gt_num</span>: <span class="number">0</span>,
             <span class="ident">gt_idx</span>: <span class="prelude-val">None</span>,
             <span class="ident">expected_difficulty</span>: <span class="number">0</span>,
-    	    <span class="ident">rebroadcasts</span>: <span class="macro">vec!</span>[],
-    	    <span class="ident">total_rebroadcast_slips</span>: <span class="number">0</span>,
-    	    <span class="ident">total_rebroadcast_nolan</span>: <span class="number">0</span>,
+            <span class="ident">rebroadcasts</span>: <span class="macro">vec!</span>[],
+            <span class="ident">total_rebroadcast_slips</span>: <span class="number">0</span>,
+            <span class="ident">total_rebroadcast_nolan</span>: <span class="number">0</span>,
+            <span class="comment">// must be initialized zeroed-out for proper hashing</span>
+            <span class="ident">rebroadcast_hash</span>: [<span class="number">0</span>; <span class="number">32</span>],
         }
     }
 }
@@ -1367,6 +1416,12 @@
     <span class="kw">pub</span> <span class="ident">has_golden_ticket</span>: <span class="ident">bool</span>,
     <span class="comment">// has fee transaction</span>
     <span class="kw">pub</span> <span class="ident">has_fee_transaction</span>: <span class="ident">bool</span>,
+    <span class="comment">// number of rebroadcast slips</span>
+    <span class="kw">pub</span> <span class="ident">total_rebroadcast_slips</span>: <span class="ident">u64</span>,
+    <span class="comment">// number of rebroadcast txs</span>
+    <span class="kw">pub</span> <span class="ident">total_rebroadcast_nolan</span>: <span class="ident">u64</span>,
+    <span class="comment">// all ATR txs hashed together</span>
+    <span class="kw">pub</span> <span class="ident">rebroadcast_hash</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
 }
 
 <span class="kw">impl</span> <span class="ident">Block</span> {
@@ -1389,6 +1444,10 @@
             <span class="ident">lc</span>: <span class="bool-val">false</span>,
             <span class="ident">has_golden_ticket</span>: <span class="bool-val">false</span>,
             <span class="ident">has_fee_transaction</span>: <span class="bool-val">false</span>,
+            <span class="ident">total_rebroadcast_slips</span>: <span class="number">0</span>,
+            <span class="ident">total_rebroadcast_nolan</span>: <span class="number">0</span>,
+            <span class="comment">// must be initialized zeroed-out for proper hashing</span>
+            <span class="ident">rebroadcast_hash</span>: [<span class="number">0</span>; <span class="number">32</span>],
         }
     }
 
@@ -1641,10 +1700,16 @@
                     .<span class="ident">try_into</span>()
                     .<span class="ident">unwrap</span>(),
             ) <span class="kw">as</span> <span class="ident">usize</span>;
+            <span class="kw">let</span> <span class="ident">path_len</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">u32::from_be_bytes</span>(
+                <span class="ident">bytes</span>[<span class="ident">start_of_transaction_data</span> <span class="op">+</span> <span class="number">12</span>..<span class="ident">start_of_transaction_data</span> <span class="op">+</span> <span class="number">16</span>]
+                    .<span class="ident">try_into</span>()
+                    .<span class="ident">unwrap</span>(),
+            ) <span class="kw">as</span> <span class="ident">usize</span>;
             <span class="kw">let</span> <span class="ident">end_of_transaction_data</span> <span class="op">=</span> <span class="ident">start_of_transaction_data</span>
                 <span class="op">+</span> <span class="ident">TRANSACTION_SIZE</span>
                 <span class="op">+</span> ((<span class="ident">inputs_len</span> <span class="op">+</span> <span class="ident">outputs_len</span>) <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>)
-                <span class="op">+</span> <span class="ident">message_len</span>;
+                <span class="op">+</span> <span class="ident">message_len</span>
+                <span class="op">+</span> <span class="ident">path_len</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">HOP_SIZE</span>;
             <span class="kw">let</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::deserialize_from_net</span>(
                 <span class="ident">bytes</span>[<span class="ident">start_of_transaction_data</span>..<span class="ident">end_of_transaction_data</span>].<span class="ident">to_vec</span>(),
             );
@@ -1740,12 +1805,10 @@
         <span class="ident">mrv</span>[<span class="ident">start_point</span>].<span class="ident">get_hash</span>()
     }
 
-
     <span class="comment">//</span>
     <span class="comment">// generate hashes and payouts and fee calculations</span>
     <span class="comment">//</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_data_to_validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blockchain</span>: <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">DataToValidate</span> {
-
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cv</span> <span class="op">=</span> <span class="ident">DataToValidate::new</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gt_num</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0</span>;
@@ -1753,8 +1816,13 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gt_idx_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ft_idx_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_fees</span> <span class="op">=</span> <span class="number">0</span>;
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_rebroadcast_slips</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_rebroadcast_nolan</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_rebroadcast_slips</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_rebroadcast_nolan</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="comment">// when we find a rebroadcast TX we hash it and put the hash</span>
+        <span class="comment">// here. when validating a block we do the exact same. as long</span>
+        <span class="comment">// as the rebroadcast hash and the block hash match the set of</span>
+        <span class="comment">// transactions are exactly the same.</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rebroadcast_hash</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>];
         <span class="kw">let</span> <span class="ident">miner_publickey</span>;
         <span class="kw">let</span> <span class="ident">router_publickey</span>;
 
@@ -1763,8 +1831,7 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idx</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">for</span> <span class="ident">transaction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span> {
- 
-           <span class="comment">// fee transaction</span>
+            <span class="comment">// fee transaction</span>
             <span class="kw">if</span> <span class="op">!</span><span class="ident">transaction</span>.<span class="ident">is_fee_transaction</span>() {
                 <span class="ident">total_fees</span> <span class="op">+</span><span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">get_total_fees</span>();
             } <span class="kw">else</span> {
@@ -1781,14 +1848,13 @@
             <span class="ident">idx</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
         }
 
-	<span class="comment">//</span>
-	<span class="comment">// calculate payments</span>
-	<span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// calculate payments</span>
+        <span class="comment">//</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">gt_idx</span>) <span class="op">=</span> <span class="ident">gt_idx_option</span> {
-
-	    <span class="comment">//</span>
+            <span class="comment">//</span>
             <span class="comment">// grab random input from golden ticket</span>
-	    <span class="comment">//</span>
+            <span class="comment">//</span>
             <span class="kw">let</span> <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span> <span class="op">=</span> <span class="ident">GoldenTicket::deserialize_for_transaction</span>(
                 <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">gt_idx</span>].<span class="ident">get_message</span>().<span class="ident">to_vec</span>(),
             );
@@ -1797,23 +1863,20 @@
             <span class="comment">//</span>
             <span class="comment">// create fee transaction</span>
             <span class="comment">//</span>
-	    <span class="kw">if</span> <span class="ident">total_fees</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
-
-
-	    } <span class="kw">else</span> {
-
+            <span class="kw">if</span> <span class="ident">total_fees</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+            } <span class="kw">else</span> {
                 <span class="comment">//</span>
                 <span class="comment">// find winning tx</span>
                 <span class="comment">//</span>
                 <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">U256::from_big_endian</span>(<span class="kw-2">&amp;</span><span class="ident">miner_random</span>);
-		<span class="comment">// no risk of divide by zero with if / else check</span>
+                <span class="comment">// no risk of divide by zero with if / else check</span>
                 <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">total_fees</span>;
 
-		<span class="comment">//</span>
-		<span class="comment">// random number mod total fees gives us th ewinning</span>
-		<span class="comment">// nolan. we are going to pick the transaction that</span>
-		<span class="comment">// contains this incremental nolan</span>
-		<span class="comment">//</span>
+                <span class="comment">//</span>
+                <span class="comment">// random number mod total fees gives us th ewinning</span>
+                <span class="comment">// nolan. we are going to pick the transaction that</span>
+                <span class="comment">// contains this incremental nolan</span>
+                <span class="comment">//</span>
                 <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">U256::from_big_endian</span>(<span class="kw-2">&amp;</span><span class="ident">y</span>.<span class="ident">to_be_bytes</span>());
                 <span class="kw">let</span> (<span class="ident">zy</span>, <span class="ident">_bolres</span>) <span class="op">=</span> <span class="ident">x</span>.<span class="ident">overflowing_rem</span>(<span class="ident">z</span>);
                 <span class="kw">let</span> <span class="ident">winning_nolan_in_fees</span> <span class="op">=</span> <span class="ident">zy</span>.<span class="ident">low_u64</span>();
@@ -1831,14 +1894,14 @@
                     <span class="ident">winning_tx</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">transaction</span>;
                 }
 
-		<span class="comment">//</span>
-                <span class="comment">// winning router is picked by sending a random </span>
-		<span class="comment">// number into the transaction, which is then </span>
-		<span class="comment">// used to select a routing node based on the </span>
-		<span class="comment">// weighted lottery.</span>
                 <span class="comment">//</span>
-            	<span class="kw">let</span> <span class="ident">random_number2</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">miner_random</span>.<span class="ident">to_vec</span>());
-           	<span class="ident">router_publickey</span> <span class="op">=</span> <span class="ident">winning_tx</span>.<span class="ident">get_winning_routing_node</span>(<span class="ident">random_number2</span>);
+                <span class="comment">// winning router is picked by sending a random</span>
+                <span class="comment">// number into the transaction, which is then</span>
+                <span class="comment">// used to select a routing node based on the</span>
+                <span class="comment">// weighted lottery.</span>
+                <span class="comment">//</span>
+                <span class="kw">let</span> <span class="ident">random_number2</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">miner_random</span>.<span class="ident">to_vec</span>());
+                <span class="ident">router_publickey</span> <span class="op">=</span> <span class="ident">winning_tx</span>.<span class="ident">get_winning_routing_node</span>(<span class="ident">random_number2</span>);
 
                 <span class="comment">//</span>
                 <span class="comment">// winning miner from golden ticket</span>
@@ -1848,15 +1911,11 @@
                 <span class="comment">//</span>
                 <span class="comment">// calculate miner and router payments</span>
                 <span class="comment">//</span>
-                <span class="comment">// TODO - REMOVE  - temporary to create additional tokens so we have circulating fees</span>
-                <span class="comment">//</span>
-                <span class="ident">total_fees</span> <span class="op">+</span><span class="op">=</span> <span class="number">10000</span>;
-                <span class="comment">//</span>
                 <span class="kw">let</span> <span class="ident">miner_payment</span> <span class="op">=</span> <span class="ident">total_fees</span> <span class="op">/</span> <span class="number">2</span>;
                 <span class="kw">let</span> <span class="ident">router_payment</span> <span class="op">=</span> <span class="ident">total_fees</span> <span class="op">-</span> <span class="ident">miner_payment</span>;
 
-	        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
-	        <span class="ident">transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::Fee</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
+                <span class="ident">transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::Fee</span>);
 
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
                 <span class="ident">input1</span>.<span class="ident">set_publickey</span>(<span class="ident">miner_publickey</span>);
@@ -1891,7 +1950,6 @@
                 <span class="comment">// fee transaction added to consensus values</span>
                 <span class="comment">//</span>
                 <span class="ident">cv</span>.<span class="ident">fee_transaction</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">transaction</span>);
-
             }
 
             <span class="comment">//</span>
@@ -1902,7 +1960,6 @@
             <span class="ident">cv</span>.<span class="ident">gt_idx</span> <span class="op">=</span> <span class="ident">gt_idx_option</span>;
             <span class="ident">cv</span>.<span class="ident">gt_num</span> <span class="op">=</span> <span class="ident">gt_num</span>;
         }
-
 
         <span class="comment">//</span>
         <span class="comment">// calculate expected burn-fee given previous block</span>
@@ -1920,53 +1977,58 @@
             }
         }
 
-
         <span class="comment">//</span>
         <span class="comment">// calculate automatic transaction rebroadcasts / ATR / atr</span>
         <span class="comment">//</span>
-	<span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_id</span>() <span class="op">&gt;</span> <span class="number">2</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_id</span>() <span class="op">&gt;</span> <span class="number">2</span> {
+            <span class="kw">let</span> <span class="ident">pruned_block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>
+                .<span class="ident">blockring</span>
+                .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="self">self</span>.<span class="ident">get_id</span>() <span class="op">-</span> <span class="number">2</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;pruned block hash: {:?}&quot;</span>, <span class="ident">pruned_block_hash</span>);
 
-	<span class="kw">let</span> <span class="ident">pruned_block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="self">self</span>.<span class="ident">get_id</span>()<span class="op">-</span><span class="number">2</span>);
-<span class="macro">println!</span>(<span class="string">&quot;pruned block hash: {:?}&quot;</span>, <span class="ident">pruned_block_hash</span>);
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pruned_block</span>) <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">pruned_block_hash</span>) {
+                <span class="comment">//</span>
+                <span class="comment">// identify all unspent transactions</span>
+                <span class="comment">//</span>
+                <span class="kw">for</span> <span class="ident">transaction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">pruned_block</span>.<span class="ident">transactions</span> {
+                    <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">transaction</span>.<span class="ident">get_outputs</span>() {
+                        <span class="comment">//</span>
+                        <span class="comment">// valid means spendable and non-zero</span>
+                        <span class="comment">//</span>
+                        <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="ident">blockchain</span>.<span class="ident">utxoset</span>) {
+                            <span class="ident">total_rebroadcast_slips</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                            <span class="ident">total_rebroadcast_nolan</span> <span class="op">+</span><span class="op">=</span> <span class="ident">output</span>.<span class="ident">get_amount</span>();
 
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pruned_block</span>) <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">pruned_block_hash</span>) {
+                            <span class="comment">//</span>
+                            <span class="comment">// create rebroadcast transaction</span>
+                            <span class="comment">//</span>
+                            <span class="comment">// TODO - floating fee based on previous block average</span>
+                            <span class="comment">//</span>
+                            <span class="kw">let</span> <span class="ident">rebroadcast_transaction</span> <span class="op">=</span>
+                                <span class="ident">Transaction::generate_rebroadcast_transaction</span>(
+                                    <span class="kw-2">&amp;</span><span class="ident">transaction</span>,
+                                    <span class="ident">output</span>,
+                                    <span class="number">200_000_000</span>,
+                                );
 
-	    <span class="comment">//</span>
-	    <span class="comment">// identify all unspent transactions</span>
-	    <span class="comment">//</span>
-	    <span class="kw">for</span> <span class="ident">transaction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">pruned_block</span>.<span class="ident">transactions</span> {
-	        <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">transaction</span>.<span class="ident">get_outputs</span>() {
+                            <span class="comment">//</span>
+                            <span class="comment">// update cryptographic hash of all ATRs</span>
+                            <span class="comment">//</span>
+                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+                            <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">rebroadcast_hash</span>);
+                            <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">rebroadcast_transaction</span>.<span class="ident">serialize_for_signature</span>());
+                            <span class="ident">rebroadcast_hash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">vbytes</span>);
 
-		    <span class="comment">//</span>
-		    <span class="comment">// valid means spendable and non-zero</span>
-		    <span class="comment">//</span>
-		    <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="ident">blockchain</span>.<span class="ident">utxoset</span>) {
+                            <span class="ident">cv</span>.<span class="ident">rebroadcasts</span>.<span class="ident">push</span>(<span class="ident">rebroadcast_transaction</span>);
+                        }
+                    }
+                }
 
-			<span class="ident">total_rebroadcast_slips</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-			<span class="ident">total_rebroadcast_nolan</span> <span class="op">+</span><span class="op">=</span> <span class="ident">output</span>.<span class="ident">get_amount</span>();
-
-			<span class="comment">//</span>
-			<span class="comment">// create rebroadcast transaction</span>
-			<span class="comment">//</span>
-			<span class="comment">// TODO - floating fee based on previous block average</span>
-			<span class="comment">//</span>
-			<span class="kw">let</span> <span class="ident">rebroadcast_transaction</span> <span class="op">=</span> <span class="ident">Transaction::generate_rebroadcast_transaction</span>(
-			    <span class="kw-2">&amp;</span><span class="ident">transaction</span>,
-			    <span class="ident">output</span>,
-			    <span class="number">200_000_000</span>,
-			);
-
-<span class="macro">println!</span>(<span class="string">&quot;WE HAVE A TX TO PRUNE / REBROADCAST!&quot;</span>);
-			<span class="ident">cv</span>.<span class="ident">rebroadcasts</span>.<span class="ident">push</span>(<span class="ident">rebroadcast_transaction</span>);
-		    }
-		}
-	    }
-
-	    <span class="ident">cv</span>.<span class="ident">total_rebroadcast_slips</span> <span class="op">=</span> <span class="ident">total_rebroadcast_slips</span>;
-	    <span class="ident">cv</span>.<span class="ident">total_rebroadcast_nolan</span> <span class="op">=</span> <span class="ident">total_rebroadcast_nolan</span>;
-
-	}
-	}
+                <span class="ident">cv</span>.<span class="ident">total_rebroadcast_slips</span> <span class="op">=</span> <span class="ident">total_rebroadcast_slips</span>;
+                <span class="ident">cv</span>.<span class="ident">total_rebroadcast_nolan</span> <span class="op">=</span> <span class="ident">total_rebroadcast_nolan</span>;
+                <span class="ident">cv</span>.<span class="ident">rebroadcast_hash</span> <span class="op">=</span> <span class="ident">rebroadcast_hash</span>;
+            }
+        }
 
         <span class="ident">cv</span>
     }
@@ -1992,25 +2054,25 @@
     <span class="comment">// sweeping through the transactions to find out what percentage of the</span>
     <span class="comment">// cumulative block fees they contain.</span>
     <span class="comment">//</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pre_validation_calculations</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_metadata</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="macro">println!</span>(<span class="string">&quot; ... block.prevalid - pre hash:  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="comment">//</span>
         <span class="comment">// PARALLEL PROCESSING of most data</span>
         <span class="comment">//</span>
-      	<span class="kw">let</span> <span class="ident">creator_publickey</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_creator</span>();
+        <span class="kw">let</span> <span class="ident">creator_publickey</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_creator</span>();
 
         <span class="kw">let</span> <span class="ident">_transactions_pre_calculated</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>
             .<span class="ident">transactions</span>
             .<span class="ident">par_iter_mut</span>()
-            .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">pre_validation_calculations_parallelizable</span>(<span class="ident">creator_publickey</span>));
+            .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">generate_metadata</span>(<span class="ident">creator_publickey</span>));
 
         <span class="macro">println!</span>(<span class="string">&quot; ... block.prevalid - pst hash:  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="comment">//</span>
         <span class="comment">// CUMULATIVE FEES only AFTER parallel calculations</span>
         <span class="comment">//</span>
-        <span class="comment">// we need to calculate the cumulative figures AFTER the </span>
-        <span class="comment">// transactions have been fleshed out with all of the </span>
+        <span class="comment">// we need to calculate the cumulative figures AFTER the</span>
+        <span class="comment">// transactions have been fleshed out with all of the</span>
         <span class="comment">// original figures.</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cumulative_fees</span> <span class="op">=</span> <span class="number">0</span>;
@@ -2019,9 +2081,19 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">has_golden_ticket</span> <span class="op">=</span> <span class="bool-val">false</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">has_fee_transaction</span> <span class="op">=</span> <span class="bool-val">false</span>;
 
+        <span class="comment">//</span>
+        <span class="comment">// we have to do a single sweep through all of the transactions in</span>
+        <span class="comment">// non-parallel to do things like generate the cumulative order of the</span>
+        <span class="comment">// transactions in the block for things like work and fee calculations</span>
+        <span class="comment">// for the lottery.</span>
+        <span class="comment">//</span>
+        <span class="comment">// we take advantage of the sweep to perform other pre-validation work</span>
+        <span class="comment">// like counting up our ATR transactions and generating the hash</span>
+        <span class="comment">// commitment for all of our rebroadcasts.</span>
+        <span class="comment">//</span>
         <span class="kw">for</span> <span class="ident">transaction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">transactions</span> {
-            <span class="ident">cumulative_fees</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">pre_validation_calculations_cumulative_fees</span>(<span class="ident">cumulative_fees</span>);
-            <span class="ident">cumulative_work</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">pre_validation_calculations_cumulative_work</span>(<span class="ident">cumulative_work</span>);
+            <span class="ident">cumulative_fees</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">generate_metadata_cumulative_fees</span>(<span class="ident">cumulative_fees</span>);
+            <span class="ident">cumulative_work</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">generate_metadata_cumulative_work</span>(<span class="ident">cumulative_work</span>);
 
             <span class="comment">//</span>
             <span class="comment">// also check the transactions for golden ticket and fees</span>
@@ -2029,6 +2101,17 @@
             <span class="kw">match</span> <span class="ident">transaction</span>.<span class="ident">get_transaction_type</span>() {
                 <span class="ident">TransactionType::Fee</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">has_fee_transaction</span> <span class="op">=</span> <span class="bool-val">true</span>,
                 <span class="ident">TransactionType::GoldenTicket</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">has_golden_ticket</span> <span class="op">=</span> <span class="bool-val">true</span>,
+                <span class="ident">TransactionType::ATR</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+                    <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">rebroadcast_hash</span>);
+                    <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">transaction</span>.<span class="ident">serialize_for_signature</span>());
+                    <span class="self">self</span>.<span class="ident">rebroadcast_hash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">vbytes</span>);
+
+                    <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">transaction</span>.<span class="ident">get_inputs</span>() {
+                        <span class="self">self</span>.<span class="ident">total_rebroadcast_slips</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+                        <span class="self">self</span>.<span class="ident">total_rebroadcast_nolan</span> <span class="op">+</span><span class="op">=</span> <span class="ident">input</span>.<span class="ident">get_amount</span>();
+                    }
+                }
                 <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
             };
         }
@@ -2046,7 +2129,6 @@
         <span class="bool-val">true</span>
     }
 
-
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">blockchain</span>: <span class="kw-2">&amp;</span><span class="ident">Blockchain</span>,
@@ -2060,10 +2142,9 @@
         <span class="kw">let</span> <span class="ident">previous_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_previous_block_hash</span>());
         {
             <span class="kw">if</span> <span class="op">!</span><span class="ident">previous_block</span>.<span class="ident">is_none</span>() {
-
-		<span class="comment">//</span>
-		<span class="comment">// new burn fee must be correct</span>
-		<span class="comment">//</span>
+                <span class="comment">//</span>
+                <span class="comment">// new burn fee must be correct</span>
+                <span class="comment">//</span>
                 <span class="kw">let</span> <span class="ident">new_burnfee</span>: <span class="ident">u64</span> <span class="op">=</span>
                     <span class="ident">BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan</span>(
                         <span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_burnfee</span>(),
@@ -2078,21 +2159,19 @@
                     <span class="kw">return</span> <span class="bool-val">false</span>;
                 }
 
-
-		<span class="comment">//</span>
-		<span class="comment">// routing work must be adequate given block time difference</span>
-		<span class="comment">//</span>
-	        <span class="kw">let</span> <span class="ident">amount_of_routing_work_needed</span>: <span class="ident">u64</span> <span class="op">=</span> 
-		    <span class="ident">BurnFee::return_routing_work_needed_to_produce_block_in_nolan</span>(
-	                <span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_burnfee</span>(),
+                <span class="comment">//</span>
+                <span class="comment">// routing work must be adequate given block time difference</span>
+                <span class="comment">//</span>
+                <span class="kw">let</span> <span class="ident">amount_of_routing_work_needed</span>: <span class="ident">u64</span> <span class="op">=</span>
+                    <span class="ident">BurnFee::return_routing_work_needed_to_produce_block_in_nolan</span>(
+                        <span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_burnfee</span>(),
                         <span class="self">self</span>.<span class="ident">get_timestamp</span>(),
                         <span class="ident">previous_block</span>.<span class="ident">unwrap</span>().<span class="ident">get_timestamp</span>(),
-    	            );
-		<span class="kw">if</span> <span class="self">self</span>.<span class="ident">routing_work_for_creator</span> <span class="op">&lt;</span> <span class="ident">amount_of_routing_work_needed</span> {
-	            <span class="macro">println!</span>(<span class="string">&quot;Error 510293: block lacking adequate routing work from creator&quot;</span>);
-	            <span class="kw">return</span> <span class="bool-val">false</span>;
-	        }
-
+                    );
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">routing_work_for_creator</span> <span class="op">&lt;</span> <span class="ident">amount_of_routing_work_needed</span> {
+                    <span class="macro">println!</span>(<span class="string">&quot;Error 510293: block lacking adequate routing work from creator&quot;</span>);
+                    <span class="kw">return</span> <span class="bool-val">false</span>;
+                }
             } <span class="kw">else</span> {
                 <span class="comment">// TODO assert that this is the first (or second?) block! ?</span>
             }
@@ -2122,7 +2201,6 @@
         <span class="comment">//</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">cv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_data_to_validate</span>(<span class="kw-2">&amp;</span><span class="ident">blockchain</span>);
-
 
         <span class="comment">//</span>
         <span class="comment">// validate difficulty</span>
@@ -2189,37 +2267,35 @@
             }
         }
 
-
-
-
         <span class="comment">//</span>
         <span class="comment">// fee transactions</span>
         <span class="comment">//</span>
         <span class="comment">// we grab the fee transaction created in the cv function and run</span>
-	<span class="comment">// a quick hash of it, comparing that with the hash of the fee-tx</span>
-	<span class="comment">// that exists in the block. if they match, we&#39;re OK with th block</span>
-	<span class="comment">// including this fee transaction.</span>
+        <span class="comment">// a quick hash of it, comparing that with the hash of the fee-tx</span>
+        <span class="comment">// that exists in the block. if they match, we&#39;re OK with th block</span>
+        <span class="comment">// including this fee transaction.</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">cv</span>.<span class="ident">ft_idx</span>.<span class="ident">is_none</span>() {
             <span class="kw">if</span> <span class="op">!</span><span class="ident">cv</span>.<span class="ident">fee_transaction</span>.<span class="ident">is_none</span>() {
-            
                 <span class="comment">//</span>
-            	<span class="comment">// fee-transaction must still pass validation rules</span>
-            	<span class="comment">//</span>
-		<span class="comment">// we are OK with just doing a hash check as the other</span>
-		<span class="comment">// requirements are covered in the validation function.</span>
-		<span class="comment">//</span>
-            	<span class="kw">let</span> <span class="ident">fee_tx</span> <span class="op">=</span> <span class="ident">cv</span>.<span class="ident">fee_transaction</span>.<span class="ident">unwrap</span>();
-	    	<span class="kw">let</span> <span class="ident">cv_ft_hash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">fee_tx</span>.<span class="ident">serialize_for_signature</span>());
-	    	<span class="kw">let</span> <span class="ident">block_ft_hash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">cv</span>.<span class="ident">ft_idx</span>.<span class="ident">unwrap</span>()].<span class="ident">serialize_for_signature</span>());
+                <span class="comment">// fee-transaction must still pass validation rules</span>
+                <span class="comment">//</span>
+                <span class="comment">// we are OK with just doing a hash check as the other</span>
+                <span class="comment">// requirements are covered in the validation function.</span>
+                <span class="comment">//</span>
+                <span class="kw">let</span> <span class="ident">fee_tx</span> <span class="op">=</span> <span class="ident">cv</span>.<span class="ident">fee_transaction</span>.<span class="ident">unwrap</span>();
+                <span class="kw">let</span> <span class="ident">cv_ft_hash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">fee_tx</span>.<span class="ident">serialize_for_signature</span>());
+                <span class="kw">let</span> <span class="ident">block_ft_hash</span> <span class="op">=</span>
+                    <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">cv</span>.<span class="ident">ft_idx</span>.<span class="ident">unwrap</span>()].<span class="ident">serialize_for_signature</span>());
 
-	    	<span class="kw">if</span> <span class="ident">cv_ft_hash</span> <span class="op">!</span><span class="op">=</span> <span class="ident">block_ft_hash</span> {
-	            <span class="macro">println!</span>(<span class="string">&quot;ERROR 627428: block fee transaction doesn&#39;t match cv fee transaction&quot;</span>);
-		    <span class="kw">return</span> <span class="bool-val">false</span>;
-	        }
+                <span class="kw">if</span> <span class="ident">cv_ft_hash</span> <span class="op">!</span><span class="op">=</span> <span class="ident">block_ft_hash</span> {
+                    <span class="macro">println!</span>(
+                        <span class="string">&quot;ERROR 627428: block fee transaction doesn&#39;t match cv fee transaction&quot;</span>
+                    );
+                    <span class="kw">return</span> <span class="bool-val">false</span>;
+                }
             }
         }
-
 
         <span class="comment">//</span>
         <span class="comment">// validate difficulty</span>
@@ -2236,6 +2312,21 @@
         }
         <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (txs valid) {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
+        <span class="comment">//</span>
+        <span class="comment">// VALIDATE ATR</span>
+        <span class="comment">//</span>
+        <span class="kw">if</span> <span class="ident">cv</span>.<span class="ident">total_rebroadcast_slips</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">total_rebroadcast_slips</span> {
+            <span class="macro">println!</span>(<span class="string">&quot;ERROR 624442: rebroadcast slips total incorrect&quot;</span>);
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+        <span class="kw">if</span> <span class="ident">cv</span>.<span class="ident">total_rebroadcast_nolan</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">total_rebroadcast_nolan</span> {
+            <span class="macro">println!</span>(<span class="string">&quot;ERROR 294018: rebroadcast nolan amount incorrect&quot;</span>);
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+        <span class="kw">if</span> <span class="ident">cv</span>.<span class="ident">rebroadcast_hash</span> <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">rebroadcast_hash</span> {
+            <span class="macro">println!</span>(<span class="string">&quot;ERROR 123422: hash of rebroadcast transactions incorrect&quot;</span>);
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
 
         <span class="comment">//</span>
         <span class="comment">// VALIDATE transactions</span>
@@ -2253,7 +2344,6 @@
         <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
-
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
 
@@ -2336,22 +2426,21 @@
         <span class="comment">// processing in block validation. So some extra code here.</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">cv</span>.<span class="ident">fee_transaction</span>.<span class="ident">is_none</span>() {
-
             <span class="comment">//</span>
             <span class="comment">// fee-transaction must still pass validation rules</span>
             <span class="comment">//</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fee_tx</span> <span class="op">=</span> <span class="ident">cv</span>.<span class="ident">fee_transaction</span>.<span class="ident">unwrap</span>();
 
-	    <span class="comment">//</span>
-	    <span class="comment">// block creator sends transaction inputs</span>
-	    <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">// block creator sends transaction inputs</span>
+            <span class="comment">//</span>
             <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">fee_tx</span>.<span class="ident">get_mut_inputs</span>() {
                 <span class="ident">input</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
             }
 
-	    <span class="comment">//</span>
-	    <span class="comment">// create tx hash</span>
-	    <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">// create tx hash</span>
+            <span class="comment">//</span>
             <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">fee_tx</span>.<span class="ident">serialize_for_signature</span>());
             <span class="ident">fee_tx</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
 
@@ -2372,7 +2461,6 @@
         }
 
         <span class="kw">let</span> <span class="ident">block_merkle_root</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_merkle_root</span>();
-        <span class="macro">println!</span>(<span class="string">&quot;setting merkle root as: {:?}&quot;</span>, <span class="ident">block_merkle_root</span>);
         <span class="ident">block</span>.<span class="ident">set_merkle_root</span>(<span class="ident">block_merkle_root</span>);
 
         <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_hash</span>();

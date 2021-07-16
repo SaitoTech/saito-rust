@@ -847,6 +847,56 @@
 <span id="844">844</span>
 <span id="845">845</span>
 <span id="846">846</span>
+<span id="847">847</span>
+<span id="848">848</span>
+<span id="849">849</span>
+<span id="850">850</span>
+<span id="851">851</span>
+<span id="852">852</span>
+<span id="853">853</span>
+<span id="854">854</span>
+<span id="855">855</span>
+<span id="856">856</span>
+<span id="857">857</span>
+<span id="858">858</span>
+<span id="859">859</span>
+<span id="860">860</span>
+<span id="861">861</span>
+<span id="862">862</span>
+<span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -855,7 +905,7 @@
         <span class="ident">generate_random_bytes</span>, <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">verify</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>,
         <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>,
     },
-    <span class="ident">hop::Hop</span>,
+    <span class="ident">hop</span>::{<span class="ident">Hop</span>, <span class="ident">HOP_SIZE</span>},
     <span class="ident">slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipType</span>, <span class="ident">SLIP_SIZE</span>},
     <span class="ident">wallet::Wallet</span>,
 };
@@ -868,7 +918,7 @@
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TRANSACTION_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">85</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TRANSACTION_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">89</span>;
 
 <span class="doccomment">/// TransactionType is a human-readable indicator of the type of</span>
 <span class="doccomment">/// transaction such as a normal user-initiated transaction, a</span>
@@ -953,8 +1003,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_routing_path</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-	<span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() {
-
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() {
             <span class="comment">//</span>
             <span class="comment">// msg is transaction signature and next peer</span>
             <span class="comment">//</span>
@@ -962,18 +1011,25 @@
             <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_signature</span>());
             <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span>].<span class="ident">get_to</span>());
 
-	    <span class="comment">// check sig is valid</span>
-	    <span class="kw">if</span> <span class="op">!</span><span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">vbytes</span>), <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span>].<span class="ident">get_sig</span>(), <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span>].<span class="ident">get_from</span>()) { <span class="kw">return</span> <span class="bool-val">false</span>; }
+            <span class="comment">// check sig is valid</span>
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">verify</span>(
+                <span class="kw-2">&amp;</span><span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">vbytes</span>),
+                <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span>].<span class="ident">get_sig</span>(),
+                <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span>].<span class="ident">get_from</span>(),
+            ) {
+                <span class="kw">return</span> <span class="bool-val">false</span>;
+            }
 
-	    <span class="comment">// check path is continuous</span>
-	    <span class="kw">if</span> <span class="ident">i</span> <span class="op">&gt;</span> <span class="number">0</span> { <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span>].<span class="ident">get_from</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span><span class="op">-</span><span class="number">1</span>].<span class="ident">get_to</span>() { <span class="kw">return</span> <span class="bool-val">false</span>; } }
+            <span class="comment">// check path is continuous</span>
+            <span class="kw">if</span> <span class="ident">i</span> <span class="op">&gt;</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span>].<span class="ident">get_from</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span> <span class="op">-</span> <span class="number">1</span>].<span class="ident">get_to</span>() {
+                    <span class="kw">return</span> <span class="bool-val">false</span>;
+                }
+            }
+        }
 
-	}
-
-	<span class="kw">return</span> <span class="bool-val">true</span>;
+        <span class="kw">return</span> <span class="bool-val">true</span>;
     }
-
-
 
     <span class="comment">//</span>
     <span class="comment">// this function exists largely for testing. It attempts to attach the requested fee</span>
@@ -1108,27 +1164,25 @@
         <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">input</span>);
         <span class="ident">transaction</span>.<span class="ident">add_output</span>(<span class="ident">output</span>);
 
-<span class="macro">println!</span>(<span class="string">&quot;VIP going to: {:?}&quot;</span>, <span class="ident">to_publickey</span>);
-
         <span class="ident">transaction</span>
     }
 
-
-    <span class="comment">// </span>
-    <span class="comment">// </span>
+    <span class="comment">//</span>
+    <span class="comment">//</span>
     <span class="comment">// generate ATR transaction using source transaction and output slip</span>
     <span class="comment">//</span>
-    <span class="comment">// this assumes that the </span>
+    <span class="comment">// this assumes that the</span>
     <span class="comment">//</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_rebroadcast_transaction</span>(
         <span class="ident">transaction_to_rebroadcast</span>: <span class="kw-2">&amp;</span><span class="ident">Transaction</span>,
         <span class="ident">output_slip_to_rebroadcast</span>: <span class="kw-2">&amp;</span><span class="ident">Slip</span>,
         <span class="ident">with_fee</span>: <span class="ident">u64</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
-
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output_payment</span> <span class="op">=</span> <span class="ident">output_slip_to_rebroadcast</span>.<span class="ident">get_amount</span>() <span class="op">-</span> <span class="ident">with_fee</span>;
-	<span class="kw">if</span> <span class="ident">output_payment</span> <span class="op">&lt;</span> <span class="number">0</span> { <span class="ident">output_payment</span> <span class="op">=</span> <span class="number">0</span>; }
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output_payment</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">if</span> <span class="ident">output_slip_to_rebroadcast</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="ident">with_fee</span> {
+            <span class="ident">output_payment</span> <span class="op">=</span> <span class="ident">output_slip_to_rebroadcast</span>.<span class="ident">get_amount</span>() <span class="op">-</span> <span class="ident">with_fee</span>;
+        }
 
         <span class="ident">transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::ATR</span>);
 
@@ -1142,42 +1196,37 @@
         <span class="ident">output</span>.<span class="ident">set_amount</span>(<span class="ident">output_payment</span>);
         <span class="ident">output</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::ATR</span>);
         <span class="ident">output</span>.<span class="ident">set_uuid</span>(<span class="ident">output_slip_to_rebroadcast</span>.<span class="ident">get_uuid</span>());
-        
-	<span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::ATR</span> {
 
-	    <span class="comment">//</span>
-	    <span class="comment">// this is not our first rebroadcast, which means we just </span>
-	    <span class="comment">// need to copy the rebroadcast message field when making</span>
-	    <span class="comment">// this transaction.</span>
-	    <span class="comment">//</span>
-	    <span class="ident">transaction</span>.<span class="ident">set_message</span>(<span class="ident">transaction_to_rebroadcast</span>.<span class="ident">get_message</span>().<span class="ident">to_vec</span>());
-
-	} <span class="kw">else</span> {
-
-	    <span class="comment">//</span>
-	    <span class="comment">// this is our first rebroadcast, so we need to set the </span>
-	    <span class="comment">// message field in the transaction to the content of the </span>
-	    <span class="comment">// original transaction being rebroadcast.</span>
-	    <span class="comment">//</span>
-	    <span class="ident">transaction</span>.<span class="ident">set_message</span>(<span class="ident">transaction_to_rebroadcast</span>.<span class="ident">serialize_for_net</span>().<span class="ident">to_vec</span>());
-
-	}
+        <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::ATR</span> {
+            <span class="comment">//</span>
+            <span class="comment">// this is not our first rebroadcast, which means we just</span>
+            <span class="comment">// need to copy the rebroadcast message field when making</span>
+            <span class="comment">// this transaction.</span>
+            <span class="comment">//</span>
+            <span class="ident">transaction</span>.<span class="ident">set_message</span>(<span class="ident">transaction_to_rebroadcast</span>.<span class="ident">get_message</span>().<span class="ident">to_vec</span>());
+        } <span class="kw">else</span> {
+            <span class="comment">//</span>
+            <span class="comment">// this is our first rebroadcast, so we need to set the</span>
+            <span class="comment">// message field in the transaction to the content of the</span>
+            <span class="comment">// original transaction being rebroadcast.</span>
+            <span class="comment">//</span>
+            <span class="ident">transaction</span>.<span class="ident">set_message</span>(<span class="ident">transaction_to_rebroadcast</span>.<span class="ident">serialize_for_net</span>().<span class="ident">to_vec</span>());
+        }
 
         <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">input</span>);
         <span class="ident">transaction</span>.<span class="ident">add_output</span>(<span class="ident">output</span>);
 
-	<span class="comment">//</span>
-	<span class="comment">// signature is the ORIGINAL signature. this transaction</span>
-	<span class="comment">// will fail its signature check and then get analysed as </span>
-	<span class="comment">// a rebroadcast transaction because of its transaction type.</span>
-	<span class="comment">//</span>
-	<span class="ident">transaction</span>.<span class="ident">set_signature</span>(<span class="ident">transaction_to_rebroadcast</span>.<span class="ident">get_signature</span>());
+        <span class="comment">//</span>
+        <span class="comment">// signature is the ORIGINAL signature. this transaction</span>
+        <span class="comment">// will fail its signature check and then get analysed as</span>
+        <span class="comment">// a rebroadcast transaction because of its transaction type.</span>
+        <span class="comment">//</span>
+        <span class="ident">transaction</span>.<span class="ident">set_signature</span>(<span class="ident">transaction_to_rebroadcast</span>.<span class="ident">get_signature</span>());
 
         <span class="ident">transaction</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_routing_work_for_publickey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-
         <span class="comment">// there is not routing path</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
             <span class="kw">return</span> <span class="number">0</span>;
@@ -1197,11 +1246,12 @@
         <span class="comment">// halving from the 2nd hop in the routing path</span>
         <span class="comment">//</span>
         <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() {
+            <span class="comment">// return nothing if the path is broken</span>
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">_i</span>].<span class="ident">get_to</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">_i</span> <span class="op">-</span> <span class="number">1</span>].<span class="ident">get_from</span>() {
+                <span class="kw">return</span> <span class="number">0</span>;
+            }
 
-	    <span class="comment">// return nothing if the path is broken</span>
-	    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">_i</span>].<span class="ident">get_to</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">_i</span><span class="op">-</span><span class="number">1</span>].<span class="ident">get_from</span>() { <span class="kw">return</span> <span class="number">0</span>; }
-
-	    <span class="comment">// otherwise halve the work</span>
+            <span class="comment">// otherwise halve the work</span>
             <span class="kw">let</span> <span class="ident">half_of_routing_work</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">routing_work_available_to_publickey</span> <span class="op">/</span> <span class="number">2</span>;
             <span class="ident">routing_work_available_to_publickey</span> <span class="op">-</span><span class="op">=</span> <span class="ident">half_of_routing_work</span>;
         }
@@ -1219,6 +1269,10 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_fee_transaction</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::Fee</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_atr_transaction</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::ATR</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_golden_ticket</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -1270,39 +1324,38 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_winning_routing_node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">random_hash</span>: <span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
+        <span class="comment">//</span>
+        <span class="comment">// if there are no routing paths, we return the sender of</span>
+        <span class="comment">// the payment, as they&#39;re got all of the routing work by</span>
+        <span class="comment">// definition. this is the edge-case where sending a tx</span>
+        <span class="comment">// can make you money.</span>
+        <span class="comment">//</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">get_total_fees</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span> {
+                <span class="kw">return</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_publickey</span>();
+            } <span class="kw">else</span> {
+                <span class="kw">return</span> [<span class="number">0</span>; <span class="number">33</span>];
+            }
+        }
 
-	<span class="comment">//</span>
-	<span class="comment">// if there are no routing paths, we return the sender of</span>
-	<span class="comment">// the payment, as they&#39;re got all of the routing work by</span>
-	<span class="comment">// definition. this is the edge-case where sending a tx</span>
-	<span class="comment">// can make you money.</span>
-	<span class="comment">//</span>
-	<span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
-	    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span> {
-		<span class="kw">return</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_publickey</span>();
-	    } <span class="kw">else</span> {
-		<span class="kw">return</span> [<span class="number">0</span>; <span class="number">33</span>];
-	    }
-	}
+        <span class="comment">//</span>
+        <span class="comment">// if we have a routing path, we calculate the total amount</span>
+        <span class="comment">// of routing work that it is possible for this transaction</span>
+        <span class="comment">// to contain (2x the fee).</span>
+        <span class="comment">//</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">aggregate_routing_work</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_total_fees</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">routing_work_this_hop</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">aggregate_routing_work</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">work_by_hop</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="ident">work_by_hop</span>.<span class="ident">push</span>(<span class="ident">aggregate_routing_work</span>);
 
-	<span class="comment">//</span>
-	<span class="comment">// if we have a routing path, we calculate the total amount</span>
-	<span class="comment">// of routing work that it is possible for this transaction</span>
-	<span class="comment">// to contain (2x the fee).</span>
-	<span class="comment">//</span>
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">aggregate_routing_work</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_total_fees</span>();
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">routing_work_this_hop</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">aggregate_routing_work</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">work_by_hop</span> : <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-	<span class="ident">work_by_hop</span>.<span class="ident">push</span>(<span class="ident">aggregate_routing_work</span>);
-
-	<span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() {
-	    <span class="kw">let</span> <span class="ident">new_routing_work_this_hop</span>: <span class="ident">u64</span>  <span class="op">=</span> <span class="ident">routing_work_this_hop</span> <span class="op">/</span> <span class="number">2</span>;
-	    <span class="ident">aggregate_routing_work</span> <span class="op">+</span><span class="op">=</span> <span class="ident">new_routing_work_this_hop</span>;
+        <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() {
+            <span class="kw">let</span> <span class="ident">new_routing_work_this_hop</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">routing_work_this_hop</span> <span class="op">/</span> <span class="number">2</span>;
+            <span class="ident">aggregate_routing_work</span> <span class="op">+</span><span class="op">=</span> <span class="ident">new_routing_work_this_hop</span>;
             <span class="ident">routing_work_this_hop</span> <span class="op">=</span> <span class="ident">new_routing_work_this_hop</span>;
-	    <span class="ident">work_by_hop</span>.<span class="ident">push</span>(<span class="ident">aggregate_routing_work</span>);
-	}
+            <span class="ident">work_by_hop</span>.<span class="ident">push</span>(<span class="ident">aggregate_routing_work</span>);
+        }
 
-<span class="macro">println!</span>(<span class="string">&quot;work by hop: {:?}&quot;</span>, <span class="ident">work_by_hop</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;work by hop: {:?}&quot;</span>, <span class="ident">work_by_hop</span>);
 
         <span class="comment">//</span>
         <span class="comment">// find winning routing node</span>
@@ -1314,17 +1367,16 @@
 
         <span class="macro">println!</span>(<span class="string">&quot;wrwin: {}&quot;</span>, <span class="ident">winning_routing_work_in_nolan</span>);
 
-	      <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>.. <span class="ident">work_by_hop</span>.<span class="ident">len</span>() {
-	          <span class="kw">if</span> <span class="ident">winning_routing_work_in_nolan</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">work_by_hop</span>[<span class="ident">i</span>] {
-		             <span class="kw">return</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span>].<span class="ident">get_to</span>();
-	          }
-	      }
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">work_by_hop</span>.<span class="ident">len</span>() {
+            <span class="kw">if</span> <span class="ident">winning_routing_work_in_nolan</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">work_by_hop</span>[<span class="ident">i</span>] {
+                <span class="kw">return</span> <span class="self">self</span>.<span class="ident">path</span>[<span class="ident">i</span>].<span class="ident">get_to</span>();
+            }
+        }
 
         <span class="comment">//</span>
         <span class="comment">// we should never reach this</span>
         <span class="comment">//</span>
         <span class="kw">return</span> [<span class="number">0</span>; <span class="number">33</span>];
-
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_timestamp</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">timestamp</span>: <span class="ident">u64</span>) {
@@ -1349,6 +1401,10 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_signature</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">sig</span>: <span class="ident">SaitoSignature</span>) {
         <span class="self">self</span>.<span class="ident">signature</span> <span class="op">=</span> <span class="ident">sig</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_path</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Hop</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">path</span> <span class="op">=</span> <span class="ident">path</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_hash_for_signature</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">hash</span>: <span class="ident">SaitoHash</span>) {
@@ -1389,23 +1445,26 @@
     <span class="doccomment">/// [len of inputs - 4 bytes - u32]</span>
     <span class="doccomment">/// [len of outputs - 4 bytes - u32]</span>
     <span class="doccomment">/// [len of message - 4 bytes - u32]</span>
+    <span class="doccomment">/// [len of path - 4 bytes - u32]</span>
     <span class="doccomment">/// [signature - 64 bytes - Secp25k1 sig]</span>
     <span class="doccomment">/// [timestamp - 8 bytes - u64]</span>
     <span class="doccomment">/// [transaction type - 1 byte]</span>
     <span class="doccomment">/// [input][input][input]...</span>
     <span class="doccomment">/// [output][output][output]...</span>
     <span class="doccomment">/// [message]</span>
+    <span class="doccomment">/// [hop][hpp][hop]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_from_net</span>(<span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
         <span class="kw">let</span> <span class="ident">inputs_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">u32::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">0</span>..<span class="number">4</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
         <span class="kw">let</span> <span class="ident">outputs_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">u32::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">4</span>..<span class="number">8</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
         <span class="kw">let</span> <span class="ident">message_len</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">u32::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">8</span>..<span class="number">12</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>()) <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">signature</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">12</span>..<span class="number">76</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-
-        <span class="kw">let</span> <span class="ident">timestamp</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">76</span>..<span class="number">84</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
-        <span class="kw">let</span> <span class="ident">transaction_type</span>: <span class="ident">TransactionType</span> <span class="op">=</span> <span class="ident">TransactionType::try_from</span>(<span class="ident">bytes</span>[<span class="number">84</span>]).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">path_len</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">u32::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">12</span>..<span class="number">16</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>()) <span class="kw">as</span> <span class="ident">usize</span>;
+        <span class="kw">let</span> <span class="ident">signature</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">16</span>..<span class="number">80</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">timestamp</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">80</span>..<span class="number">88</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
+        <span class="kw">let</span> <span class="ident">transaction_type</span>: <span class="ident">TransactionType</span> <span class="op">=</span> <span class="ident">TransactionType::try_from</span>(<span class="ident">bytes</span>[<span class="number">88</span>]).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">start_of_inputs</span> <span class="op">=</span> <span class="ident">TRANSACTION_SIZE</span>;
         <span class="kw">let</span> <span class="ident">start_of_outputs</span> <span class="op">=</span> <span class="ident">start_of_inputs</span> <span class="op">+</span> <span class="ident">inputs_len</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>;
         <span class="kw">let</span> <span class="ident">start_of_message</span> <span class="op">=</span> <span class="ident">start_of_outputs</span> <span class="op">+</span> <span class="ident">outputs_len</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>;
+        <span class="kw">let</span> <span class="ident">start_of_path</span> <span class="op">=</span> <span class="ident">start_of_message</span> <span class="op">+</span> <span class="ident">message_len</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">for</span> <span class="ident">n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">inputs_len</span> {
             <span class="kw">let</span> <span class="ident">start_of_data</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">start_of_inputs</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">+</span> <span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">SLIP_SIZE</span>;
@@ -1423,6 +1482,14 @@
         <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="ident">start_of_message</span>..<span class="ident">start_of_message</span> <span class="op">+</span> <span class="ident">message_len</span>]
             .<span class="ident">try_into</span>()
             .<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Hop</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="kw">for</span> <span class="ident">n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">path_len</span> {
+            <span class="kw">let</span> <span class="ident">start_of_data</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">start_of_path</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">+</span> <span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="ident">HOP_SIZE</span>;
+            <span class="kw">let</span> <span class="ident">end_of_data</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">start_of_data</span> <span class="op">+</span> <span class="ident">HOP_SIZE</span>;
+            <span class="kw">let</span> <span class="ident">hop</span> <span class="op">=</span> <span class="ident">Hop::deserialize_from_net</span>(<span class="ident">bytes</span>[<span class="ident">start_of_data</span>..<span class="ident">end_of_data</span>].<span class="ident">to_vec</span>());
+            <span class="ident">path</span>.<span class="ident">push</span>(<span class="ident">hop</span>);
+        }
+
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
         <span class="ident">transaction</span>.<span class="ident">set_timestamp</span>(<span class="ident">timestamp</span>);
         <span class="ident">transaction</span>.<span class="ident">set_inputs</span>(<span class="ident">inputs</span>);
@@ -1430,6 +1497,7 @@
         <span class="ident">transaction</span>.<span class="ident">set_message</span>(<span class="ident">message</span>);
         <span class="ident">transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">transaction_type</span>);
         <span class="ident">transaction</span>.<span class="ident">set_signature</span>(<span class="ident">signature</span>);
+        <span class="ident">transaction</span>.<span class="ident">set_path</span>(<span class="ident">path</span>);
         <span class="ident">transaction</span>
     }
 
@@ -1437,17 +1505,20 @@
     <span class="doccomment">/// [len of inputs - 4 bytes - u32]</span>
     <span class="doccomment">/// [len of outputs - 4 bytes - u32]</span>
     <span class="doccomment">/// [len of message - 4 bytes - u32]</span>
+    <span class="doccomment">/// [len of path - 4 bytes - u32]</span>
     <span class="doccomment">/// [signature - 64 bytes - Secp25k1 sig]</span>
     <span class="doccomment">/// [timestamp - 8 bytes - u64]</span>
     <span class="doccomment">/// [transaction type - 1 byte]</span>
     <span class="doccomment">/// [input][input][input]...</span>
     <span class="doccomment">/// [output][output][output]...</span>
     <span class="doccomment">/// [message]</span>
+    <span class="doccomment">/// [hop][hop][hop]...</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_net</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">message</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>);
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">timestamp</span>.<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">transaction_type</span> <span class="kw">as</span> <span class="ident">u8</span>).<span class="ident">to_be_bytes</span>());
@@ -1458,6 +1529,9 @@
             <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>.<span class="ident">serialize_for_net</span>());
         }
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">message</span>);
+        <span class="kw">for</span> <span class="ident">hop</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">path</span> {
+            <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">hop</span>.<span class="ident">serialize_for_net</span>());
+        }
         <span class="ident">vbytes</span>
     }
 
@@ -1486,16 +1560,22 @@
     }
 
     <span class="comment">//</span>
-    <span class="comment">// we have to calculate cumulative fees and work sequentially.</span>
+    <span class="comment">// calculate cumulative fee share in block</span>
     <span class="comment">//</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pre_validation_calculations_cumulative_fees</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cumulative_fees</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_metadata_cumulative_fees</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cumulative_fees</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">cumulative_fees</span> <span class="op">=</span> <span class="ident">cumulative_fees</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">total_fees</span>;
         <span class="self">self</span>.<span class="ident">cumulative_fees</span>
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pre_validation_calculations_cumulative_work</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cumulative_work</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+    <span class="comment">//</span>
+    <span class="comment">// calculate cumulative routing work in block</span>
+    <span class="comment">//</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_metadata_cumulative_work</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cumulative_work</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="kw">return</span> <span class="ident">cumulative_work</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">routing_work_for_creator</span>;
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pre_validation_calculations_parallelizable</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">creator_publickey</span> : <span class="ident">SaitoPublicKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="comment">//</span>
+    <span class="comment">// calculate hashes used in signatures</span>
+    <span class="comment">//</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_metadata_hashes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="comment">//</span>
         <span class="comment">// and save the hash_for_signature so we can use it later...</span>
         <span class="comment">//</span>
@@ -1505,7 +1585,14 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">serialize_for_signature</span>());
         <span class="self">self</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
-
+    }
+    <span class="comment">//</span>
+    <span class="comment">// calculate abstract metadata for fees</span>
+    <span class="comment">//</span>
+    <span class="comment">// note that this expects the hash_for_signature to have already</span>
+    <span class="comment">// been calculated.</span>
+    <span class="comment">//</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_metadata_fees_and_slips</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>) {
         <span class="comment">//</span>
         <span class="comment">// calculate nolan in / out, fees</span>
         <span class="comment">//</span>
@@ -1546,13 +1633,16 @@
         <span class="comment">// for the block producer, to ensure that they have met the conditions</span>
         <span class="comment">// required by the burn fee for block production.</span>
         <span class="comment">//</span>
-        <span class="self">self</span>.<span class="ident">routing_work_for_creator</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_routing_work_for_publickey</span>(<span class="ident">creator_publickey</span>);
+        <span class="self">self</span>.<span class="ident">routing_work_for_creator</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_routing_work_for_publickey</span>(<span class="ident">publickey</span>);
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_metadata</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">generate_metadata_hashes</span>();
+        <span class="self">self</span>.<span class="ident">generate_metadata_fees_and_slips</span>(<span class="ident">publickey</span>);
 
         <span class="bool-val">true</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoUTXOSetKey</span>, <span class="ident">u64</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-
         <span class="comment">//</span>
         <span class="comment">// VALIDATE signature valid</span>
         <span class="comment">//</span>
@@ -1569,14 +1659,13 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-	<span class="comment">//</span>
-	<span class="comment">// VALIDATE path sigs valid</span>
-	<span class="comment">//</span>
-	<span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">validate_routing_path</span>() {
+        <span class="comment">//</span>
+        <span class="comment">// VALIDATE path sigs valid</span>
+        <span class="comment">//</span>
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">validate_routing_path</span>() {
             <span class="macro">println!</span>(<span class="string">&quot;routing path does not validate, transaction invalid&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
-	}
-
+        }
 
         <span class="comment">//</span>
         <span class="comment">// VALIDATE min one sender and receiver</span>
@@ -1648,8 +1737,8 @@
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">total_out</span>, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">total_fees</span>, <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">cumulative_fees</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">routing_work_to_me</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">routing_work_to_creator</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">routing_work_for_me</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">routing_work_for_creator</span>, <span class="number">0</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
@@ -1672,9 +1761,9 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">transaction_pre_validation_cumulative_fees_test</span>() {
+    <span class="kw">fn</span> <span class="ident">transaction_generate_metadata_cumulative_fees_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
-        <span class="ident">tx</span>.<span class="ident">pre_validation_calculations_cumulative_fees</span>(<span class="number">1_0000</span>);
+        <span class="ident">tx</span>.<span class="ident">generate_metadata_cumulative_fees</span>(<span class="number">1_0000</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">cumulative_fees</span>, <span class="number">1_0000</span>);
     }
 
@@ -1682,14 +1771,25 @@
     <span class="kw">fn</span> <span class="ident">serialize_for_net_test</span>() {
         <span class="kw">let</span> <span class="ident">mock_input</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
         <span class="kw">let</span> <span class="ident">mock_output</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_hop</span> <span class="op">=</span> <span class="ident">Hop::new</span>();
+        <span class="ident">mock_hop</span>.<span class="ident">set_from</span>([<span class="number">0</span>; <span class="number">33</span>]);
+        <span class="ident">mock_hop</span>.<span class="ident">set_to</span>([<span class="number">0</span>; <span class="number">33</span>]);
+        <span class="ident">mock_hop</span>.<span class="ident">set_sig</span>([<span class="number">0</span>; <span class="number">64</span>]);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_tx</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
-        <span class="ident">mock_tx</span>.<span class="ident">set_timestamp</span>(<span class="ident">create_timestamp</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Hop</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="ident">mock_path</span>.<span class="ident">push</span>(<span class="ident">mock_hop</span>);
+        <span class="kw">let</span> <span class="ident">ctimestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
+
+        <span class="ident">mock_tx</span>.<span class="ident">set_timestamp</span>(<span class="ident">ctimestamp</span>);
         <span class="ident">mock_tx</span>.<span class="ident">add_input</span>(<span class="ident">mock_input</span>);
         <span class="ident">mock_tx</span>.<span class="ident">add_output</span>(<span class="ident">mock_output</span>);
         <span class="ident">mock_tx</span>.<span class="ident">set_message</span>(<span class="macro">vec!</span>[<span class="number">104</span>, <span class="number">101</span>, <span class="number">108</span>, <span class="number">108</span>, <span class="number">111</span>]);
         <span class="ident">mock_tx</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::Normal</span>);
         <span class="ident">mock_tx</span>.<span class="ident">set_signature</span>([<span class="number">1</span>; <span class="number">64</span>]);
+        <span class="ident">mock_tx</span>.<span class="ident">set_path</span>(<span class="ident">mock_path</span>);
+
         <span class="kw">let</span> <span class="ident">serialized_tx</span> <span class="op">=</span> <span class="ident">mock_tx</span>.<span class="ident">serialize_for_net</span>();
+
         <span class="kw">let</span> <span class="ident">deserialized_tx</span> <span class="op">=</span> <span class="ident">Transaction::deserialize_from_net</span>(<span class="ident">serialized_tx</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">mock_tx</span>, <span class="ident">deserialized_tx</span>);
     }

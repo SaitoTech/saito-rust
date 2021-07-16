@@ -137,10 +137,7 @@
 <span id="134">134</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">saito_rust</span>::{
-    <span class="ident">blockchain::Blockchain</span>,
-    <span class="ident">mempool::Mempool</span>,
-    <span class="ident">miner::Miner</span>,
-    <span class="ident">transaction::Transaction</span>,
+    <span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">miner::Miner</span>, <span class="ident">transaction::Transaction</span>,
     <span class="ident">wallet::Wallet</span>,
 };
 
@@ -182,12 +179,12 @@
         <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">reqwest::Client::new</span>();
         <span class="comment">// sleep(Duration::from_millis(5000));</span>
         <span class="kw">loop</span> {
-
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
-	    <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">txs_to_generate</span> {
-
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">5000</span>, <span class="number">5000</span>).<span class="kw">await</span>;
+            <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">txs_to_generate</span> {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span>
+                    <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">5000</span>, <span class="number">5000</span>)
+                        .<span class="kw">await</span>;
                 <span class="ident">transaction</span>.<span class="ident">set_message</span>(
                     (<span class="number">0</span>..<span class="ident">bytes_per_tx</span>)
                         .<span class="ident">into_par_iter</span>()
@@ -198,11 +195,16 @@
                 <span class="comment">// sign ...</span>
                 <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">privatekey</span>);
 
-		<span class="comment">// make sure we know fees etc.</span>
-		<span class="ident">transaction</span>.<span class="ident">pre_validation_calculations_parallelizable</span>(<span class="ident">publickey</span>);
-                <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
+                <span class="comment">// add some test hops ...</span>
+                <span class="ident">transaction</span>
+                    .<span class="ident">add_hop_to_path</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>)
+                    .<span class="kw">await</span>;
+                <span class="ident">transaction</span>
+                    .<span class="ident">add_hop_to_path</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>)
+                    .<span class="kw">await</span>;
 
-	    }
+                <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
+            }
 
             <span class="kw">for</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">transactions</span> {
                 <span class="kw">let</span> <span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">serialize_for_net</span>();
@@ -268,8 +270,6 @@
 
     <span class="prelude-val">Ok</span>(())
 }
-
-
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_spammer" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>

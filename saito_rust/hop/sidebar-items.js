@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Hop",""]]});
+initSidebarItems({"constant":[["HOP_SIZE",""]],"struct":[["Hop",""]]});

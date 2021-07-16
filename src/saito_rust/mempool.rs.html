@@ -426,10 +426,25 @@
 <span id="423">423</span>
 <span id="424">424</span>
 <span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">block::Block</span>, <span class="ident">blockchain::Blockchain</span>, <span class="ident">burnfee::BurnFee</span>, <span class="ident">consensus::SaitoMessage</span>, <span class="ident">crypto</span>::{<span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>},
-    <span class="ident">golden_ticket::GoldenTicket</span>, <span class="ident">time::create_timestamp</span>, <span class="ident">transaction::Transaction</span>, <span class="ident">wallet::Wallet</span>,
+    <span class="ident">block::Block</span>,
+    <span class="ident">blockchain::Blockchain</span>,
+    <span class="ident">burnfee::BurnFee</span>,
+    <span class="ident">consensus::SaitoMessage</span>,
+    <span class="ident">crypto</span>::{<span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>},
+    <span class="ident">golden_ticket::GoldenTicket</span>,
+    <span class="ident">time::create_timestamp</span>,
+    <span class="ident">transaction::Transaction</span>,
+    <span class="ident">wallet::Wallet</span>,
 };
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">collections::VecDeque</span>, <span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
@@ -518,38 +533,40 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">transaction</span>: <span class="ident">Transaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddTransactionResult</span> {
         <span class="kw">let</span> <span class="ident">tx_sig_to_insert</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">get_signature</span>();
 
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="comment">// TODO -- this is just testing -- remove async too    // </span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="kw">let</span> <span class="ident">publickey</span>;
-	{
-	    <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-	    <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
-	}
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="comment">// TODO -- this is just testing -- remove async too    //</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="kw">let</span> <span class="ident">publickey</span>;
+        {
+            <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
+        }
+        <span class="comment">/***
 
-        <span class="ident">transaction</span>.<span class="ident">add_hop_to_path</span>(<span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>).<span class="kw">await</span>;
-        <span class="ident">transaction</span>.<span class="ident">add_hop_to_path</span>(<span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>).<span class="kw">await</span>;
-	<span class="comment">//</span>
-	<span class="comment">// note that this calculates the total fees, so needs to </span>
-	<span class="comment">// be handled well. Stephen may have some ideas on how we</span>
-	<span class="comment">// can better name these functions. what this is really </span>
-	<span class="comment">// doing is filling in the total fee amounts so that we </span>
-	<span class="comment">// can calculate the routing work below to know how much</span>
-	<span class="comment">// this contributes to our mempool.</span>
-	<span class="comment">//</span>
-	<span class="ident">transaction</span>.<span class="ident">pre_validation_calculations_parallelizable</span>(<span class="ident">publickey</span>);
-	<span class="comment">////////////////////////////////////////////////////////</span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="comment">// REMOVE ONCE NETWORK CAN PASS ROUTING SIGS //</span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
-	<span class="comment">/////////////////////////////////////////////////////////</span>
+                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
+                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
+            //
+            // note that this calculates the total fees, so needs to
+            // be handled well. Stephen may have some ideas on how we
+            // can better name these functions. what this is really
+            // doing is filling in the total fee amounts so that we
+            // can calculate the routing work below to know how much
+            // this contributes to our mempool.
+            //
+        ***/</span>
+        <span class="ident">transaction</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
 
+        <span class="comment">////////////////////////////////////////////////////////</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="comment">// REMOVE ONCE NETWORK CAN PASS ROUTING SIGS //</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
+        <span class="comment">/////////////////////////////////////////////////////////</span>
 
         <span class="kw">let</span> <span class="ident">routing_work_available_for_me</span> <span class="op">=</span>
             <span class="ident">transaction</span>.<span class="ident">get_routing_work_for_publickey</span>(<span class="self">self</span>.<span class="ident">mempool_publickey</span>);
@@ -820,7 +837,6 @@
                 }
             }
         }
-
     }
 }
 
