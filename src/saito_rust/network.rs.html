@@ -52,7 +52,7 @@
 <span id="49">49</span>
 <span id="50">50</span>
 </pre><div class="example-wrap"><pre class="rust ">
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">consensus::SaitoMessage</span>, <span class="ident">crypto::hash</span>, <span class="ident">transaction::Transaction</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">consensus::SaitoMessage</span>, <span class="ident">transaction::Transaction</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync::broadcast</span>;
 
 <span class="comment">// use std::convert::Infallible;</span>
@@ -89,7 +89,7 @@
         .<span class="ident">and</span>(<span class="ident">warp::path</span>(<span class="string">&quot;transactions&quot;</span>))
         .<span class="ident">and</span>(<span class="ident">warp::path::end</span>())
         .<span class="ident">and</span>(<span class="ident">body::aggregate</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">body</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">post_transaction</span>(<span class="ident">body</span>);
+            <span class="kw">let</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">post_transaction</span>(<span class="ident">body</span>);
             <span class="ident">broadcast_channel_sender</span>
                 .<span class="ident">send</span>(<span class="ident">SaitoMessage::MempoolNewTransaction</span> { <span class="ident">transaction</span> })
                 .<span class="ident">unwrap</span>();

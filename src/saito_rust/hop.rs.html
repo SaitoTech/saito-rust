@@ -111,7 +111,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">sign</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>};
+<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 
