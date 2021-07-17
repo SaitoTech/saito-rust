@@ -954,17 +954,17 @@ impl Block {
         // including this fee transaction.
         //
         if let (Some(ft_idx), Some(mut fee_transaction)) = (cv.ft_idx, cv.fee_transaction) {
-
-	    //
-	    // update output slips in fee transaction so that they have
-	    // the same uuid as the fees in the block, which will now
-	    // be identified by this block hash.
-	    //
-	    fee_transaction.generate_metadata_hashes();
-	    let fee_transaction_hash_for_signature = fee_transaction.get_hash_for_signature().unwrap();
-	    for output in fee_transaction.get_mut_outputs() {
-	        output.set_uuid(fee_transaction_hash_for_signature);
-	    }
+            //
+            // update output slips in fee transaction so that they have
+            // the same uuid as the fees in the block, which will now
+            // be identified by this block hash.
+            //
+            fee_transaction.generate_metadata_hashes();
+            let fee_transaction_hash_for_signature =
+                fee_transaction.get_hash_for_signature().unwrap();
+            for output in fee_transaction.get_mut_outputs() {
+                output.set_uuid(fee_transaction_hash_for_signature);
+            }
 
             //
             // this code does not explicitly validate the correctness of

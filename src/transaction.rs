@@ -287,17 +287,17 @@ impl Transaction {
         output.set_slip_type(SlipType::ATR);
         output.set_uuid(output_slip_to_rebroadcast.get_uuid());
 
-	//
-	// if this is the FIRST time we are rebroadcasting, we copy the 
-	// original transaction into the message field in serialized 
-	// form. this preserves the original message and its signature
-	// in perpetuity.
-	//
-	// if this is the SECOND or subsequent rebroadcast, we do not
-	// copy the ATR tx (no need for a meta-tx) and rather just update
-	// the message field with the original transaction (which is 
-	// by definition already in the previous TX message space.
-	//
+        //
+        // if this is the FIRST time we are rebroadcasting, we copy the
+        // original transaction into the message field in serialized
+        // form. this preserves the original message and its signature
+        // in perpetuity.
+        //
+        // if this is the SECOND or subsequent rebroadcast, we do not
+        // copy the ATR tx (no need for a meta-tx) and rather just update
+        // the message field with the original transaction (which is
+        // by definition already in the previous TX message space.
+        //
         if output_slip_to_rebroadcast.get_slip_type() == SlipType::ATR {
             transaction.set_message(transaction_to_rebroadcast.get_message().to_vec());
         } else {
@@ -754,54 +754,53 @@ impl Transaction {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
-
-	//
-	// User-Sent Transactions
-	//
-	// most transactions are identifiable by the publickey that
-	// has signed their input transaction, but some transactions
-	// do not have senders as they are auto-generated as part of
-	// the block itself.
-	//
-	// ATR transactions
-	// VIP transactions
-	// FEE transactions
-	//
-	// the first set of validation criteria is applied only to 
-	// user-sent transactions. validation criteria for the above
-	// classes of transactions are further down in this function.
-	// at the bottom is the validation criteria applied to ALL
-	// transaction types.
-	//
-	let transaction_type = self.get_transaction_type();
-	if transaction_type != TransactionType::Fee && transaction_type != TransactionType::ATR && transaction_type != TransactionType::Vip {
-
-	    //
-	    // validate signature
-	    //
+        //
+        // User-Sent Transactions
+        //
+        // most transactions are identifiable by the publickey that
+        // has signed their input transaction, but some transactions
+        // do not have senders as they are auto-generated as part of
+        // the block itself.
+        //
+        // ATR transactions
+        // VIP transactions
+        // FEE transactions
+        //
+        // the first set of validation criteria is applied only to
+        // user-sent transactions. validation criteria for the above
+        // classes of transactions are further down in this function.
+        // at the bottom is the validation criteria applied to ALL
+        // transaction types.
+        //
+        let transaction_type = self.get_transaction_type();
+        if transaction_type != TransactionType::Fee
+            && transaction_type != TransactionType::ATR
+            && transaction_type != TransactionType::Vip
+        {
+            //
+            // validate signature
+            //
             if let Some(hash_for_signature) = self.get_hash_for_signature() {
                 let sig: SaitoSignature = self.get_signature();
                 let publickey: SaitoPublicKey = self.get_inputs()[0].get_publickey();
                 if !verify(&hash_for_signature, sig, publickey) {
-                     println!("message verifies not");
-                     return false;
+                    println!("message verifies not");
+                    return false;
                 }
             } else {
-
-	        //
-	        // we reach here if we have not already calculated the hash 
-		// that is checked by the signature. while we could auto-gen
-		// it here, we choose to throw an error to raise visibility of 
-		// unexpected behavior.
-	        //
+                //
+                // we reach here if we have not already calculated the hash
+                // that is checked by the signature. while we could auto-gen
+                // it here, we choose to throw an error to raise visibility of
+                // unexpected behavior.
+                //
                 println!("ERROR 757293: there is no hash for signature in a transaction");
                 return false;
+            }
 
-	    }
-
-	    //
-	    // validate sender exists
-	    //
+            //
+            // validate sender exists
+            //
             if self.get_inputs().is_empty() {
                 println!("ERROR 582039: less than 1 input in transaction");
                 return false;
@@ -810,18 +809,18 @@ impl Transaction {
             //
             // validate routing path sigs
             //
-	    // a transaction without routing paths is valid, and pays off the 
-	    // sender in the payment lottery. but a transaction with an invalid
-	    // routing path is fraudulent.
-	    //
+            // a transaction without routing paths is valid, and pays off the
+            // sender in the payment lottery. but a transaction with an invalid
+            // routing path is fraudulent.
+            //
             if !self.validate_routing_path() {
                 println!("ERROR 482033: routing paths do not validate, transaction invalid");
                 return false;
             }
 
-	    //
-	    // validate we're not creating tokens out of nothing
-	    //
+            //
+            // validate we're not creating tokens out of nothing
+            //
             if self.total_out > self.total_in
                 && self.get_transaction_type() != TransactionType::Fee
                 && self.get_transaction_type() != TransactionType::Vip
@@ -835,60 +834,56 @@ impl Transaction {
             }
         }
 
+        //
+        // fee transactions
+        //
+        if transaction_type != TransactionType::Fee {
 
-	//
-	// fee transactions
-	//
-	if transaction_type != TransactionType::Fee {
+            // signed by block creator ?
+        }
 
-	    // signed by block creator ?
+        //
+        // atr transactions
+        //
+        if transaction_type != TransactionType::ATR {
 
-	}
+            // signed by block creator ?
+        }
 
-	//
-	// atr transactions
-	//
-	if transaction_type != TransactionType::ATR {
+        //
+        // vip transactions
+        //
+        // a special class of transactions that do not pay rebroadcasting
+        // fees. these are issued to the early supporters of the Saito
+        // project. they carried us and we're going to carry them. thanks
+        // for the faith and support.
+        //
+        if transaction_type != TransactionType::Vip {
 
-	    // signed by block creator ?
+            // we should validate that VIP transactions are signed by the
+            // publickey associated with the Saito project.
+        }
 
-	}
-
-	//
-	// vip transactions
-	//
-	// a special class of transactions that do not pay rebroadcasting
-	// fees. these are issued to the early supporters of the Saito 
-	// project. they carried us and we're going to carry them. thanks
-	// for the faith and support.
-	//
-	if transaction_type != TransactionType::Vip {
-
-	    // we should validate that VIP transactions are signed by the 
-	    // publickey associated with the Saito project.
-
-	}
-
-	//
-	// all Transactions
-	//
-	// The following validation criteria apply to all transactions, including
-	// those auto-generated and included in blocks.
-	//
-	//
-	// all transactions must have outputs
-	//
+        //
+        // all Transactions
+        //
+        // The following validation criteria apply to all transactions, including
+        // those auto-generated and included in blocks.
+        //
+        //
+        // all transactions must have outputs
+        //
         if self.get_outputs().is_empty() {
             println!("ERROR 582039: less than 1 output in transaction");
             return false;
         }
 
-	//
+        //
         // if inputs exist, they must validate against the UTXOSET
-	// if they claim to spend tokens. if the slip has no spendable
-	// tokens it will pass this check, which is conducted inside
-	// the slip-level validation logic.
-	//
+        // if they claim to spend tokens. if the slip has no spendable
+        // tokens it will pass this check, which is conducted inside
+        // the slip-level validation logic.
+        //
         self.inputs.par_iter().all(|input| input.validate(utxoset))
     }
 }
