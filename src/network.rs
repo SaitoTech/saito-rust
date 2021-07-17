@@ -1,4 +1,4 @@
-use crate::{consensus::SaitoMessage, crypto::hash, transaction::Transaction};
+use crate::{consensus::SaitoMessage, transaction::Transaction};
 use tokio::sync::broadcast;
 
 // use std::convert::Infallible;
@@ -35,7 +35,7 @@ pub async fn run(
         .and(warp::path("transactions"))
         .and(warp::path::end())
         .and(body::aggregate().map(move |body| {
-            let mut transaction = post_transaction(body);
+            let transaction = post_transaction(body);
             broadcast_channel_sender
                 .send(SaitoMessage::MempoolNewTransaction { transaction })
                 .unwrap();

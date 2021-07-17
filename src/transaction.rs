@@ -292,6 +292,7 @@ impl Transaction {
         input.set_publickey(output_slip_to_rebroadcast.get_publickey());
         input.set_amount(output_slip_to_rebroadcast.get_amount());
         input.set_slip_type(output_slip_to_rebroadcast.get_slip_type());
+        input.set_uuid(output_slip_to_rebroadcast.get_uuid());
 
         let mut output = Slip::new();
         output.set_publickey(output_slip_to_rebroadcast.get_publickey());
@@ -676,7 +677,7 @@ impl Transaction {
     //
     // calculate hashes used in signatures
     //
-    pub fn generate_metadata_hashes(&mut self) {
+    pub fn generate_metadata_hashes(&mut self) -> bool {
         //
         // and save the hash_for_signature so we can use it later...
         //
@@ -686,6 +687,8 @@ impl Transaction {
         //
         let hash_for_signature: SaitoHash = hash(&self.serialize_for_signature());
         self.set_hash_for_signature(hash_for_signature);
+
+        true
     }
     //
     // calculate abstract metadata for fees
@@ -693,26 +696,42 @@ impl Transaction {
     // note that this expects the hash_for_signature to have already
     // been calculated.
     //
-    pub fn generate_metadata_fees_and_slips(&mut self, publickey: SaitoPublicKey) {
+    pub fn generate_metadata_fees_and_slips(&mut self, publickey: SaitoPublicKey) -> bool {
         //
         // calculate nolan in / out, fees
         //
+        let transaction_type = self.get_transaction_type();
         let mut nolan_in: u64 = 0;
         let mut nolan_out: u64 = 0;
         let hash_for_signature = self.get_hash_for_signature();
 
         for input in &mut self.inputs {
             nolan_in += input.get_amount();
+
             // generate utxoset key cache
+
+            //
+            // ATR txs have uuid already set
+            // Fee txs have uuid already set
+            //
+            if input.get_slip_type() != SlipType::ATR {}
+
             input.generate_utxoset_key();
         }
         for output in &mut self.outputs {
             nolan_out += output.get_amount();
 
+            //
             // generate utxoset key cache
             // and set the UUID needed for insertion to shashmap
+            // skip for ATR slips
+            //
             if let Some(hash_for_signature) = hash_for_signature {
-                output.set_uuid(hash_for_signature);
+                if output.get_slip_type() != SlipType::ATR
+                    && transaction_type != TransactionType::Fee
+                {
+                    output.set_uuid(hash_for_signature);
+                }
             }
             output.generate_utxoset_key();
         }
@@ -737,6 +756,8 @@ impl Transaction {
         // required by the burn fee for block production.
         //
         self.routing_work_for_creator = self.get_routing_work_for_publickey(publickey);
+
+        true
     }
     pub fn generate_metadata(&mut self, publickey: SaitoPublicKey) -> bool {
         self.generate_metadata_hashes();
