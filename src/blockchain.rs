@@ -5,6 +5,7 @@ use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
+
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -20,9 +21,11 @@ pub fn bit_unpack(packed: u64) -> (u32, u32) {
     (top, bottom)
 }
 
+pub type UtxoSet = AHashMap<SaitoUTXOSetKey, u64>;
+
 #[derive(Debug)]
 pub struct Blockchain {
-    pub utxoset: AHashMap<SaitoUTXOSetKey, u64>,
+    pub utxoset: UtxoSet,
     pub blockring: BlockRing,
     pub blocks: AHashMap<SaitoHash, Block>,
     pub wallet_lock: Arc<RwLock<Wallet>>,
@@ -758,7 +761,7 @@ mod tests {
         {
             let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
             sleep(Duration::from_millis(10));
-            mock_block_1 = Block::generate_block(
+            mock_block_1 = Block::generate(
                 &mut txs,
                 [0; 32],
                 wallet_lock.clone(),
@@ -780,7 +783,7 @@ mod tests {
             {
                 let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
                 sleep(Duration::from_millis(10));
-                next_block = Block::generate_block(
+                next_block = Block::generate(
                     &mut txs,
                     next_block.get_hash(),
                     wallet_lock.clone(),
@@ -804,7 +807,7 @@ mod tests {
         {
             let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
             sleep(Duration::from_millis(10));
-            next_block = Block::generate_block(
+            next_block = Block::generate(
                 &mut txs,
                 mock_block_1.get_hash(),
                 wallet_lock.clone(),
@@ -825,7 +828,7 @@ mod tests {
             {
                 let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
                 sleep(Duration::from_millis(10));
-                next_block = Block::generate_block(
+                next_block = Block::generate(
                     &mut txs,
                     next_block.get_hash(),
                     wallet_lock.clone(),
@@ -847,7 +850,7 @@ mod tests {
         {
             let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
             sleep(Duration::from_millis(10));
-            next_block = Block::generate_block(
+            next_block = Block::generate(
                 &mut txs,
                 next_block.get_hash(),
                 wallet_lock.clone(),

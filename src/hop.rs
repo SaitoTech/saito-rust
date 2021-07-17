@@ -1,7 +1,7 @@
 use crate::crypto::{sign, SaitoHash, SaitoPublicKey, SaitoSignature};
 use crate::wallet::Wallet;
 use serde::{Deserialize, Serialize};
-use std::convert::{TryFrom, TryInto};
+use std::convert::{TryInto};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 

@@ -264,7 +264,7 @@ impl Mempool {
     pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_hash = blockchain.get_latest_block_hash();
-        let block = Block::generate_block(
+        let block = Block::generate(
             &mut self.transactions,
             previous_block_hash,
             self.wallet_lock.clone(),

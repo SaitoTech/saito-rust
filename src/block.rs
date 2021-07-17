@@ -1,11 +1,11 @@
 use crate::{
-    blockchain::Blockchain,
+    blockchain::{Blockchain},
     burnfee::BurnFee,
     crypto::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
     },
     golden_ticket::GoldenTicket,
-    hop::{Hop, HOP_SIZE},
+    hop::{HOP_SIZE},
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
     time::create_timestamp,
@@ -422,7 +422,7 @@ impl Block {
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
-            .map(|tx| tx.get_hash_for_signature())
+            .map(|tx| tx.get_hash_for_signature().unwrap())
             .collect();
 
         let mut mrv: Vec<MerkleTreeLayer> = vec![];
@@ -844,6 +844,8 @@ impl Block {
         true
     }
 
+
+
     pub fn validate(
         &self,
         blockchain: &Blockchain,
@@ -852,20 +854,45 @@ impl Block {
 
         println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
 
-        //
-        // validate burn fee
-        //
-        let previous_block = blockchain.blocks.get(&self.get_previous_block_hash());
-        {
-            if !previous_block.is_none() {
+	//
+	// Contextual Values
+	//
+        // contextual block data refers to the information in the block that depends
+	// on its relationship to other blocks in the chain -- things like the burn 
+	// fee, the ATR transactions, the golden ticket solution and more.
+	//
+	// the first step in validating our block is asking our software to calculate 
+	// what it thinks this data should be. this same function should have been 
+	// used by the block creator to create this block, so consensus rules allow us 
+	// to validate it by checking the variables we can see in our block with what
+	// they should be given this function.
+	//
+        let cv = self.generate_data_to_validate(&blockchain);
+
+
+	//
+	// Previous Block
+	//
+	// some kinds of validation like the burn fee and the golden ticket solution 
+	// require the existence of the previous block in order to validate. we put all 
+	// of these validation steps below so they will have access to the previous block
+	//
+	// if no previous block exists, we are valid only in a limited number of 
+	// circumstances, such as this being the first block we are adding to our chain.
+	//
+        if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+
                 //
-                // new burn fee must be correct
+                // validate burn fee
+                //
+                // this is the updated burn fee number that is included in THIS block
+		// and determines how quickly the network will produce the NEXT block
                 //
                 let new_burnfee: u64 =
                     BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-                        previous_block.unwrap().get_burnfee(),
+                        previous_block.get_burnfee(),
                         self.get_timestamp(),
-                        previous_block.unwrap().get_timestamp(),
+                        previous_block.get_timestamp(),
                     );
                 if new_burnfee != self.get_burnfee() {
                     println!(
@@ -875,52 +902,128 @@ impl Block {
                     return false;
                 }
 
+                println!(" ... burn fee in blk validated:  {:?}", create_timestamp());
+
                 //
-                // routing work must be adequate given block time difference
+                // validate routing work
+		//
+		// this does not check that our routing work is valid, but it checks that 
+		// the total amount that we are claiming to include meets the criteria 
+		// provided by the burn fee in the previous block and this block's timestamp.
                 //
                 let amount_of_routing_work_needed: u64 =
                     BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
-                        previous_block.unwrap().get_burnfee(),
+                        previous_block.get_burnfee(),
                         self.get_timestamp(),
-                        previous_block.unwrap().get_timestamp(),
+                        previous_block.get_timestamp(),
                     );
                 if self.routing_work_for_creator < amount_of_routing_work_needed {
                     println!("Error 510293: block lacking adequate routing work from creator");
                     return false;
                 }
-            } else {
-                // TODO assert that this is the first (or second?) block! ?
-            }
+
+                println!(" ... done routing work required: {:?}", create_timestamp());
+
+		//
+        	// validate golden ticket
+		//
+		// the golden ticket is a special kind of transaction that stores the
+		// solution to the network-payment lottery in the transaction message
+		// field. it targets the hash of the previous block, which is why we
+		// tackle it's validation logic here.
+		//
+		// first we reconstruct the ticket, then calculate that the solution
+		// meets our consensus difficulty criteria. note that by this point in
+		// the validation process we have already examined the fee transaction 
+		// which was generated using this solution. If the solution is invalid
+		// we find that out now, and it invalidates the block.
+		//
+	        if let Some(gt_idx) = cv.gt_idx {
+	            let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
+	                self.get_transactions()[gt_idx].get_message().to_vec(),
+	            );
+	            let solution = GoldenTicket::generate_solution(
+	                golden_ticket.get_random(),
+	                golden_ticket.get_publickey(),
+	            );
+	            if !GoldenTicket::is_valid_solution(
+	                previous_block.get_hash(),
+	                solution,
+	                previous_block.get_difficulty(),
+	            ) {
+	                println!("ERROR: Golden Ticket solution does not validate against previous block hash and difficulty");
+	                return false;
+	            }
+	        }
+
+                println!(" ... golden ticket: (validated)  {:?}", create_timestamp());
+
+        } else {
+
+		//
+                // this should be our first block
+		//
+		// TODO: sanity checks
+		//
+
         }
+
         println!(" ... block.validate: (merkle rt) {:?}", create_timestamp());
 
-        //
-        // verify merkle root
-        //
-        if self.merkle_root == [0; 32] {
-            println!("merkle root is unset / false 1");
+
+	//
+        // validate merkle root
+	//
+        if self.get_merkle_root() == [0; 32]
+            && self.get_merkle_root() != self.generate_merkle_root()
+        {
+            println!("merkle root is unset or is invalid false 1");
             return false;
         }
 
-        //
-        // verify merkle root
-        //
-        if self.merkle_root != self.generate_merkle_root() {
-            println!("merkle root is false 2");
-            return false;
-        }
 
         println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
 
         //
-        // validate fee-transaction (miner/router/staker) payments
+        // validate fee transactions
         //
+        // we grab the fee transaction created in the cv function and run
+        // a quick hash of it, comparing that with the hash of the fee-tx
+        // that exists in the block. if they match, we're OK with the block
+        // including this fee transaction.
         //
-        let cv = self.generate_data_to_validate(&blockchain);
+	if let (Some(ft_idx), Some(fee_transaction)) = (cv.ft_idx, cv.fee_transaction) {
 
-        //
+	    //
+	    // this code does not explicitly validate the correctness of
+	    // the fee transaction otherwise (sig correct?), but we handle 
+	    // that in the other portions of the validate function.
+	    //
+            let cv_ft_hash = hash(&fee_transaction.serialize_for_signature());
+            let block_ft_hash = hash(&self.transactions[ft_idx].serialize_for_signature());
+
+            if cv_ft_hash != block_ft_hash {
+                println!(
+                    "ERROR 627428: block fee transaction doesn't match cv fee transaction"
+                );
+                return false;
+            }
+        }
+
+
+	//
         // validate difficulty
         //
+	// difficulty here refers the difficulty of generating a golden ticket 
+	// for any particular block. this is the difficulty of the mining 
+	// puzzle that is used for releasing payments.
+	//
+	// those more familiar with POW and POS should note that "difficulty" of 
+	// finding a block is represented in the burn fee variable which we have 
+	// already examined and validated above. producing a block requires a 
+	// certain amount of golden ticket solutions over-time, so the 
+	// distinction is in practice less clean.
+	//
         if cv.expected_difficulty != self.get_difficulty() {
             println!(
                 "difficulty is false {} vs {}",
@@ -930,108 +1033,20 @@ impl Block {
             return false;
         }
 
-        //
-        // validate burn fee
-        //
-        if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-            let new_burnfee: u64 =
-                BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-                    previous_block.get_burnfee(),
-                    self.get_timestamp(),
-                    previous_block.get_timestamp(),
-                );
-
-            if new_burnfee != self.get_burnfee() {
-                println!(
-                    "ERROR: burn fee does not validate, expected: {}",
-                    new_burnfee
-                );
-                return false;
-            }
-
-            //
-            // validate difficulty
-            //
-            if cv.expected_difficulty != self.get_difficulty() {
-                println!(
-                    "Block difficulty is {} but we expect {}",
-                    self.get_difficulty(),
-                    cv.expected_difficulty
-                );
-                return false;
-            }
-
-            //
-            // validate golden ticket
-            //
-            if let Some(gt_idx) = cv.gt_idx {
-                let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
-                    self.transactions[gt_idx].get_message().to_vec(),
-                );
-                let solution = GoldenTicket::generate_solution(
-                    golden_ticket.get_random(),
-                    golden_ticket.get_publickey(),
-                );
-                if !GoldenTicket::is_valid_solution(
-                    previous_block.get_hash(),
-                    solution,
-                    previous_block.get_difficulty(),
-                ) {
-                    println!("ERROR: Golden Ticket solution does not validate against previous block hash and difficulty");
-                    return false;
-                }
-            }
-        }
 
         //
-        // fee transactions
+        // validate atr
         //
-        // we grab the fee transaction created in the cv function and run
-        // a quick hash of it, comparing that with the hash of the fee-tx
-        // that exists in the block. if they match, we're OK with th block
-        // including this fee transaction.
-        //
-        if !cv.ft_idx.is_none() {
-            if !cv.fee_transaction.is_none() {
-                //
-                // fee-transaction must still pass validation rules
-                //
-                // we are OK with just doing a hash check as the other
-                // requirements are covered in the validation function.
-                //
-                let fee_tx = cv.fee_transaction.unwrap();
-                let cv_ft_hash = hash(&fee_tx.serialize_for_signature());
-
-                let block_ft_hash =
-                    hash(&self.transactions[cv.ft_idx.unwrap()].serialize_for_signature());
-
-                if cv_ft_hash != block_ft_hash {
-                    println!(
-                        "ERROR 627428: block fee transaction doesn't match cv fee transaction"
-                    );
-                    return false;
-                }
-            }
-        }
-
-        //
-        // validate difficulty
-        //
-        if !previous_block.is_none() {
-            if cv.expected_difficulty != self.get_difficulty() {
-                println!(
-                    "Block difficulty is {} but we expect {}",
-                    self.get_difficulty(),
-                    cv.expected_difficulty
-                );
-                return false;
-            }
-        }
-        println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
-
-        //
-        // VALIDATE ATR
-        //
+	// Automatic Transaction Rebroadcasts are removed programmatically from 
+	// an earlier block in the blockchain and rebroadcast into the latest 
+	// block, with a fee being deducted to keep the data on-chain. In order
+	// to validate ATR we need to make sure we have the correct number of 
+	// transactions (and ONLY those transactions!) included in our block.
+	//
+	// we do this by comparing the total number of ATR slips and nolan 
+	// which we counted in the generate_metadata() function, with the 
+	// expected number given the consensus values we calculated earlier.
+	//
         if cv.total_rebroadcast_slips != self.total_rebroadcast_slips {
             println!("ERROR 624442: rebroadcast slips total incorrect");
             return false;
@@ -1045,17 +1060,45 @@ impl Block {
             return false;
         }
 
+
+
+        println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
+
+
         //
-        // VALIDATE transactions
+        // validate transactions
         //
-        let _transactions_valid = &self.transactions.par_iter().all(|tx| tx.validate(&utxoset));
+	// validating transactions requires checking that the signatures are valid, 
+	// the routing paths are valid, and all of the input slips are pointing 
+	// to spendable tokens that exist in our UTXOSET. this logic is separate
+	// from the validation of block-level variables, so is handled in the 
+	// transaction objects.
+	//
+	// this is one of the most computationally intensive parts of processing a
+	// block which is why we handle it in parallel. the exact logic needed to 
+	// examine a transaction may depend on the transaction itself, as we have
+	// some specific types (Fee / ATR / etc.) that are generated automatically 
+	// and may have different requirements.
+	//
+	// the validation logic for transactions is contained in the transaction
+	// class, and the validation logic for slips is contained in the slips 
+	// class. Note that we are passing in a read-only copy of our UTXOSet so
+	// as to determine spendability.
+	//
+        let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset));
 
         println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
-        true
+
+	//
+	// and if our transactions are valid, so is the block...
+	//
+        transactions_valid
     }
 
-    pub async fn generate_block(
+
+
+    pub async fn generate(
         transactions: &mut Vec<Transaction>,
         previous_block_hash: SaitoHash,
         wallet_lock: Arc<RwLock<Wallet>>,
@@ -1069,13 +1112,11 @@ impl Block {
         let mut previous_block_timestamp = 0;
         let mut previous_block_difficulty = 0;
 
-        let previous_block = blockchain.blocks.get(&previous_block_hash);
-
-        if !previous_block.is_none() {
-            previous_block_id = previous_block.unwrap().get_id();
-            previous_block_burnfee = previous_block.unwrap().get_burnfee();
-            previous_block_timestamp = previous_block.unwrap().get_timestamp();
-            previous_block_difficulty = previous_block.unwrap().get_difficulty();
+        if let Some(previous_block) = blockchain.blocks.get(&previous_block_hash) {
+            previous_block_id = previous_block.get_id();
+            previous_block_burnfee = previous_block.get_burnfee();
+            previous_block_timestamp = previous_block.get_timestamp();
+            previous_block_difficulty = previous_block.get_difficulty();
         }
 
         let mut block = Block::new();
@@ -1110,13 +1151,20 @@ impl Block {
             }
         }
 
+        // repopulate the `hash_for_signature` fields on `Transaction`
+        // block.transactions.par_iter_mut().for_each(|tx| {
+        //     tx.set_hash_for_signature(
+        //         hash(&tx.serialize_for_signature())
+        //     );
+        // });
+
         //
         // set our initial transactions
         //
         let wallet_publickey = wallet.get_publickey();
         let wallet_privatekey = wallet.get_privatekey();
         if previous_block_id == 0 {
-            for i in 0..10 {
+            for i in 0..10 as i32 {
                 println!("generating VIP transaction {}", i);
                 let mut transaction = Transaction::generate_vip_transaction(
                     wallet_lock.clone(),
