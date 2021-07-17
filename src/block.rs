@@ -666,23 +666,11 @@ impl Block {
                 let mut transaction = Transaction::new();
                 transaction.set_transaction_type(TransactionType::Fee);
 
-                let mut input1 = Slip::new();
-                input1.set_publickey(miner_publickey);
-                input1.set_amount(0);
-                input1.set_slip_type(SlipType::MinerInput);
-                input1.set_slip_ordinal(0);
-
                 let mut output1 = Slip::new();
                 output1.set_publickey(miner_publickey);
                 output1.set_amount(miner_payment);
                 output1.set_slip_type(SlipType::MinerOutput);
                 output1.set_slip_ordinal(0);
-
-                let mut input2 = Slip::new();
-                input2.set_publickey(router_publickey);
-                input2.set_amount(0);
-                input2.set_slip_type(SlipType::RouterInput);
-                input2.set_slip_ordinal(1);
 
                 let mut output2 = Slip::new();
                 output2.set_publickey(router_publickey);
@@ -690,9 +678,7 @@ impl Block {
                 output2.set_slip_type(SlipType::RouterOutput);
                 output2.set_slip_ordinal(1);
 
-                transaction.add_input(input1);
                 transaction.add_output(output1);
-                transaction.add_input(input2);
                 transaction.add_output(output2);
 
                 //
@@ -967,7 +953,19 @@ impl Block {
         // that exists in the block. if they match, we're OK with the block
         // including this fee transaction.
         //
-        if let (Some(ft_idx), Some(fee_transaction)) = (cv.ft_idx, cv.fee_transaction) {
+        if let (Some(ft_idx), Some(mut fee_transaction)) = (cv.ft_idx, cv.fee_transaction) {
+
+	    //
+	    // update output slips in fee transaction so that they have
+	    // the same uuid as the fees in the block, which will now
+	    // be identified by this block hash.
+	    //
+	    fee_transaction.generate_metadata_hashes();
+	    let fee_transaction_hash_for_signature = fee_transaction.get_hash_for_signature().unwrap();
+	    for output in fee_transaction.get_mut_outputs() {
+	        output.set_uuid(fee_transaction_hash_for_signature);
+	    }
+
             //
             // this code does not explicitly validate the correctness of
             // the fee transaction otherwise (sig correct?), but we handle
@@ -1132,7 +1130,6 @@ impl Block {
                 println!("generating VIP transaction {}", i);
                 let mut transaction = Transaction::generate_vip_transaction(
                     wallet_lock.clone(),
-                    wallet_publickey,
                     wallet_publickey,
                     100000,
                 )

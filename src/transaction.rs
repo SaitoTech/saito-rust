@@ -246,24 +246,17 @@ impl Transaction {
     //
     pub async fn generate_vip_transaction(
         _wallet_lock: Arc<RwLock<Wallet>>,
-        from_publickey: SaitoPublicKey,
         to_publickey: SaitoPublicKey,
         with_fee: u64,
     ) -> Transaction {
         let mut transaction = Transaction::new();
         transaction.set_transaction_type(TransactionType::Vip);
 
-        let mut input = Slip::new();
-        input.set_publickey(from_publickey);
-        input.set_amount(0);
-        input.set_slip_type(SlipType::VipInput);
-
         let mut output = Slip::new();
         output.set_publickey(to_publickey);
         output.set_amount(with_fee);
         output.set_slip_type(SlipType::VipOutput);
 
-        transaction.add_input(input);
         transaction.add_output(output);
 
         transaction
@@ -288,35 +281,29 @@ impl Transaction {
 
         transaction.set_transaction_type(TransactionType::ATR);
 
-        let mut input = Slip::new();
-        input.set_publickey(output_slip_to_rebroadcast.get_publickey());
-        input.set_amount(output_slip_to_rebroadcast.get_amount());
-        input.set_slip_type(output_slip_to_rebroadcast.get_slip_type());
-        input.set_uuid(output_slip_to_rebroadcast.get_uuid());
-
         let mut output = Slip::new();
         output.set_publickey(output_slip_to_rebroadcast.get_publickey());
         output.set_amount(output_payment);
         output.set_slip_type(SlipType::ATR);
         output.set_uuid(output_slip_to_rebroadcast.get_uuid());
 
-        if input.get_slip_type() == SlipType::ATR {
-            //
-            // this is not our first rebroadcast, which means we just
-            // need to copy the rebroadcast message field when making
-            // this transaction.
-            //
+	//
+	// if this is the FIRST time we are rebroadcasting, we copy the 
+	// original transaction into the message field in serialized 
+	// form. this preserves the original message and its signature
+	// in perpetuity.
+	//
+	// if this is the SECOND or subsequent rebroadcast, we do not
+	// copy the ATR tx (no need for a meta-tx) and rather just update
+	// the message field with the original transaction (which is 
+	// by definition already in the previous TX message space.
+	//
+        if output_slip_to_rebroadcast.get_slip_type() == SlipType::ATR {
             transaction.set_message(transaction_to_rebroadcast.get_message().to_vec());
         } else {
-            //
-            // this is our first rebroadcast, so we need to set the
-            // message field in the transaction to the content of the
-            // original transaction being rebroadcast.
-            //
             transaction.set_message(transaction_to_rebroadcast.serialize_for_net().to_vec());
         }
 
-        transaction.add_input(input);
         transaction.add_output(output);
 
         //
@@ -767,54 +754,141 @@ impl Transaction {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
-        if let Some(hash_for_signature) = self.get_hash_for_signature() {
-            let sig: SaitoSignature = self.get_signature();
 
-            if self.inputs.is_empty() {
-                println!("Transaction must have at least 1 input");
+	//
+	// User-Sent Transactions
+	//
+	// most transactions are identifiable by the publickey that
+	// has signed their input transaction, but some transactions
+	// do not have senders as they are auto-generated as part of
+	// the block itself.
+	//
+	// ATR transactions
+	// VIP transactions
+	// FEE transactions
+	//
+	// the first set of validation criteria is applied only to 
+	// user-sent transactions. validation criteria for the above
+	// classes of transactions are further down in this function.
+	// at the bottom is the validation criteria applied to ALL
+	// transaction types.
+	//
+	let transaction_type = self.get_transaction_type();
+	if transaction_type != TransactionType::Fee && transaction_type != TransactionType::ATR && transaction_type != TransactionType::Vip {
+
+	    //
+	    // validate signature
+	    //
+            if let Some(hash_for_signature) = self.get_hash_for_signature() {
+                let sig: SaitoSignature = self.get_signature();
+                let publickey: SaitoPublicKey = self.get_inputs()[0].get_publickey();
+                if !verify(&hash_for_signature, sig, publickey) {
+                     println!("message verifies not");
+                     return false;
+                }
+            } else {
+
+	        //
+	        // we reach here if we have not already calculated the hash 
+		// that is checked by the signature. while we could auto-gen
+		// it here, we choose to throw an error to raise visibility of 
+		// unexpected behavior.
+	        //
+                println!("ERROR 757293: there is no hash for signature in a transaction");
+                return false;
+
+	    }
+
+	    //
+	    // validate sender exists
+	    //
+            if self.get_inputs().is_empty() {
+                println!("ERROR 582039: less than 1 input in transaction");
                 return false;
             }
-            let publickey: SaitoPublicKey = self.get_inputs()[0].get_publickey();
 
-            if !verify(&hash_for_signature, sig, publickey) {
-                println!("message verifies not");
+            //
+            // validate routing path sigs
+            //
+	    // a transaction without routing paths is valid, and pays off the 
+	    // sender in the payment lottery. but a transaction with an invalid
+	    // routing path is fraudulent.
+	    //
+            if !self.validate_routing_path() {
+                println!("ERROR 482033: routing paths do not validate, transaction invalid");
+                return false;
+            }
+
+	    //
+	    // validate we're not creating tokens out of nothing
+	    //
+            if self.total_out > self.total_in
+                && self.get_transaction_type() != TransactionType::Fee
+                && self.get_transaction_type() != TransactionType::Vip
+            {
+                println!("{} in and {} out", self.total_in, self.total_out);
+                for z in self.get_outputs() {
+                    println!("{:?} --- ", z.get_amount());
+                }
+                println!("ERROR 672941: transaction spends more than it has available");
                 return false;
             }
         }
 
-        //
-        // VALIDATE path sigs valid
-        //
-        if !self.validate_routing_path() {
-            println!("routing path does not validate, transaction invalid");
-            return false;
-        }
 
-        //
-        // VALIDATE min one sender and receiver
-        //
-        if self.get_inputs().is_empty() {
-            println!("ERROR 582039: less than 1 input in transaction");
-            return false;
-        }
+	//
+	// fee transactions
+	//
+	if transaction_type != TransactionType::Fee {
+
+	    // signed by block creator ?
+
+	}
+
+	//
+	// atr transactions
+	//
+	if transaction_type != TransactionType::ATR {
+
+	    // signed by block creator ?
+
+	}
+
+	//
+	// vip transactions
+	//
+	// a special class of transactions that do not pay rebroadcasting
+	// fees. these are issued to the early supporters of the Saito 
+	// project. they carried us and we're going to carry them. thanks
+	// for the faith and support.
+	//
+	if transaction_type != TransactionType::Vip {
+
+	    // we should validate that VIP transactions are signed by the 
+	    // publickey associated with the Saito project.
+
+	}
+
+	//
+	// all Transactions
+	//
+	// The following validation criteria apply to all transactions, including
+	// those auto-generated and included in blocks.
+	//
+	//
+	// all transactions must have outputs
+	//
         if self.get_outputs().is_empty() {
             println!("ERROR 582039: less than 1 output in transaction");
             return false;
         }
 
-        // treasury in some amount.
-        if self.total_out > self.total_in
-            && self.get_transaction_type() != TransactionType::Fee
-            && self.get_transaction_type() != TransactionType::Vip
-        {
-            println!("{} in and {} out", self.total_in, self.total_out);
-            for z in self.get_outputs() {
-                println!("{:?} --- ", z.get_amount());
-            }
-            println!("ERROR 672941: transaction spends more than it has available");
-            return false;
-        }
-
+	//
+        // if inputs exist, they must validate against the UTXOSET
+	// if they claim to spend tokens. if the slip has no spendable
+	// tokens it will pass this check, which is conducted inside
+	// the slip-level validation logic.
+	//
         self.inputs.par_iter().all(|input| input.validate(utxoset))
     }
 }
