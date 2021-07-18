@@ -247,14 +247,14 @@ impl Transaction {
     pub async fn generate_vip_transaction(
         _wallet_lock: Arc<RwLock<Wallet>>,
         to_publickey: SaitoPublicKey,
-        with_fee: u64,
+        with_amount: u64,
     ) -> Transaction {
         let mut transaction = Transaction::new();
         transaction.set_transaction_type(TransactionType::Vip);
 
         let mut output = Slip::new();
         output.set_publickey(to_publickey);
-        output.set_amount(with_fee);
+        output.set_amount(with_amount);
         output.set_slip_type(SlipType::VipOutput);
 
         transaction.add_output(output);
@@ -414,19 +414,34 @@ impl Transaction {
     }
 
     pub fn get_winning_routing_node(&self, random_hash: SaitoHash) -> SaitoPublicKey {
+
         //
         // if there are no routing paths, we return the sender of
         // the payment, as they're got all of the routing work by
         // definition. this is the edge-case where sending a tx
         // can make you money.
         //
-        if self.path.len() == 0 || self.get_total_fees() == 0 {
+        if self.path.len() == 0 {
             if self.inputs.len() > 0 {
+println!("we have inputs! we are transaction type: {:?}", self.get_transaction_type());
                 return self.inputs[0].get_publickey();
             } else {
+println!("we have no inputs! we are transaction type: {:?}", self.get_transaction_type());
                 return [0; 33];
             }
         }
+
+	//
+	// no winning transaction should have no fees unless the
+	// entire block has no fees, in which case we have a block
+	// without any fee-paying transactions.
+	//
+	// burn these fees for the sake of safety.
+	//
+	if self.get_total_fees() == 0 {
+println!("we have no inputs! we are transaction type: {:?}", self.get_transaction_type());
+            return [0; 33];
+	}
 
         //
         // if we have a routing path, we calculate the total amount
@@ -684,6 +699,7 @@ impl Transaction {
     // been calculated.
     //
     pub fn generate_metadata_fees_and_slips(&mut self, publickey: SaitoPublicKey) -> bool {
+
         //
         // calculate nolan in / out, fees
         //
@@ -715,7 +731,6 @@ impl Transaction {
             //
             if let Some(hash_for_signature) = hash_for_signature {
                 if output.get_slip_type() != SlipType::ATR
-                    && transaction_type != TransactionType::Fee
                 {
                     output.set_uuid(hash_for_signature);
                 }
