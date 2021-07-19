@@ -1,5 +1,4 @@
 use crate::{
-    block::Block,
     consensus::SaitoMessage,
     crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey},
     golden_ticket::GoldenTicket,
@@ -70,7 +69,11 @@ impl Miner {
         }
     }
 
-    pub async fn mine_on_block_until_golden_ticket_found(&mut self, block_hash: SaitoHash, block_difficulty: u64) -> GoldenTicket {
+    pub async fn mine_on_block_until_golden_ticket_found(
+        &mut self,
+        block_hash: SaitoHash,
+        block_difficulty: u64,
+    ) -> GoldenTicket {
         let wallet = self.wallet_lock.read().await;
         let publickey = wallet.get_publickey();
         let mut random_bytes = hash(&generate_random_bytes(32));

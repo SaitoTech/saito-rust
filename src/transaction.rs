@@ -414,7 +414,6 @@ impl Transaction {
     }
 
     pub fn get_winning_routing_node(&self, random_hash: SaitoHash) -> SaitoPublicKey {
-
         //
         // if there are no routing paths, we return the sender of
         // the payment, as they're got all of the routing work by
@@ -423,25 +422,34 @@ impl Transaction {
         //
         if self.path.len() == 0 {
             if self.inputs.len() > 0 {
-println!("we have inputs! we are transaction type: {:?}", self.get_transaction_type());
+                println!(
+                    "we have inputs! we are transaction type: {:?}",
+                    self.get_transaction_type()
+                );
                 return self.inputs[0].get_publickey();
             } else {
-println!("we have no inputs! we are transaction type: {:?}", self.get_transaction_type());
+                println!(
+                    "we have no inputs! we are transaction type: {:?}",
+                    self.get_transaction_type()
+                );
                 return [0; 33];
             }
         }
 
-	//
-	// no winning transaction should have no fees unless the
-	// entire block has no fees, in which case we have a block
-	// without any fee-paying transactions.
-	//
-	// burn these fees for the sake of safety.
-	//
-	if self.get_total_fees() == 0 {
-println!("we have no inputs! we are transaction type: {:?}", self.get_transaction_type());
+        //
+        // no winning transaction should have no fees unless the
+        // entire block has no fees, in which case we have a block
+        // without any fee-paying transactions.
+        //
+        // burn these fees for the sake of safety.
+        //
+        if self.get_total_fees() == 0 {
+            println!(
+                "we have no inputs! we are transaction type: {:?}",
+                self.get_transaction_type()
+            );
             return [0; 33];
-	}
+        }
 
         //
         // if we have a routing path, we calculate the total amount
@@ -699,11 +707,9 @@ println!("we have no inputs! we are transaction type: {:?}", self.get_transactio
     // been calculated.
     //
     pub fn generate_metadata_fees_and_slips(&mut self, publickey: SaitoPublicKey) -> bool {
-
         //
         // calculate nolan in / out, fees
         //
-        let transaction_type = self.get_transaction_type();
         let mut nolan_in: u64 = 0;
         let mut nolan_out: u64 = 0;
         let hash_for_signature = self.get_hash_for_signature();
@@ -730,8 +736,7 @@ println!("we have no inputs! we are transaction type: {:?}", self.get_transactio
             // skip for ATR slips
             //
             if let Some(hash_for_signature) = hash_for_signature {
-                if output.get_slip_type() != SlipType::ATR
-                {
+                if output.get_slip_type() != SlipType::ATR {
                     output.set_uuid(hash_for_signature);
                 }
             }

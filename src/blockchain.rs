@@ -658,314 +658,322 @@ mod tests {
 
     use super::*;
     use crate::{
+        block::Block,
+        golden_ticket::GoldenTicket,
+        miner::Miner,
         test_utilities::mocks::{make_mock_block, make_mock_tx},
-	block::Block,
-	golden_ticket::GoldenTicket,
-	miner::Miner,
         transaction::Transaction,
     };
 
-/****
-    #[test]
-    fn bit_pack_test() {
-        let top = 157171715;
-        let bottom = 11661612;
-        let packed = bit_pack(top, bottom);
-        assert_eq!(packed, 157171715 * (u64::pow(2, 32)) + 11661612);
-        let (new_top, new_bottom) = bit_unpack(packed);
-        assert_eq!(top, new_top);
-        assert_eq!(bottom, new_bottom);
+    /****
+        #[test]
+        fn bit_pack_test() {
+            let top = 157171715;
+            let bottom = 11661612;
+            let packed = bit_pack(top, bottom);
+            assert_eq!(packed, 157171715 * (u64::pow(2, 32)) + 11661612);
+            let (new_top, new_bottom) = bit_unpack(packed);
+            assert_eq!(top, new_top);
+            assert_eq!(bottom, new_bottom);
 
-        let top = u32::MAX;
-        let bottom = u32::MAX;
-        let packed = bit_pack(top, bottom);
-        let (new_top, new_bottom) = bit_unpack(packed);
-        assert_eq!(top, new_top);
-        assert_eq!(bottom, new_bottom);
+            let top = u32::MAX;
+            let bottom = u32::MAX;
+            let packed = bit_pack(top, bottom);
+            let (new_top, new_bottom) = bit_unpack(packed);
+            assert_eq!(top, new_top);
+            assert_eq!(bottom, new_bottom);
 
-        let top = 0;
-        let bottom = 1;
-        let packed = bit_pack(top, bottom);
-        let (new_top, new_bottom) = bit_unpack(packed);
-        assert_eq!(top, new_top);
-        assert_eq!(bottom, new_bottom);
-    }
-
-    #[tokio::test]
-    async fn add_block_test_1() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let mut blockchain = Blockchain::new(wallet_lock.clone());
-        let mock_block_1 = make_mock_block(0, 10, [0; 32], 1);
-        let mock_block_2 = make_mock_block(
-            mock_block_1.get_timestamp(),
-            mock_block_1.get_burnfee(),
-            mock_block_1.get_hash(),
-            mock_block_1.get_id() + 1,
-        );
-        // TODO: Add a test here that tries to insert a bad first block
-        // I don't think we are doing any validation of the first block yet,
-        // it should probably have a particular hash and block id = 1
-
-        // Add our first block
-        blockchain.add_block(mock_block_1.clone()).await;
-        assert_eq!(mock_block_1.get_id(), blockchain.get_latest_block_id());
-        assert_eq!(mock_block_1.get_hash(), blockchain.get_latest_block_hash());
-
-        // Add our second block
-        blockchain.add_block(mock_block_2.clone()).await;
-        assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
-        assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
-
-        // Try to add block with wrong block id
-        let invalid_block_wrong_block_id = make_mock_block(
-            mock_block_1.get_timestamp(),
-            mock_block_1.get_burnfee(),
-            mock_block_1.get_hash(),
-            mock_block_1.get_id() + 2,
-        );
-        blockchain
-            .add_block(invalid_block_wrong_block_id.clone())
-            .await;
-        assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
-        assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
-
-        // Try to add block with wrong burnfee
-        let invalid_block_wrong_burnfee = make_mock_block(
-            mock_block_1.get_timestamp(),
-            mock_block_1.get_burnfee() - 1,
-            mock_block_1.get_hash(),
-            mock_block_1.get_id() + 1,
-        );
-        blockchain
-            .add_block(invalid_block_wrong_burnfee.clone())
-            .await;
-        assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
-        assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
-
-        // Try to add block with wrong previous hash
-        let invalid_block_wrong_prev_hash = make_mock_block(
-            mock_block_1.get_timestamp(),
-            mock_block_1.get_burnfee(),
-            [0; 32],
-            mock_block_1.get_id() + 1,
-        );
-        blockchain
-            .add_block(invalid_block_wrong_prev_hash.clone())
-            .await;
-        assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
-        assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
-    }
-    #[tokio::test]
-    async fn add_fork_test_2() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let mock_block_1: Block;
-        let mut next_block: Block;
-        // make the first block
-        {
-            let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
-            sleep(Duration::from_millis(10));
-            mock_block_1 = Block::generate(
-                &mut txs,
-                [0; 32],
-                wallet_lock.clone(),
-                blockchain_lock.clone(),
-            )
-            .await;
-            next_block = mock_block_1.clone();
+            let top = 0;
+            let bottom = 1;
+            let packed = bit_pack(top, bottom);
+            let (new_top, new_bottom) = bit_unpack(packed);
+            assert_eq!(top, new_top);
+            assert_eq!(bottom, new_bottom);
         }
-        // add the first block
-        {
-            let blockchain_mutex = blockchain_lock.clone();
-            let mut blockchain = blockchain_mutex.write().await;
+
+        #[tokio::test]
+        async fn add_block_test_1() {
+            let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+            let mut blockchain = Blockchain::new(wallet_lock.clone());
+            let mock_block_1 = make_mock_block(0, 10, [0; 32], 1);
+            let mock_block_2 = make_mock_block(
+                mock_block_1.get_timestamp(),
+                mock_block_1.get_burnfee(),
+                mock_block_1.get_hash(),
+                mock_block_1.get_id() + 1,
+            );
+            // TODO: Add a test here that tries to insert a bad first block
+            // I don't think we are doing any validation of the first block yet,
+            // it should probably have a particular hash and block id = 1
+
+            // Add our first block
             blockchain.add_block(mock_block_1.clone()).await;
             assert_eq!(mock_block_1.get_id(), blockchain.get_latest_block_id());
             assert_eq!(mock_block_1.get_hash(), blockchain.get_latest_block_hash());
+
+            // Add our second block
+            blockchain.add_block(mock_block_2.clone()).await;
+            assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
+            assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
+
+            // Try to add block with wrong block id
+            let invalid_block_wrong_block_id = make_mock_block(
+                mock_block_1.get_timestamp(),
+                mock_block_1.get_burnfee(),
+                mock_block_1.get_hash(),
+                mock_block_1.get_id() + 2,
+            );
+            blockchain
+                .add_block(invalid_block_wrong_block_id.clone())
+                .await;
+            assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
+            assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
+
+            // Try to add block with wrong burnfee
+            let invalid_block_wrong_burnfee = make_mock_block(
+                mock_block_1.get_timestamp(),
+                mock_block_1.get_burnfee() - 1,
+                mock_block_1.get_hash(),
+                mock_block_1.get_id() + 1,
+            );
+            blockchain
+                .add_block(invalid_block_wrong_burnfee.clone())
+                .await;
+            assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
+            assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
+
+            // Try to add block with wrong previous hash
+            let invalid_block_wrong_prev_hash = make_mock_block(
+                mock_block_1.get_timestamp(),
+                mock_block_1.get_burnfee(),
+                [0; 32],
+                mock_block_1.get_id() + 1,
+            );
+            blockchain
+                .add_block(invalid_block_wrong_prev_hash.clone())
+                .await;
+            assert_eq!(mock_block_2.get_id(), blockchain.get_latest_block_id());
+            assert_eq!(mock_block_2.get_hash(), blockchain.get_latest_block_hash());
         }
-        // make and add 5 more blocks onto the chain
-        for _n in 0..5 {
+        #[tokio::test]
+        async fn add_fork_test_2() {
+            let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+            let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+            let mock_block_1: Block;
+            let mut next_block: Block;
+            // make the first block
             {
                 let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
                 sleep(Duration::from_millis(10));
-                next_block = Block::generate(
+                mock_block_1 = Block::generate(
                     &mut txs,
-                    next_block.get_hash(),
+                    [0; 32],
                     wallet_lock.clone(),
                     blockchain_lock.clone(),
                 )
                 .await;
+                next_block = mock_block_1.clone();
             }
+            // add the first block
             {
                 let blockchain_mutex = blockchain_lock.clone();
                 let mut blockchain = blockchain_mutex.write().await;
-                blockchain.add_block(next_block.clone()).await;
-                assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
-
-                assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
+                blockchain.add_block(mock_block_1.clone()).await;
+                assert_eq!(mock_block_1.get_id(), blockchain.get_latest_block_id());
+                assert_eq!(mock_block_1.get_hash(), blockchain.get_latest_block_hash());
             }
-        }
-        assert_eq!(next_block.get_id(), 6);
-        let latest_block_id = next_block.get_id();
-        let latest_block_hash = next_block.get_hash();
-        // make a fork from block 1, a new block 2
-        {
-            let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
-            sleep(Duration::from_millis(10));
-            next_block = Block::generate(
-                &mut txs,
-                mock_block_1.get_hash(),
-                wallet_lock.clone(),
-                blockchain_lock.clone(),
-            )
-            .await;
-        }
-        // add new block 2
-        {
-            let blockchain_mutex = blockchain_lock.clone();
-            let mut blockchain = blockchain_mutex.write().await;
-            blockchain.add_block(next_block.clone()).await;
-            assert_eq!(latest_block_id, blockchain.get_latest_block_id());
-            assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
-        }
-        // extend the fork 4 more blocks
-        for n in 0..4 {
+            // make and add 5 more blocks onto the chain
+            for _n in 0..5 {
+                {
+                    let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+                    sleep(Duration::from_millis(10));
+                    next_block = Block::generate(
+                        &mut txs,
+                        next_block.get_hash(),
+                        wallet_lock.clone(),
+                        blockchain_lock.clone(),
+                    )
+                    .await;
+                }
+                {
+                    let blockchain_mutex = blockchain_lock.clone();
+                    let mut blockchain = blockchain_mutex.write().await;
+                    blockchain.add_block(next_block.clone()).await;
+                    assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
+
+                    assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
+                }
+            }
+            assert_eq!(next_block.get_id(), 6);
+            let latest_block_id = next_block.get_id();
+            let latest_block_hash = next_block.get_hash();
+            // make a fork from block 1, a new block 2
             {
                 let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
                 sleep(Duration::from_millis(10));
                 next_block = Block::generate(
                     &mut txs,
-                    next_block.get_hash(),
+                    mock_block_1.get_hash(),
                     wallet_lock.clone(),
                     blockchain_lock.clone(),
                 )
                 .await;
             }
+            // add new block 2
             {
                 let blockchain_mutex = blockchain_lock.clone();
                 let mut blockchain = blockchain_mutex.write().await;
                 blockchain.add_block(next_block.clone()).await;
                 assert_eq!(latest_block_id, blockchain.get_latest_block_id());
-                assert_eq!(next_block.get_id(), n + 3);
                 assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
             }
-        }
-        assert_eq!(next_block.get_id(), 6);
-        // make one more block on the fork, should be block id
-        {
-            let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
-            sleep(Duration::from_millis(10));
-            next_block = Block::generate(
-                &mut txs,
-                next_block.get_hash(),
-                wallet_lock.clone(),
-                blockchain_lock.clone(),
-            )
-            .await;
-        }
-        assert_eq!(next_block.get_id(), 7);
-        // this should become the LC
-        {
-            let blockchain_mutex = blockchain_lock.clone();
-            let mut blockchain = blockchain_mutex.write().await;
-            blockchain.add_block(next_block.clone()).await;
-            assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
+            // extend the fork 4 more blocks
+            for n in 0..4 {
+                {
+                    let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+                    sleep(Duration::from_millis(10));
+                    next_block = Block::generate(
+                        &mut txs,
+                        next_block.get_hash(),
+                        wallet_lock.clone(),
+                        blockchain_lock.clone(),
+                    )
+                    .await;
+                }
+                {
+                    let blockchain_mutex = blockchain_lock.clone();
+                    let mut blockchain = blockchain_mutex.write().await;
+                    blockchain.add_block(next_block.clone()).await;
+                    assert_eq!(latest_block_id, blockchain.get_latest_block_id());
+                    assert_eq!(next_block.get_id(), n + 3);
+                    assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+                }
+            }
+            assert_eq!(next_block.get_id(), 6);
+            // make one more block on the fork, should be block id
+            {
+                let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
+                sleep(Duration::from_millis(10));
+                next_block = Block::generate(
+                    &mut txs,
+                    next_block.get_hash(),
+                    wallet_lock.clone(),
+                    blockchain_lock.clone(),
+                )
+                .await;
+            }
             assert_eq!(next_block.get_id(), 7);
-            assert_eq!(blockchain.get_latest_block_id(), 7);
-            assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
+            // this should become the LC
+            {
+                let blockchain_mutex = blockchain_lock.clone();
+                let mut blockchain = blockchain_mutex.write().await;
+                blockchain.add_block(next_block.clone()).await;
+                assert_eq!(next_block.get_id(), blockchain.get_latest_block_id());
+                assert_eq!(next_block.get_id(), 7);
+                assert_eq!(blockchain.get_latest_block_id(), 7);
+                assert_eq!(next_block.get_hash(), blockchain.get_latest_block_hash());
+            }
         }
-    }
-***/
+    ***/
 
     #[tokio::test]
     async fn produce_four_blocks_test() {
-
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
-	let mut current_block_hash = [0; 32];
-	let mut transactions: Vec<Transaction> = vec![];
-	let mut last_block_hash: SaitoHash;
-	let mut last_block_difficulty: u64;
-	let publickey;
+        let mut current_block_hash = [0; 32];
+        let mut transactions: Vec<Transaction> = vec![];
+        let mut last_block_hash: SaitoHash;
+        let mut last_block_difficulty: u64;
+        let publickey;
 
-	{
-	    let wallet = wallet_lock.read().await;
-	    publickey = wallet.get_publickey();
-	}
+        {
+            let wallet = wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+        }
 
-	for i in 0..4 {
+        for i in 0..4 {
+            transactions = vec![];
+            let block: Block;
 
-	    transactions = vec![];
-	    let block : Block;
+            if i == 0 {
+                let mut tx = Transaction::generate_vip_transaction(
+                    wallet_lock.clone(),
+                    publickey,
+                    10_000_000,
+                )
+                .await;
+                tx.generate_metadata(publickey);
+                transactions.push(tx);
 
-	    if i == 0 {
+                block = Block::generate(
+                    &mut transactions,
+                    current_block_hash,
+                    wallet_lock.clone(),
+                    blockchain_lock.clone(),
+                )
+                .await;
+            } else {
+                println!("tx2 1");
+                {
+                    let blockchain = blockchain_lock.read().await;
+                    last_block_hash = blockchain.get_latest_block().unwrap().get_hash();
+                    last_block_difficulty = blockchain.get_latest_block().unwrap().get_difficulty();
 
-		let mut tx = Transaction::generate_vip_transaction(
-		    wallet_lock.clone(),
-		    publickey,
-		    10_000_000,
-		).await;
-		tx.generate_metadata(publickey);
-		transactions.push(tx);
+                    println!("tx2 1");
+                    // generate golden ticket
+                    let mut miner = Miner::new(wallet_lock.clone());
+                    println!("tx2 2");
+                    let golden_ticket: GoldenTicket = miner
+                        .mine_on_block_until_golden_ticket_found(
+                            last_block_hash,
+                            last_block_difficulty,
+                        )
+                        .await;
+                    println!("tx2 3");
+                    let mut wallet = wallet_lock.write().await;
+                    println!("tx2 4");
+                    let mut transaction: Transaction =
+                        wallet.create_golden_ticket_transaction(golden_ticket).await;
+                    transaction.generate_metadata(publickey);
+                    println!("tx2 5");
+                    transactions.push(transaction);
+                }
+                //
+                // this should increment the block enough to pass the burn fee stipulation
+                //
 
-	        block = Block::generate(
-	            &mut transactions,
-	            current_block_hash,
-	            wallet_lock.clone(),
-	            blockchain_lock.clone()
-	        ).await;
+                println!("tx2 6");
+                let future_timestamp = create_timestamp() + (i * 120000);
 
-	    } else {
+                println!("tx2 7");
+                block = Block::generate_with_timestamp(
+                    &mut transactions,
+                    current_block_hash,
+                    wallet_lock.clone(),
+                    blockchain_lock.clone(),
+                    future_timestamp,
+                )
+                .await;
+                println!("tx2 8");
+            }
 
-println!("tx2 1");
-{
-                let blockchain = blockchain_lock.read().await;
-	        last_block_hash = blockchain.get_latest_block().unwrap().get_hash();
-	        last_block_difficulty = blockchain.get_latest_block().unwrap().get_difficulty();
-
-println!("tx2 1");
-		// generate golden ticket
-		let mut miner = Miner::new(wallet_lock.clone());
-println!("tx2 2");
-		let golden_ticket : GoldenTicket = miner.mine_on_block_until_golden_ticket_found(last_block_hash, last_block_difficulty).await;
-println!("tx2 3");
-		let mut wallet = wallet_lock.write().await;
-println!("tx2 4");
-	        let mut transaction : Transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
-		transaction.generate_metadata(publickey);
-println!("tx2 5");
-		transactions.push(transaction);
-}
-		//
-		// this should increment the block enough to pass the burn fee stipulation
-		//
-
-println!("tx2 6");
-	        let future_timestamp = create_timestamp() + (i * 120000);
-
-println!("tx2 7");
-	        block = Block::generate_with_timestamp(
-	            &mut transactions,
-	            current_block_hash,
-	            wallet_lock.clone(),
-	            blockchain_lock.clone(),
-		    future_timestamp,
-	        ).await;
-println!("tx2 8");
-
-	    }
-
-println!("9");
-	    current_block_hash = block.get_hash();
-println!("10");
+            println!("9");
+            current_block_hash = block.get_hash();
+            println!("10");
 
             let mut blockchain = blockchain_lock.write().await;
-	    blockchain.add_block(block).await;
-println!("HERE WE ARE with current block hash: {:?}", current_block_hash);
-println!("HERE WE ARE with current blockchain: {:?}", blockchain.get_latest_block_hash());
+            blockchain.add_block(block).await;
+            println!(
+                "HERE WE ARE with current block hash: {:?}",
+                current_block_hash
+            );
+            println!(
+                "HERE WE ARE with current blockchain: {:?}",
+                blockchain.get_latest_block_hash()
+            );
             assert_eq!(current_block_hash, blockchain.get_latest_block_hash());
-println!("DONE ASSERTION!");
+            println!("DONE ASSERTION!");
         }
     }
 }
-
