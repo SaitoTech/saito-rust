@@ -917,24 +917,33 @@ mod tests {
 
 	    } else {
 
+println!("tx2 1");
 {
                 let blockchain = blockchain_lock.read().await;
 	        last_block_hash = blockchain.get_latest_block().unwrap().get_hash();
 	        last_block_difficulty = blockchain.get_latest_block().unwrap().get_difficulty();
 
+println!("tx2 1");
 		// generate golden ticket
 		let mut miner = Miner::new(wallet_lock.clone());
+println!("tx2 2");
 		let golden_ticket : GoldenTicket = miner.mine_on_block_until_golden_ticket_found(last_block_hash, last_block_difficulty).await;
+println!("tx2 3");
 		let mut wallet = wallet_lock.write().await;
+println!("tx2 4");
 	        let mut transaction : Transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
 		transaction.generate_metadata(publickey);
+println!("tx2 5");
 		transactions.push(transaction);
 }
 		//
 		// this should increment the block enough to pass the burn fee stipulation
 		//
+
+println!("tx2 6");
 	        let future_timestamp = create_timestamp() + (i * 120000);
 
+println!("tx2 7");
 	        block = Block::generate_with_timestamp(
 	            &mut transactions,
 	            current_block_hash,
@@ -942,15 +951,20 @@ mod tests {
 	            blockchain_lock.clone(),
 		    future_timestamp,
 	        ).await;
+println!("tx2 8");
 
 	    }
 
+println!("9");
 	    current_block_hash = block.get_hash();
+println!("10");
 
             let mut blockchain = blockchain_lock.write().await;
 	    blockchain.add_block(block).await;
+println!("HERE WE ARE with current block hash: {:?}", current_block_hash);
+println!("HERE WE ARE with current blockchain: {:?}", blockchain.get_latest_block_hash());
             assert_eq!(current_block_hash, blockchain.get_latest_block_hash());
-
+println!("DONE ASSERTION!");
         }
     }
 }
