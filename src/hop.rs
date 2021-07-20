@@ -101,6 +101,8 @@ mod tests {
     #[test]
     fn hop_new_test() {
         let hop = Hop::new();
-        assert_eq!(1, 1);
+        assert_eq!(hop.get_sig(), [0; 64]);
+        assert_eq!(hop.get_to(), [0; 33]);
+        assert_eq!(hop.get_from(), [0; 33]);
     }
 }

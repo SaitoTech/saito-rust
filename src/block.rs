@@ -458,6 +458,9 @@ impl Block {
     // TODO - this logic should probably be in the merkle-root class
     //
     pub fn generate_merkle_root(&self) -> SaitoHash {
+
+	if self.transactions.len() == 0 { return [0; 32]; }
+
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
@@ -850,6 +853,15 @@ impl Block {
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
+
+	//
+	// no transactions? no thank you
+	//
+	if self.transactions.len() == 0 {
+	    println!("ERROR 424342: block does not validate as it has no transactions");
+	    return false;
+	}
+
         println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
 
         //
@@ -1087,121 +1099,8 @@ impl Block {
         wallet_lock: Arc<RwLock<Wallet>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Block {
-        let blockchain = blockchain_lock.read().await;
-
-        let wallet = wallet_lock.read().await;
-        let publickey = wallet.get_publickey();
-        let privatekey = wallet.get_privatekey();
-
-        let mut previous_block_id = 0;
-        let mut previous_block_burnfee = 0;
-        let mut previous_block_timestamp = 0;
-        let mut previous_block_difficulty = 0;
-
-        if let Some(previous_block) = blockchain.blocks.get(&previous_block_hash) {
-            previous_block_id = previous_block.get_id();
-            previous_block_burnfee = previous_block.get_burnfee();
-            previous_block_timestamp = previous_block.get_timestamp();
-            previous_block_difficulty = previous_block.get_difficulty();
-        }
-
-        let mut block = Block::new();
-
         let current_timestamp = create_timestamp();
-        block.set_timestamp(current_timestamp);
-
-        let current_burnfee: u64 =
-            BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
-                previous_block_burnfee,
-                current_timestamp,
-                previous_block_timestamp,
-            );
-
-        block.set_id(previous_block_id + 1);
-        block.set_previous_block_hash(previous_block_hash);
-        block.set_burnfee(current_burnfee);
-        block.set_timestamp(current_timestamp);
-        block.set_difficulty(previous_block_difficulty);
-
-        //
-        // in-memory swap copying txs in block from mempool
-        //
-        mem::swap(&mut block.transactions, transactions);
-
-        //
-        // contextual values
-        //
-        let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain);
-
-        //
-        // TODO - remove
-        //
-        // for testing create some VIP transactions
-        //
-        if previous_block_id == 0 {
-            for i in 0..10 as i32 {
-                println!("generating VIP transaction {}", i);
-                let mut transaction =
-                    Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 100000)
-                        .await;
-                transaction.sign(privatekey);
-                block.add_transaction(transaction);
-            }
-        }
-
-        //
-        // ATR transactions
-        //
-        let rlen = cv.rebroadcasts.len();
-        // TODO -- delete if pos
-        let _tx_hashes_generated = cv.rebroadcasts[0..rlen]
-            .par_iter_mut()
-            .all(|tx| tx.generate_metadata(publickey));
-        if rlen > 0 {
-            block.transactions.append(&mut cv.rebroadcasts);
-        }
-
-        //
-        // fee transactions
-        //
-        // if a golden ticket is included in THIS block Saito uses the randomness
-        // associated with that golden ticket to create a fair output for the
-        // previous block.
-        //
-        if !cv.fee_transaction.is_none() {
-            //
-            // creator signs fee transaction
-            //
-            let mut fee_tx = cv.fee_transaction.unwrap();
-            let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
-            fee_tx.set_hash_for_signature(hash_for_signature);
-            fee_tx.sign(wallet.get_privatekey());
-
-            //
-            // and we add it to the block
-            //
-            block.add_transaction(fee_tx);
-        }
-
-        //
-        // validate difficulty
-        //
-        if cv.expected_difficulty != 0 {
-            block.set_difficulty(cv.expected_difficulty);
-        }
-
-        //
-        // generate merkle root
-        //
-        let block_merkle_root = block.generate_merkle_root();
-        block.set_merkle_root(block_merkle_root);
-
-        let block_hash = block.generate_hash();
-        block.set_hash(block_hash);
-
-        block.sign(wallet.get_publickey(), wallet.get_privatekey());
-
-        block
+	return Block::generate_with_timestamp(transactions, previous_block_hash, wallet_lock, blockchain_lock, current_timestamp).await;
     }
 
     pub async fn generate_with_timestamp(
@@ -1358,8 +1257,6 @@ mod tests {
         transaction::{Transaction, TransactionType},
         wallet::Wallet,
     };
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
 
     #[test]
     fn block_new_test() {

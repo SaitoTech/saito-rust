@@ -228,6 +228,8 @@ mod test {
     fn blockring_reorganization_test() {
         let mut blockring = BlockRing::new();
 
+println!("This is a quick test!");
+
         //
         // Good Blocks
         //
@@ -325,6 +327,7 @@ mod test {
 
         blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
+
     }
 
     #[test]
