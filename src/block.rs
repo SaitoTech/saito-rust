@@ -26,7 +26,7 @@ use tokio::sync::RwLock;
 // and the optional outbound payments.
 //
 #[derive(PartialEq, Debug, Clone)]
-pub struct DataToValidate {
+pub struct ConsensusValues {
     // expected transaction containing outbound payments
     pub fee_transaction: Option<Transaction>,
     // number of FEE in transactions if exists
@@ -37,6 +37,8 @@ pub struct DataToValidate {
     pub gt_num: u8,
     // index of GT in transactions if exists
     pub gt_idx: Option<usize>,
+    // total fees in block
+    pub total_fees: u64,
     // expected difficulty
     pub expected_difficulty: u64,
     // rebroadcast txs
@@ -50,15 +52,16 @@ pub struct DataToValidate {
     // all ATR txs hashed together
     pub rebroadcast_hash: [u8; 32],
 }
-impl DataToValidate {
+impl ConsensusValues {
     #[allow(clippy::too_many_arguments)]
-    pub fn new() -> DataToValidate {
-        DataToValidate {
+    pub fn new() -> ConsensusValues {
+        ConsensusValues {
             fee_transaction: None,
             ft_num: 0,
             ft_idx: None,
             gt_num: 0,
             gt_idx: None,
+            total_fees: 0,
             expected_difficulty: 0,
             rebroadcasts: vec![],
             total_rebroadcast_slips: 0,
@@ -66,6 +69,26 @@ impl DataToValidate {
             total_rebroadcast_fees_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
+        }
+    }
+}
+
+//
+// The BlockPayout object is returned by the function that calculates
+// who deserves the payment for each block.
+//
+#[derive(PartialEq, Debug, Clone)]
+pub struct RouterPayout {
+    // expected transaction containing outbound payments
+    pub publickey: SaitoPublicKey,
+    pub random_number: SaitoHash,
+}
+impl RouterPayout {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new() -> RouterPayout {
+        RouterPayout {
+            publickey: [0; 33],
+            random_number: [0; 32],
         }
     }
 }
@@ -190,12 +213,28 @@ impl Block {
         self.has_fee_transaction
     }
 
+    pub fn get_total_fees(&self) -> u64 {
+        self.total_fees
+    }
+
+    pub fn get_routing_work_for_creator(&self) -> u64 {
+        self.routing_work_for_creator
+    }
+
+    pub fn set_routing_work_for_creator(&mut self, routing_work_for_creator: u64) {
+        self.routing_work_for_creator = routing_work_for_creator;
+    }
+
     pub fn set_has_golden_ticket(&mut self, hgt: bool) {
         self.has_golden_ticket = hgt;
     }
 
     pub fn set_has_fee_transaction(&mut self, hft: bool) {
         self.has_fee_transaction = hft;
+    }
+
+    pub fn set_total_fees(&mut self, total_fees: u64) {
+        self.total_fees = total_fees;
     }
 
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
@@ -419,6 +458,10 @@ impl Block {
     // TODO - this logic should probably be in the merkle-root class
     //
     pub fn generate_merkle_root(&self) -> SaitoHash {
+        if self.transactions.len() == 0 {
+            return [0; 32];
+        }
+
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
             .iter()
@@ -491,25 +534,44 @@ impl Block {
     //
     // generate hashes and payouts and fee calculations
     //
-    pub fn generate_data_to_validate(&self, blockchain: &Blockchain) -> DataToValidate {
-        let mut cv = DataToValidate::new();
+    pub fn generate_consensus_values(&self, blockchain: &Blockchain) -> ConsensusValues {
+        let mut cv = ConsensusValues::new();
 
-        let mut gt_num: u8 = 0;
-        let mut ft_num: u8 = 0;
-        let mut gt_idx_option: Option<usize> = None;
-        let mut ft_idx_option: Option<usize> = None;
-        let mut total_fees = 0;
-        let mut total_rebroadcast_slips: u64 = 0;
-        let mut total_rebroadcast_nolan: u64 = 0;
-        let mut total_rebroadcast_fees_nolan: u64 = 0;
+        //
+        // calculate total fees
+        //
+        // calculate fee and golden ticket indices
+        //
+        let mut idx: usize = 0;
+        for transaction in &self.transactions {
+            if !transaction.is_fee_transaction() {
+                cv.total_fees += transaction.get_total_fees();
+            } else {
+                cv.ft_num += 1;
+                cv.ft_idx = Some(idx);
+            }
+            if transaction.is_golden_ticket() {
+                cv.gt_num += 1;
+                cv.gt_idx = Some(idx);
+            }
+            idx += 1;
+        }
 
-        // when we find a rebroadcast TX we hash it and put the hash
-        // here. when validating a block we do the exact same. as long
-        // as the rebroadcast hash and the block hash match the set of
-        // transactions are exactly the same.
-        let mut rebroadcast_hash: SaitoHash = [0; 32];
-        let miner_publickey;
-        let router_publickey;
+        //
+        // calculate expected burn-fee
+        //
+        if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+            let difficulty = previous_block.get_difficulty();
+            if !previous_block.get_has_golden_ticket() && cv.gt_num == 0 {
+                if difficulty > 0 {
+                    cv.expected_difficulty = previous_block.get_difficulty() - 1;
+                }
+            } else if previous_block.get_has_golden_ticket() && cv.gt_num > 0 {
+                cv.expected_difficulty = difficulty + 1;
+            } else {
+                cv.expected_difficulty = difficulty;
+            }
+        }
 
         //
         // calculate automatic transaction rebroadcasts / ATR / atr
@@ -532,9 +594,9 @@ impl Block {
                         //
                         if output.validate(&blockchain.utxoset) {
                             if output.get_amount() > 200_000_000 {
-                                total_rebroadcast_nolan += output.get_amount();
-                                total_rebroadcast_fees_nolan += 200_000_000;
-                                total_rebroadcast_slips += 1;
+                                cv.total_rebroadcast_nolan += output.get_amount();
+                                cv.total_rebroadcast_fees_nolan += 200_000_000;
+                                cv.total_rebroadcast_slips += 1;
 
                                 //
                                 // create rebroadcast transaction
@@ -552,125 +614,52 @@ impl Block {
                                 // update cryptographic hash of all ATRs
                                 //
                                 let mut vbytes: Vec<u8> = vec![];
-                                vbytes.extend(&rebroadcast_hash);
+                                vbytes.extend(&cv.rebroadcast_hash);
                                 vbytes.extend(&rebroadcast_transaction.serialize_for_signature());
-                                rebroadcast_hash = hash(&vbytes);
+                                cv.rebroadcast_hash = hash(&vbytes);
 
                                 cv.rebroadcasts.push(rebroadcast_transaction);
                             } else {
                                 //
                                 // dust is collected as fee
                                 //
-                                total_rebroadcast_fees_nolan += output.get_amount();
+                                cv.total_rebroadcast_fees_nolan += output.get_amount();
                             }
                         }
                     }
                 }
-
-                cv.total_rebroadcast_slips = total_rebroadcast_slips;
-                cv.total_rebroadcast_nolan = total_rebroadcast_nolan;
-                cv.total_rebroadcast_fees_nolan = total_rebroadcast_fees_nolan;
-                cv.rebroadcast_hash = rebroadcast_hash;
             }
         }
-        total_fees += total_rebroadcast_fees_nolan;
 
         //
-        // calculate total fees
+        // calculate fee transaction
         //
-        let mut idx: usize = 0;
-        for transaction in &self.transactions {
-            // fee transaction
-            if !transaction.is_fee_transaction() {
-                total_fees += transaction.get_total_fees();
-            } else {
-                ft_num += 1;
-                ft_idx_option = Some(idx);
-            }
-
-            // gt transaction
-            if transaction.is_golden_ticket() {
-                gt_num += 1;
-                gt_idx_option = Some(idx);
-            }
-
-            idx += 1;
-        }
-
-        //
-        // calculate payments
-        //
-        if let Some(gt_idx) = gt_idx_option {
+        if let Some(gt_idx) = cv.gt_idx {
             //
             // grab random input from golden ticket
             //
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
-            let miner_random = golden_ticket.get_random();
+            let random_number = golden_ticket.get_random();
+            let miner_publickey = golden_ticket.get_publickey();
 
             //
-            // create fee transaction
+            // payout is from last block
             //
-            if total_fees == 0 {
-            } else {
-                //
-                // find winning tx
-                //
-                let x = U256::from_big_endian(&miner_random);
-                // no risk of divide by zero with if / else check
-                let y = total_fees;
-
-                //
-                // random number mod total fees gives us th ewinning
-                // nolan. we are going to pick the transaction that
-                // contains this incremental nolan
-                //
-                let z = U256::from_big_endian(&y.to_be_bytes());
-                let (zy, _bolres) = x.overflowing_rem(z);
-                let winning_nolan_in_fees = zy.low_u64();
-
-                //
-                // winning TX contains the winning nolan
-                //
-                // i.e. txs are picked based on fee contribution
-                //
-                let mut winning_tx = &self.transactions[0];
-                for transaction in &self.transactions {
-                    if transaction.cumulative_fees > winning_nolan_in_fees {
-                        break;
-                    }
-                    winning_tx = &transaction;
-                }
-
-                //
-                // winning router is picked by sending a random
-                // number into the transaction, which is then
-                // used to select a routing node based on the
-                // weighted lottery.
-                //
-                let random_number2 = hash(&miner_random.to_vec());
-                router_publickey = winning_tx.get_winning_routing_node(random_number2);
-
-                //
-                // winning miner from golden ticket
-                //
-                miner_publickey = golden_ticket.get_publickey();
+            if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+                let mut transaction = Transaction::new();
+                transaction.set_transaction_type(TransactionType::Fee);
 
                 //
                 // calculate miner and router payments
                 //
-                let miner_payment = total_fees / 2;
-                let router_payment = total_fees - miner_payment;
+                let miner_payment = previous_block.get_total_fees() / 2;
+                let router_payment = previous_block.get_total_fees() - miner_payment;
 
-                let mut transaction = Transaction::new();
-                transaction.set_transaction_type(TransactionType::Fee);
-
-                let mut input1 = Slip::new();
-                input1.set_publickey(miner_publickey);
-                input1.set_amount(0);
-                input1.set_slip_type(SlipType::MinerInput);
-                input1.set_slip_ordinal(0);
+                let block_payouts: RouterPayout = previous_block.find_winning_router(random_number);
+                let router_publickey = block_payouts.publickey;
+                let _next_random_number = block_payouts.random_number;
 
                 let mut output1 = Slip::new();
                 output1.set_publickey(miner_publickey);
@@ -678,21 +667,13 @@ impl Block {
                 output1.set_slip_type(SlipType::MinerOutput);
                 output1.set_slip_ordinal(0);
 
-                let mut input2 = Slip::new();
-                input2.set_publickey(router_publickey);
-                input2.set_amount(0);
-                input2.set_slip_type(SlipType::RouterInput);
-                input2.set_slip_ordinal(1);
-
                 let mut output2 = Slip::new();
                 output2.set_publickey(router_publickey);
                 output2.set_amount(router_payment);
                 output2.set_slip_type(SlipType::RouterOutput);
                 output2.set_slip_ordinal(1);
 
-                transaction.add_input(input1);
                 transaction.add_output(output1);
-                transaction.add_input(input2);
                 transaction.add_output(output2);
 
                 //
@@ -700,33 +681,72 @@ impl Block {
                 //
                 cv.fee_transaction = Some(transaction);
             }
-
-            //
-            // fee transaction added to consensus values
-            //
-            cv.ft_idx = ft_idx_option;
-            cv.ft_num = ft_num;
-            cv.gt_idx = gt_idx_option;
-            cv.gt_num = gt_num;
-        }
-
-        //
-        // calculate expected burn-fee given previous block
-        //
-        if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-            let difficulty = previous_block.get_difficulty();
-            if !previous_block.get_has_golden_ticket() && !self.get_has_golden_ticket() {
-                if difficulty > 0 {
-                    cv.expected_difficulty = previous_block.get_difficulty() - 1;
-                }
-            } else if previous_block.get_has_golden_ticket() && self.get_has_golden_ticket() {
-                cv.expected_difficulty = difficulty + 1;
-            } else {
-                cv.expected_difficulty = difficulty;
-            }
         }
 
         cv
+    }
+
+    pub fn find_winning_router(&self, random_number: SaitoHash) -> RouterPayout {
+        let mut rp = RouterPayout::new();
+
+        //
+        // find winning nolan
+        //
+        let x = U256::from_big_endian(&random_number);
+        //
+        // fee calculation should be the same used in block when
+        // generating the fee transaction.
+        //
+        let y = self.get_total_fees();
+
+        //
+        // if there are no fees, payout to
+        //
+        if y == 0 {
+            rp.publickey = [0; 33];
+            rp.random_number = random_number;
+            return rp;
+        }
+
+        let z = U256::from_big_endian(&y.to_be_bytes());
+        let (zy, _bolres) = x.overflowing_rem(z);
+        let winning_nolan = zy.low_u64();
+        // we may need function-timelock object if we need to recreate
+        // an ATR transaction to pick the winning routing node.
+        let winning_tx_placeholder: Transaction;
+        let mut winning_tx: &Transaction;
+
+        //
+        // winning TX contains the winning nolan
+        //
+        // either a fee-paying transaction or an ATR transaction
+        //
+        winning_tx = &self.transactions[0];
+        for transaction in &self.transactions {
+            if transaction.cumulative_fees > winning_nolan {
+                break;
+            }
+            winning_tx = &transaction;
+        }
+
+        //
+        // if winner is atr, we take inside TX
+        //
+        if winning_tx.get_transaction_type() == TransactionType::ATR {
+            let tmptx = winning_tx.get_message().to_vec();
+            winning_tx_placeholder = Transaction::deserialize_from_net(tmptx);
+            winning_tx = &winning_tx_placeholder;
+        }
+
+        //
+        // hash random number to pick routing node
+        //
+        let random_number2 = hash(&random_number.to_vec());
+
+        rp.publickey = winning_tx.get_winning_routing_node(random_number2);
+        rp.random_number = hash(&random_number2.to_vec());
+
+        rp
     }
 
     pub fn on_chain_reorganization(
@@ -821,8 +841,9 @@ impl Block {
         //
         // update block with total fees
         //
-        self.total_fees = cumulative_fees;
-        self.routing_work_for_creator = cumulative_work;
+        self.set_total_fees(cumulative_fees);
+        self.set_routing_work_for_creator(cumulative_work);
+
         println!(" ... block.pre_validation_done:  {:?}", create_timestamp());
 
         true
@@ -833,12 +854,20 @@ impl Block {
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
+        //
+        // no transactions? no thank you
+        //
+        if self.transactions.len() == 0 {
+            println!("ERROR 424342: block does not validate as it has no transactions");
+            return false;
+        }
+
         println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
 
         //
-        // Contextual Values
+        // Consensus Values
         //
-        // contextual block data refers to the information in the block that depends
+        // consensus data refers to the info in the proposed block that depends
         // on its relationship to other blocks in the chain -- things like the burn
         // fee, the ATR transactions, the golden ticket solution and more.
         //
@@ -848,12 +877,12 @@ impl Block {
         // to validate it by checking the variables we can see in our block with what
         // they should be given this function.
         //
-        let cv = self.generate_data_to_validate(&blockchain);
+        let cv = self.generate_consensus_values(&blockchain);
 
         //
         // Previous Block
         //
-        // some kinds of validation like the burn fee and the golden ticket solution
+        // many kinds of validation like the burn fee and the golden ticket solution
         // require the existence of the previous block in order to validate. we put all
         // of these validation steps below so they will have access to the previous block
         //
@@ -863,9 +892,6 @@ impl Block {
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
             //
             // validate burn fee
-            //
-            // this is the updated burn fee number that is included in THIS block
-            // and determines how quickly the network will produce the NEXT block
             //
             let new_burnfee: u64 =
                 BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
@@ -884,11 +910,10 @@ impl Block {
             println!(" ... burn fee in blk validated:  {:?}", create_timestamp());
 
             //
-            // validate routing work
+            // validate routing work required
             //
-            // this does not check that our routing work is valid, but it checks that
-            // the total amount that we are claiming to include meets the criteria
-            // provided by the burn fee in the previous block and this block's timestamp.
+            // this checks the total amount of fees that need to be burned in this
+            // block to be considered valid according to consensus criteria.
             //
             let amount_of_routing_work_needed: u64 =
                 BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
@@ -934,75 +959,10 @@ impl Block {
                     return false;
                 }
             }
-
             println!(" ... golden ticket: (validated)  {:?}", create_timestamp());
-        } else {
-
-            //
-            // this should be our first block
-            //
-            // TODO: sanity checks
-            //
         }
 
         println!(" ... block.validate: (merkle rt) {:?}", create_timestamp());
-
-        //
-        // validate merkle root
-        //
-        if self.get_merkle_root() == [0; 32]
-            && self.get_merkle_root() != self.generate_merkle_root()
-        {
-            println!("merkle root is unset or is invalid false 1");
-            return false;
-        }
-
-        println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
-
-        //
-        // validate fee transactions
-        //
-        // we grab the fee transaction created in the cv function and run
-        // a quick hash of it, comparing that with the hash of the fee-tx
-        // that exists in the block. if they match, we're OK with the block
-        // including this fee transaction.
-        //
-        if let (Some(ft_idx), Some(fee_transaction)) = (cv.ft_idx, cv.fee_transaction) {
-            //
-            // this code does not explicitly validate the correctness of
-            // the fee transaction otherwise (sig correct?), but we handle
-            // that in the other portions of the validate function.
-            //
-            let cv_ft_hash = hash(&fee_transaction.serialize_for_signature());
-            let block_ft_hash = hash(&self.transactions[ft_idx].serialize_for_signature());
-
-            if cv_ft_hash != block_ft_hash {
-                println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");
-                return false;
-            }
-        }
-
-        //
-        // validate difficulty
-        //
-        // difficulty here refers the difficulty of generating a golden ticket
-        // for any particular block. this is the difficulty of the mining
-        // puzzle that is used for releasing payments.
-        //
-        // those more familiar with POW and POS should note that "difficulty" of
-        // finding a block is represented in the burn fee variable which we have
-        // already examined and validated above. producing a block requires a
-        // certain amount of golden ticket solutions over-time, so the
-        // distinction is in practice less clean.
-        //
-        if cv.expected_difficulty != self.get_difficulty() {
-            println!(
-                "difficulty is false {} vs {}",
-                cv.expected_difficulty,
-                self.get_difficulty()
-            );
-            return false;
-        }
 
         //
         // validate atr
@@ -1027,6 +987,77 @@ impl Block {
         }
         if cv.rebroadcast_hash != self.rebroadcast_hash {
             println!("ERROR 123422: hash of rebroadcast transactions incorrect");
+            return false;
+        }
+
+        //
+        // validate merkle root
+        //
+        if self.get_merkle_root() == [0; 32]
+            && self.get_merkle_root() != self.generate_merkle_root()
+        {
+            println!("merkle root is unset or is invalid false 1");
+            return false;
+        }
+
+        println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
+
+        //
+        // validate fee transactions
+        //
+        // if this block contains a golden ticket, we have to use the random
+        // number associated with the golden ticket to create a fee-transaction
+        // that stretches back into previous blocks and finds the winning nodes
+        // that should collect payment.
+        //
+        if let (Some(ft_idx), Some(mut fee_transaction)) = (cv.ft_idx, cv.fee_transaction) {
+            //
+            // no golden ticket? invalid
+            //
+            if cv.gt_idx.is_none() {
+                println!(
+                    "ERROR 48203: block appears to have fee transaction without golden ticket"
+                );
+                return false;
+            }
+
+            //
+            // the fee transaction we receive from the CV needs to be updated with
+            // block-specific data in the same way that all of the transactions in
+            // the block have been. we must do this prior to comparing them.
+            //
+            fee_transaction.generate_metadata(self.get_creator());
+
+            println!("CV: {:?}", fee_transaction);
+            println!("BLK: {:?}", self.transactions[ft_idx]);
+
+            let hash1 = hash(&fee_transaction.serialize_for_signature());
+            let hash2 = hash(&self.transactions[ft_idx].serialize_for_signature());
+            if hash1 != hash2 {
+                println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");
+                return false;
+            }
+        }
+
+        //
+        // validate difficulty
+        //
+        // difficulty here refers the difficulty of generating a golden ticket
+        // for any particular block. this is the difficulty of the mining
+        // puzzle that is used for releasing payments.
+        //
+        // those more familiar with POW and POS should note that "difficulty" of
+        // finding a block is represented in the burn fee variable which we have
+        // already examined and validated above. producing a block requires a
+        // certain amount of golden ticket solutions over-time, so the
+        // distinction is in practice less clean.
+        //
+        if cv.expected_difficulty != self.get_difficulty() {
+            println!(
+                "difficulty is false {} vs {}",
+                cv.expected_difficulty,
+                self.get_difficulty()
+            );
             return false;
         }
 
@@ -1068,8 +1099,29 @@ impl Block {
         wallet_lock: Arc<RwLock<Wallet>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Block {
+        let current_timestamp = create_timestamp();
+        return Block::generate_with_timestamp(
+            transactions,
+            previous_block_hash,
+            wallet_lock,
+            blockchain_lock,
+            current_timestamp,
+        )
+        .await;
+    }
+
+    pub async fn generate_with_timestamp(
+        transactions: &mut Vec<Transaction>,
+        previous_block_hash: SaitoHash,
+        wallet_lock: Arc<RwLock<Wallet>>,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+        current_timestamp: u64,
+    ) -> Block {
         let blockchain = blockchain_lock.read().await;
+
         let wallet = wallet_lock.read().await;
+        let publickey = wallet.get_publickey();
+        let privatekey = wallet.get_privatekey();
 
         let mut previous_block_id = 0;
         let mut previous_block_burnfee = 0;
@@ -1084,8 +1136,8 @@ impl Block {
         }
 
         let mut block = Block::new();
+        block.set_timestamp(current_timestamp);
 
-        let current_timestamp = create_timestamp();
         let current_burnfee: u64 =
             BurnFee::return_burnfee_for_block_produced_at_current_timestamp_in_nolan(
                 previous_block_burnfee,
@@ -1100,86 +1152,63 @@ impl Block {
         block.set_difficulty(previous_block_difficulty);
 
         //
-        // in-memory swap of pointers, for instant copying of txs into block from mempool
+        // in-memory swap copying txs in block from mempool
         //
         mem::swap(&mut block.transactions, transactions);
 
         //
-        // TODO - not ideal that we have to loop through the block.
-        // perhaps we can put GT in a specific location.
+        // contextual values
         //
-        for transaction in &block.transactions {
-            if transaction.is_golden_ticket() {
-                block.set_has_golden_ticket(true);
-                break;
-            }
-        }
-
-        // repopulate the `hash_for_signature` fields on `Transaction`
-        // block.transactions.par_iter_mut().for_each(|tx| {
-        //     tx.set_hash_for_signature(
-        //         hash(&tx.serialize_for_signature())
-        //     );
-        // });
+        let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain);
 
         //
-        // set our initial transactions
+        // TODO - remove
         //
-        let wallet_publickey = wallet.get_publickey();
-        let wallet_privatekey = wallet.get_privatekey();
+        // for testing create some VIP transactions
+        //
         if previous_block_id == 0 {
             for i in 0..10 as i32 {
                 println!("generating VIP transaction {}", i);
-                let mut transaction = Transaction::generate_vip_transaction(
-                    wallet_lock.clone(),
-                    wallet_publickey,
-                    wallet_publickey,
-                    100000,
-                )
-                .await;
-                transaction.sign(wallet_privatekey);
+                let mut transaction =
+                    Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 100000)
+                        .await;
+                transaction.sign(privatekey);
                 block.add_transaction(transaction);
             }
         }
 
         //
-        // contextual values
+        // ATR transactions
         //
-        let mut cv: DataToValidate = block.generate_data_to_validate(&blockchain);
+        let rlen = cv.rebroadcasts.len();
+        // TODO -- delete if pos
+        let _tx_hashes_generated = cv.rebroadcasts[0..rlen]
+            .par_iter_mut()
+            .all(|tx| tx.generate_metadata(publickey));
+        if rlen > 0 {
+            block.transactions.append(&mut cv.rebroadcasts);
+        }
 
         //
-        // fee transactions and golden tickets
+        // fee transactions
         //
-        // set hash_for_signature for fee_tx as we cannot mutably fetch it
-        // during merkle_root generation as those functions require parallel
-        // processing in block validation. So some extra code here.
+        // if a golden ticket is included in THIS block Saito uses the randomness
+        // associated with that golden ticket to create a fair output for the
+        // previous block.
         //
         if !cv.fee_transaction.is_none() {
             //
-            // fee-transaction must still pass validation rules
+            // creator signs fee transaction
             //
             let mut fee_tx = cv.fee_transaction.unwrap();
-
-            //
-            // block creator sends transaction inputs
-            //
-            for input in fee_tx.get_mut_inputs() {
-                input.set_publickey(wallet.get_publickey());
-            }
-
-            //
-            // create tx hash
-            //
             let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
             fee_tx.set_hash_for_signature(hash_for_signature);
-
-            //
-            // sign the transaction and finalize it
-            //
             fee_tx.sign(wallet.get_privatekey());
 
+            //
+            // and we add it to the block
+            //
             block.add_transaction(fee_tx);
-            block.set_has_fee_transaction(true);
         }
 
         //
@@ -1187,25 +1216,6 @@ impl Block {
         //
         if cv.expected_difficulty != 0 {
             block.set_difficulty(cv.expected_difficulty);
-        }
-
-        //
-        // hash the ATR transactions in parallel -- we will need this for generating merkle-root
-        //
-        // TODO - is there a way to generate the rebroadcast transactions in advance so we do not
-        // have this as a bottleneck during block production? perhaps generate the rebroadcasts in
-        // advance of the blocks being pruned?
-        //
-        let num_rebroadcasts = cv.rebroadcasts.len();
-        let _tx_hashes_generated = cv.rebroadcasts[0..num_rebroadcasts]
-            .par_iter_mut()
-            .all(|tx| tx.generate_metadata_hashes());
-
-        //
-        // ATR / atr / automatic transaction rebroadcasting
-        //
-        if cv.rebroadcasts.len() > 0 {
-            block.transactions.append(&mut cv.rebroadcasts);
         }
 
         //
@@ -1254,8 +1264,6 @@ mod tests {
         transaction::{Transaction, TransactionType},
         wallet::Wallet,
     };
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
 
     #[test]
     fn block_new_test() {
@@ -1368,12 +1376,6 @@ mod tests {
         block.set_transactions(&mut transactions);
 
         assert!(block.generate_merkle_root().len() == 32);
-    }
-
-    #[test]
-    fn block_generate_data_to_validate() {
-        let wallet = Wallet::new();
-        let blockchain = Blockchain::new(Arc::new(RwLock::new(wallet)));
     }
 
     #[test]

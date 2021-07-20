@@ -228,6 +228,8 @@ mod test {
     fn blockring_reorganization_test() {
         let mut blockring = BlockRing::new();
 
+        println!("This is a quick test!");
+
         //
         // Good Blocks
         //
