@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Block",""],["DataToValidate",""]]});
+initSidebarItems({"struct":[["Block",""],["ConsensusValues",""],["RouterPayout",""]]});

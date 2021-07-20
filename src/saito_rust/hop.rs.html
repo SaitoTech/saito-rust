@@ -107,6 +107,8 @@
 <span id="104">104</span>
 <span id="105">105</span>
 <span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">sign</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
@@ -211,7 +213,9 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">hop_new_test</span>() {
         <span class="kw">let</span> <span class="ident">hop</span> <span class="op">=</span> <span class="ident">Hop::new</span>();
-        <span class="macro">assert_eq!</span>(<span class="number">1</span>, <span class="number">1</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">hop</span>.<span class="ident">get_sig</span>(), [<span class="number">0</span>; <span class="number">64</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">hop</span>.<span class="ident">get_to</span>(), [<span class="number">0</span>; <span class="number">33</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">hop</span>.<span class="ident">get_from</span>(), [<span class="number">0</span>; <span class="number">33</span>]);
     }
 }
 </pre></div>
