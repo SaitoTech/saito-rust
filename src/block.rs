@@ -458,8 +458,9 @@ impl Block {
     // TODO - this logic should probably be in the merkle-root class
     //
     pub fn generate_merkle_root(&self) -> SaitoHash {
-
-	if self.transactions.len() == 0 { return [0; 32]; }
+        if self.transactions.len() == 0 {
+            return [0; 32];
+        }
 
         let tx_sig_hashes: Vec<SaitoHash> = self
             .transactions
@@ -853,14 +854,13 @@ impl Block {
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
-
-	//
-	// no transactions? no thank you
-	//
-	if self.transactions.len() == 0 {
-	    println!("ERROR 424342: block does not validate as it has no transactions");
-	    return false;
-	}
+        //
+        // no transactions? no thank you
+        //
+        if self.transactions.len() == 0 {
+            println!("ERROR 424342: block does not validate as it has no transactions");
+            return false;
+        }
 
         println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
 
@@ -1100,7 +1100,14 @@ impl Block {
         blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Block {
         let current_timestamp = create_timestamp();
-	return Block::generate_with_timestamp(transactions, previous_block_hash, wallet_lock, blockchain_lock, current_timestamp).await;
+        return Block::generate_with_timestamp(
+            transactions,
+            previous_block_hash,
+            wallet_lock,
+            blockchain_lock,
+            current_timestamp,
+        )
+        .await;
     }
 
     pub async fn generate_with_timestamp(
