@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use warp::{Filter, Reply};
 use warp::body;
 
-use super::handlers::{get_block_handler, handshake_complete_handler, handshake_init_handler, post_block_handler, ws_handler};
+use super::handlers::{get_block_handler, get_block_handler_json, handshake_complete_handler, handshake_init_handler, post_block_handler, ws_handler};
 use super::network::Clients;
 // 
 // cargo run --bin walletcli print
@@ -60,6 +60,13 @@ pub fn handshake_init_route_filter(wallet_lock: Arc<RwLock<Wallet>>) -> impl Fil
 pub fn get_block_route_filter() -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Copy {
     warp::path("block")
         .and(warp::path::param().and_then(get_block_handler))
+}
+
+pub fn get_json_block_route_filter() -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Copy {
+    warp::path("block")
+        .and(warp::path("json"))
+        .and(warp::path::param())
+        .and_then(get_block_handler_json)
 }
 
 pub fn post_block_route_filter() -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
