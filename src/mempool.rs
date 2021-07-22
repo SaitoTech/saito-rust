@@ -218,16 +218,16 @@ pub async fn run(
     let generate_transaction_sender = mempool_channel_sender.clone();
     tokio::spawn(async move {
         loop {
-            generate_block_sender
-                .send(MempoolMessage::TryBundleBlock)
-                .await
-                .expect("error: TryBundleBlock message failed to send");
-            sleep(Duration::from_millis(2000));
-            generate_transaction_sender
-                .send(MempoolMessage::GenerateTransaction)
-                .await
-                .expect("error: GenerateTransaction message failed to send");
-            sleep(Duration::from_millis(2000));
+            // generate_block_sender
+            //     .send(MempoolMessage::TryBundleBlock)
+            //     .await
+            //     .expect("error: TryBundleBlock message failed to send");
+            // sleep(Duration::from_millis(2000));
+            // generate_transaction_sender
+            //     .send(MempoolMessage::GenerateTransaction)
+            //     .await
+            //     .expect("error: GenerateTransaction message failed to send");
+            // sleep(Duration::from_millis(2000));
         }
     });
 
