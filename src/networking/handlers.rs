@@ -85,6 +85,8 @@ pub async fn handshake_complete_handler(hyper_bytes: Bytes, addr: Option<SocketA
 pub async fn handshake_init_handler(raw_query_str: String, addr: Option<SocketAddr>, wallet_lock: Arc<RwLock<Wallet>>) -> std::result::Result<impl Reply, Rejection> {
     // TODO get these from the wallet
 
+    println!("{}", raw_query_str);
+
     let wallet = wallet_lock.read().await;
     let my_pubkey = wallet.get_publickey();
     let my_privkey = wallet.get_privatekey();

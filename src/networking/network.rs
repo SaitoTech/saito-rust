@@ -83,9 +83,14 @@ impl HandshakeChallenge {
         challenger_octet[0..4].clone_from_slice(&bytes[0..4]);
         let mut challengie_octet: [u8; 4] = [0; 4];
         challengie_octet[0..4].clone_from_slice(&bytes[4..8]);
+
         let challenger_pubkey: SaitoPublicKey = bytes[8..41].try_into().unwrap();
+        println!("A");
         let challengie_pubkey: SaitoPublicKey = bytes[41..74].try_into().unwrap();
-        let timestamp: u64 = u64::from_be_bytes(bytes[74..CHALLENGE_SIZE].try_into().unwrap()); 
+        println!("B");
+        let timestamp: u64 = u64::from_be_bytes(bytes[74..CHALLENGE_SIZE].try_into().unwrap());
+        println!("C");
+
         HandshakeChallenge {
             challenger_ip_address: challenger_octet,
             challengie_ip_address: challengie_octet,
@@ -171,24 +176,24 @@ mod tests {
             .filter(&init_filter)
             .await
             .unwrap();
-        
+
         let mut resp = value.into_response();
         let bytes = hyper::body::to_bytes(resp.body_mut()).await.unwrap()[..].to_vec();
 
         let deserialize_challenge = HandshakeChallenge::deserialize_with_sig(&bytes.clone());
         let raw_challenge: [u8; CHALLENGE_SIZE] = bytes[..CHALLENGE_SIZE].try_into().unwrap();
         let sig: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE+64].try_into().unwrap();
-        
+
         assert_eq!(deserialize_challenge.0.challenger_ip_address(), [42, 42, 42, 42]);
-        assert_eq!(deserialize_challenge.0.challengie_ip_address(), [127, 0, 0, 1]);    
+        assert_eq!(deserialize_challenge.0.challengie_ip_address(), [127, 0, 0, 1]);
         assert_eq!(deserialize_challenge.0.challengie_pubkey(), publickey);
         assert!(verify(&hash(&raw_challenge.to_vec()), sig, deserialize_challenge.0.challenger_pubkey()));
-        
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let network = Network::new(wallet_lock.clone());
-        
+
         let complete_filter = handshake_complete_route_filter(&network.clients.clone());
-        
+
         let signed_challenge = sign_blob(&mut bytes.clone(), privatekey).to_owned();
         let value = warp::test::request()
             .method("POST")
@@ -206,7 +211,7 @@ mod tests {
         let socket_filter = ws_route_filter(&network.clients.clone());
         let mut ws_client = warp::test::ws()
             .path("/wsconnect")
-            .header("socket-token", bytes)   
+            .header("socket-token", bytes)
             .handshake(socket_filter)
             .await
             .expect("handshake");
