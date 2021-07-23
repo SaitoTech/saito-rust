@@ -72,6 +72,14 @@ cargo clippy
 cargo bench
 ```
 
+### Spammer
+The spammer tests sending transactions at the node. To run it:
+```
+cargo run --bin saito-spammer ${num_of_transactions_per_block} ${bytes_per_transaction}
+```
+
+If no arguments are provided, it defaults to 10 transactions the size of 1024 bytes
+
 ### Github Actions
 
 GH Actions are located here: [.github/workflows](.github/workflows)

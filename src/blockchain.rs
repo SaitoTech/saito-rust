@@ -1,14 +1,21 @@
 use crate::block::Block;
 use crate::blockring::BlockRing;
+use crate::burnfee::BurnFee;
 use crate::consensus::SaitoMessage;
-use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
+use crate::crypto::{verify, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
+use crate::golden_ticket::GoldenTicket;
+use crate::slip::Slip;
 use crate::storage::Storage;
 use crate::time::create_timestamp;
+use crate::transaction::{Transaction, TransactionType};
 use crate::wallet::Wallet;
+
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
 use ahash::AHashMap;
+
+use rayon::prelude::*;
 
 pub fn bit_pack(top: u32, bottom: u32) -> u64 {
     ((top as u64) << 32) + (bottom as u64)
@@ -20,9 +27,11 @@ pub fn bit_unpack(packed: u64) -> (u32, u32) {
     (top, bottom)
 }
 
+pub type UtxoSet = AHashMap<SaitoUTXOSetKey, u64>;
+
 #[derive(Debug)]
 pub struct Blockchain {
-    pub utxoset: AHashMap<SaitoUTXOSetKey, u64>,
+    pub utxoset: UtxoSet,
     pub blockring: BlockRing,
     pub blocks: AHashMap<SaitoHash, Block>,
     pub wallet_lock: Arc<RwLock<Wallet>>,
@@ -296,45 +305,6 @@ impl Blockchain {
         self.blocks.get(&block_hash)
     }
 
-    pub fn get_latest_block_burnfee(&self) -> u64 {
-        let block_hash = self.blockring.get_longest_chain_block_hash();
-        let block = self.blocks.get(&block_hash);
-        match block {
-            Some(block) => {
-                return block.get_burnfee();
-            }
-            None => {
-                return 0;
-            }
-        }
-    }
-
-    pub fn get_latest_block_difficulty(&self) -> u64 {
-        let block_hash = self.blockring.get_longest_chain_block_hash();
-        let block = self.blocks.get(&block_hash);
-        match block {
-            Some(block) => {
-                return block.get_difficulty();
-            }
-            None => {
-                return 0;
-            }
-        }
-    }
-
-    pub fn get_latest_block_timestamp(&self) -> u64 {
-        let block_hash = self.blockring.get_longest_chain_block_hash();
-        let block = self.blocks.get(&block_hash);
-        match block {
-            Some(block) => {
-                return block.get_timestamp();
-            }
-            None => {
-                return 0;
-            }
-        }
-    }
-
     pub fn get_latest_block_hash(&self) -> SaitoHash {
         self.blockring.get_longest_chain_block_hash()
     }
@@ -375,16 +345,48 @@ impl Blockchain {
         old_chain.len() < new_chain.len() && old_bf <= new_bf
     }
 
+    //
+    // when new_chain and old_chain are generated the block_hashes are added
+    // to their vectors from tip-to-shared-ancestors. if the shared ancestors
+    // is at position [0] in our blockchain for instance, we may receive:
+    //
+    // new_chain --> adds the hashes in this order
+    //   [5] [4] [3] [2] [1]
+    //
+    // old_chain --> adds the hashes in this order
+    //   [4] [3] [2] [1]
+    //
+    // unwinding requires starting from the BEGINNING of the vector, while
+    // winding requires starting from th END of the vector. the loops move
+    // in opposite directions.
+    //
     pub fn validate(&mut self, new_chain: Vec<[u8; 32]>, old_chain: Vec<[u8; 32]>) -> bool {
         if !old_chain.is_empty() {
-            self.unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, false)
+            self.unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
         } else if !new_chain.is_empty() {
-            self.wind_chain(&new_chain, &old_chain, 0, false)
+            self.wind_chain(&new_chain, &old_chain, new_chain.len() - 1, false)
         } else {
             true
         }
     }
 
+    //
+    // when new_chain and old_chain are generated the block_hashes are added
+    // to their vectors from tip-to-shared-ancestors. if the shared ancestors
+    // is at position [0] for instance, we may receive:
+    //
+    // new_chain --> adds the hashes in this order
+    //   [5] [4] [3] [2] [1]
+    //
+    // old_chain --> adds the hashes in this order
+    //   [4] [3] [2] [1]
+    //
+    // unwinding requires starting from the BEGINNING of the vector, while
+    // winding requires starting from the END of the vector. the loops move
+    // in opposite directions. the argument current_wind_index is the
+    // position in the vector NOT the ordinal number of the block_hash
+    // being processed. we start winding with current_wind_index 4 not 0.
+    //
     pub fn wind_chain(
         &mut self,
         new_chain: &Vec<[u8; 32]>,
@@ -414,18 +416,14 @@ impl Blockchain {
         // happen first.
         //
         {
-            let block = self
-                .blocks
-                .get_mut(&new_chain[new_chain.len() - current_wind_index - 1])
-                .unwrap();
-            block.pre_validation_calculations();
+            let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+            block.generate_metadata();
         }
 
-        let block = self
-            .blocks
-            .get(&new_chain[new_chain.len() - current_wind_index - 1])
-            .unwrap();
-        // println!(" ... before block.validate:      {:?}", create_timestamp());
+        let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
+        println!("BLOCK: {:?}", block);
+
+        println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset);
         // println!(" ... after block.validate:       {:?}", create_timestamp());
 
@@ -437,19 +435,36 @@ impl Blockchain {
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
             // println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
-            if current_wind_index == (new_chain.len() - 1) {
+            //
+            // we have received the first entry in new_blocks() which means we
+            // have added the latest tip. if the variable wind_failure is set
+            // that indicates that we ran into an issue when winding the new_chain
+            // and what we have just processed is the old_chain (being rewound)
+            // so we should exit with failure.
+            //
+            // otherwise we have successfully wound the new chain, and exit with
+            // success.
+            //
+            if current_wind_index == 0 {
                 if wind_failure {
                     return false;
                 }
                 return true;
             }
 
-            self.wind_chain(new_chain, old_chain, current_wind_index + 1, false)
+            self.wind_chain(new_chain, old_chain, current_wind_index - 1, false)
         } else {
             //
-            // tough luck, go back to the old chain
+            // we have had an error while winding the chain. this requires us to
+            // unwind any blocks we have already wound, and rewind any blocks we
+            // have unwound.
             //
-            if current_wind_index == 0 {
+            // we set wind_failure to "true" so that when we reach the end of
+            // the process of rewinding the old-chain, our wind_chain function
+            // will know it has rewound the old chain successfully instead of
+            // successfully added the new chain.
+            //
+            if current_wind_index == new_chain.len() - 1 {
                 //
                 // this is the first block we have tried to add
                 // and so we can just roll out the older chain
@@ -463,17 +478,56 @@ impl Blockchain {
                 //
                 // true -> force -> we had issues, is failure
                 //
-                self.wind_chain(old_chain, new_chain, 0, true)
+                // new_chain --> hashes are still in this order
+                //   [5] [4] [3] [2] [1]
+                //
+                // we are at the beginning of our own vector so we have nothing
+                // to unwind. Because of this, we start WINDING the old chain back
+                // which requires us to start at the END of the new chain vector.
+                //
+                self.wind_chain(old_chain, new_chain, new_chain.len() - 1, true)
             } else {
                 let mut chain_to_unwind: Vec<[u8; 32]> = vec![];
-                for hash in new_chain.iter().skip(current_wind_index) {
-                    chain_to_unwind.push(*hash);
+
+                //
+                // if we run into a problem winding our chain after we have
+                // wound any blocks, we take the subset of the blocks we have
+                // already pushed through on_chain_reorganization (i.e. not
+                // including this block!) and put them onto a new vector we
+                // will unwind in turn.
+                //
+                for i in current_wind_index + 1..new_chain.len() {
+                    chain_to_unwind.push(new_chain[i].clone());
                 }
-                self.unwind_chain(old_chain, &chain_to_unwind, chain_to_unwind.len() - 1, true)
+
+                //
+                // chain to unwind is now something like this...
+                //
+                //  [3] [2] [1]
+                //
+                // unwinding starts from the BEGINNING of the vector
+                //
+                self.unwind_chain(old_chain, &chain_to_unwind, 0, true)
             }
         }
     }
 
+    //
+    // when new_chain and old_chain are generated the block_hashes are pushed
+    // to their vectors from tip-to-shared-ancestors. if the shared ancestors
+    // is at position [0] for instance, we may receive:
+    //
+    // new_chain --> adds the hashes in this order
+    //   [5] [4] [3] [2] [1]
+    //
+    // old_chain --> adds the hashes in this order
+    //   [4] [3] [2] [1]
+    //
+    // unwinding requires starting from the BEGINNING of the vector, while
+    // winding requires starting from the END of the vector. the first
+    // block we have to remove in the old_chain is thus at position 0, and
+    // walking up the vector from there until we reach the end.
+    //
     pub fn unwind_chain(
         &mut self,
         new_chain: &Vec<[u8; 32]>,
@@ -487,16 +541,28 @@ impl Blockchain {
         self.blockring
             .on_chain_reorganization(block.get_id(), block.get_hash(), false);
 
-        if current_unwind_index == 0 {
+        if current_unwind_index == old_chain.len() - 1 {
             //
             // start winding new chain
             //
-            self.wind_chain(new_chain, old_chain, 0, wind_failure)
+            // new_chain --> adds the hashes in this order
+            //   [5] [4] [3] [2] [1]
+            //
+            // old_chain --> adds the hashes in this order
+            //   [4] [3] [2] [1]
+            //
+            // winding requires starting at the END of the vector and rolling
+            // backwards until we have added block #5, etc.
+            //
+            self.wind_chain(new_chain, old_chain, new_chain.len() - 1, wind_failure)
         } else {
             //
-            // continue unwinding
+            // continue unwinding,, which means
             //
-            self.unwind_chain(new_chain, old_chain, current_unwind_index - 1, wind_failure)
+            // unwinding requires moving FORWARD in our vector (and backwards in
+            // the blockchain). So we increment our unwind index.
+            //
+            self.unwind_chain(new_chain, old_chain, current_unwind_index + 1, wind_failure)
         }
     }
 }
@@ -694,7 +760,7 @@ mod tests {
         {
             let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
             sleep(Duration::from_millis(10));
-            mock_block_1 = Block::generate_block(
+            mock_block_1 = Block::generate(
                 &mut txs,
                 [0; 32],
                 wallet_lock.clone(),
@@ -716,7 +782,7 @@ mod tests {
             {
                 let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
                 sleep(Duration::from_millis(10));
-                next_block = Block::generate_block(
+                next_block = Block::generate(
                     &mut txs,
                     next_block.get_hash(),
                     wallet_lock.clone(),
@@ -740,7 +806,7 @@ mod tests {
         {
             let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
             sleep(Duration::from_millis(10));
-            next_block = Block::generate_block(
+            next_block = Block::generate(
                 &mut txs,
                 mock_block_1.get_hash(),
                 wallet_lock.clone(),
@@ -761,7 +827,7 @@ mod tests {
             {
                 let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
                 sleep(Duration::from_millis(10));
-                next_block = Block::generate_block(
+                next_block = Block::generate(
                     &mut txs,
                     next_block.get_hash(),
                     wallet_lock.clone(),
@@ -783,7 +849,7 @@ mod tests {
         {
             let mut txs: Vec<Transaction> = vec![make_mock_tx(wallet_lock.clone()).await];
             sleep(Duration::from_millis(10));
-            next_block = Block::generate_block(
+            next_block = Block::generate(
                 &mut txs,
                 next_block.get_hash(),
                 wallet_lock.clone(),

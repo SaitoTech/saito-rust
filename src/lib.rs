@@ -28,6 +28,7 @@ pub mod burnfee;
 pub mod consensus;
 pub mod crypto;
 pub mod golden_ticket;
+pub mod hop;
 pub mod mempool;
 pub mod merkle;
 pub mod miner;

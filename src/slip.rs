@@ -1,4 +1,7 @@
-use crate::crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey};
+use crate::{
+    blockchain::UtxoSet,
+    crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
+};
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
 
@@ -14,6 +17,9 @@ pub const SLIP_SIZE: usize = 75;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash, Eq, PartialEq, TryFromByte)]
 pub enum SlipType {
     Normal,
+    ATR,
+    VipInput,
+    VipOutput,
     MinerInput,
     MinerOutput,
     RouterInput,
@@ -38,6 +44,7 @@ pub struct Slip {
 }
 
 impl Slip {
+    #[allow(clippy::clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             publickey: [0; 33],
@@ -50,19 +57,15 @@ impl Slip {
         }
     }
 
-    pub fn validate(&self, utxoset: &AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+    pub fn validate(&self, utxoset: &UtxoSet) -> bool {
         if self.get_amount() > 0 {
-            let mut _return_value = false;
             match utxoset.get(&self.utxoset_key) {
-                Some(value) => {
-                    if *value == 1 {
-                        _return_value = true;
-                    }
-                }
-                None => {}
+                Some(value) => *value == 1,
+                None => false,
             }
+        } else {
+            true
         }
-        true
     }
 
     pub fn on_chain_reorganization(
@@ -122,10 +125,29 @@ impl Slip {
     //
     // Serialization
     //
-    pub fn serialize_for_signature(&self) -> Vec<u8> {
+    pub fn serialize_input_for_signature(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&self.publickey);
         vbytes.extend(&self.uuid);
+        vbytes.extend(&self.amount.to_be_bytes());
+        vbytes.extend(&(self.slip_ordinal.to_be_bytes()));
+        vbytes.extend(&(self.slip_type as u32).to_be_bytes());
+        vbytes
+    }
+
+    //
+    // Serialization
+    //
+    // output slips are signed as zero'd out byte arrays. we have
+    // a separate function to handle them as otherwise we may
+    // generate an incorrect signature after we have updated the
+    // transaction outputs with the proper UUID for insertion into
+    // the utxoset.
+    //
+    pub fn serialize_output_for_signature(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.publickey);
+        vbytes.extend(&[0; 32]);
         vbytes.extend(&self.amount.to_be_bytes());
         vbytes.extend(&(self.slip_ordinal.to_be_bytes()));
         vbytes.extend(&(self.slip_type as u32).to_be_bytes());
@@ -186,12 +208,39 @@ mod tests {
 
     #[test]
     fn slip_new_test() {
+        let mut slip = Slip::new();
+        assert_eq!(slip.get_publickey(), [0; 33]);
+        assert_eq!(slip.get_uuid(), [0; 32]);
+        assert_eq!(slip.get_amount(), 0);
+        assert_eq!(slip.get_slip_type(), SlipType::Normal);
+        assert_eq!(slip.get_slip_ordinal(), 0);
+
+        slip.set_publickey([1; 33]);
+        assert_eq!(slip.get_publickey(), [1; 33]);
+
+        slip.set_amount(100);
+        assert_eq!(slip.get_amount(), 100);
+
+        slip.set_uuid([30; 32]);
+        assert_eq!(slip.get_uuid(), [30; 32]);
+
+        slip.set_slip_ordinal(1);
+        assert_eq!(slip.get_slip_ordinal(), 1);
+
+        slip.set_slip_type(SlipType::MinerInput);
+        assert_eq!(slip.get_slip_type(), SlipType::MinerInput);
+    }
+
+    #[test]
+    fn slip_serialize_for_signature_test() {
         let slip = Slip::new();
-        assert_eq!(slip.publickey, [0; 33]);
-        assert_eq!(slip.uuid, [0; 32]);
-        assert_eq!(slip.amount, 0);
-        assert_eq!(slip.slip_type, SlipType::Normal);
-        assert_eq!(slip.slip_ordinal, 0);
+        assert_eq!(slip.serialize_input_for_signature(), vec![0; 78]);
+    }
+
+    #[test]
+    fn slip_get_utxoset_key_test() {
+        let slip = Slip::new();
+        assert_eq!(slip.get_utxoset_key(), [0; 74]);
     }
 
     #[test]
