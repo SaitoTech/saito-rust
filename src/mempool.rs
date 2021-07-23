@@ -304,13 +304,9 @@ pub async fn run(
         mempool.set_mempool_privatekey(privatekey);
     }
 
-    //
     // generate blocks 4000, w/ capacity of 4 fails
-    //
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
-
     let generate_block_sender = mempool_channel_sender.clone();
-    // let generate_transaction_sender = mempool_channel_sender.clone();
     tokio::spawn(async move {
         loop {
             generate_block_sender
@@ -318,11 +314,6 @@ pub async fn run(
                 .await
                 .expect("error: TryBundleBlock message failed to send");
             sleep(Duration::from_millis(1000));
-            // generate_transaction_sender
-            //     .send(MempoolMessage::GenerateTransaction)
-            //     .await
-            //     .expect("error: GenerateTransaction message failed to send");
-            // sleep(Duration::from_millis(2000));
         }
     });
 

@@ -107,7 +107,7 @@ pub async fn handshake_init_handler(raw_query_str: String, addr: Option<SocketAd
         IpAddr::V4(ip4) => ip4.octets(),
         _ => panic!("Saito Handshake does not support IPV6"),
     };
-    
+
     let challenge = HandshakeChallenge::new(my_octets, peer_octets, my_pubkey, peer_pubkey);
     let serialized_challenge = challenge.serialize_with_sig(my_privkey);
     Ok(serialized_challenge)
@@ -153,6 +153,22 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
         Err(_err) => {
             eprintln!("{:?}", _err);
             Ok(vec![])
+        }
+    }
+}
+
+pub async fn get_block_handler_json(str_block_hash: String) -> Result<impl Reply> {
+    println!("GET BLOCK");
+    let storage = Storage::new();
+
+    let mut block_hash = [0u8; 32];
+    hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
+
+    match storage.stream_json_block_from_disk(block_hash).await {
+        Ok(json_data) => Ok(warp::reply::json(&json_data)),
+        Err(_err) => {
+            eprintln!("{:?}", _err);
+            Ok(warp::reply::json(&String::new()))
         }
     }
 }

@@ -85,7 +85,7 @@ impl Consensus {
         let network = Network::new(wallet_lock.clone());
         let storage = Storage::new();
 
-        storage.load_blocks_from_disk(blockchain_lock.clone()).await;
+        // storage.load_blocks_from_disk(blockchain_lock.clone()).await;
 
         tokio::select! {
             res = crate::mempool::run(

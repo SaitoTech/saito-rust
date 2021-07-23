@@ -14,6 +14,7 @@ impl Storage {
             blocks_dir_path: String::from("./data/blocks/"),
         }
     }
+
     /// read from a path to a Vec<u8>
     pub fn read(path: &str) -> io::Result<Vec<u8>> {
         let mut f = std::fs::File::open(path)?;
@@ -21,19 +22,36 @@ impl Storage {
         f.read_to_end(&mut data)?;
         Ok(data)
     }
+
     pub fn write(data: Vec<u8>, filename: &str) {
         let mut buffer = File::create(filename).unwrap();
         buffer.write_all(&data[..]).unwrap();
     }
-    pub fn write_block_to_disk(&self, block: &Block) {
-        let mut filename = self.blocks_dir_path.clone();
-        filename.push_str(&hex::encode(&block.generate_hash()));
-        filename.push_str(&".sai");
 
-        let mut buffer = File::create(filename).unwrap();
+    pub fn write_block_to_disk(&self, block: &Block) {
+        // our binary filename
+        let mut bin_filename = self.blocks_dir_path.clone();
+        bin_filename.push_str(&"bin/");
+        bin_filename.push_str(&hex::encode(&block.generate_hash()));
+        bin_filename.push_str(&".sai");
+
+        // our json filename
+        let mut json_filename = self.blocks_dir_path.clone();
+        json_filename.push_str(&"json/");
+        json_filename.push_str(&hex::encode(&block.generate_hash()));
+        json_filename.push_str(&".json");
+
+        // write our block to binary file
+        let mut buffer = File::create(bin_filename).unwrap();
         let byte_array: Vec<u8> = block.serialize_for_net();
         buffer.write_all(&byte_array[..]).unwrap();
+
+        // write our block to json file
+        if let Ok(block_json) = serde_json::to_string(block) {
+            fs::write(json_filename, block_json).unwrap();
+        }
     }
+
     pub async fn stream_block_from_disk(&self, block_hash: SaitoHash) -> io::Result<Vec<u8>> {
         let mut filename = self.blocks_dir_path.clone();
 
@@ -46,6 +64,16 @@ impl Storage {
 
         Ok(encoded)
     }
+
+    pub async fn stream_json_block_from_disk(&self, block_hash: SaitoHash) -> io::Result<String> {
+        let mut filename = self.blocks_dir_path.clone();
+        filename.push_str(&"json/");
+        filename.push_str(&hex::encode(block_hash));
+        filename.push_str(&".json");
+
+        fs::read_to_string(filename)
+    }
+
     pub async fn load_blocks_from_disk(&self, blockchain_lock: Arc<RwLock<Blockchain>>) {
         let mut paths: Vec<_> = fs::read_dir(self.blocks_dir_path.clone())
             .unwrap()
