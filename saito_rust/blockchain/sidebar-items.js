@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["bit_pack",""],["bit_unpack",""],["run",""]],"struct":[["Blockchain",""]],"type":[["UtxoSet",""]]});
+initSidebarItems({"constant":[["GENESIS_PERIOD",""]],"fn":[["bit_pack",""],["bit_unpack",""],["run",""]],"struct":[["Blockchain",""]],"type":[["UtxoSet",""]]});
