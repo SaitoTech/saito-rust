@@ -1,7 +1,8 @@
 use crate::block::Block;
+use crate::blockchain::{GENESIS_PERIOD};
 use crate::crypto::SaitoHash;
 
-pub const EPOCH_LENGTH: u64 = 21000;
+pub const EPOCH_LENGTH: u64 = GENESIS_PERIOD;
 pub const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
 
 //

@@ -1,12 +1,11 @@
 use base58::ToBase58;
-use blake3::{join::RayonJoin, Hasher};
+use blake3::{Hasher};
 use ring::digest::{Algorithm, SHA256 as sha256};
 pub use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
 pub static SHA256: &Algorithm = &sha256;
 pub use merkle::MerkleTree;
 
 pub type SaitoHash = [u8; 32];
-//pub type SaitoUTXOSetKey = Vec<u8>;
 pub type SaitoUTXOSetKey = [u8; 74];
 pub type SaitoPublicKey = [u8; 33];
 pub type SaitoPrivateKey = [u8; 32]; // 256-bit key
@@ -46,7 +45,7 @@ pub fn hash(data: &Vec<u8>) -> SaitoHash {
     if data.len() > PARALLEL_HASH_BYTE_THRESHOLD {
         hasher.update(data);
     } else {
-        hasher.update_with_join::<RayonJoin>(data);
+        hasher.update_rayon(data);
     }
     hasher.finalize().into()
 }
