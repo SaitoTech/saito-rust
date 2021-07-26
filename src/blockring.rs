@@ -1,5 +1,5 @@
 use crate::block::Block;
-use crate::blockchain::{GENESIS_PERIOD};
+use crate::blockchain::GENESIS_PERIOD;
 use crate::crypto::SaitoHash;
 
 pub const EPOCH_LENGTH: u64 = GENESIS_PERIOD;

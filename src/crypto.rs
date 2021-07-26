@@ -1,5 +1,5 @@
 use base58::ToBase58;
-use blake3::{Hasher};
+use blake3::Hasher;
 use ring::digest::{Algorithm, SHA256 as sha256};
 pub use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
 pub static SHA256: &Algorithm = &sha256;
