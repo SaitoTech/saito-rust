@@ -168,7 +168,15 @@ println!("ontains block hash at block id 2...");
             //
             if let Some(block_ring_lc_pos) = self.block_ring_lc_pos {
                 if block_ring_lc_pos == insert_pos as usize {
-                    let previous_block_idx = block_ring_lc_pos - 1;
+
+		    let previous_block_idx;
+
+		    if block_ring_lc_pos > 0 {
+                      previous_block_idx = block_ring_lc_pos - 1;
+		    } else {
+                      previous_block_idx = RING_BUFFER_LENGTH as usize - 1;
+		    }
+
 
                     // reset to lc_pos to unknown
                     self.block_ring_lc_pos = None;
