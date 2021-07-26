@@ -14,6 +14,7 @@ path = "src/bin/spammer.rs"
 
 [dependencies]
 ahash = "0.7.4"
+async-recursion = "0.3.2"
 bigint = "4.4.3"
 enum-variant-count-derive = { path = "enum-variant-count-derive" }
 rayon = "1.5"

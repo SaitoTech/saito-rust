@@ -6,6 +6,8 @@ use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
 
+use async_recursion::async_recursion;
+
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -215,7 +217,7 @@ impl Blockchain {
         //
         println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
-            let does_new_chain_validate = self.validate(new_chain, old_chain);
+            let does_new_chain_validate = self.validate(new_chain, old_chain).await;
             if does_new_chain_validate {
                 self.add_block_success(block_hash).await;
 
@@ -309,6 +311,13 @@ impl Blockchain {
         self.blockring.get_longest_chain_block_id()
     }
 
+    pub async fn get_block(&self, block_hash: SaitoHash) -> &Block {
+       let block = &self.blocks.get(&block_hash).unwrap();
+       block
+    }
+
+
+
     pub fn is_new_chain_the_longest_chain(
         &mut self,
         new_chain: &Vec<[u8; 32]>,
@@ -364,11 +373,13 @@ impl Blockchain {
     // winding requires starting from th END of the vector. the loops move
     // in opposite directions.
     //
-    pub fn validate(&mut self, new_chain: Vec<[u8; 32]>, old_chain: Vec<[u8; 32]>) -> bool {
+    pub async fn validate(&mut self, new_chain: Vec<[u8; 32]>, old_chain: Vec<[u8; 32]>) -> bool {
         if !old_chain.is_empty() {
-            self.unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
+            let res = self.unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true).await;
+	    return res;
         } else if !new_chain.is_empty() {
-            self.wind_chain(&new_chain, &old_chain, new_chain.len() - 1, false)
+            let res = self.wind_chain(&new_chain, &old_chain, new_chain.len() - 1, false).await;
+	    return res;
         } else {
             true
         }
@@ -391,7 +402,8 @@ impl Blockchain {
     // position in the vector NOT the ordinal number of the block_hash
     // being processed. we start winding with current_wind_index 4 not 0.
     //
-    pub fn wind_chain(
+    #[async_recursion]
+    pub async fn wind_chain(
         &mut self,
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
@@ -425,7 +437,6 @@ impl Blockchain {
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-
         println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset);
         println!(" ... after block.validate:       {:?}", create_timestamp());
@@ -434,8 +445,7 @@ impl Blockchain {
             println!(" ... before block ocr            {:?}", create_timestamp());
             block.on_chain_reorganization(&mut self.utxoset, true);
             println!(" ... before blockring ocr:       {:?}", create_timestamp());
-            self.blockring
-                .on_chain_reorganization(block.get_id(), block.get_hash(), true);
+            self.blockring.on_chain_reorganization(block.get_id(), block.get_hash(), true);
             println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
             //
@@ -455,7 +465,9 @@ impl Blockchain {
                 return true;
             }
 
-            self.wind_chain(new_chain, old_chain, current_wind_index - 1, false)
+            let res = self.wind_chain(new_chain, old_chain, current_wind_index - 1, false).await;
+	    return res;
+
         } else {
             //
             // we have had an error while winding the chain. this requires us to
@@ -488,7 +500,8 @@ impl Blockchain {
                 // to unwind. Because of this, we start WINDING the old chain back
                 // which requires us to start at the END of the new chain vector.
                 //
-                self.wind_chain(old_chain, new_chain, new_chain.len() - 1, true)
+                let res = self.wind_chain(old_chain, new_chain, new_chain.len() - 1, true).await;
+	        return res;
             } else {
                 let mut chain_to_unwind: Vec<[u8; 32]> = vec![];
 
@@ -510,7 +523,8 @@ impl Blockchain {
                 //
                 // unwinding starts from the BEGINNING of the vector
                 //
-                self.unwind_chain(old_chain, &chain_to_unwind, 0, true)
+                let res = self.unwind_chain(old_chain, &chain_to_unwind, 0, true).await;
+		return res;
             }
         }
     }
@@ -531,7 +545,8 @@ impl Blockchain {
     // block we have to remove in the old_chain is thus at position 0, and
     // walking up the vector from there until we reach the end.
     //
-    pub fn unwind_chain(
+    #[async_recursion]
+    pub async fn unwind_chain(
         &mut self,
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
@@ -557,7 +572,8 @@ impl Blockchain {
             // winding requires starting at the END of the vector and rolling
             // backwards until we have added block #5, etc.
             //
-            self.wind_chain(new_chain, old_chain, new_chain.len() - 1, wind_failure)
+            let res = self.wind_chain(new_chain, old_chain, new_chain.len() - 1, wind_failure).await;
+	    return res;
         } else {
             //
             // continue unwinding,, which means
@@ -565,7 +581,8 @@ impl Blockchain {
             // unwinding requires moving FORWARD in our vector (and backwards in
             // the blockchain). So we increment our unwind index.
             //
-            self.unwind_chain(new_chain, old_chain, current_unwind_index + 1, wind_failure)
+            let res = self.unwind_chain(new_chain, old_chain, current_unwind_index + 1, wind_failure).await;
+	    return res;
         }
     }
 }
