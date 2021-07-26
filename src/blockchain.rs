@@ -11,6 +11,8 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 
 use ahash::AHashMap;
 
+pub const GENESIS_PERIOD: u64 = 2;
+
 pub fn bit_pack(top: u32, bottom: u32) -> u64 {
     ((top as u64) << 32) + (bottom as u64)
 }
