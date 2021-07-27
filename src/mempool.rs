@@ -237,6 +237,7 @@ impl Mempool {
     ///
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
+    
     pub async fn can_bundle_block(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
         if self.currently_processing_block {
             return false;

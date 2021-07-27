@@ -5,7 +5,7 @@ use crate::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
     },
     golden_ticket::GoldenTicket,
-    hop::{Hop, HOP_SIZE},
+    hop::{HOP_SIZE},
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
     time::create_timestamp,
@@ -1216,7 +1216,7 @@ mod tests {
     #[test]
     fn block_generate_data_to_validate() {
         let wallet = Wallet::new();
-        let blockchain = Blockchain::new(Arc::new(RwLock::new(wallet)));
+        let _blockchain = Blockchain::new(Arc::new(RwLock::new(wallet)));
     }
 
     #[test]

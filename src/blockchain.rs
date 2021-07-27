@@ -1,21 +1,15 @@
 use crate::block::Block;
 use crate::blockring::BlockRing;
-use crate::burnfee::BurnFee;
 use crate::consensus::SaitoMessage;
-use crate::crypto::{verify, SaitoHash, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey};
-use crate::golden_ticket::GoldenTicket;
-use crate::slip::Slip;
+use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::storage::Storage;
 use crate::time::create_timestamp;
-use crate::transaction::{Transaction, TransactionType};
 use crate::wallet::Wallet;
 
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
 use ahash::AHashMap;
-
-use rayon::prelude::*;
 
 pub fn bit_pack(top: u32, bottom: u32) -> u64 {
     ((top as u64) << 32) + (bottom as u64)
@@ -421,7 +415,7 @@ impl Blockchain {
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        println!("BLOCK: {:?}", block);
+        // println!("BLOCK: {:?}", block);
 
         println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset);

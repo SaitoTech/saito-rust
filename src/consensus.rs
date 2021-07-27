@@ -83,7 +83,7 @@ impl Consensus {
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
         // let network_lock = Arc::new(RwLock::new(Network::new()));
         let network = Network::new(wallet_lock.clone());
-        let storage = Storage::new();
+        let _storage = Storage::new();
 
         // storage.load_blocks_from_disk(blockchain_lock.clone()).await;
 

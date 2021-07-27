@@ -1,7 +1,7 @@
 use crate::crypto::{sign, SaitoHash, SaitoPublicKey, SaitoSignature};
 use crate::wallet::Wallet;
 use serde::{Deserialize, Serialize};
-use std::convert::{TryFrom, TryInto};
+use std::convert::{TryInto};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn hop_new_test() {
-        let hop = Hop::new();
+        let _hop = Hop::new();
         assert_eq!(1, 1);
     }
 }
