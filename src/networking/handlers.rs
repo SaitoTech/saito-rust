@@ -29,12 +29,48 @@ pub async fn ws_handler(ws: warp::ws::Ws, token_header_value: HeaderValue, clien
         _ => {}
     };
 
-    println!("id {:?}", id);
-    let client = clients.read().await.get(&id).cloned();
-    match client {
-        Some(c) => Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, c))),
-        None => Err(warp::reject::not_found()),
+    // println!("id {:?}", id);
+    // let client = clients.read().await.get(&id).cloned();
+    let client;
+    if let Some(c) = clients.read().await.get(&id).cloned() {
+        client = c
+    } else {
+        let c  = Client {
+            user_id: 10,
+            has_handshake: false,
+            pubkey: [1; 33],
+            topics: vec![String::from("handshake_complete")],
+            sender: None
+        };
+
+        client = c.clone();
+
+        // Create new client
+        clients.write().await.insert(id,c);
     }
+
+
+    Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, client)))
+
+    // match client {
+    //     Some(c) => Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, c))),
+    //     None => {
+    //         // Err(warp::reject::not_found())
+
+    //         let mut c  = Client {
+    //             user_id: 10,
+    //             has_handshake: false,
+    //             pubkey: [1; 33],
+    //             topics: vec![String::from("handshake_complete")],
+    //             sender: None
+    //         };
+
+    //         // Create new client
+    //         clients.write().await.insert(id,c);
+
+    //         Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, c)))
+    //     },
+    // }
 }
 
 pub async fn handshake_complete_handler(hyper_bytes: Bytes, addr: Option<SocketAddr>, clients: Clients) -> Result<impl Reply> {
@@ -74,7 +110,9 @@ pub async fn handshake_complete_handler(hyper_bytes: Bytes, addr: Option<SocketA
         key.clone(),
         Client {
             user_id,
+            has_handshake: true,
             pubkey: pubkey,
+            topics: vec![],
             sender: None,
         },
     );

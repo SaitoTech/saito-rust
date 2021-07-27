@@ -11,6 +11,8 @@ use std::convert::{TryInto};
 use std::sync::Arc;
 use warp::{Filter, Rejection};
 
+use serde::{Deserialize, Serialize};
+
 pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
@@ -21,6 +23,8 @@ pub type Clients = Arc<RwLock<HashMap<SaitoHash, Client>>>;
 pub struct Client {
     pub user_id: usize,
     pub pubkey: SaitoPublicKey,
+    pub has_handshake: bool,
+    pub topics: Vec<String>,
     pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
 }
 
@@ -60,11 +64,14 @@ impl Network {
 
 }
 
-#[derive(Debug, PartialEq)]
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct HandshakeChallenge {
     challenger_ip_address: [u8; 4],
     challengie_ip_address: [u8; 4],
+    #[serde_as(as = "[_; 33]")]
     challenger_pubkey: SaitoPublicKey,
+    #[serde_as(as = "[_; 33]")]
     challengie_pubkey: SaitoPublicKey,
     timestamp: u64,
 }
@@ -85,11 +92,8 @@ impl HandshakeChallenge {
         challengie_octet[0..4].clone_from_slice(&bytes[4..8]);
 
         let challenger_pubkey: SaitoPublicKey = bytes[8..41].try_into().unwrap();
-        println!("A");
         let challengie_pubkey: SaitoPublicKey = bytes[41..74].try_into().unwrap();
-        println!("B");
         let timestamp: u64 = u64::from_be_bytes(bytes[74..CHALLENGE_SIZE].try_into().unwrap());
-        println!("C");
 
         HandshakeChallenge {
             challenger_ip_address: challenger_octet,
