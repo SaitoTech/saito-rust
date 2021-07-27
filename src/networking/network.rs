@@ -21,13 +21,62 @@ pub type Clients = Arc<RwLock<HashMap<SaitoHash, Client>>>;
 
 #[derive(Debug, Clone)]
 pub struct Client {
-    pub user_id: usize,
-    pub pubkey: SaitoPublicKey,
     pub has_handshake: bool,
+    pub pubkey: Option<SaitoPublicKey>,
     pub topics: Vec<String>,
     pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct APIMessage {
+    message_name: [u8; 8],
+    message_id: u32,
+    message_data: Vec<u8>,
+}
+
+impl APIMessage {
+    pub fn new(message_name: &str, message_id: u32, message_data: Vec<u8>) -> APIMessage {
+        APIMessage {
+            message_name: String::from(message_name).as_bytes().try_into().unwrap(),
+            message_id: message_id,
+            message_data: message_data,
+        }
+    }
+    pub fn message_name(&self) -> &[u8; 8] {
+        &self.message_name
+    }
+    pub fn message_id(&self) -> u32 {
+        self.message_id
+    }
+    pub fn message_data(&self) -> &Vec<u8> {
+        &self.message_data
+    }
+    pub fn new_with_data_from_str(message_name: &str, message_id: u32, message_data: &str) -> APIMessage {
+        APIMessage {
+            message_name: String::from(message_name).as_bytes().try_into().unwrap(),
+            message_id: message_id,
+            message_data: String::from(message_data).as_bytes().try_into().unwrap(),
+        }
+    }
+    pub fn deserialize(bytes: &Vec<u8>) -> APIMessage { 
+        let message_name: [u8; 8] = bytes[0..8].try_into().unwrap();
+        let message_id: u32 = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
+        let message_data = bytes[12..].try_into().unwrap();
+
+        APIMessage {
+            message_name: message_name,
+            message_id: message_id,
+            message_data: message_data,
+        }
+    }
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.message_name);
+        vbytes.extend(&self.message_id.to_be_bytes());
+        vbytes.extend(&self.message_data);
+        vbytes
+    }
+}
 pub struct Network {
     clients: Clients,
     mempool_lock: Arc<RwLock<Wallet>>,
@@ -149,8 +198,10 @@ impl HandshakeChallenge {
 mod tests {
     use super::*;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+    use base58::ToBase58;
+    use secp256k1::PublicKey;
     use warp::{Reply, hyper};
-    use crate::{crypto::{SaitoSignature, generate_keys, hash, verify}, networking::network::handshake_init_route_filter};
+    use crate::{crypto::{SaitoSignature, generate_keys, hash, verify}, networking::{filters::ws_upgrade_route_filter, network::handshake_init_route_filter}};
 
     #[tokio::test]
     async fn test_challenge_serialize() {
@@ -165,6 +216,47 @@ mod tests {
         let serialized_challenge = challenge.serialize_with_sig(privatekey);
         let deserialized_challenge = HandshakeChallenge::deserialize_with_sig(&serialized_challenge);
         assert_eq!(challenge, deserialized_challenge.0);
+    }
+    #[tokio::test]
+    async fn test_message_serialize() {
+        let api_message = APIMessage {
+            //message_name: ["1", "2", "3"], //String::from("HLLOWRLD").as_bytes().clone(),
+            message_name: String::from("HLLOWRLD").as_bytes().try_into().unwrap(),
+            message_id: 1,
+            message_data: String::from("SOMEDATA").as_bytes().try_into().unwrap(),
+        };
+        let serialized_api_message = api_message.serialize();
+        let deserialized_api_message = APIMessage::deserialize(&serialized_api_message);
+        assert_eq!(api_message, deserialized_api_message);
+    }
+    #[tokio::test]
+    async fn test_handshake_new() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let network = Network::new(wallet_lock.clone());
+        let (publickey, _privatekey) = generate_keys();
+
+        let socket_filter = ws_upgrade_route_filter(&network.clients.clone());
+        let mut ws_client = warp::test::ws()
+            .path("/wsopen")
+            .handshake(socket_filter)
+            .await
+            .expect("handshake");
+        
+        // let base58_pubkey = PublicKey::from_slice(&publickey).unwrap().serialize().to_base58();
+        let api_message = APIMessage::new_with_data_from_str(
+            "SHAKINIT",
+            0,
+            &PublicKey::from_slice(&publickey).unwrap().serialize().to_base58(),
+        );
+        let serialized_api_message = api_message.serialize();
+        
+        // let pubkey = PublicKey::from_slice(&String::from(&raw_query_str[2..]).from_base58().unwrap()).unwrap();
+        
+        let _socket_resp = ws_client.send(Message::binary(serialized_api_message)).await;
+        let foo = ws_client.recv().await.unwrap();
+        println!("got message {:?}", foo.as_bytes());
+        // SHAKINIT
+        // SHAKCOMP
     }
     #[tokio::test]
     async fn test_handshake() {

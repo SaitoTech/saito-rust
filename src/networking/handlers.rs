@@ -4,6 +4,7 @@ use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
 use tokio::sync::RwLock;
+use uuid::Uuid;
 use warp::http::HeaderValue;
 use warp::hyper::body::Bytes;
 use std::net::{IpAddr, SocketAddr};
@@ -13,6 +14,19 @@ use crate::networking::network::{CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE, Hand
 use warp::{Buf, Rejection, Reply};
 use super::network::{Client, Clients};
 
+pub async fn ws_upgrade_handler(ws: warp::ws::Ws, clients: Clients) -> std::result::Result<impl Reply, Rejection> {
+    let id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
+//    let key = hash(&bytes);
+
+    println!("id {:?}", id);
+    let client = Client {
+        has_handshake: true,
+        pubkey: None,
+        topics: vec![],
+        sender: None,
+    };
+    Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, client)))
+}
 pub async fn ws_handler(ws: warp::ws::Ws, token_header_value: HeaderValue, clients: Clients) -> std::result::Result<impl Reply, Rejection> {
 
     let mut hex_id: [u8; 64] = [0; 64];
@@ -36,9 +50,8 @@ pub async fn ws_handler(ws: warp::ws::Ws, token_header_value: HeaderValue, clien
         client = c
     } else {
         let c  = Client {
-            user_id: 10,
             has_handshake: false,
-            pubkey: [1; 33],
+            pubkey: Some([1; 33]),
             topics: vec![String::from("handshake_complete")],
             sender: None
         };
@@ -50,7 +63,7 @@ pub async fn ws_handler(ws: warp::ws::Ws, token_header_value: HeaderValue, clien
     }
 
 
-    Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, client)))
+    Ok(ws.on_upgrade(move |socket| socket::client_connection_old(socket, id, clients, client)))
 
     // match client {
     //     Some(c) => Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, c))),
@@ -76,7 +89,6 @@ pub async fn ws_handler(ws: warp::ws::Ws, token_header_value: HeaderValue, clien
 pub async fn handshake_complete_handler(hyper_bytes: Bytes, addr: Option<SocketAddr>, clients: Clients) -> Result<impl Reply> {
     println!("handshake_complete_handler");
     println!("{:?}", hyper_bytes.len());
-    let user_id = 1;
     let pubkey: SaitoPublicKey = [1;33];
     let bytes = hyper_bytes[..].to_vec();
     println!("{:?}", bytes.len());
@@ -109,9 +121,8 @@ pub async fn handshake_complete_handler(hyper_bytes: Bytes, addr: Option<SocketA
     clients.write().await.insert(
         key.clone(),
         Client {
-            user_id,
             has_handshake: true,
-            pubkey: pubkey,
+            pubkey: Some(pubkey),
             topics: vec![],
             sender: None,
         },

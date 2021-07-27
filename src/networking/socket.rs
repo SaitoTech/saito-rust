@@ -1,27 +1,32 @@
+use std::{thread::sleep, time::Duration};
+
+use futures::{FutureExt, StreamExt};
 // use crate::{Client, Clients};
-use futures::StreamExt;
+
 use serde::Deserialize;
 //use serde_json::from_str;
 use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
-use crate::{crypto::SaitoHash, networking::network::{Client, Clients}};
+
+
+use crate::{crypto::SaitoHash, networking::network::{APIMessage, Client, Clients}};
 
 #[derive(Deserialize, Debug)]
 pub struct TopicsRequest {
     topics: Vec<String>,
 }
-
 pub async fn client_connection(ws: WebSocket, id: SaitoHash, clients: Clients, mut client: Client) {
     println!("client_connection");
-    let (_client_ws_sender, mut client_ws_rcv) = ws.split();
-    let (client_sender, _client_rcv) = mpsc::unbounded_channel();
-
-    // tokio::task::spawn(client_rcv.forward(client_ws_sender).map(|result| {
-    //     if let Err(e) = result {
-    //         eprintln!("error sending websocket msg: {}", e);
-    //     }
-    // }));
+    let (client_ws_sender, mut client_ws_rcv) = ws.split();
+    let (client_sender, client_rcv) = mpsc::unbounded_channel();
+    let client_rcv = UnboundedReceiverStream::new(client_rcv);
+    tokio::task::spawn(client_rcv.forward(client_ws_sender).map(|result| {
+        if let Err(e) = result {
+            eprintln!("error sending websocket msg: {}", e);
+        }
+    }));
 
     println!("client channel created");
     client.sender = Some(client_sender);
@@ -38,16 +43,53 @@ pub async fn client_connection(ws: WebSocket, id: SaitoHash, clients: Clients, m
                 break;
             }
         };
-        client_msg(&id, msg, &clients).await;
+        client_msg(id, msg, clients.clone()).await;
+    }
+
+    clients.write().await.remove(&id);
+    println!("{:?} disconnected", id);
+}
+pub async fn client_connection_old(ws: WebSocket, id: SaitoHash, clients: Clients, mut client: Client) {
+    println!("client_connection");
+    let (_client_ws_sender, mut client_ws_rcv) = ws.split();
+    let (client_sender, _client_rcv) = mpsc::unbounded_channel();
+
+    println!("client channel created");
+    client.sender = Some(client_sender);
+    println!("client sender set");
+    clients.write().await.insert(id.clone(), client);
+
+    println!("{:?} connected", id);
+
+    while let Some(result) = client_ws_rcv.next().await {
+        let msg = match result {
+            Ok(msg) => msg,
+            Err(e) => {
+                eprintln!("error receiving ws message for id: {:?}): {}", id.clone(), e);
+                break;
+            }
+        };
+        client_msg(id, msg, clients.clone()).await;
     }
 
     clients.write().await.remove(&id);
     println!("{:?} disconnected", id);
 }
 
-async fn client_msg(id: &SaitoHash, msg: Message, _clients: &Clients) {
+async fn client_msg(id: SaitoHash, msg: Message, clients: Clients) {
     println!("received message from {:?}: {:?}", id, msg);
-
+    let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());let command = String::from_utf8_lossy(api_message.message_name());
+    
+    println!("COMMAND {}", command);
+    if command == "SHAKINIT" {
+        tokio::spawn(async move {
+            sleep(Duration::from_millis(1000));
+            let clients = clients.write().await;
+            let client = clients.get(&id).unwrap();
+            let _foo = client.sender.as_ref().unwrap().send(Ok(Message::binary(vec![10])));
+            //foo.send(Ok(Message::binary(vec![10])));
+        });
+    }
     // let req: Value = match from_str(&message) {
     //     Ok(v) => v,
     //     Err(e) => {

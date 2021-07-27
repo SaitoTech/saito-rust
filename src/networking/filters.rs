@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use warp::{Filter, Reply};
 use warp::body;
 
-use super::handlers::{get_block_handler, get_block_handler_json, handshake_complete_handler, handshake_init_handler, post_block_handler, ws_handler};
+use super::handlers::{get_block_handler, get_block_handler_json, handshake_complete_handler, handshake_init_handler, post_block_handler, ws_handler, ws_upgrade_handler};
 use super::network::Clients;
 // 
 // cargo run --bin walletcli print
@@ -30,6 +30,12 @@ use super::network::Clients;
 // POST http sendtransaction
 // POST http sendblockheader
 // 
+pub fn ws_upgrade_route_filter(clients: &Clients) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
+    warp::path("wsopen")
+        .and(warp::ws())
+        .and(with_clients_filter(clients.clone()))
+        .and_then(ws_upgrade_handler)
+}
 
 pub fn ws_route_filter(clients: &Clients) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::path("wsconnect")

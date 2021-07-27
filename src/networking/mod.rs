@@ -39,9 +39,9 @@ RESULT__
 The basic methods are: Get Block, Get Block Header, Get Lite Block, New Block Announce, Send Transaction, Subscribe to Lite Blocks by pubkey or "module".
  
 ```
-GETBLOCK
+SHAKINIT
+SHAKCOMP
 GETBLKHD
-GETLTBLK
 NEWBLOCK
 SENDTRXN
 SUBBYKEY
@@ -121,15 +121,6 @@ bytes
 0..         UTF8 Encoded Error Message
 ```
 
-### GETBLOCK
-
-Get a full block by block hash.
-
-MessageData:
-```
-0-31        Block Hash
-```
-
 ### GETBLKHD
 
 Get a block header(metadata) by block hash.
@@ -137,16 +128,6 @@ Get a block header(metadata) by block hash.
 MessageData:
 ```
 0-31        Block Hash
-```
-
-### GETLTBLK
-
-Get a single "lite block" by block hash. Include only transactions to or from the pubkeys listed.
-
-MessageData:
-```
-0-31        Block Hash
-[32 bytes]  List of Pubkeys
 ```
 
 ### NEWBLOCK
@@ -187,6 +168,8 @@ MessageData:
 ```
 0..         Module Name
 ```
+
+TODO: Add docs for SHAKINIT and SHAKCOMP
 
 ## RPC basic example 
 
