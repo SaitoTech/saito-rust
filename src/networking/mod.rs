@@ -37,9 +37,10 @@ RESULT__
 ```
 
 The basic methods are: Get Block, Get Block Header, Get Lite Block, New Block Announce, Send Transaction, Subscribe to Lite Blocks by pubkey or "module".
- 
+
 ```
 SHAKINIT
+SHAKCHLG
 SHAKCOMP
 GETBLKHD
 NEWBLOCK

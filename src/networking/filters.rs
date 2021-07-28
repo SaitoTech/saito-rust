@@ -30,10 +30,11 @@ use super::network::Clients;
 // POST http sendtransaction
 // POST http sendblockheader
 // 
-pub fn ws_upgrade_route_filter(clients: &Clients) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
+pub fn ws_upgrade_route_filter(clients: &Clients, wallet_lock: Arc<RwLock<Wallet>>) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::path("wsopen")
         .and(warp::ws())
         .and(with_clients_filter(clients.clone()))
+        .and(with_wallet(wallet_lock))
         .and_then(ws_upgrade_handler)
 }
 

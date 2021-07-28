@@ -14,7 +14,7 @@ use crate::networking::network::{CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE, Hand
 use warp::{Buf, Rejection, Reply};
 use super::network::{Client, Clients};
 
-pub async fn ws_upgrade_handler(ws: warp::ws::Ws, clients: Clients) -> std::result::Result<impl Reply, Rejection> {
+pub async fn ws_upgrade_handler(ws: warp::ws::Ws, clients: Clients, wallet_lock: Arc<RwLock<Wallet>>) -> std::result::Result<impl Reply, Rejection> {
     let id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
 //    let key = hash(&bytes);
 
@@ -25,7 +25,7 @@ pub async fn ws_upgrade_handler(ws: warp::ws::Ws, clients: Clients) -> std::resu
         topics: vec![],
         sender: None,
     };
-    Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, client)))
+    Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, client, wallet_lock)))
 }
 pub async fn ws_handler(ws: warp::ws::Ws, token_header_value: HeaderValue, clients: Clients) -> std::result::Result<impl Reply, Rejection> {
 

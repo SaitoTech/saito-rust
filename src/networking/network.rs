@@ -1,6 +1,14 @@
 use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, sign_blob};
-use crate::networking::filters::{get_block_route_filter, handshake_complete_route_filter, handshake_init_route_filter, post_block_route_filter, post_transaction_route_filter, ws_route_filter};
+use crate::networking::filters::{
+    get_block_route_filter,
+    handshake_complete_route_filter,
+    handshake_init_route_filter,
+    post_block_route_filter,
+    post_transaction_route_filter,
+    ws_upgrade_route_filter,
+    ws_route_filter
+};
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
 use tokio::sync::{RwLock, broadcast, mpsc};
@@ -29,9 +37,9 @@ pub struct Client {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct APIMessage {
-    message_name: [u8; 8],
-    message_id: u32,
-    message_data: Vec<u8>,
+    pub message_name: [u8; 8],
+    pub message_id: u32,
+    pub message_data: Vec<u8>,
 }
 
 impl APIMessage {
@@ -105,6 +113,7 @@ impl Network {
             .or(post_block_route_filter())
             .or(handshake_init_route_filter(self.mempool_lock.clone()))
             .or(handshake_complete_route_filter(&self.clients.clone()))
+            .or(ws_upgrade_route_filter(&self.clients.clone(), self.mempool_lock.clone()))
             .or(ws_route_filter(&self.clients.clone()));
         warp::serve(routes)
             .run(([127, 0, 0, 1], 3030)).await;
@@ -235,7 +244,7 @@ mod tests {
         let network = Network::new(wallet_lock.clone());
         let (publickey, _privatekey) = generate_keys();
 
-        let socket_filter = ws_upgrade_route_filter(&network.clients.clone());
+        let socket_filter = ws_upgrade_route_filter(&network.clients.clone(), wallet_lock.clone());
         let mut ws_client = warp::test::ws()
             .path("/wsopen")
             .handshake(socket_filter)
