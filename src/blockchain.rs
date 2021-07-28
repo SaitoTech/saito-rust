@@ -34,6 +34,7 @@ pub struct Blockchain {
     pub blocks: AHashMap<SaitoHash, Block>,
     pub wallet_lock: Arc<RwLock<Wallet>>,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
+    genesis_block_id: u64,
 }
 
 impl Blockchain {
@@ -45,6 +46,7 @@ impl Blockchain {
             blocks: AHashMap::new(),
             wallet_lock,
             broadcast_channel_sender: None,
+            genesis_block_id: 0,
         }
     }
 
@@ -53,6 +55,7 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
+
         println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
@@ -276,11 +279,22 @@ impl Blockchain {
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
+
         //
         // save to disk
         //
         let storage = Storage::new();
-        storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
+	{
+	    let block = self.get_mut_block(block_hash).await;
+            storage.write_block_to_disk(block);
+
+	    //
+	    // TMP - delete transactions
+	    //
+	    //block.transactions = vec![];
+
+	}
+        //storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
 
         println!(" ... block save done:            {:?}", create_timestamp());
 
@@ -295,7 +309,15 @@ impl Blockchain {
             wallet.add_block(&block);
             println!(" ... wallet processing stop:     {}", create_timestamp());
         }
+
+        //
+        // update_genesis_period and prune old data
+        //
+	self.update_genesis_period();
+
+
     }
+
     pub async fn add_block_failure(&mut self) {}
 
     pub fn get_latest_block(&self) -> Option<&Block> {
@@ -312,11 +334,14 @@ impl Blockchain {
     }
 
     pub async fn get_block(&self, block_hash: SaitoHash) -> &Block {
-       let block = &self.blocks.get(&block_hash).unwrap();
-       block
+        let block = self.blocks.get(&block_hash).unwrap();
+        block
     }
 
-
+    pub async fn get_mut_block(&mut self, block_hash: SaitoHash) -> &mut Block {
+        let block = self.blocks.get_mut(&block_hash).unwrap();
+        block
+    }
 
     pub fn is_new_chain_the_longest_chain(
         &mut self,
@@ -375,11 +400,15 @@ impl Blockchain {
     //
     pub async fn validate(&mut self, new_chain: Vec<[u8; 32]>, old_chain: Vec<[u8; 32]>) -> bool {
         if !old_chain.is_empty() {
-            let res = self.unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true).await;
-	    return res;
+            let res = self
+                .unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
+                .await;
+            return res;
         } else if !new_chain.is_empty() {
-            let res = self.wind_chain(&new_chain, &old_chain, new_chain.len() - 1, false).await;
-	    return res;
+            let res = self
+                .wind_chain(&new_chain, &old_chain, new_chain.len() - 1, false)
+                .await;
+            return res;
         } else {
             true
         }
@@ -432,7 +461,8 @@ impl Blockchain {
         // happen first.
         //
         {
-            let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+            //let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
+            let block = self.get_mut_block(new_chain[current_wind_index]).await;
             block.generate_metadata();
         }
 
@@ -445,7 +475,8 @@ impl Blockchain {
             println!(" ... before block ocr            {:?}", create_timestamp());
             block.on_chain_reorganization(&mut self.utxoset, true);
             println!(" ... before blockring ocr:       {:?}", create_timestamp());
-            self.blockring.on_chain_reorganization(block.get_id(), block.get_hash(), true);
+            self.blockring
+                .on_chain_reorganization(block.get_id(), block.get_hash(), true);
             println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
             //
@@ -465,9 +496,10 @@ impl Blockchain {
                 return true;
             }
 
-            let res = self.wind_chain(new_chain, old_chain, current_wind_index - 1, false).await;
-	    return res;
-
+            let res = self
+                .wind_chain(new_chain, old_chain, current_wind_index - 1, false)
+                .await;
+            return res;
         } else {
             //
             // we have had an error while winding the chain. this requires us to
@@ -500,8 +532,10 @@ impl Blockchain {
                 // to unwind. Because of this, we start WINDING the old chain back
                 // which requires us to start at the END of the new chain vector.
                 //
-                let res = self.wind_chain(old_chain, new_chain, new_chain.len() - 1, true).await;
-	        return res;
+                let res = self
+                    .wind_chain(old_chain, new_chain, new_chain.len() - 1, true)
+                    .await;
+                return res;
             } else {
                 let mut chain_to_unwind: Vec<[u8; 32]> = vec![];
 
@@ -523,8 +557,10 @@ impl Blockchain {
                 //
                 // unwinding starts from the BEGINNING of the vector
                 //
-                let res = self.unwind_chain(old_chain, &chain_to_unwind, 0, true).await;
-		return res;
+                let res = self
+                    .unwind_chain(old_chain, &chain_to_unwind, 0, true)
+                    .await;
+                return res;
             }
         }
     }
@@ -572,8 +608,10 @@ impl Blockchain {
             // winding requires starting at the END of the vector and rolling
             // backwards until we have added block #5, etc.
             //
-            let res = self.wind_chain(new_chain, old_chain, new_chain.len() - 1, wind_failure).await;
-	    return res;
+            let res = self
+                .wind_chain(new_chain, old_chain, new_chain.len() - 1, wind_failure)
+                .await;
+            return res;
         } else {
             //
             // continue unwinding,, which means
@@ -581,10 +619,45 @@ impl Blockchain {
             // unwinding requires moving FORWARD in our vector (and backwards in
             // the blockchain). So we increment our unwind index.
             //
-            let res = self.unwind_chain(new_chain, old_chain, current_unwind_index + 1, wind_failure).await;
-	    return res;
+            let res = self
+                .unwind_chain(new_chain, old_chain, current_unwind_index + 1, wind_failure)
+                .await;
+            return res;
         }
     }
+
+
+    pub fn update_genesis_period(&mut self) {
+
+        //
+        // we need to make sure this is not a random block that is disconnected
+        // from our previous genesis_id. If there is no connection between it
+        // and us, then we cannot delete anything as otherwise the provision of
+        // the block may be an attack on us intended to force us to discard
+        // actually useful data.
+        //
+        // we do this by checking that our block is the head of the
+        // verified longest chain.
+        //
+	let latest_block_id = self.get_latest_block_id();
+        if latest_block_id >= ((GENESIS_PERIOD * 2) + 1) {
+
+            let purge_bid = latest_block_id - (GENESIS_PERIOD * 2);
+            self.genesis_block_id = latest_block_id - GENESIS_PERIOD;
+
+            //
+            // in either case, we are OK to throw out everything below the
+            // lowest_block_id that we have found. we use the purge_id to
+	    // handle purges.
+	    //
+            self.purge_blockchain_data(purge_bid);
+	}
+    }
+
+    pub fn purge_blockchain_data(&mut self, _purge_bid: u64) {
+
+    }
+
 }
 
 // This function is called on initialization to setup the sending

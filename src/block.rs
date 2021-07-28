@@ -1028,8 +1028,8 @@ impl Block {
             //
             fee_transaction.generate_metadata(self.get_creator());
 
-            println!("CV: {:?}", fee_transaction);
-            println!("BLK: {:?}", self.transactions[ft_idx]);
+            //println!("CV: {:?}", fee_transaction);
+            //println!("BLK: {:?}", self.transactions[ft_idx]);
 
             let hash1 = hash(&fee_transaction.serialize_for_signature());
             let hash2 = hash(&self.transactions[ft_idx].serialize_for_signature());
