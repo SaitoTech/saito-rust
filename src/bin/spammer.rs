@@ -1,6 +1,6 @@
 use saito_rust::{
-    blockchain::Blockchain, mempool::Mempool, miner::Miner, transaction::Transaction,
-    wallet::Wallet, networking::network::Network,
+    blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
+    transaction::Transaction, wallet::Wallet,
 };
 
 use std::{sync::Arc, thread::sleep, time::Duration};
@@ -123,6 +123,7 @@ pub async fn run(
             }
         },
         res = network.run(
+            mempool_lock.clone(),
             broadcast_channel_sender.clone(),
             broadcast_channel_sender.subscribe()
         ) => {

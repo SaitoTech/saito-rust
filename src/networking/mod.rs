@@ -171,7 +171,7 @@ MessageData:
 
 TODO: Add docs for SHAKINIT and SHAKCOMP
 
-## RPC basic example 
+## RPC basic example
 
 After creating a token via /handshakeinit and /handshakecomplete:
 
@@ -179,7 +179,7 @@ After creating a token via /handshakeinit and /handshakecomplete:
 websocat ws://127.0.0.1:3030/wsconnect -H socket-token:$TOKEN -b readfile:rpc_message_file.bin
 ```
 
-## RPC complete example 
+## RPC complete example
 
 Run a node:
 
@@ -221,7 +221,7 @@ There is also a script in scripts/socket.sh which can be used.
 
 */
 
+pub mod filters;
 pub mod handlers;
 pub mod network;
-pub mod filters;
 pub mod socket;

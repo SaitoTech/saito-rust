@@ -1,4 +1,8 @@
-use std::{fs::{self, File}, io::{self, Read, Write}, sync::Arc};
+use std::{
+    fs::{self, File},
+    io::{self, Read, Write},
+    sync::Arc,
+};
 
 use tokio::sync::RwLock;
 

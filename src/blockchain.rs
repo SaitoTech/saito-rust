@@ -211,7 +211,7 @@ impl Blockchain {
         // with the BlockRing. We fail if the newly-preferred chain is not
         // viable.
         //
-       //  println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
+        //  println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain);
             if does_new_chain_validate {
@@ -320,7 +320,6 @@ impl Blockchain {
         if self.blockring.get_longest_chain_block_id()
             >= self.blocks.get(&new_chain[0]).unwrap().get_id()
         {
-
             return false;
         }
 

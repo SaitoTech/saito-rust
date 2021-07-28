@@ -40,7 +40,7 @@ pub enum AddTransactionResult {
 /// the `Blockchain`
 pub struct Mempool {
     blocks: VecDeque<Block>,
-    transactions: Vec<Transaction>, // vector so we just copy it over
+    pub transactions: Vec<Transaction>, // vector so we just copy it over
     routing_work_in_mempool: u64,
     wallet_lock: Arc<RwLock<Wallet>>,
     currently_processing_block: bool,
@@ -237,7 +237,7 @@ impl Mempool {
     ///
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
-    
+
     pub async fn can_bundle_block(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
         if self.currently_processing_block {
             return false;

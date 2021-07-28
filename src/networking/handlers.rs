@@ -1,18 +1,24 @@
-use crate::crypto::{SaitoHash, hash};
+use super::network::{Client, Clients};
+use crate::crypto::{hash, SaitoHash};
+use crate::mempool::Mempool;
+use crate::networking::network::Result;
 use crate::networking::socket;
 use crate::storage::Storage;
+use crate::transaction::Transaction;
 use crate::wallet::Wallet;
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use std::sync::Arc;
-use crate::transaction::Transaction;
-use crate::networking::network::Result;
 use warp::{Buf, Rejection, Reply};
-use super::network::{Client, Clients};
 
-pub async fn ws_upgrade_handler(ws: warp::ws::Ws, clients: Clients, wallet_lock: Arc<RwLock<Wallet>>) -> std::result::Result<impl Reply, Rejection> {
+pub async fn ws_upgrade_handler(
+    ws: warp::ws::Ws,
+    clients: Clients,
+    wallet_lock: Arc<RwLock<Wallet>>,
+    mempool_lock: Arc<RwLock<Mempool>>,
+) -> std::result::Result<impl Reply, Rejection> {
     let id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-//    let key = hash(&bytes);
+    //    let key = hash(&bytes);
 
     println!("id {:?}", id);
     let client = Client {
@@ -21,7 +27,9 @@ pub async fn ws_upgrade_handler(ws: warp::ws::Ws, clients: Clients, wallet_lock:
         topics: vec![],
         sender: None,
     };
-    Ok(ws.on_upgrade(move |socket| socket::client_connection(socket, id, clients, client, wallet_lock)))
+    Ok(ws.on_upgrade(move |socket| {
+        socket::client_connection(socket, id, clients, client, wallet_lock, mempool_lock)
+    }))
 }
 pub async fn post_transaction_handler(mut body: impl Buf) -> Result<impl Reply> {
     let mut buffer = vec![];
@@ -62,7 +70,7 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
         Ok(block_bytes) => Ok(block_bytes),
         Err(_err) => {
             eprintln!("{:?}", _err);
-            return Err(warp::reject())
+            return Err(warp::reject());
         }
     }
 }
@@ -78,7 +86,7 @@ pub async fn get_block_handler_json(str_block_hash: String) -> Result<impl Reply
         Ok(json_data) => Ok(warp::reply::json(&json_data)),
         Err(_err) => {
             eprintln!("{:?}", _err);
-            return Err(warp::reject())
+            return Err(warp::reject());
         }
     }
 }

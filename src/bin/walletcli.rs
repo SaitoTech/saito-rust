@@ -1,5 +1,8 @@
-use saito_rust::{crypto::{SaitoPrivateKey, SaitoPublicKey, sign_blob}, storage::Storage};
-use secp256k1::{PublicKey, SECP256K1, SecretKey};
+use saito_rust::{
+    crypto::{sign_blob, SaitoPrivateKey, SaitoPublicKey},
+    storage::Storage,
+};
+use secp256k1::{PublicKey, SecretKey, SECP256K1};
 
 struct MockWallet {
     publickey: SaitoPublicKey,
@@ -8,7 +11,11 @@ struct MockWallet {
 impl MockWallet {
     pub fn new() -> MockWallet {
         let mut bytes = [0u8; 32];
-        let result = hex::decode_to_slice(String::from("bbca91074466508f81ad202576cdbae8a475a87e7136a6027cdcb4bc2053c0be").as_bytes(), &mut bytes as &mut [u8]);
+        let result = hex::decode_to_slice(
+            String::from("bbca91074466508f81ad202576cdbae8a475a87e7136a6027cdcb4bc2053c0be")
+                .as_bytes(),
+            &mut bytes as &mut [u8],
+        );
         if result.is_err() {
             panic!("Couldn't decode");
         }
@@ -25,7 +32,7 @@ impl MockWallet {
     pub fn get_privatekey(&self) -> SaitoPrivateKey {
         self.privatekey
     }
-    
+
     pub fn get_publickey(&self) -> SaitoPublicKey {
         self.publickey
     }
@@ -46,12 +53,12 @@ pub async fn main() -> saito_rust::Result<()> {
             "print" | "p" => {
                 println!(" public key : {}", hex::encode(wallet.get_publickey()));
                 println!("private key : {}", hex::encode(wallet.get_privatekey()));
-            },
+            }
             "sign" | "s" => {
                 let mut blob = Storage::read(&args[2]).unwrap();
                 let signed_blob = sign_blob(&mut blob, wallet.get_privatekey());
                 Storage::write(signed_blob.clone(), &args[3]);
-            },
+            }
             _ => {}
         }
     }

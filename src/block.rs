@@ -5,7 +5,7 @@ use crate::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
     },
     golden_ticket::GoldenTicket,
-    hop::{HOP_SIZE},
+    hop::HOP_SIZE,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
     time::create_timestamp,

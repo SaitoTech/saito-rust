@@ -1,14 +1,17 @@
+use crate::mempool::Mempool;
 use crate::networking::handlers::post_transaction_handler;
 use crate::wallet::Wallet;
-use std::convert::{Infallible};
+use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use warp::{Filter, Reply};
 use warp::body;
+use warp::{Filter, Reply};
 
-use super::handlers::{get_block_handler, get_block_handler_json, post_block_handler, ws_upgrade_handler};
+use super::handlers::{
+    get_block_handler, get_block_handler_json, post_block_handler, ws_upgrade_handler,
+};
 use super::network::Clients;
-// 
+//
 // cargo run --bin walletcli print
 // 02579d6ff84f661297f38e3eb20953824cfc279fee903a746b3dccb534677fd81a
 // curl 127.0.0.1:3030/handshakeinit\?a={pubkey} > test_challenge
@@ -20,8 +23,8 @@ use super::network::Clients;
 // wscat -H socket-token:83d1178b7e6080ddcf3f4a273a2ef1554ea060fd15f6db647660cbc99e1faf67 -c ws://127.0.0.1:3030/wsconnect
 // wscat -H socket-token:e6e5477c79ff669cc3e3eb5e909dc115d30e5a1142e9d80a5e238636a74c69b8 -c ws://127.0.0.1:3030/wsconnect
 // websocat ws://127.0.0.1:3030/wsconnect -H socket-token:$TOKEN -b readfile:test_challenge
-// 
-// 
+//
+//
 // GET http handshakeinit
 // GET http handshakecomplete
 // GET ws wsconnect
@@ -29,28 +32,35 @@ use super::network::Clients;
 // GET http block
 // POST http sendtransaction
 // POST http sendblockheader
-// 
-pub fn ws_upgrade_route_filter(clients: &Clients, wallet_lock: Arc<RwLock<Wallet>>) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
+//
+pub fn ws_upgrade_route_filter(
+    clients: &Clients,
+    wallet_lock: Arc<RwLock<Wallet>>,
+    mempool_lock: Arc<RwLock<Mempool>>,
+) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::path("wsopen")
         .and(warp::ws())
         .and(with_clients_filter(clients.clone()))
         .and(with_wallet(wallet_lock))
+        .and(with_mempool(mempool_lock))
         .and_then(ws_upgrade_handler)
 }
 
-pub fn get_block_route_filter() -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Copy {
-    warp::path("block")
-        .and(warp::path::param().and_then(get_block_handler))
+pub fn get_block_route_filter(
+) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Copy {
+    warp::path("block").and(warp::path::param().and_then(get_block_handler))
 }
 
-pub fn get_json_block_route_filter() -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Copy {
+pub fn get_json_block_route_filter(
+) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Copy {
     warp::path("block")
         .and(warp::path("json"))
         .and(warp::path::param())
         .and_then(get_block_handler_json)
 }
 
-pub fn post_block_route_filter() -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
+pub fn post_block_route_filter(
+) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path("sendblockheader"))
         .and(warp::path::end())
@@ -58,7 +68,8 @@ pub fn post_block_route_filter() -> impl Filter<Extract = (impl Reply,), Error =
         .and_then(post_block_handler)
 }
 
-pub fn post_transaction_route_filter() -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
+pub fn post_transaction_route_filter(
+) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path("sendtransaction"))
         .and(warp::path::end())
@@ -66,9 +77,18 @@ pub fn post_transaction_route_filter() -> impl Filter<Extract = (impl Reply,), E
         .and_then(post_transaction_handler)
 }
 
-fn with_clients_filter(clients: Clients) -> impl Filter<Extract = (Clients,), Error = Infallible> + Clone {
+fn with_clients_filter(
+    clients: Clients,
+) -> impl Filter<Extract = (Clients,), Error = Infallible> + Clone {
     warp::any().map(move || clients.clone())
 }
-fn with_wallet(mempool_lock: Arc<RwLock<Wallet>>) -> impl Filter<Extract = (Arc<RwLock<Wallet>>,), Error = Infallible> + Clone {
+fn with_wallet(
+    wallet_lock: Arc<RwLock<Wallet>>,
+) -> impl Filter<Extract = (Arc<RwLock<Wallet>>,), Error = Infallible> + Clone {
+    warp::any().map(move || wallet_lock.clone())
+}
+fn with_mempool(
+    mempool_lock: Arc<RwLock<Mempool>>,
+) -> impl Filter<Extract = (Arc<RwLock<Mempool>>,), Error = Infallible> + Clone {
     warp::any().map(move || mempool_lock.clone())
 }
