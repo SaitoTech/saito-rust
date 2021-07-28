@@ -40,7 +40,6 @@ The basic methods are: Get Block, Get Block Header, Get Lite Block, New Block An
 
 ```
 SHAKINIT
-SHAKCHLG
 SHAKCOMP
 GETBLKHD
 NEWBLOCK

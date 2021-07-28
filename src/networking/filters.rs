@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 use warp::{Filter, Reply};
 use warp::body;
 
-use super::handlers::{get_block_handler, get_block_handler_json, handshake_complete_handler, handshake_init_handler, post_block_handler, ws_handler, ws_upgrade_handler};
+use super::handlers::{get_block_handler, get_block_handler_json, post_block_handler, ws_upgrade_handler};
 use super::network::Clients;
 // 
 // cargo run --bin walletcli print
@@ -36,32 +36,6 @@ pub fn ws_upgrade_route_filter(clients: &Clients, wallet_lock: Arc<RwLock<Wallet
         .and(with_clients_filter(clients.clone()))
         .and(with_wallet(wallet_lock))
         .and_then(ws_upgrade_handler)
-}
-
-pub fn ws_route_filter(clients: &Clients) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
-    warp::path("wsconnect")
-        .and(warp::ws())
-        .and(warp::header::value("socket-token"))
-        .and(with_clients_filter(clients.clone()))
-        .and_then(ws_handler)
-}
-
-pub fn handshake_complete_route_filter(clients: &Clients) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
-    warp::path("handshakecomplete")
-        .and(warp::post())
-        .and(warp::body::bytes())
-        .and(warp::addr::remote())
-        .and(with_clients_filter(clients.clone()))
-        .and_then(handshake_complete_handler)
-}
-
-pub fn handshake_init_route_filter(wallet_lock: Arc<RwLock<Wallet>>) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
-    warp::path("handshakeinit")
-        .and(warp::query::raw())
-        //.and(warp::path::end())
-        .and(warp::addr::remote())
-        .and(with_wallet(wallet_lock))
-        .and_then(handshake_init_handler)
 }
 
 pub fn get_block_route_filter() -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Copy {

@@ -2,12 +2,9 @@ use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, sign_blob};
 use crate::networking::filters::{
     get_block_route_filter,
-    handshake_complete_route_filter,
-    handshake_init_route_filter,
     post_block_route_filter,
     post_transaction_route_filter,
-    ws_upgrade_route_filter,
-    ws_route_filter
+    ws_upgrade_route_filter
 };
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
@@ -70,7 +67,6 @@ impl APIMessage {
         let message_name: [u8; 8] = bytes[0..8].try_into().unwrap();
         let message_id: u32 = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
         let message_data = bytes[12..].try_into().unwrap();
-
         APIMessage {
             message_name: message_name,
             message_id: message_id,
@@ -111,15 +107,11 @@ impl Network {
         let routes = get_block_route_filter()
             .or(post_transaction_route_filter())
             .or(post_block_route_filter())
-            .or(handshake_init_route_filter(self.mempool_lock.clone()))
-            .or(handshake_complete_route_filter(&self.clients.clone()))
-            .or(ws_upgrade_route_filter(&self.clients.clone(), self.mempool_lock.clone()))
-            .or(ws_route_filter(&self.clients.clone()));
+            .or(ws_upgrade_route_filter(&self.clients.clone(), self.mempool_lock.clone()));
         warp::serve(routes)
             .run(([127, 0, 0, 1], 3030)).await;
         Ok(())
     }
-
 }
 
 #[serde_with::serde_as]
@@ -185,7 +177,6 @@ impl HandshakeChallenge {
         sign_blob(&mut self.serialize_raw(), privatekey).to_owned()
     }
 
-
     pub fn challenger_ip_address(&self) -> [u8; 4]{
         self.challenger_ip_address
     }
@@ -206,11 +197,8 @@ impl HandshakeChallenge {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-    use base58::ToBase58;
     use secp256k1::PublicKey;
-    use warp::{Reply, hyper};
-    use crate::{crypto::{SaitoSignature, generate_keys, hash, verify}, networking::{filters::ws_upgrade_route_filter, network::handshake_init_route_filter}};
+    use crate::{crypto::{SaitoSignature, generate_keys, hash, verify}, networking::{filters::ws_upgrade_route_filter}};
 
     #[tokio::test]
     async fn test_challenge_serialize() {
@@ -242,7 +230,7 @@ mod tests {
     async fn test_handshake_new() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let network = Network::new(wallet_lock.clone());
-        let (publickey, _privatekey) = generate_keys();
+        let (publickey, privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(&network.clients.clone(), wallet_lock.clone());
         let mut ws_client = warp::test::ws()
@@ -252,76 +240,51 @@ mod tests {
             .expect("handshake");
         
         // let base58_pubkey = PublicKey::from_slice(&publickey).unwrap().serialize().to_base58();
-        let api_message = APIMessage::new_with_data_from_str(
+        let mut message_data = vec![127,0,0,1];
+        message_data.extend(PublicKey::from_slice(&publickey).unwrap().serialize().to_vec());
+        let api_message = APIMessage::new(
             "SHAKINIT",
-            0,
-            &PublicKey::from_slice(&publickey).unwrap().serialize().to_base58(),
+            42,
+            message_data,
         );
+
         let serialized_api_message = api_message.serialize();
         
-        // let pubkey = PublicKey::from_slice(&String::from(&raw_query_str[2..]).from_base58().unwrap()).unwrap();
-        
         let _socket_resp = ws_client.send(Message::binary(serialized_api_message)).await;
-        let foo = ws_client.recv().await.unwrap();
-        println!("got message {:?}", foo.as_bytes());
-        // SHAKINIT
-        // SHAKCOMP
-    }
-    #[tokio::test]
-    async fn test_handshake() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let resp = ws_client.recv().await.unwrap();
+        
+        let command = String::from_utf8_lossy(&resp.as_bytes()[0..8]);
+        let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());
 
-        let init_filter = handshake_init_route_filter(wallet_lock.clone());
-        let (publickey, privatekey) = generate_keys();
-        let hex_pubkey = hex::encode(publickey);
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 42);
 
-        let value = warp::test::request()
-            .remote_addr(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080))
-            .path(&format!("{}{}", "/handshakeinit?a=", hex_pubkey))
-            .filter(&init_filter)
-            .await
-            .unwrap();
-
-        let mut resp = value.into_response();
-        let bytes = hyper::body::to_bytes(resp.body_mut()).await.unwrap()[..].to_vec();
-
-        let deserialize_challenge = HandshakeChallenge::deserialize_with_sig(&bytes.clone());
-        let raw_challenge: [u8; CHALLENGE_SIZE] = bytes[..CHALLENGE_SIZE].try_into().unwrap();
-        let sig: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE+64].try_into().unwrap();
+        let deserialize_challenge = HandshakeChallenge::deserialize_with_sig(&resp.as_bytes()[12..].to_vec());
+        let raw_challenge: [u8; CHALLENGE_SIZE] = resp.as_bytes()[12..][..CHALLENGE_SIZE].try_into().unwrap();
+        let sig: SaitoSignature = resp.as_bytes()[12..][CHALLENGE_SIZE..CHALLENGE_SIZE+64].try_into().unwrap();
 
         assert_eq!(deserialize_challenge.0.challenger_ip_address(), [42, 42, 42, 42]);
         assert_eq!(deserialize_challenge.0.challengie_ip_address(), [127, 0, 0, 1]);
         assert_eq!(deserialize_challenge.0.challengie_pubkey(), publickey);
         assert!(verify(&hash(&raw_challenge.to_vec()), sig, deserialize_challenge.0.challenger_pubkey()));
 
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let network = Network::new(wallet_lock.clone());
+        let signed_challenge = sign_blob(&mut resp.as_bytes()[12..].to_vec(), privatekey).to_owned();
 
-        let complete_filter = handshake_complete_route_filter(&network.clients.clone());
+        let api_message = APIMessage::new(
+            "SHAKCOMP",
+            43,
+            signed_challenge,
+        );
+        let serialized_api_message = api_message.serialize();
 
-        let signed_challenge = sign_blob(&mut bytes.clone(), privatekey).to_owned();
-        let value = warp::test::request()
-            .method("POST")
-            .remote_addr(SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080))
-            .body(signed_challenge)
-            .path("/handshakecomplete")
-            .filter(&complete_filter)
-            .await
-            .unwrap();
-
-        let mut resp = value.into_response();
-        println!("resp {:?}", resp);
-        let bytes = hyper::body::to_bytes(resp.body_mut()).await.unwrap()[..].to_vec();
-        println!("socket token {:?}", bytes);
-        let socket_filter = ws_route_filter(&network.clients.clone());
-        let mut ws_client = warp::test::ws()
-            .path("/wsconnect")
-            .header("socket-token", bytes)
-            .handshake(socket_filter)
-            .await
-            .expect("handshake");
-        let _socket_resp = ws_client.send_text("hello").await;
-        // let foo = ws_client.recv().await.unwrap();
-        // println!("got message {:?}", foo.as_bytes());
+        let _socket_resp = ws_client.send(Message::binary(serialized_api_message)).await;
+        let resp = ws_client.recv().await.unwrap();
+        
+        let command = String::from_utf8_lossy(&resp.as_bytes()[0..8]);
+        let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());
+        let msg = String::from_utf8_lossy(&resp.as_bytes()[12..]);
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 43);
+        assert_eq!(msg, "OK");
     }
 }
