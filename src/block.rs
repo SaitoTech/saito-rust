@@ -603,6 +603,7 @@ impl Block {
                                 //
                                 // TODO - floating fee based on previous block average
                                 //
+println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
                                 let rebroadcast_transaction =
                                     Transaction::generate_rebroadcast_transaction(
                                         &transaction,
@@ -1090,6 +1091,7 @@ impl Block {
         //
         // and if our transactions are valid, so is the block...
         //
+        println!(" ... are txs valid: {}", transactions_valid);
         transactions_valid
     }
 

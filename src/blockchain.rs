@@ -13,7 +13,7 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 
 use ahash::AHashMap;
 
-pub const GENESIS_PERIOD: u64 = 2;
+pub const GENESIS_PERIOD: u64 = 6;
 
 pub fn bit_pack(top: u32, bottom: u32) -> u64 {
     ((top as u64) << 32) + (bottom as u64)
@@ -511,6 +511,7 @@ impl Blockchain {
             // will know it has rewound the old chain successfully instead of
             // successfully added the new chain.
             //
+println!("this block does not validate!");
             if current_wind_index == new_chain.len() - 1 {
                 //
                 // this is the first block we have tried to add
@@ -641,6 +642,8 @@ impl Blockchain {
         //
 	let latest_block_id = self.get_latest_block_id();
         if latest_block_id >= ((GENESIS_PERIOD * 2) + 1) {
+
+println!("PRUNING data from the blockchain and updating the genesis period...");
 
             let purge_bid = latest_block_id - (GENESIS_PERIOD * 2);
             self.genesis_block_id = latest_block_id - GENESIS_PERIOD;
