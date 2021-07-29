@@ -118,6 +118,7 @@ impl Consensus {
             },
             res = network.run(
                 mempool_lock.clone(),
+                blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {

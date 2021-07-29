@@ -54,8 +54,7 @@ impl Blockchain {
             create_timestamp(),
             block.transactions.len()
         );
-        //println!(" ... txs in block: {:?}", block.transactions.len());
-        //println!(" ... w/ prev bhsh: {:?}", block.get_previous_block_hash());
+
 
         //
         // start by extracting some variables that we will use
@@ -293,6 +292,10 @@ impl Blockchain {
         }
     }
     pub async fn add_block_failure(&mut self) {}
+
+    pub fn get_block(&self, hash: &SaitoHash) -> Option<&Block> {
+        self.blocks.get(hash)
+    }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_longest_chain_block_hash();

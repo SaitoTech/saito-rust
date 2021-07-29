@@ -11,6 +11,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
 use crate::{
+    blockchain::Blockchain,
     crypto::{hash, verify, SaitoHash, SaitoPublicKey},
     mempool::{
         Mempool,
@@ -36,6 +37,7 @@ pub async fn client_connection(
     mut client: Client,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
 ) {
     println!("client_connection");
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
@@ -72,6 +74,7 @@ pub async fn client_connection(
             clients.clone(),
             wallet_lock.clone(),
             mempool_lock.clone(),
+            blockchain_lock.clone(),
         )
         .await;
     }
@@ -116,6 +119,7 @@ async fn client_msg(
     clients: Clients,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
 ) {
     let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());
     let command = String::from_utf8_lossy(api_message.message_name());
@@ -200,7 +204,13 @@ async fn client_msg(
 
                 }
             });
-        }
+        },
+        "GETBLKCH" => {
+            tokio::spawn(async move {
+                let message_id = api_message.message_id;
+
+            });
+        },
         _ => {}
     }
 }
@@ -283,4 +293,31 @@ pub fn socket_handshake_complete(
 pub fn socket_receive_transaction(message: APIMessage) -> Option<Transaction> {
     let tx = Transaction::deserialize_from_net(message.message_data);
     Some(tx)
+}
+
+pub async fn socket_send_blockchain(message: APIMessage, blockchain_lock: Arc<RwLock<Blockchain>>) -> Vec<u8> {
+    let block_hash: SaitoHash = message.message_data[0..32].try_into().unwrap();
+    let fork_id = u64::from_be_bytes(message.message_data[32..36].try_into().unwrap());
+
+    let mut hashes: Vec<u8> = vec![];
+
+    let blockchain = blockchain_lock.read().await;
+
+    let target_block = blockchain.get_latest_block();
+
+    if let Some(target_block) = blockchain.get_latest_block() {
+        let target_block_hash = target_block.get_hash();
+        if target_block_hash != block_hash {
+            hashes.extend_from_slice(&target_block_hash);
+            let mut previous_block_hash = target_block.get_previous_block_hash();
+            while !blockchain.get_block(&previous_block_hash).is_none()
+              && previous_block_hash != [0; 32] {
+                let block = blockchain.get_block(&previous_block_hash).unwrap();
+                hashes.extend_from_slice(&block.get_hash());
+                previous_block_hash = block.get_previous_block_hash();
+            }
+        }
+    }
+
+    hashes
 }

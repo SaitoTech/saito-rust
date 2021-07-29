@@ -41,6 +41,7 @@ The basic methods are: Get Block, Get Block Header, Get Lite Block, New Block An
 ```
 SHAKINIT
 SHAKCOMP
+GETBLKCN
 GETBLKHD
 NEWBLOCK
 SENDTRXN

@@ -1,3 +1,4 @@
+use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{sign_blob, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
 use crate::mempool::Mempool;
@@ -100,6 +101,7 @@ impl Network {
     pub async fn run(
         &self,
         mempool_lock: Arc<RwLock<Mempool>>,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
         _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
         _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
     ) -> crate::Result<()> {
@@ -115,6 +117,7 @@ impl Network {
                 &self.clients.clone(),
                 self.wallet_lock.clone(),
                 mempool_lock.clone(),
+                blockchain_lock.clone(),
             ));
         warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
         Ok(())
@@ -256,13 +259,15 @@ mod tests {
     async fn test_handshake_new() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let network = Network::new(wallet_lock.clone());
         let (publickey, privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(
             &network.clients.clone(),
             wallet_lock.clone(),
-            mempool_lock.clone()
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
         );
         let mut ws_client = warp::test::ws()
             .path("/wsopen")
@@ -339,13 +344,15 @@ mod tests {
     async fn test_send_transaction() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let network = Network::new(wallet_lock.clone());
         let (publickey, privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(
             &network.clients.clone(),
             wallet_lock.clone(),
-            mempool_lock.clone()
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
         );
         let mut ws_client = warp::test::ws()
             .path("/wsopen")

@@ -1,3 +1,4 @@
+use crate::blockchain::Blockchain;
 use crate::mempool::Mempool;
 use crate::networking::handlers::post_transaction_handler;
 use crate::wallet::Wallet;
@@ -37,12 +38,14 @@ pub fn ws_upgrade_route_filter(
     clients: &Clients,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
 ) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::path("wsopen")
         .and(warp::ws())
         .and(with_clients_filter(clients.clone()))
         .and(with_wallet(wallet_lock))
         .and(with_mempool(mempool_lock))
+        .and(with_blockchain(blockchain_lock))
         .and_then(ws_upgrade_handler)
 }
 
@@ -91,4 +94,9 @@ fn with_mempool(
     mempool_lock: Arc<RwLock<Mempool>>,
 ) -> impl Filter<Extract = (Arc<RwLock<Mempool>>,), Error = Infallible> + Clone {
     warp::any().map(move || mempool_lock.clone())
+}
+fn with_blockchain(
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> impl Filter<Extract = (Arc<RwLock<Blockchain>>,), Error = Infallible> + Clone {
+    warp::any().map(move || blockchain_lock.clone())
 }

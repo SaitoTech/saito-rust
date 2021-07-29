@@ -1,4 +1,5 @@
 use super::network::{Client, Clients};
+use crate::blockchain::Blockchain;
 use crate::crypto::{hash, SaitoHash};
 use crate::mempool::Mempool;
 use crate::networking::network::Result;
@@ -16,6 +17,7 @@ pub async fn ws_upgrade_handler(
     clients: Clients,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
 ) -> std::result::Result<impl Reply, Rejection> {
     let id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
     //    let key = hash(&bytes);
@@ -28,7 +30,7 @@ pub async fn ws_upgrade_handler(
         sender: None,
     };
     Ok(ws.on_upgrade(move |socket| {
-        socket::client_connection(socket, id, clients, client, wallet_lock, mempool_lock)
+        socket::client_connection(socket, id, clients, client, wallet_lock, mempool_lock, blockchain_lock)
     }))
 }
 pub async fn post_transaction_handler(mut body: impl Buf) -> Result<impl Reply> {
