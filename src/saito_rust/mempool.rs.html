@@ -410,30 +410,6 @@
 <span id="407">407</span>
 <span id="408">408</span>
 <span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-<span id="413">413</span>
-<span id="414">414</span>
-<span id="415">415</span>
-<span id="416">416</span>
-<span id="417">417</span>
-<span id="418">418</span>
-<span id="419">419</span>
-<span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
-<span id="425">425</span>
-<span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -531,49 +507,25 @@
     <span class="comment">// this handles any transactions broadcast on the same system. it receives the transaction</span>
     <span class="comment">// directly and so does not validate against the UTXOset etc.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">transaction</span>: <span class="ident">Transaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddTransactionResult</span> {
+
         <span class="kw">let</span> <span class="ident">tx_sig_to_insert</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">get_signature</span>();
 
-        <span class="comment">/////////////////////////////////////////////////////////</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
-        <span class="comment">// TODO -- this is just testing -- remove async too    //</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
+	<span class="comment">//</span>
+	<span class="comment">// this assigns the amount of routing work that this transaction </span>
+	<span class="comment">// contains to us, which is why we need to provide our publickey</span>
+	<span class="comment">// so that we can calculate routing work.</span>
+	<span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">publickey</span>;
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
         }
-        <span class="comment">/***
-
-                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
-                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
-            //
-            // note that this calculates the total fees, so needs to
-            // be handled well. Stephen may have some ideas on how we
-            // can better name these functions. what this is really
-            // doing is filling in the total fee amounts so that we
-            // can calculate the routing work below to know how much
-            // this contributes to our mempool.
-            //
-        ***/</span>
         <span class="ident">transaction</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
-
-        <span class="comment">////////////////////////////////////////////////////////</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
-        <span class="comment">// REMOVE ONCE NETWORK CAN PASS ROUTING SIGS //</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
-        <span class="comment">/////////////////////////////////////////////////////////</span>
 
         <span class="kw">let</span> <span class="ident">routing_work_available_for_me</span> <span class="op">=</span>
             <span class="ident">transaction</span>.<span class="ident">get_routing_work_for_publickey</span>(<span class="self">self</span>.<span class="ident">mempool_publickey</span>);
 
-        <span class="comment">//println!(&quot;total fees in tx: {}&quot;, transaction.get_total_fees());</span>
-        <span class="comment">//println!(&quot;routing paths: {:?}&quot;, transaction.get_path());</span>
-        <span class="comment">//println!(&quot;routing work for me in this tx: {}&quot;, routing_work_available_for_me);</span>
+<span class="comment">//        println!(&quot;adding tx with routing work for me: {}&quot;, routing_work_available_for_me);</span>
 
         <span class="kw">if</span> <span class="self">self</span>
             .<span class="ident">transactions</span>

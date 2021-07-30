@@ -1390,6 +1390,8 @@
 <span id="1387">1387</span>
 <span id="1388">1388</span>
 <span id="1389">1389</span>
+<span id="1390">1390</span>
+<span id="1391">1391</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
@@ -1996,6 +1998,7 @@
                                 <span class="comment">//</span>
                                 <span class="comment">// TODO - floating fee based on previous block average</span>
                                 <span class="comment">//</span>
+<span class="macro">println!</span>(<span class="string">&quot;GENERATING REBROADCAST TX: {:?}&quot;</span>, <span class="ident">transaction</span>.<span class="ident">get_transaction_type</span>());
                                 <span class="kw">let</span> <span class="ident">rebroadcast_transaction</span> <span class="op">=</span>
                                     <span class="ident">Transaction::generate_rebroadcast_transaction</span>(
                                         <span class="kw-2">&amp;</span><span class="ident">transaction</span>,
@@ -2421,8 +2424,8 @@
             <span class="comment">//</span>
             <span class="ident">fee_transaction</span>.<span class="ident">generate_metadata</span>(<span class="self">self</span>.<span class="ident">get_creator</span>());
 
-            <span class="macro">println!</span>(<span class="string">&quot;CV: {:?}&quot;</span>, <span class="ident">fee_transaction</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;BLK: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">ft_idx</span>]);
+            <span class="comment">//println!(&quot;CV: {:?}&quot;, fee_transaction);</span>
+            <span class="comment">//println!(&quot;BLK: {:?}&quot;, self.transactions[ft_idx]);</span>
 
             <span class="kw">let</span> <span class="ident">hash1</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">fee_transaction</span>.<span class="ident">serialize_for_signature</span>());
             <span class="kw">let</span> <span class="ident">hash2</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">ft_idx</span>].<span class="ident">serialize_for_signature</span>());
@@ -2483,6 +2486,7 @@
         <span class="comment">//</span>
         <span class="comment">// and if our transactions are valid, so is the block...</span>
         <span class="comment">//</span>
+        <span class="macro">println!</span>(<span class="string">&quot; ... are txs valid: {}&quot;</span>, <span class="ident">transactions_valid</span>);
         <span class="ident">transactions_valid</span>
     }
 

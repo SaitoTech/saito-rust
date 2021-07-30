@@ -288,6 +288,7 @@
 <span id="285">285</span>
 <span id="286">286</span>
 <span id="287">287</span>
+<span id="288">288</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{
@@ -388,6 +389,7 @@
                     <span class="ident">input</span>.<span class="ident">set_publickey</span>(<span class="ident">my_publickey</span>);
                     <span class="ident">input</span>.<span class="ident">set_amount</span>(<span class="ident">slip</span>.<span class="ident">get_amount</span>());
                     <span class="ident">input</span>.<span class="ident">set_uuid</span>(<span class="ident">slip</span>.<span class="ident">get_uuid</span>());
+                    <span class="ident">input</span>.<span class="ident">set_slip_ordinal</span>(<span class="ident">slip</span>.<span class="ident">get_slip_ordinal</span>());
                     <span class="ident">inputs</span>.<span class="ident">push</span>(<span class="ident">input</span>);
 
                     <span class="ident">slip</span>.<span class="ident">set_spent</span>(<span class="bool-val">true</span>);
