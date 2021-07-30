@@ -26,6 +26,8 @@ impl Storage {
         filename.push_str(&hex::encode(&block.generate_hash()));
         filename.push_str(&".sai");
 
+//println!("trying to write to disk: {}", filename);
+
         let mut buffer = File::create(filename).unwrap();
         let byte_array: Vec<u8> = block.serialize_for_net();
         buffer.write_all(&byte_array[..]).unwrap();

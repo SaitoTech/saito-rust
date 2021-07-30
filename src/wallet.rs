@@ -97,6 +97,7 @@ impl Wallet {
                     input.set_publickey(my_publickey);
                     input.set_amount(slip.get_amount());
                     input.set_uuid(slip.get_uuid());
+                    input.set_slip_ordinal(slip.get_slip_ordinal());
                     inputs.push(input);
 
                     slip.set_spent(true);

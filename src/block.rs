@@ -603,6 +603,7 @@ impl Block {
                                 //
                                 // TODO - floating fee based on previous block average
                                 //
+println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
                                 let rebroadcast_transaction =
                                     Transaction::generate_rebroadcast_transaction(
                                         &transaction,
@@ -1028,8 +1029,8 @@ impl Block {
             //
             fee_transaction.generate_metadata(self.get_creator());
 
-            println!("CV: {:?}", fee_transaction);
-            println!("BLK: {:?}", self.transactions[ft_idx]);
+            //println!("CV: {:?}", fee_transaction);
+            //println!("BLK: {:?}", self.transactions[ft_idx]);
 
             let hash1 = hash(&fee_transaction.serialize_for_signature());
             let hash2 = hash(&self.transactions[ft_idx].serialize_for_signature());
@@ -1090,6 +1091,7 @@ impl Block {
         //
         // and if our transactions are valid, so is the block...
         //
+        println!(" ... are txs valid: {}", transactions_valid);
         transactions_valid
     }
 
