@@ -8,6 +8,7 @@ use crate::{
     hop::HOP_SIZE,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
+    storage::Storage,
     time::create_timestamp,
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
     wallet::Wallet,
@@ -19,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::{mem, sync::Arc};
 use tokio::sync::RwLock;
+use std::string::String;
 
 //
 // object used when generating and validation transactions, containing the
@@ -93,6 +95,29 @@ impl RouterPayout {
     }
 }
 
+
+///
+/// BlockType is a human-readable indicator of the state of the block
+/// with particular attention to its state of pruning and the amount of 
+/// data that is available. It is used by some functions to fetch blocks
+/// that require certain types of data, such as the full set of transactions
+/// or the UTXOSet
+///
+/// Hash - a ghost block sent to lite-clients primarily for SPV mode
+/// Header - the header of the block without transaction data
+/// Full - the full block including transactions and signatures
+///
+#[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone)]
+pub enum BlockType {
+    Hash,
+    Header,
+    Full,
+    Other,
+}
+
+
+
+
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
@@ -128,6 +153,10 @@ pub struct Block {
     pub total_rebroadcast_nolan: u64,
     // all ATR txs hashed together
     pub rebroadcast_hash: [u8; 32],
+    // name of block on disk
+    pub filename: String,
+    // the state of the block w/ pruning etc
+    pub block_type: BlockType,
 }
 
 impl Block {
@@ -154,6 +183,8 @@ impl Block {
             total_rebroadcast_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
+	    filename: String::new(),
+	    block_type: BlockType::Full,
         }
     }
 
@@ -201,8 +232,16 @@ impl Block {
         self.burnfee
     }
 
+    pub fn get_block_type(&self) -> BlockType {
+        self.block_type
+    }
+
     pub fn get_difficulty(&self) -> u64 {
         self.difficulty
+    }
+
+    pub fn get_filename(&self) -> &String {
+        &self.filename
     }
 
     pub fn get_has_golden_ticket(&self) -> bool {
@@ -245,12 +284,20 @@ impl Block {
     //    self.transactions = transactions;
     //}
 
+    pub fn set_block_type(&mut self, block_type: BlockType) {
+        self.block_type = block_type;
+    }
+
     pub fn set_id(&mut self, id: u64) {
         self.id = id;
     }
 
     pub fn set_lc(&mut self, lc: bool) {
         self.lc = lc;
+    }
+
+    pub fn set_filename(&mut self, filename: String) {
+        self.filename = filename;
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
@@ -291,6 +338,36 @@ impl Block {
 
     pub fn add_transaction(&mut self, tx: Transaction) {
         self.transactions.push(tx);
+    }
+
+    //
+    // if the block is not at the proper type, try to upgrade it to have the 
+    // data that is necessary for blocks of that type if possible. if this is 
+    // not possible, return false. if it is possible, return true once upgraded.
+    //
+    pub async fn upgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
+
+        if self.block_type == block_type { return true; }
+
+        //
+        // if the block type needed is full and we are not, 
+        // load the block if it exists on disk.
+	//
+        if block_type == BlockType::Full {
+
+	    let mut new_block = Storage::load_block_from_disk(self.filename.clone()).await;
+            let hash_for_signature = hash(&new_block.serialize_for_signature());
+            new_block.set_hash(hash_for_signature);
+
+            //
+            // in-memory swap copying txs in block from mempool
+            //
+            mem::swap(&mut new_block.transactions, &mut self.transactions);
+
+	    return true;
+        }
+
+        return false;
     }
 
     pub fn sign(&mut self, publickey: SaitoPublicKey, privatekey: SaitoPrivateKey) {

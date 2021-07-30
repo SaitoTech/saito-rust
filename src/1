@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 
 use crate::{block::Block, blockchain::Blockchain};
 
-pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
+pub const BLOCKS_DIR_PATH: String = "./data/blocks/".to_string();
 
 pub struct Storage {
     blocks_dir_path: String,
@@ -75,8 +75,8 @@ impl Storage {
         }
     }
     pub async fn load_block_from_disk(filename : String) -> Block {
-        let file_to_load = BLOCKS_DIR_PATH.to_string() + &filename;
-        let mut f = File::open(file_to_load).unwrap();
+        let file_to_load = BLOCKS_DIR_PATH + filename;
+        let mut f = File::open(path.path()).unwrap();
         let mut encoded = Vec::<u8>::new();
         f.read_to_end(&mut encoded).unwrap();
         let mut block = Block::deserialize_for_net(encoded);
