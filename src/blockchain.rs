@@ -55,7 +55,6 @@ impl Blockchain {
             block.transactions.len()
         );
 
-
         //
         // start by extracting some variables that we will use
         // repeatedly in the course of adding this block to the

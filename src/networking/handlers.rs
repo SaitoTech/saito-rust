@@ -30,7 +30,15 @@ pub async fn ws_upgrade_handler(
         sender: None,
     };
     Ok(ws.on_upgrade(move |socket| {
-        socket::client_connection(socket, id, clients, client, wallet_lock, mempool_lock, blockchain_lock)
+        socket::client_connection(
+            socket,
+            id,
+            clients,
+            client,
+            wallet_lock,
+            mempool_lock,
+            blockchain_lock,
+        )
     }))
 }
 pub async fn post_transaction_handler(mut body: impl Buf) -> Result<impl Reply> {

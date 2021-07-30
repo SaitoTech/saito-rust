@@ -222,8 +222,8 @@ mod tests {
     use super::*;
     use crate::{
         crypto::{generate_keys, hash, verify, SaitoSignature},
-        networking::filters::ws_upgrade_route_filter,
         mempool::Mempool,
+        networking::filters::ws_upgrade_route_filter,
         transaction::Transaction,
     };
     use secp256k1::PublicKey;

@@ -554,7 +554,7 @@ impl Transaction {
     /// [input][input][input]...
     /// [output][output][output]...
     /// [message]
-    /// [hop][hpp][hop]
+    /// [hop][hop][hop]...
     pub fn deserialize_from_net(bytes: Vec<u8>) -> Transaction {
         let inputs_len: u32 = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
         let outputs_len: u32 = u32::from_be_bytes(bytes[4..8].try_into().unwrap());
@@ -741,7 +741,6 @@ impl Transaction {
     pub fn generate_metadata(&mut self, publickey: SaitoPublicKey) -> bool {
         self.generate_metadata_hashes();
         self.generate_metadata_fees_and_slips(publickey);
-
         true
     }
 

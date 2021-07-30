@@ -13,10 +13,7 @@ use warp::ws::{Message, WebSocket};
 use crate::{
     blockchain::Blockchain,
     crypto::{hash, verify, SaitoHash, SaitoPublicKey},
-    mempool::{
-        Mempool,
-        AddTransactionResult
-    },
+    mempool::{AddTransactionResult, Mempool},
     networking::network::{
         APIMessage, Client, Clients, HandshakeChallenge, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
     },
@@ -172,21 +169,30 @@ async fn client_msg(
                     match mempool.add_transaction(tx).await {
                         AddTransactionResult::Accepted | AddTransactionResult::Exists => {
                             api_message_response = APIMessage {
-                                message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
+                                message_name: String::from("RESULT__")
+                                    .as_bytes()
+                                    .try_into()
+                                    .unwrap(),
                                 message_id: message_id,
                                 message_data: String::from("OK").as_bytes().try_into().unwrap(),
                             };
-                        },
+                        }
                         AddTransactionResult::Invalid => {
                             api_message_response = APIMessage {
-                                message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
+                                message_name: String::from("RESULT__")
+                                    .as_bytes()
+                                    .try_into()
+                                    .unwrap(),
                                 message_id: message_id,
                                 message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
                             };
                         }
                         AddTransactionResult::Rejected => {
                             api_message_response = APIMessage {
-                                message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
+                                message_name: String::from("RESULT__")
+                                    .as_bytes()
+                                    .try_into()
+                                    .unwrap(),
                                 message_id: message_id,
                                 message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
                             };
@@ -201,16 +207,14 @@ async fn client_msg(
                         .as_ref()
                         .unwrap()
                         .send(Ok(Message::binary(api_message_response.serialize())));
-
                 }
             });
-        },
+        }
         "GETBLKCH" => {
             tokio::spawn(async move {
                 let message_id = api_message.message_id;
-
             });
-        },
+        }
         _ => {}
     }
 }
@@ -295,7 +299,10 @@ pub fn socket_receive_transaction(message: APIMessage) -> Option<Transaction> {
     Some(tx)
 }
 
-pub async fn socket_send_blockchain(message: APIMessage, blockchain_lock: Arc<RwLock<Blockchain>>) -> Vec<u8> {
+pub async fn socket_send_blockchain(
+    message: APIMessage,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> Vec<u8> {
     let block_hash: SaitoHash = message.message_data[0..32].try_into().unwrap();
     let fork_id = u64::from_be_bytes(message.message_data[32..36].try_into().unwrap());
 
@@ -311,7 +318,8 @@ pub async fn socket_send_blockchain(message: APIMessage, blockchain_lock: Arc<Rw
             hashes.extend_from_slice(&target_block_hash);
             let mut previous_block_hash = target_block.get_previous_block_hash();
             while !blockchain.get_block(&previous_block_hash).is_none()
-              && previous_block_hash != [0; 32] {
+                && previous_block_hash != [0; 32]
+            {
                 let block = blockchain.get_block(&previous_block_hash).unwrap();
                 hashes.extend_from_slice(&block.get_hash());
                 previous_block_hash = block.get_previous_block_hash();

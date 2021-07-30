@@ -20,6 +20,8 @@ use std::convert::TryInto;
 use std::{mem, sync::Arc};
 use tokio::sync::RwLock;
 
+pub const BLOCK_HEADER_SIZE: usize = 205;
+
 //
 // object used when generating and validation transactions, containing the
 // information that is created selectively according to the transaction fees
@@ -363,7 +365,7 @@ impl Block {
         let burnfee: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
         let difficulty: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
         let mut transactions = vec![];
-        let mut start_of_transaction_data = 205;
+        let mut start_of_transaction_data = BLOCK_HEADER_SIZE;
         for _n in 0..transactions_len {
             let inputs_len: u32 = u32::from_be_bytes(
                 bytes[start_of_transaction_data..start_of_transaction_data + 4]
