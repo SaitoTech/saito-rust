@@ -23,6 +23,7 @@ impl Storage {
 
     pub fn write_block_to_disk(&self, block: &mut Block) {
         let mut filename = self.blocks_dir_path.clone();
+
         filename.push_str(&hex::encode(block.get_timestamp().to_be_bytes()));
         filename.push_str(&String::from("-"));
         filename.push_str(&hex::encode(&block.generate_hash()));
@@ -75,7 +76,9 @@ impl Storage {
         }
     }
     pub async fn load_block_from_disk(filename : String) -> Block {
-        let file_to_load = BLOCKS_DIR_PATH.to_string() + &filename;
+println!("Filename is: {}", filename);
+        //let file_to_load = BLOCKS_DIR_PATH.to_string() + &filename;
+        let file_to_load = &filename;
         let mut f = File::open(file_to_load).unwrap();
         let mut encoded = Vec::<u8>::new();
         f.read_to_end(&mut encoded).unwrap();

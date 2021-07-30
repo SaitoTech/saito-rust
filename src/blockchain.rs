@@ -298,6 +298,16 @@ impl Blockchain {
 
         println!(" ... block save done:            {:?}", create_timestamp());
 
+	// now force a reload
+        {   
+            println!(" ... force them to reload");
+            let block = self.get_mut_block(block_hash).await;
+            block.set_block_type(BlockType::Other);
+            block.upgrade_block_to_block_type(BlockType::Full).await;
+	    println!(" ... reloaded");
+        }
+
+
         //
         // TODO - this is merely for testing, we do not intend
         // the routing client to process transactions in its
@@ -462,12 +472,6 @@ impl Blockchain {
         // structures. So validation is "read-only" and our "write" actions
         // happen first.
         //
-	{
-	    println!(" ... force them to reload");
-            let block = self.get_mut_block(new_chain[current_wind_index]).await;
-	    block.set_block_type(BlockType::Other);
-	    block.upgrade_block_to_block_type(BlockType::Full).await;
-	}
         {
             //let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
             let block = self.get_mut_block(new_chain[current_wind_index]).await;

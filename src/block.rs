@@ -363,6 +363,10 @@ impl Block {
             // in-memory swap copying txs in block from mempool
             //
             mem::swap(&mut new_block.transactions, &mut self.transactions);
+	    //
+	    // transactions need hashes
+	    //
+	    self.generate_metadata();
 
 	    return true;
         }
