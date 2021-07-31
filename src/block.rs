@@ -136,6 +136,8 @@ pub struct Block {
     /// Transactions
     pub transactions: Vec<Transaction>,
     /// Self-Calculated / Validated
+    pre_hash: SaitoHash,
+    /// Self-Calculated / Validated
     hash: SaitoHash,
     /// total fees paid into block
     total_fees: u64,
@@ -173,6 +175,7 @@ impl Block {
             burnfee: 0,
             difficulty: 0,
             transactions: vec![],
+            pre_hash: [0; 32],
             hash: [0; 32],
             total_fees: 0,
             routing_work_for_creator: 0,
@@ -250,6 +253,10 @@ impl Block {
 
     pub fn get_has_fee_transaction(&self) -> bool {
         self.has_fee_transaction
+    }
+
+    pub fn get_pre_hash(&self) -> SaitoHash {
+        self.pre_hash
     }
 
     pub fn get_total_fees(&self) -> u64 {
@@ -332,6 +339,10 @@ impl Block {
         self.difficulty = difficulty;
     }
 
+    pub fn set_pre_hash(&mut self, pre_hash: SaitoHash) {
+        self.pre_hash = pre_hash;
+    }
+
     pub fn set_hash(&mut self, hash: SaitoHash) {
         self.hash = hash;
     }
@@ -357,7 +368,9 @@ impl Block {
 
 	    let mut new_block = Storage::load_block_from_disk(self.filename.clone()).await;
             let hash_for_signature = hash(&new_block.serialize_for_signature());
-            new_block.set_hash(hash_for_signature);
+            new_block.set_pre_hash(hash_for_signature);
+            let hash_for_hash = hash(&new_block.serialize_for_hash());
+            new_block.set_hash(hash_for_hash);
 
             //
             // in-memory swap copying txs in block from mempool
@@ -379,38 +392,31 @@ impl Block {
         // we set final data
         //
         self.set_creator(publickey);
-
-        let hash_for_signature = hash(&self.serialize_for_signature());
-        self.set_hash(hash_for_signature);
-
-        self.set_signature(sign(&hash_for_signature, privatekey));
+	self.generate_hash();
+        self.set_signature(sign(&self.get_pre_hash(), privatekey));
     }
 
-    //
-    // TODO
-    //
-    // hash is nor being serialized from the right data - requires
-    // merkle_root as an input into the hash, and that is not yet
-    // supported. this is a stub that uses the timestamp and the
-    // id -- it exists so each block will still have a unique hash
-    // for blockchain functions.
-    //
-    pub fn generate_hash(&self) -> SaitoHash {
+    pub fn generate_hash(&mut self) -> SaitoHash {
         //
         // fastest known way that isn't bincode ??
         //
-        let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend(&self.id.to_be_bytes());
-        vbytes.extend(&self.timestamp.to_be_bytes());
-        vbytes.extend(&self.previous_block_hash);
-        vbytes.extend(&self.creator);
-        vbytes.extend(&self.merkle_root);
-        vbytes.extend(&self.signature);
-        vbytes.extend(&self.treasury.to_be_bytes());
-        vbytes.extend(&self.burnfee.to_be_bytes());
-        vbytes.extend(&self.difficulty.to_be_bytes());
+        let hash_for_signature = hash(&self.serialize_for_signature());
+        self.set_pre_hash(hash_for_signature);
+        let hash_for_hash = hash(&self.serialize_for_hash());
+        self.set_hash(hash_for_hash);
 
-        hash(&vbytes)
+	hash_for_hash
+
+    }
+
+    // serialize the pre_hash and the signature_for_source into a 
+    // bytes array that can be hashed and then have the hash set.
+    pub fn serialize_for_hash(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.get_pre_hash());
+        vbytes.extend(&self.get_signature());
+        vbytes.extend(&self.get_previous_block_hash());
+        vbytes
     }
 
     // serialize major block components for block signature
@@ -936,6 +942,7 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
+
         //
         // no transactions? no thank you
         //
@@ -1307,8 +1314,10 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         let block_merkle_root = block.generate_merkle_root();
         block.set_merkle_root(block_merkle_root);
 
-        let block_hash = block.generate_hash();
-        block.set_hash(block_hash);
+	//
+	// set the hash too
+	//
+        block.generate_hash();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
