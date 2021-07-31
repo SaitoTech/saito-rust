@@ -1,3 +1,12 @@
+// length of 1 genesis period
+pub const GENESIS_PERIOD: u64 = 2;
+// prune blocks from index after N blocks
+pub const PRUNE_AFTER_BLOCKS: u64 = 1;
+
+
+
+
+
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
 use crate::consensus::SaitoMessage;
@@ -10,10 +19,8 @@ use async_recursion::async_recursion;
 
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
-
+use rayon::prelude::*;
 use ahash::AHashMap;
-
-pub const GENESIS_PERIOD: u64 = 6;
 
 pub fn bit_pack(top: u32, bottom: u32) -> u64 {
     ((top as u64) << 32) + (bottom as u64)
@@ -298,15 +305,6 @@ impl Blockchain {
 
         println!(" ... block save done:            {:?}", create_timestamp());
 
-	// now force a reload
-        {   
-            println!(" ... force them to reload");
-            let block = self.get_mut_block(block_hash).await;
-            block.set_block_type(BlockType::Other);
-            block.upgrade_block_to_block_type(BlockType::Full).await;
-	    println!(" ... reloaded");
-        }
-
 
         //
         // TODO - this is merely for testing, we do not intend
@@ -323,7 +321,32 @@ impl Blockchain {
         //
         // update_genesis_period and prune old data
         //
-	self.update_genesis_period();
+	self.update_genesis_period().await;
+
+
+	//
+	// ensure pruning of next block OK will have the right CVs
+	//
+	if self.get_latest_block_id() > GENESIS_PERIOD {
+            let pruned_block_hash = self
+                .blockring
+                .get_longest_chain_block_hash_by_block_id(self.get_latest_block_id() - GENESIS_PERIOD);
+
+	    //
+            // TODO
+            //
+            // handle this more efficiently - we should be able to prepare the block
+            // in advance so that this doesn't take up time in block production. we
+            // need to generate_metadata_hashes so that the slips know the utxo_key
+            // to use to check the utxoset.
+            //
+            {
+                let pblock = self.get_mut_block(pruned_block_hash).await;
+                pblock.upgrade_block_to_block_type(BlockType::Full).await;
+                let _transactions_pre_calculated = pblock.transactions.par_iter_mut().all(|tx| tx.generate_metadata_hashes());
+            }
+	}
+
 
 
     }
@@ -480,7 +503,7 @@ impl Blockchain {
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
         println!(" ... before block.validate:      {:?}", create_timestamp());
-        let does_block_validate = block.validate(&self, &self.utxoset);
+        let does_block_validate = block.validate(&self, &self.utxoset).await;
         println!(" ... after block.validate:       {:?}", create_timestamp());
 
         if does_block_validate {
@@ -640,7 +663,7 @@ println!("this block does not validate!");
     }
 
 
-    pub fn update_genesis_period(&mut self) {
+    pub async fn update_genesis_period(&mut self) {
 
         //
         // we need to make sure this is not a random block that is disconnected
@@ -655,8 +678,9 @@ println!("this block does not validate!");
 	let latest_block_id = self.get_latest_block_id();
         if latest_block_id >= ((GENESIS_PERIOD * 2) + 1) {
 
-println!("PRUNING data from the blockchain and updating the genesis period...");
-
+	    //
+	    // prune blocks 
+	    //
             let purge_bid = latest_block_id - (GENESIS_PERIOD * 2);
             self.genesis_block_id = latest_block_id - GENESIS_PERIOD;
 
@@ -665,12 +689,81 @@ println!("PRUNING data from the blockchain and updating the genesis period...");
             // lowest_block_id that we have found. we use the purge_id to
 	    // handle purges.
 	    //
-            self.purge_blockchain_data(purge_bid);
+            self.purge_blockchain_data(purge_bid).await;
 	}
+
+        self.downgrade_blockchain_data().await;
+
     }
 
-    pub fn purge_blockchain_data(&mut self, _purge_bid: u64) {
+    pub async fn purge_blockchain_data(&mut self, purge_block_id: u64) {
 
+	let mut block_hashes_copy: Vec<SaitoHash> = vec![];
+
+	{
+	    let block_hashes = self.blockring.get_block_hashes_at_block_id(purge_block_id);
+	    for hash in block_hashes {
+	        block_hashes_copy.push(hash.clone());
+	    }
+	}
+
+	for hash in block_hashes_copy {
+	
+	    // ask block to remove its data
+            {
+	        //
+	        // removes slips from UtxoSet
+	        //
+		let pblock = self.blocks.get(&hash).unwrap();
+		let pblock_filename = pblock.get_filename().clone();
+                pblock.purge(&mut self.utxoset).await;
+	        //
+	        // deletes block from disk
+	        //
+                Storage::delete_block_from_disk(pblock_filename).await;
+
+            }
+
+println!("removing from blockring...");
+	    self.blockring.delete_block(purge_block_id, hash);
+
+	    // remove from block index
+	    if self.blocks.contains_key(&hash) {
+println!("removing block from block index");
+		self.blocks.remove_entry(&hash);
+	    }
+
+        }
+    }
+
+    pub async fn downgrade_blockchain_data(&mut self) {
+
+	//
+	// downgrade blocks still on the chain
+	//
+        let prune_blocks_at_block_id = self.get_latest_block_id() - PRUNE_AFTER_BLOCKS;
+
+println!("downgrade blocks at block_id: {}", prune_blocks_at_block_id);
+
+	let mut block_hashes_copy: Vec<SaitoHash> = vec![];
+
+	{
+	    let block_hashes = self.blockring.get_block_hashes_at_block_id(prune_blocks_at_block_id);
+	    for hash in block_hashes {
+	        block_hashes_copy.push(hash.clone());
+	    }
+	}
+
+	for hash in block_hashes_copy {
+	
+	    //
+	    // ask the block to remove its transactions
+	    //
+            {
+                let pblock = self.get_mut_block(hash).await;
+                pblock.downgrade_block_to_block_type(BlockType::Pruned).await;
+            }
+	}
     }
 
 }

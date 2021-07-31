@@ -649,6 +649,23 @@ impl Transaction {
         vbytes
     }
 
+
+
+    // runs when block is purged for good
+    pub async fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+
+        self.inputs.iter().for_each(|input| {
+            input.purge(utxoset);
+        });
+        self.outputs.iter().for_each(|output| {
+            output.purge(utxoset);
+        });
+
+        true
+    }
+
+
+
     /// Runs when the chain is re-organized
     pub fn on_chain_reorganization(
         &self,

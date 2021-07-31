@@ -109,10 +109,9 @@ impl RouterPayout {
 ///
 #[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone)]
 pub enum BlockType {
-    Hash,
-    Header,
+    Ghost,
+    Pruned,
     Full,
-    Other,
 }
 
 
@@ -358,6 +357,8 @@ impl Block {
     //
     pub async fn upgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
 
+println!("upgrading block: {}", self.get_id());
+
         if self.block_type == block_type { return true; }
 
         //
@@ -387,16 +388,42 @@ impl Block {
         return false;
     }
 
+
+
+    //
+    // if the block is not at the proper type, try to downgrade it by removing elements
+    // that take up significant amounts of data / memory. if this is possible return
+    // true, otherwise return false.
+    //
+    pub async fn downgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
+
+println!("downgrading block: {}", self.get_id());
+
+        if self.block_type == block_type { return true; }
+
+        //
+        // if the block type needed is full and we are not, 
+        // load the block if it exists on disk.
+	//
+        if block_type == BlockType::Pruned {
+
+	    self.transactions = vec![];
+	    return true;
+        }
+
+        return false;
+    }
+
     pub fn sign(&mut self, publickey: SaitoPublicKey, privatekey: SaitoPrivateKey) {
         //
         // we set final data
         //
         self.set_creator(publickey);
-	self.generate_hash();
+	self.generate_hashes();
         self.set_signature(sign(&self.get_pre_hash(), privatekey));
     }
 
-    pub fn generate_hash(&mut self) -> SaitoHash {
+    pub fn generate_hashes(&mut self) -> SaitoHash {
         //
         // fastest known way that isn't bincode ??
         //
@@ -621,7 +648,7 @@ impl Block {
     //
     // generate hashes and payouts and fee calculations
     //
-    pub fn generate_consensus_values(&self, blockchain: &Blockchain) -> ConsensusValues {
+    pub async fn generate_consensus_values(&self, blockchain: &Blockchain) -> ConsensusValues {
         let mut cv = ConsensusValues::new();
 
         //
@@ -669,8 +696,14 @@ impl Block {
                 .get_longest_chain_block_hash_by_block_id(self.get_id() - 2);
 
             println!("pruned block hash: {:?}", pruned_block_hash);
-
+            
+	    //
+	    // generate metadata should have prepared us with a pre-prune block 
+	    // that contains all of the transactions and is ready to have its 
+	    // ATR rebroadcasts calculated.
+	    //
             if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
+
                 //
                 // identify all unspent transactions
                 //
@@ -937,7 +970,7 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         true
     }
 
-    pub fn validate(
+    pub async fn validate(
         &self,
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
@@ -966,7 +999,7 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         // to validate it by checking the variables we can see in our block with what
         // they should be given this function.
         //
-        let cv = self.generate_consensus_values(&blockchain);
+        let cv = self.generate_consensus_values(&blockchain).await;
 
         //
         // Previous Block
@@ -1207,6 +1240,7 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         blockchain_lock: Arc<RwLock<Blockchain>>,
         current_timestamp: u64,
     ) -> Block {
+
         let blockchain = blockchain_lock.read().await;
 
         let wallet = wallet_lock.read().await;
@@ -1249,7 +1283,7 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         //
         // contextual values
         //
-        let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain);
+        let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain).await;
 
         //
         // TODO - remove
@@ -1317,12 +1351,24 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
 	//
 	// set the hash too
 	//
-        block.generate_hash();
+        block.generate_hashes();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
         block
     }
+
+
+    pub async fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+
+println!("Purging data in b lock...");
+        for tx in &self.transactions {
+            tx.purge(utxoset).await;
+        }
+        true
+    }
+
+
 }
 
 //
@@ -1390,7 +1436,7 @@ mod tests {
     }
 
     #[test]
-    fn block_generate_hash() {
+    fn block_generate_hashes() {
         let block = Block::new();
         let hash = block.generate_hash();
         assert_ne!(hash, [0; 32]);

@@ -40,6 +40,24 @@ impl RingItem {
         self.block_ids.push(block_id);
     }
 
+    pub fn delete_block(&mut self, block_id: u64, hash: SaitoHash) {
+
+        let mut new_block_hashes: Vec<SaitoHash> = vec![];
+        let mut new_block_ids: Vec<u64> = vec![];
+
+        for i in 0..self.block_ids.len() {
+            if self.block_ids[i] == block_id && self.block_hashes[i] == hash {
+            } else {
+                new_block_hashes.push(self.block_hashes[i]);
+                new_block_ids.push(self.block_ids[i]);
+            }
+        }
+
+        self.block_hashes = new_block_hashes;
+        self.block_ids = new_block_ids;
+
+    }
+
     pub fn on_chain_reorganization(&mut self, hash: SaitoHash, lc: bool) -> bool {
         if !lc {
             self.lc_pos = None;
@@ -143,19 +161,29 @@ impl BlockRing {
         block_hash: SaitoHash,
     ) -> bool {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
-        println!(
-            "contains block hash at block id... {:?} {}",
-            block_hash, insert_pos
-        );
-        println!("insert pos is: {} {}", insert_pos, GENESIS_PERIOD);
         let res = self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash);
-        println!("ontains block hash at block id 2...");
         return res;
     }
 
     pub fn add_block(&mut self, block: &Block) {
         let insert_pos = block.get_id() % RING_BUFFER_LENGTH;
         self.block_ring[(insert_pos as usize)].add_block(block.get_id(), block.get_hash());
+    }
+
+    pub fn delete_block(&mut self, block_id: u64, block_hash: SaitoHash) {
+        let insert_pos = block_id % RING_BUFFER_LENGTH;
+        self.block_ring[(insert_pos as usize)].delete_block(block_id, block_hash);
+    }
+
+    pub fn get_block_hashes_at_block_id(&mut self, block_id: u64) -> Vec<SaitoHash> {
+        let insert_pos = block_id % RING_BUFFER_LENGTH;
+	let mut v: Vec<SaitoHash> = vec![];
+	for i in 00..self.block_ring[(insert_pos as usize)].block_hashes.len() {
+	    if self.block_ring[(insert_pos as usize)].block_ids[i] == block_id {
+		v.push(self.block_ring[(insert_pos as usize)].block_hashes[i].clone());
+	    }
+	}
+        return v;
     }
 
     pub fn on_chain_reorganization(&mut self, block_id: u64, hash: SaitoHash, lc: bool) -> bool {

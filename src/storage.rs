@@ -26,7 +26,7 @@ impl Storage {
 
         filename.push_str(&hex::encode(block.get_timestamp().to_be_bytes()));
         filename.push_str(&String::from("-"));
-        filename.push_str(&hex::encode(&block.generate_hash()));
+        filename.push_str(&hex::encode(&block.get_hash()));
         filename.push_str(&".sai");
 
 	block.set_filename(filename.clone());
@@ -64,7 +64,7 @@ impl Storage {
                 // the hash needs calculation separately after loading
                 //
                 if block.get_hash() == [0; 32] {
-                    let block_hash = block.generate_hash();
+                    let block_hash = block.get_hash();
                     block.set_hash(block_hash);
                 }
                 println!("loading block with hash: {:?}", block.get_hash());
@@ -76,7 +76,6 @@ impl Storage {
         }
     }
     pub async fn load_block_from_disk(filename : String) -> Block {
-println!("Filename is: {}", filename);
         //let file_to_load = BLOCKS_DIR_PATH.to_string() + &filename;
         let file_to_load = &filename;
         let mut f = File::open(file_to_load).unwrap();
@@ -88,12 +87,16 @@ println!("Filename is: {}", filename);
         // the hash needs calculation separately after loading
         //
         if block.get_hash() == [0; 32] {
-            let block_hash = block.generate_hash();
-            block.set_hash(block_hash);
+            block.generate_hashes();
         }
         println!("loaded block: {}", filename);
 
 	return block;
+    }
+
+    pub async fn delete_block_from_disk(filename : String) -> bool {
+        let _res = std::fs::remove_file(filename);
+	true
     }
 
 }

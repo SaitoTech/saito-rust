@@ -134,6 +134,18 @@ println!("value is returned false: {:?} ordinal {} and amount {}", self.utxoset_
         self.slip_type = slip_type;
     }
 
+
+
+    // runs when block is purged for good
+    pub fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+println!("removing with key: {:?}", self.get_utxoset_key());
+        utxoset.remove_entry(&self.get_utxoset_key());
+//println!("utxo: {}", utxoset.get_key_value(&self.get_utxoset_key()));
+        true
+    }
+
+
+
     //
     // Serialization
     //
