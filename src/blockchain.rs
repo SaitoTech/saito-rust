@@ -38,6 +38,7 @@ pub struct Blockchain {
     pub wallet_lock: Arc<RwLock<Wallet>>,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
     genesis_block_id: u64,
+    fork_id: SaitoHash,
 }
 
 impl Blockchain {
@@ -50,11 +51,20 @@ impl Blockchain {
             wallet_lock,
             broadcast_channel_sender: None,
             genesis_block_id: 0,
+            fork_id: [0; 32],
         }
     }
 
     pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
         self.broadcast_channel_sender = Some(bcs);
+    }
+
+    pub fn set_fork_id(&mut self, fork_id : SaitoHash) {
+        self.fork_id = fork_id;
+    }
+
+    pub fn get_fork_id(&self) -> SaitoHash {
+        self.fork_id
     }
 
     pub async fn add_block(&mut self, block: Block) {
@@ -282,12 +292,15 @@ impl Blockchain {
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
 
+	let block_id;
+
         //
         // save to disk
         //
         let storage = Storage::new();
         {
             let block = self.get_mut_block(block_hash).await;
+	    block_id = block.get_id();
             storage.write_block_to_disk(block);
 
             //
@@ -315,6 +328,13 @@ impl Blockchain {
         // update_genesis_period and prune old data
         //
         self.update_genesis_period().await;
+
+	//
+	// fork id
+	//
+	let fork_id = self.generate_fork_id(block_id);
+println!("FORK_ID: {:?}", fork_id);
+	self.set_fork_id(fork_id);
 
         //
         // ensure pruning of next block OK will have the right CVs
@@ -344,6 +364,67 @@ impl Blockchain {
     }
 
     pub async fn add_block_failure(&mut self) {}
+
+    pub fn generate_fork_id(&self, block_id : u64) -> SaitoHash {
+
+	let mut fork_id = [0; 32];
+	let mut current_block_id = block_id;
+
+	//
+	// roll back to last even 10 blocks
+	//
+	for i in 0..10 {
+	    if (current_block_id-i)%10 == 0 {
+	        current_block_id = current_block_id-i;
+		break;
+	    }
+	}
+
+	//
+	// loop backwards through blockchain
+	//
+        for i in 0..16 {
+
+	    if i == 0 { current_block_id -= 0; }
+	    if i == 1 { current_block_id -= 10; }
+	    if i == 2 { current_block_id -= 10; }
+	    if i == 3 { current_block_id -= 10; }
+	    if i == 4 { current_block_id -= 10; }
+	    if i == 5 { current_block_id -= 10; }
+	    if i == 6 { current_block_id -= 25; }
+	    if i == 7 { current_block_id -= 25; }
+	    if i == 8 { current_block_id -= 100; }
+	    if i == 9 { current_block_id -= 300; }
+	    if i == 10 { current_block_id -= 500; }
+	    if i == 11 { current_block_id -= 4000; }
+	    if i == 12 { current_block_id -= 10000; }
+	    if i == 13 { current_block_id -= 20000; }
+	    if i == 14 { current_block_id -= 50000; }
+	    if i == 15 { current_block_id -= 100000; }
+
+	    //
+	    // do not loop around if block id < 0
+	    //
+	    if current_block_id > block_id || current_block_id == 0 {
+		break;
+	    }
+
+	    //
+	    // index to update
+	    //
+	    let idx = 2 * i;
+
+	    //
+	    //
+	    //
+	    let block_hash = self.blockring.get_longest_chain_block_hash_by_block_id(current_block_id);
+	    fork_id[idx] = block_hash[idx];
+	    fork_id[idx+1] = block_hash[idx+1];
+	}
+
+	fork_id
+
+    }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_longest_chain_block_hash();
@@ -715,12 +796,20 @@ impl Blockchain {
         // ask block to delete itself / utxo-wise
         //
         {
-            //
-            // removes slips from UtxoSet
-            //
             let pblock = self.blocks.get(&delete_block_hash).unwrap();
             let pblock_filename = pblock.get_filename().clone();
+
+	    //
+	    // remove slips from wallet
+	    //
+	    let mut wallet = self.wallet_lock.write().await;
+	    wallet.delete_block(pblock);
+
+  	    //
+	    // removes utxoset data
+	    //
             pblock.delete(&mut self.utxoset).await;
+
 
             //
             // deletes block from disk
