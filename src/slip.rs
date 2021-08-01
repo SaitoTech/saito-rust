@@ -140,7 +140,7 @@ impl Slip {
     }
 
     // runs when block is purged for good
-    pub fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+    pub fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
 	if self.get_utxoset_key() == [0; 74] {
 	    println!("ERROR 572034: asked to remove a slip without its utxoset_key properly set!");
 	    false;

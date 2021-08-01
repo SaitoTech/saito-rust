@@ -468,7 +468,7 @@ impl Transaction {
             work_by_hop.push(aggregate_routing_work);
         }
 
-        println!("work by hop: {:?}", work_by_hop);
+        //println!("work by hop: {:?}", work_by_hop);
 
         //
         // find winning routing node
@@ -478,7 +478,7 @@ impl Transaction {
         let (zy, _bolres) = x.overflowing_rem(z);
         let winning_routing_work_in_nolan = zy.low_u64();
 
-        println!("wrwin: {}", winning_routing_work_in_nolan);
+        //println!("wrwin: {}", winning_routing_work_in_nolan);
 
         for i in 0..work_by_hop.len() {
             if winning_routing_work_in_nolan <= work_by_hop[i] {
@@ -648,13 +648,13 @@ impl Transaction {
         vbytes
     }
 
-    // runs when block is purged for good
-    pub async fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+    // runs when block is deleted for good
+    pub async fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         self.inputs.iter().for_each(|input| {
-            input.purge(utxoset);
+            input.delete(utxoset);
         });
         self.outputs.iter().for_each(|output| {
-            output.purge(utxoset);
+            output.delete(utxoset);
         });
 
         true

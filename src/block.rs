@@ -392,7 +392,7 @@ impl Block {
     // true, otherwise return false.
     //
     pub async fn downgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
-        println!("downgrading block: {}", self.get_id());
+        //println!("downgrading block: {}", self.get_id());
 
         if self.block_type == block_type {
             return true;
@@ -403,6 +403,7 @@ impl Block {
         // load the block if it exists on disk.
         //
         if block_type == BlockType::Pruned {
+println!("pruning!");
             self.transactions = vec![];
             self.set_block_type(BlockType::Pruned);
             return true;
@@ -1390,10 +1391,10 @@ impl Block {
         block
     }
 
-    pub async fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-        println!("Purging data in block...");
+    pub async fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+        println!("Deleting data in block...");
         for tx in &self.transactions {
-            tx.purge(utxoset).await;
+            tx.delete(utxoset).await;
         }
         true
     }
@@ -1544,4 +1545,28 @@ mod tests {
         assert!(block.generate_merkle_root().len() == 32);
     }
 
+    #[tokio::test]
+    async fn block_downgrade_test() {
+        let mut block = Block::new();
+        let wallet = Wallet::new();
+        let mut transactions = (0..5)
+            .into_iter()
+            .map(|_| {
+                let mut transaction = Transaction::new();
+                transaction.sign(wallet.get_privatekey());
+                transaction
+            })
+            .collect();
+        block.set_transactions(&mut transactions);
+
+        assert_eq!(block.transactions.len(), 5);
+        assert_eq!(block.get_block_type(), BlockType::Full);
+
+	block.downgrade_block_to_block_type(BlockType::Pruned).await;
+
+        assert_eq!(block.transactions.len(), 0);
+        assert_eq!(block.get_block_type(), BlockType::Pruned);
+    }
+
 }
+

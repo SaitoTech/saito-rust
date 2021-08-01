@@ -720,7 +720,7 @@ impl Blockchain {
             //
             let pblock = self.blocks.get(&delete_block_hash).unwrap();
             let pblock_filename = pblock.get_filename().clone();
-            pblock.purge(&mut self.utxoset).await;
+            pblock.delete(&mut self.utxoset).await;
 
             //
             // deletes block from disk
@@ -750,7 +750,7 @@ impl Blockchain {
         //
         let prune_blocks_at_block_id = self.get_latest_block_id() - PRUNE_AFTER_BLOCKS;
 
-        println!("downgrade blocks at block_id: {}", prune_blocks_at_block_id);
+        //println!("downgrade blocks at block_id: {}", prune_blocks_at_block_id);
 
         let mut block_hashes_copy: Vec<SaitoHash> = vec![];
 
