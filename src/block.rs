@@ -53,6 +53,8 @@ pub struct ConsensusValues {
     pub total_rebroadcast_fees_nolan: u64,
     // all ATR txs hashed together
     pub rebroadcast_hash: [u8; 32],
+    // dust falling off chain, needs adding to treasury
+    pub nolan_falling_off_chain: u64,
 }
 impl ConsensusValues {
     #[allow(clippy::too_many_arguments)]
@@ -71,6 +73,7 @@ impl ConsensusValues {
             total_rebroadcast_fees_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
+	    nolan_falling_off_chain: 0,
         }
     }
 }
@@ -357,8 +360,6 @@ impl Block {
     //
     pub async fn upgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
 
-println!("upgrading block: {}", self.get_id());
-
         if self.block_type == block_type { return true; }
 
         //
@@ -381,6 +382,7 @@ println!("upgrading block: {}", self.get_id());
 	    // transactions need hashes
 	    //
 	    self.generate_metadata();
+	    self.set_block_type(BlockType::Full);
 
 	    return true;
         }
@@ -406,8 +408,8 @@ println!("downgrading block: {}", self.get_id());
         // load the block if it exists on disk.
 	//
         if block_type == BlockType::Pruned {
-
 	    self.transactions = vec![];
+	    self.set_block_type(BlockType::Pruned);
 	    return true;
         }
 
@@ -687,6 +689,8 @@ println!("downgrading block: {}", self.get_id());
             }
         }
 
+
+
         //
         // calculate automatic transaction rebroadcasts / ATR / atr
         //
@@ -742,7 +746,11 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
                                 cv.rebroadcasts.push(rebroadcast_transaction);
                             } else {
                                 //
-                                // dust is collected as fee
+                                // rebroadcast dust is either collected into the treasury or 
+				// distributed as a fee for the next block producer. for now
+				// we will simply distribute it as a fee. we may need to 
+				// change this if the DUST becomes a significant enough amount
+				// each block to reduce consensus security.
                                 //
                                 cv.total_rebroadcast_fees_nolan += output.get_amount();
                             }
@@ -803,6 +811,17 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
                 cv.fee_transaction = Some(transaction);
             }
         }
+
+	//
+	// if no GT_IDX, previous block is unspendable and the treasury
+	// should be increased to account for the tokens that have now
+	// disappeared and will never be spent.
+	//
+	if cv.gt_num == 0 {
+            if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+	        cv.nolan_falling_off_chain = previous_block.get_total_fees();
+	    }
+	}
 
         cv
     }
@@ -1012,6 +1031,20 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         // circumstances, such as this being the first block we are adding to our chain.
         //
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+
+	    //
+	    // validate treasury
+	    //
+	    if self.get_treasury() != previous_block.get_treasury() + cv.nolan_falling_off_chain {
+                println!(
+                    "ERROR: treasury does not validate: {} expected versus {} found",
+                    (previous_block.get_treasury() + cv.nolan_falling_off_chain),
+                    self.get_treasury(),
+                );
+                return false;
+	    }
+
+
             //
             // validate burn fee
             //
@@ -1251,12 +1284,14 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         let mut previous_block_burnfee = 0;
         let mut previous_block_timestamp = 0;
         let mut previous_block_difficulty = 0;
+        let mut previous_block_treasury = 0;
 
         if let Some(previous_block) = blockchain.blocks.get(&previous_block_hash) {
             previous_block_id = previous_block.get_id();
             previous_block_burnfee = previous_block.get_burnfee();
             previous_block_timestamp = previous_block.get_timestamp();
             previous_block_difficulty = previous_block.get_difficulty();
+            previous_block_treasury = previous_block.get_treasury();
         }
 
         let mut block = Block::new();
@@ -1336,11 +1371,19 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         }
 
         //
-        // validate difficulty
+        // set difficulty
         //
         if cv.expected_difficulty != 0 {
             block.set_difficulty(cv.expected_difficulty);
         }
+
+	//
+	// set treasury
+	//
+	if cv.nolan_falling_off_chain != 0 {
+	    block.set_treasury(previous_block_treasury + cv.nolan_falling_off_chain);
+	}
+
 
         //
         // generate merkle root
