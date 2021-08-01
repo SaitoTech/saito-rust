@@ -405,8 +405,8 @@ mod test {
         let publickey;
 
         let mut transactions: Vec<Transaction> = vec![];
-        let mut latest_block_id = 3132;
-        let mut latest_block_hash = [0; 32];
+        let _latest_block_id = 3132;
+        let latest_block_hash = [0; 32];
 
         {
             let wallet = wallet_lock.read().await;
