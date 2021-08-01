@@ -677,19 +677,19 @@ impl Blockchain {
             // lowest_block_id that we have found. we use the purge_id to
             // handle purges.
             //
-            self.purge_blockchain_data(purge_bid).await;
+            self.delete_blocks(purge_bid).await;
         }
 
         self.downgrade_blockchain_data().await;
     }
 
-    pub async fn purge_blockchain_data(&mut self, purge_block_id: u64) {
-        println!("removing data including from disk at id {}", purge_block_id);
+    pub async fn delete_blocks(&mut self, delete_block_id: u64) {
+        println!("removing data including from disk at id {}", delete_block_id);
 
         let mut block_hashes_copy: Vec<SaitoHash> = vec![];
 
         {
-            let block_hashes = self.blockring.get_block_hashes_at_block_id(purge_block_id);
+            let block_hashes = self.blockring.get_block_hashes_at_block_id(delete_block_id);
             for hash in block_hashes {
                 block_hashes_copy.push(hash.clone());
             }
@@ -698,31 +698,44 @@ impl Blockchain {
         println!("number of hashes to remove {}", block_hashes_copy.len());
 
         for hash in block_hashes_copy {
-            // ask block to remove its data
-            {
-                //
-                // removes slips from UtxoSet
-                //
-                let pblock = self.blocks.get(&hash).unwrap();
-                let pblock_filename = pblock.get_filename().clone();
-                pblock.purge(&mut self.utxoset).await;
-                //
-                // deletes block from disk
-                //
-                println!("delete filename {}", pblock_filename);
-                Storage::delete_block_from_disk(pblock_filename).await;
-            }
-
-            println!("removing from blockring...");
-            self.blockring.delete_block(purge_block_id, hash);
-
-            // remove from block index
-            if self.blocks.contains_key(&hash) {
-                println!("removing block from block index");
-                self.blocks.remove_entry(&hash);
-            }
+	    self.delete_block(delete_block_id, hash);
         }
     }
+
+    pub async fn delete_block(&mut self, delete_block_id: u64, delete_block_hash: SaitoHash) {
+
+        //
+        // ask block to delete itself / utxo-wise
+        //
+        {
+            //
+            // removes slips from UtxoSet
+            //
+            let pblock = self.blocks.get(&delete_block_hash).unwrap();
+            let pblock_filename = pblock.get_filename().clone();
+            pblock.purge(&mut self.utxoset).await;
+
+            //
+            // deletes block from disk
+            //
+            println!("delete filename {}", pblock_filename);
+            Storage::delete_block_from_disk(pblock_filename).await;
+        }
+
+	//
+	// ask blockring to remove
+	//
+        self.blockring.delete_block(delete_block_id, delete_block_hash);
+
+	//
+        // remove from block index
+	//
+        if self.blocks.contains_key(&delete_block_hash) {
+            self.blocks.remove_entry(&delete_block_hash);
+        }
+
+    }
+
 
     pub async fn downgrade_blockchain_data(&mut self) {
         //
