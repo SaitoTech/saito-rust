@@ -61,16 +61,21 @@ impl Slip {
         if self.get_amount() > 0 {
             match utxoset.get(&self.utxoset_key) {
                 Some(value) => {
-		    if *value==1 {
-		        return true;
-		    } else {
-			return false;
-		    }
-	        }
+                    if *value == 1 {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
                 None => {
-println!("value is returned false: {:?} ordinal {} and amount {}", self.utxoset_key, self.get_slip_ordinal(), self.get_amount());
-		    return false;
-            	}
+                    println!(
+                        "value is returned false: {:?} ordinal {} and amount {}",
+                        self.utxoset_key,
+                        self.get_slip_ordinal(),
+                        self.get_amount()
+                    );
+                    return false;
+                }
             }
         } else {
             return true;
@@ -84,9 +89,9 @@ println!("value is returned false: {:?} ordinal {} and amount {}", self.utxoset_
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
-//println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
-//println!("slip_ordinal: {}", self.get_slip_ordinal());
-//println!("slip_amount: {}", self.get_amount());
+            //println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
+            //println!("slip_ordinal: {}", self.get_slip_ordinal());
+            //println!("slip_amount: {}", self.get_amount());
             utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
@@ -134,17 +139,13 @@ println!("value is returned false: {:?} ordinal {} and amount {}", self.utxoset_
         self.slip_type = slip_type;
     }
 
-
-
     // runs when block is purged for good
     pub fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-println!("removing with key: {:?}", self.get_utxoset_key());
+        println!("removing with key: {:?}", self.get_utxoset_key());
         utxoset.remove_entry(&self.get_utxoset_key());
-//println!("utxo: {}", utxoset.get_key_value(&self.get_utxoset_key()));
+        //println!("utxo: {}", utxoset.get_key_value(&self.get_utxoset_key()));
         true
     }
-
-
 
     //
     // Serialization

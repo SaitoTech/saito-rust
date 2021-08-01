@@ -94,14 +94,13 @@ impl Mempool {
     // this handles any transactions broadcast on the same system. it receives the transaction
     // directly and so does not validate against the UTXOset etc.
     pub async fn add_transaction(&mut self, mut transaction: Transaction) -> AddTransactionResult {
-
         let tx_sig_to_insert = transaction.get_signature();
 
-	//
-	// this assigns the amount of routing work that this transaction 
-	// contains to us, which is why we need to provide our publickey
-	// so that we can calculate routing work.
-	//
+        //
+        // this assigns the amount of routing work that this transaction
+        // contains to us, which is why we need to provide our publickey
+        // so that we can calculate routing work.
+        //
         let publickey;
         {
             let wallet = self.wallet_lock.read().await;
@@ -112,7 +111,7 @@ impl Mempool {
         let routing_work_available_for_me =
             transaction.get_routing_work_for_publickey(self.mempool_publickey);
 
-//        println!("adding tx with routing work for me: {}", routing_work_available_for_me);
+        //        println!("adding tx with routing work for me: {}", routing_work_available_for_me);
 
         if self
             .transactions

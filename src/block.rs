@@ -18,9 +18,9 @@ use bigint::uint::U256;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
+use std::string::String;
 use std::{mem, sync::Arc};
 use tokio::sync::RwLock;
-use std::string::String;
 
 //
 // object used when generating and validation transactions, containing the
@@ -73,7 +73,7 @@ impl ConsensusValues {
             total_rebroadcast_fees_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
-	    nolan_falling_off_chain: 0,
+            nolan_falling_off_chain: 0,
         }
     }
 }
@@ -98,10 +98,9 @@ impl RouterPayout {
     }
 }
 
-
 ///
 /// BlockType is a human-readable indicator of the state of the block
-/// with particular attention to its state of pruning and the amount of 
+/// with particular attention to its state of pruning and the amount of
 /// data that is available. It is used by some functions to fetch blocks
 /// that require certain types of data, such as the full set of transactions
 /// or the UTXOSet
@@ -116,9 +115,6 @@ pub enum BlockType {
     Pruned,
     Full,
 }
-
-
-
 
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -188,8 +184,8 @@ impl Block {
             total_rebroadcast_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
-	    filename: String::new(),
-	    block_type: BlockType::Full,
+            filename: String::new(),
+            block_type: BlockType::Full,
         }
     }
 
@@ -354,21 +350,21 @@ impl Block {
     }
 
     //
-    // if the block is not at the proper type, try to upgrade it to have the 
-    // data that is necessary for blocks of that type if possible. if this is 
+    // if the block is not at the proper type, try to upgrade it to have the
+    // data that is necessary for blocks of that type if possible. if this is
     // not possible, return false. if it is possible, return true once upgraded.
     //
     pub async fn upgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
-
-        if self.block_type == block_type { return true; }
+        if self.block_type == block_type {
+            return true;
+        }
 
         //
-        // if the block type needed is full and we are not, 
+        // if the block type needed is full and we are not,
         // load the block if it exists on disk.
-	//
+        //
         if block_type == BlockType::Full {
-
-	    let mut new_block = Storage::load_block_from_disk(self.filename.clone()).await;
+            let mut new_block = Storage::load_block_from_disk(self.filename.clone()).await;
             let hash_for_signature = hash(&new_block.serialize_for_signature());
             new_block.set_pre_hash(hash_for_signature);
             let hash_for_hash = hash(&new_block.serialize_for_hash());
@@ -378,19 +374,17 @@ impl Block {
             // in-memory swap copying txs in block from mempool
             //
             mem::swap(&mut new_block.transactions, &mut self.transactions);
-	    //
-	    // transactions need hashes
-	    //
-	    self.generate_metadata();
-	    self.set_block_type(BlockType::Full);
+            //
+            // transactions need hashes
+            //
+            self.generate_metadata();
+            self.set_block_type(BlockType::Full);
 
-	    return true;
+            return true;
         }
 
         return false;
     }
-
-
 
     //
     // if the block is not at the proper type, try to downgrade it by removing elements
@@ -398,19 +392,20 @@ impl Block {
     // true, otherwise return false.
     //
     pub async fn downgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
+        println!("downgrading block: {}", self.get_id());
 
-println!("downgrading block: {}", self.get_id());
-
-        if self.block_type == block_type { return true; }
+        if self.block_type == block_type {
+            return true;
+        }
 
         //
-        // if the block type needed is full and we are not, 
+        // if the block type needed is full and we are not,
         // load the block if it exists on disk.
-	//
+        //
         if block_type == BlockType::Pruned {
-	    self.transactions = vec![];
-	    self.set_block_type(BlockType::Pruned);
-	    return true;
+            self.transactions = vec![];
+            self.set_block_type(BlockType::Pruned);
+            return true;
         }
 
         return false;
@@ -421,7 +416,7 @@ println!("downgrading block: {}", self.get_id());
         // we set final data
         //
         self.set_creator(publickey);
-	self.generate_hashes();
+        self.generate_hashes();
         self.set_signature(sign(&self.get_pre_hash(), privatekey));
     }
 
@@ -434,11 +429,10 @@ println!("downgrading block: {}", self.get_id());
         let hash_for_hash = hash(&self.serialize_for_hash());
         self.set_hash(hash_for_hash);
 
-	hash_for_hash
-
+        hash_for_hash
     }
 
-    // serialize the pre_hash and the signature_for_source into a 
+    // serialize the pre_hash and the signature_for_source into a
     // bytes array that can be hashed and then have the hash set.
     pub fn serialize_for_hash(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
@@ -689,8 +683,6 @@ println!("downgrading block: {}", self.get_id());
             }
         }
 
-
-
         //
         // calculate automatic transaction rebroadcasts / ATR / atr
         //
@@ -700,14 +692,13 @@ println!("downgrading block: {}", self.get_id());
                 .get_longest_chain_block_hash_by_block_id(self.get_id() - 2);
 
             println!("pruned block hash: {:?}", pruned_block_hash);
-            
-	    //
-	    // generate metadata should have prepared us with a pre-prune block 
-	    // that contains all of the transactions and is ready to have its 
-	    // ATR rebroadcasts calculated.
-	    //
-            if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
 
+            //
+            // generate metadata should have prepared us with a pre-prune block
+            // that contains all of the transactions and is ready to have its
+            // ATR rebroadcasts calculated.
+            //
+            if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
                 //
                 // identify all unspent transactions
                 //
@@ -727,7 +718,10 @@ println!("downgrading block: {}", self.get_id());
                                 //
                                 // TODO - floating fee based on previous block average
                                 //
-println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
+                                println!(
+                                    "GENERATING REBROADCAST TX: {:?}",
+                                    transaction.get_transaction_type()
+                                );
                                 let rebroadcast_transaction =
                                     Transaction::generate_rebroadcast_transaction(
                                         &transaction,
@@ -746,11 +740,11 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
                                 cv.rebroadcasts.push(rebroadcast_transaction);
                             } else {
                                 //
-                                // rebroadcast dust is either collected into the treasury or 
-				// distributed as a fee for the next block producer. for now
-				// we will simply distribute it as a fee. we may need to 
-				// change this if the DUST becomes a significant enough amount
-				// each block to reduce consensus security.
+                                // rebroadcast dust is either collected into the treasury or
+                                // distributed as a fee for the next block producer. for now
+                                // we will simply distribute it as a fee. we may need to
+                                // change this if the DUST becomes a significant enough amount
+                                // each block to reduce consensus security.
                                 //
                                 cv.total_rebroadcast_fees_nolan += output.get_amount();
                             }
@@ -812,16 +806,16 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
             }
         }
 
-	//
-	// if no GT_IDX, previous block is unspendable and the treasury
-	// should be increased to account for the tokens that have now
-	// disappeared and will never be spent.
-	//
-	if cv.gt_num == 0 {
+        //
+        // if no GT_IDX, previous block is unspendable and the treasury
+        // should be increased to account for the tokens that have now
+        // disappeared and will never be spent.
+        //
+        if cv.gt_num == 0 {
             if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-	        cv.nolan_falling_off_chain = previous_block.get_total_fees();
-	    }
-	}
+                cv.nolan_falling_off_chain = previous_block.get_total_fees();
+            }
+        }
 
         cv
     }
@@ -994,7 +988,6 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
     ) -> bool {
-
         //
         // no transactions? no thank you
         //
@@ -1031,19 +1024,17 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         // circumstances, such as this being the first block we are adding to our chain.
         //
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-
-	    //
-	    // validate treasury
-	    //
-	    if self.get_treasury() != previous_block.get_treasury() + cv.nolan_falling_off_chain {
+            //
+            // validate treasury
+            //
+            if self.get_treasury() != previous_block.get_treasury() + cv.nolan_falling_off_chain {
                 println!(
                     "ERROR: treasury does not validate: {} expected versus {} found",
                     (previous_block.get_treasury() + cv.nolan_falling_off_chain),
                     self.get_treasury(),
                 );
                 return false;
-	    }
-
+            }
 
             //
             // validate burn fee
@@ -1273,7 +1264,6 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         blockchain_lock: Arc<RwLock<Blockchain>>,
         current_timestamp: u64,
     ) -> Block {
-
         let blockchain = blockchain_lock.read().await;
 
         let wallet = wallet_lock.read().await;
@@ -1377,13 +1367,12 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
             block.set_difficulty(cv.expected_difficulty);
         }
 
-	//
-	// set treasury
-	//
-	if cv.nolan_falling_off_chain != 0 {
-	    block.set_treasury(previous_block_treasury + cv.nolan_falling_off_chain);
-	}
-
+        //
+        // set treasury
+        //
+        if cv.nolan_falling_off_chain != 0 {
+            block.set_treasury(previous_block_treasury + cv.nolan_falling_off_chain);
+        }
 
         //
         // generate merkle root
@@ -1391,9 +1380,9 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         let block_merkle_root = block.generate_merkle_root();
         block.set_merkle_root(block_merkle_root);
 
-	//
-	// set the hash too
-	//
+        //
+        // set the hash too
+        //
         block.generate_hashes();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
@@ -1401,17 +1390,13 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         block
     }
 
-
     pub async fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-
-println!("Purging data in b lock...");
+        println!("Purging data in b lock...");
         for tx in &self.transactions {
             tx.purge(utxoset).await;
         }
         true
     }
-
-
 }
 
 //

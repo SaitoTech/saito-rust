@@ -40,28 +40,26 @@ impl RingItem {
     }
 
     pub fn delete_block(&mut self, block_id: u64, hash: SaitoHash) {
-
         let mut new_block_hashes: Vec<SaitoHash> = vec![];
         let mut new_block_ids: Vec<u64> = vec![];
-	let mut idx_loop = 0;
-	let mut new_lc_pos = Some(0);
+        let mut idx_loop = 0;
+        let mut new_lc_pos = Some(0);
 
         for i in 0..self.block_ids.len() {
             if self.block_ids[i] == block_id && self.block_hashes[i] == hash {
             } else {
                 new_block_hashes.push(self.block_hashes[i]);
                 new_block_ids.push(self.block_ids[i]);
-		if self.lc_pos == Some(i) { 
-		    new_lc_pos = Some(idx_loop);
-		}
-	        idx_loop += 1;
+                if self.lc_pos == Some(i) {
+                    new_lc_pos = Some(idx_loop);
+                }
+                idx_loop += 1;
             }
         }
 
         self.block_hashes = new_block_hashes;
         self.block_ids = new_block_ids;
-	self.lc_pos = new_lc_pos;
-
+        self.lc_pos = new_lc_pos;
     }
 
     pub fn on_chain_reorganization(&mut self, hash: SaitoHash, lc: bool) -> bool {
@@ -72,26 +70,26 @@ impl RingItem {
             //
             // remove any old indices
             //
-/*** WE NOW DELETE MANUALLY when purging ***
-            if let Some(lc_pos) = self.lc_pos {
-                let current_block_id = self.block_ids[lc_pos];
+            /*** WE NOW DELETE MANUALLY when purging ***
+                        if let Some(lc_pos) = self.lc_pos {
+                            let current_block_id = self.block_ids[lc_pos];
 
-                let mut new_block_hashes: Vec<SaitoHash> = vec![];
-                let mut new_block_ids: Vec<u64> = vec![];
+                            let mut new_block_hashes: Vec<SaitoHash> = vec![];
+                            let mut new_block_ids: Vec<u64> = vec![];
 
-                for i in 0..self.block_ids.len() {
-                    if self.block_ids[i] < current_block_id {
-                        self.lc_pos = Some(i);
-                    } else {
-                        new_block_hashes.push(self.block_hashes[i]);
-                        new_block_ids.push(self.block_ids[i]);
-                    }
-                }
+                            for i in 0..self.block_ids.len() {
+                                if self.block_ids[i] < current_block_id {
+                                    self.lc_pos = Some(i);
+                                } else {
+                                    new_block_hashes.push(self.block_hashes[i]);
+                                    new_block_ids.push(self.block_ids[i]);
+                                }
+                            }
 
-                self.block_hashes = new_block_hashes;
-                self.block_ids = new_block_ids;
-            }
-***/
+                            self.block_hashes = new_block_hashes;
+                            self.block_ids = new_block_ids;
+                        }
+            ***/
         }
 
         true
@@ -168,12 +166,12 @@ impl BlockRing {
 
     pub fn get_block_hashes_at_block_id(&mut self, block_id: u64) -> Vec<SaitoHash> {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
-	let mut v: Vec<SaitoHash> = vec![];
-	for i in 00..self.block_ring[(insert_pos as usize)].block_hashes.len() {
-	    if self.block_ring[(insert_pos as usize)].block_ids[i] == block_id {
-		v.push(self.block_ring[(insert_pos as usize)].block_hashes[i].clone());
-	    }
-	}
+        let mut v: Vec<SaitoHash> = vec![];
+        for i in 00..self.block_ring[(insert_pos as usize)].block_hashes.len() {
+            if self.block_ring[(insert_pos as usize)].block_ids[i] == block_id {
+                v.push(self.block_ring[(insert_pos as usize)].block_hashes[i].clone());
+            }
+        }
         return v;
     }
 

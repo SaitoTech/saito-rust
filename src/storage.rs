@@ -29,9 +29,9 @@ impl Storage {
         filename.push_str(&hex::encode(&block.get_hash()));
         filename.push_str(&".sai");
 
-	block.set_filename(filename.clone());
+        block.set_filename(filename.clone());
 
-//println!("trying to write to disk: {}", filename);
+        //println!("trying to write to disk: {}", filename);
 
         let mut buffer = File::create(filename).unwrap();
         let byte_array: Vec<u8> = block.serialize_for_net();
@@ -75,7 +75,7 @@ impl Storage {
             }
         }
     }
-    pub async fn load_block_from_disk(filename : String) -> Block {
+    pub async fn load_block_from_disk(filename: String) -> Block {
         //let file_to_load = BLOCKS_DIR_PATH.to_string() + &filename;
         let file_to_load = &filename;
         let mut f = File::open(file_to_load).unwrap();
@@ -91,13 +91,12 @@ impl Storage {
         }
         println!("loaded block: {}", filename);
 
-	return block;
+        return block;
     }
 
-    pub async fn delete_block_from_disk(filename : String) -> bool {
-println!("deleting {}", filename);
+    pub async fn delete_block_from_disk(filename: String) -> bool {
+        println!("deleting {}", filename);
         let _res = std::fs::remove_file(filename);
-	true
+        true
     }
-
 }

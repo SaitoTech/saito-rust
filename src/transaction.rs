@@ -525,7 +525,6 @@ impl Transaction {
     }
 
     pub fn sign(&mut self, privatekey: SaitoPrivateKey) {
-
         //
         // we set slip ordinals when signing
         //
@@ -649,11 +648,8 @@ impl Transaction {
         vbytes
     }
 
-
-
     // runs when block is purged for good
     pub async fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-
         self.inputs.iter().for_each(|input| {
             input.purge(utxoset);
         });
@@ -663,8 +659,6 @@ impl Transaction {
 
         true
     }
-
-
 
     /// Runs when the chain is re-organized
     pub fn on_chain_reorganization(
@@ -876,7 +870,7 @@ impl Transaction {
         // fee transactions
         //
         if transaction_type == TransactionType::Fee {
-//println!("Fee Transaction");
+            //println!("Fee Transaction");
             // signed by block creator ?
         }
 
@@ -884,26 +878,23 @@ impl Transaction {
         // atr transactions
         //
         if transaction_type == TransactionType::ATR {
-//println!("ATR Transaction");
+            //println!("ATR Transaction");
 
             // signed by block creator ?
         }
-
 
         //
         // normal transactions
         //
         if transaction_type == TransactionType::Normal {
-//println!("Normal Transaction");
-
+            //println!("Normal Transaction");
         }
 
         //
         // golden ticket transactions
         //
         if transaction_type == TransactionType::GoldenTicket {
-//println!("Golden Ticket Transaction");
-
+            //println!("Golden Ticket Transaction");
         }
 
         //
@@ -915,7 +906,7 @@ impl Transaction {
         // for the faith and support.
         //
         if transaction_type == TransactionType::Vip {
-//println!("VIP Transaction");
+            //println!("VIP Transaction");
 
             // we should validate that VIP transactions are signed by the
             // publickey associated with the Saito project.
@@ -943,9 +934,8 @@ impl Transaction {
         //
         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
 
-	inputs_validate
+        inputs_validate
     }
-
 }
 
 #[cfg(test)]
