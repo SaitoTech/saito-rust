@@ -89,9 +89,9 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
-            println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
-            println!("slip_ordinal: {}", self.get_slip_ordinal());
-            println!("slip_amount: {}", self.get_amount());
+            //println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
+            //println!("slip_ordinal: {}", self.get_slip_ordinal());
+            //println!("slip_amount: {}", self.get_amount());
             utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
@@ -141,9 +141,11 @@ impl Slip {
 
     // runs when block is purged for good
     pub fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-        println!("removing with key: {:?}", self.get_utxoset_key());
+	if self.get_utxoset_key() == [0; 74] {
+	    println!("ERROR 572034: asked to remove a slip without its utxoset_key properly set!");
+	    false;
+	}
         utxoset.remove_entry(&self.get_utxoset_key());
-        //println!("utxo: {}", utxoset.get_key_value(&self.get_utxoset_key()));
         true
     }
 
@@ -292,11 +294,8 @@ mod tests {
 	slip.generate_utxoset_key();
 
 	// add to utxoset
-println!("1 -- {:?}", slip.get_utxoset_key());
 	slip.on_chain_reorganization(&mut blockchain.utxoset, true, 2);
-println!("2 -- {:?}", slip.get_utxoset_key());
         assert_eq!(blockchain.utxoset.contains_key(&slip.get_utxoset_key()), true);
-println!("3 -- {:?}", slip.get_utxoset_key());
 
 	// remove from utxoset
 	slip.purge(&mut blockchain.utxoset);

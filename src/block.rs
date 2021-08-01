@@ -1544,12 +1544,4 @@ mod tests {
         assert!(block.generate_merkle_root().len() == 32);
     }
 
-    #[test]
-    fn block_pre_validateion_calculations() {}
-
-    #[test]
-    fn block_onchain_reorganization_test() {}
-
-    #[test]
-    fn block_validation() {}
 }
