@@ -698,6 +698,8 @@ println!("this block does not validate!");
 
     pub async fn purge_blockchain_data(&mut self, purge_block_id: u64) {
 
+println!("removing data including from disk at id {}", purge_block_id);
+
 	let mut block_hashes_copy: Vec<SaitoHash> = vec![];
 
 	{
@@ -706,6 +708,8 @@ println!("this block does not validate!");
 	        block_hashes_copy.push(hash.clone());
 	    }
 	}
+
+println!("number of hashes to remove {}", block_hashes_copy.len());
 
 	for hash in block_hashes_copy {
 	
@@ -720,6 +724,7 @@ println!("this block does not validate!");
 	        //
 	        // deletes block from disk
 	        //
+println!("delete filename {}", pblock_filename);
                 Storage::delete_block_from_disk(pblock_filename).await;
 
             }

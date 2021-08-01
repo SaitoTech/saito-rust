@@ -95,6 +95,7 @@ impl Storage {
     }
 
     pub async fn delete_block_from_disk(filename : String) -> bool {
+println!("deleting {}", filename);
         let _res = std::fs::remove_file(filename);
 	true
     }

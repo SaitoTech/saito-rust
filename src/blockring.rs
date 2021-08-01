@@ -25,7 +25,6 @@ impl RingItem {
     pub fn new() -> Self {
         Self {
             lc_pos: None,
-            // lc_pos: usize::MAX,
             block_hashes: vec![],
             block_ids: vec![],
         }
@@ -44,17 +43,24 @@ impl RingItem {
 
         let mut new_block_hashes: Vec<SaitoHash> = vec![];
         let mut new_block_ids: Vec<u64> = vec![];
+	let mut idx_loop = 0;
+	let mut new_lc_pos = Some(0);
 
         for i in 0..self.block_ids.len() {
             if self.block_ids[i] == block_id && self.block_hashes[i] == hash {
             } else {
                 new_block_hashes.push(self.block_hashes[i]);
                 new_block_ids.push(self.block_ids[i]);
+		if self.lc_pos == Some(i) { 
+		    new_lc_pos = Some(idx_loop);
+		}
+	        idx_loop += 1;
             }
         }
 
         self.block_hashes = new_block_hashes;
         self.block_ids = new_block_ids;
+	self.lc_pos = new_lc_pos;
 
     }
 
@@ -62,27 +68,11 @@ impl RingItem {
         if !lc {
             self.lc_pos = None;
         } else {
-            //
-            // update new longest-chain
-            //
-            // for i in 0..self.block_hashes.len() {
-            //     if self.block_hashes[i] == hash {
-            //         self.lc_pos = i;
-            //     }
-            // }
-
             self.lc_pos = self.block_hashes.iter().position(|b_hash| b_hash == &hash);
-
-            //
-            // this hash does not exist
-            //
-            // if self.block_ids.len() < self.lc_pos {
-            //     return false;
-            // }
-
             //
             // remove any old indices
             //
+/*** WE NOW DELETE MANUALLY when purging ***
             if let Some(lc_pos) = self.lc_pos {
                 let current_block_id = self.block_ids[lc_pos];
 
@@ -101,6 +91,7 @@ impl RingItem {
                 self.block_hashes = new_block_hashes;
                 self.block_ids = new_block_ids;
             }
+***/
         }
 
         true
