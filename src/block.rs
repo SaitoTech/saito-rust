@@ -1391,7 +1391,7 @@ impl Block {
     }
 
     pub async fn purge(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-        println!("Purging data in b lock...");
+        println!("Purging data in block...");
         for tx in &self.transactions {
             tx.purge(utxoset).await;
         }

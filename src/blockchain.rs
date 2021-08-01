@@ -661,11 +661,12 @@ impl Blockchain {
         // the block may be an attack on us intended to force us to discard
         // actually useful data.
         //
-        // we do this by checking that our block is the head of the
-        // verified longest chain.
+        // so we check that our block is the head of the longest-chain and only
+	// update the genesis period when that is the case.
         //
         let latest_block_id = self.get_latest_block_id();
         if latest_block_id >= ((GENESIS_PERIOD * 2) + 1) {
+
             //
             // prune blocks
             //
@@ -683,6 +684,9 @@ impl Blockchain {
         self.downgrade_blockchain_data().await;
     }
 
+    //
+    // deletes all blocks at a single block_id
+    //
     pub async fn delete_blocks(&mut self, delete_block_id: u64) {
         println!("removing data including from disk at id {}", delete_block_id);
 
@@ -698,10 +702,13 @@ impl Blockchain {
         println!("number of hashes to remove {}", block_hashes_copy.len());
 
         for hash in block_hashes_copy {
-	    self.delete_block(delete_block_id, hash);
+	    self.delete_block(delete_block_id, hash).await;
         }
     }
 
+    //
+    // deletes a single block
+    //
     pub async fn delete_block(&mut self, delete_block_id: u64, delete_block_hash: SaitoHash) {
 
         //
