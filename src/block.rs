@@ -1465,8 +1465,8 @@ mod tests {
 
     #[test]
     fn block_generate_hashes() {
-        let block = Block::new();
-        let hash = block.generate_hash();
+        let mut block = Block::new();
+        let hash = block.generate_hashes();
         assert_ne!(hash, [0; 32]);
     }
 

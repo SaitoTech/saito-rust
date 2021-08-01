@@ -253,6 +253,12 @@ impl BlockRing {
 #[cfg(test)]
 mod test {
     use crate::test_utilities::mocks::make_mock_block;
+    use std::sync::Arc;
+    use tokio::sync::{RwLock};
+    use crate::block::Block;
+    use crate::blockchain::Blockchain;
+    use crate::wallet::Wallet;
+    use crate::transaction::Transaction;
 
     use super::*;
     #[test]
@@ -352,10 +358,12 @@ mod test {
         blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
 
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
-        // reorg in the wrong location
+
+        // reorg in the wrong block_id location, should not change
         blockring.on_chain_reorganization(532, block_5_2.get_hash(), false);
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
 
+	// double reorg in correct and should be fine still
         blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
     }
@@ -363,11 +371,11 @@ mod test {
     #[test]
     fn blockring_test() {
         let mut blockring = BlockRing::new();
-        // TODO: This is wrong, the latest block is null, not 0
         assert_eq!(0, blockring.get_longest_chain_block_id());
         let mock_block = make_mock_block(0, 10, [0; 32], 0);
         println!("mock block hash {:?}", mock_block.get_hash());
         blockring.add_block(&mock_block);
+
         // TODO: These next 3 are also wrong, they should probably return None or panic
         assert_eq!(0, blockring.get_longest_chain_block_id());
         assert_eq!([0; 32], blockring.get_longest_chain_block_hash());
@@ -387,4 +395,53 @@ mod test {
             blockring.get_longest_chain_block_hash_by_block_id(0)
         );
     }
+
+    #[tokio::test]
+    async fn blockring_add_and_delete_block() {
+
+        let mut blockring = BlockRing::new();
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let publickey;
+
+        let mut transactions: Vec<Transaction> = vec![];
+        let mut latest_block_id = 3132;
+        let mut latest_block_hash = [0; 32];
+
+        {
+            let wallet = wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+        }
+
+        //
+        // Add first GOOD block
+        //
+        let mut tx =
+            Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
+        tx.generate_metadata(publickey);
+        transactions.push(tx);
+        let block = Block::generate(
+            &mut transactions,
+            latest_block_hash,
+            wallet_lock.clone(),
+            blockchain_lock.clone(),
+        )
+        .await;
+
+        blockring.add_block(&block);
+
+        assert_eq!(
+            blockring.contains_block_hash_at_block_id(block.get_id(), block.get_hash()),
+            true
+        );
+
+        blockring.delete_block(block.get_id(), block.get_hash());
+
+        assert_eq!(
+            blockring.contains_block_hash_at_block_id(block.get_id(), block.get_hash()),
+            false
+        );
+    }
+
 }
+
