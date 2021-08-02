@@ -1,4 +1,4 @@
-use super::network::{Client, Clients};
+use super::network::{Peer, Peers};
 use crate::blockchain::Blockchain;
 use crate::crypto::{hash, SaitoHash};
 use crate::mempool::Mempool;
@@ -14,7 +14,7 @@ use warp::{Buf, Rejection, Reply};
 
 pub async fn ws_upgrade_handler(
     ws: warp::ws::Ws,
-    clients: Clients,
+    peers: Peers,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -23,18 +23,17 @@ pub async fn ws_upgrade_handler(
     //    let key = hash(&bytes);
 
     println!("id {:?}", id);
-    let client = Client {
+    let peer = Peer {
         has_handshake: true,
         pubkey: None,
-        topics: vec![],
         sender: None,
     };
     Ok(ws.on_upgrade(move |socket| {
-        socket::client_connection(
+        socket::peer_connection(
             socket,
             id,
-            clients,
-            client,
+            peers,
+            peer,
             wallet_lock,
             mempool_lock,
             blockchain_lock,

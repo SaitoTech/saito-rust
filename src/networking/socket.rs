@@ -1,4 +1,4 @@
-use std::{sync::Arc, thread::sleep, time::Duration};
+use std::{sync::Arc};
 
 use futures::{FutureExt, StreamExt};
 // use crate::{Client, Clients};
@@ -15,7 +15,7 @@ use crate::{
     crypto::{hash, verify, SaitoHash, SaitoPublicKey},
     mempool::{AddTransactionResult, Mempool},
     networking::network::{
-        APIMessage, Client, Clients, HandshakeChallenge, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
+        APIMessage, Peer, Peers, HandshakeChallenge, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
     },
     time::create_timestamp,
     transaction::Transaction,
@@ -27,93 +27,10 @@ pub struct TopicsRequest {
     topics: Vec<String>,
 }
 
-pub async fn client_connection(
-    ws: WebSocket,
-    id: SaitoHash,
-    clients: Clients,
-    mut client: Client,
-    wallet_lock: Arc<RwLock<Wallet>>,
-    mempool_lock: Arc<RwLock<Mempool>>,
-    blockchain_lock: Arc<RwLock<Blockchain>>,
-) {
-    println!("client_connection");
-    let (client_ws_sender, mut client_ws_rcv) = ws.split();
-    let (client_sender, client_rcv) = mpsc::unbounded_channel();
-    let client_rcv = UnboundedReceiverStream::new(client_rcv);
-    tokio::task::spawn(client_rcv.forward(client_ws_sender).map(|result| {
-        if let Err(e) = result {
-            eprintln!("error sending websocket msg: {}", e);
-        }
-    }));
-
-    println!("client channel created");
-    client.sender = Some(client_sender);
-    println!("client sender set");
-    clients.write().await.insert(id.clone(), client);
-
-    println!("{:?} connected", id);
-
-    while let Some(result) = client_ws_rcv.next().await {
-        let msg = match result {
-            Ok(msg) => msg,
-            Err(e) => {
-                eprintln!(
-                    "error receiving ws message for id: {:?}): {}",
-                    id.clone(),
-                    e
-                );
-                break;
-            }
-        };
-        client_msg(
-            id,
-            msg,
-            clients.clone(),
-            wallet_lock.clone(),
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
-        )
-        .await;
-    }
-
-    clients.write().await.remove(&id);
-    println!("{:?} disconnected", id);
-}
-pub async fn client_connection_old(
-    ws: WebSocket,
-    id: SaitoHash,
-    clients: Clients,
-    mut client: Client,
-) {
-    let (_client_ws_sender, mut client_ws_rcv) = ws.split();
-    let (client_sender, _client_rcv) = mpsc::unbounded_channel();
-
-    client.sender = Some(client_sender);
-    clients.write().await.insert(id.clone(), client);
-
-    while let Some(result) = client_ws_rcv.next().await {
-        match result {
-            Ok(msg) => msg,
-            Err(e) => {
-                eprintln!(
-                    "error receiving ws message for id: {:?}): {}",
-                    id.clone(),
-                    e
-                );
-                break;
-            }
-        };
-        // client_msg(id, msg, clients.clone(), wallet_lock.clone()).await;
-    }
-
-    clients.write().await.remove(&id);
-    println!("{:?} disconnected", id);
-}
-
-async fn client_msg(
+async fn peer_msg(
     id: SaitoHash,
     msg: Message,
-    clients: Clients,
+    peers: Peers,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -131,9 +48,9 @@ async fn client_msg(
                         message_id: api_message.message_id,
                         message_data: serialized_handshake_challenge,
                     };
-                    let clients = clients.write().await;
-                    let client = clients.get(&id).unwrap();
-                    let _foo = client
+                    let peers = peers.write().await;
+                    let peer = peers.get(&id).unwrap();
+                    let _foo = peer
                         .sender
                         .as_ref()
                         .unwrap()
@@ -149,10 +66,10 @@ async fn client_msg(
                         message_id: api_message.message_id,
                         message_data: String::from("OK").as_bytes().try_into().unwrap(),
                     };
-                    let mut clients = clients.write().await;
-                    let mut client = clients.get_mut(&id).unwrap();
-                    client.has_handshake = true;
-                    let _foo = client
+                    let mut peers = peers.write().await;
+                    let mut peer = peers.get_mut(&id).unwrap();
+                    peer.has_handshake = true;
+                    let _foo = peer
                         .sender
                         .as_ref()
                         .unwrap()
@@ -199,10 +116,10 @@ async fn client_msg(
                         }
                     }
 
-                    let mut clients = clients.write().await;
-                    let mut client = clients.get_mut(&id).unwrap();
-                    client.has_handshake = true;
-                    let _foo = client
+                    let mut peers = peers.write().await;
+                    let mut peer = peers.get_mut(&id).unwrap();
+                    peer.has_handshake = true;
+                    let _foo = peer
                         .sender
                         .as_ref()
                         .unwrap()
@@ -210,15 +127,108 @@ async fn client_msg(
                 }
             });
         }
-        "GETBLKCH" => {
+        "REQCHAIN" => {
             tokio::spawn(async move {
-                let message_id = api_message.message_id;
+                let _message_id = api_message.message_id;
+                let message = api_message.message_data();
+                let _block_id: u64 = u64::from_be_bytes(message[0..8].try_into().unwrap());
+                let block_hash: SaitoHash = message[8..40].try_into().unwrap();
+                let _fork_id: SaitoHash = message[40..62].try_into().unwrap();
+                let blockchain = blockchain_lock.read().await;
+                let block = blockchain.get_block(&block_hash);
+                if block.is_none() {
+                    // Not sure what to do in this case...
+                } else {
+                    // I tried looking at returnLastSharedBlockId and updateForkId and coudln't figure out what fork_id is or how to use it
+                }
+            });
+        }
+        "SNDCHAIN" => {
+            tokio::spawn(async move {
+                let _message_id = api_message.message_id;
+            });
+        }
+        "REQBLKHD" => {
+            tokio::spawn(async move {
+                let _message_id = api_message.message_id;
+            });
+        }
+        "SNDBLKHD" => {
+            tokio::spawn(async move {
+                let _message_id = api_message.message_id;
+            });
+        }
+        "SNDTRANS" => {
+            tokio::spawn(async move {
+                let _message_id = api_message.message_id;
+            });
+        }
+        "REQBLOCK" => {
+            tokio::spawn(async move {
+                let _message_id = api_message.message_id;
+            });
+        }
+        "SNDKYCHN" => {
+            tokio::spawn(async move {
+                let _message_id = api_message.message_id;
             });
         }
         _ => {}
     }
 }
 
+pub async fn peer_connection(
+    ws: WebSocket,
+    id: SaitoHash,
+    peers: Peers,
+    mut peer: Peer,
+    wallet_lock: Arc<RwLock<Wallet>>,
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) {
+    println!("peer_connection");
+    let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
+    let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
+    let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
+    tokio::task::spawn(peer_rcv.forward(peer_ws_sender).map(|result| {
+        if let Err(e) = result {
+            eprintln!("error sending websocket msg: {}", e);
+        }
+    }));
+
+    println!("peer channel created");
+    peer.sender = Some(peer_sender);
+    println!("peer sender set");
+    peers.write().await.insert(id.clone(), peer);
+
+    println!("{:?} connected", id);
+
+    while let Some(result) = peer_ws_rcv.next().await {
+        let msg = match result {
+            Ok(msg) => msg,
+            Err(e) => {
+                eprintln!(
+                    "error receiving ws message for id: {:?}): {}",
+                    id.clone(),
+                    e
+                );
+                break;
+            }
+        };
+        peer_msg(
+            id,
+            msg,
+            peers.clone(),
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        )
+        .await;
+    }
+
+    peers.write().await.remove(&id);
+    println!("{:?} disconnected", id);
+}
 /*
     The serialized handshake init message shoudl fit this format
         challenger_ip           4 bytes(IP as 4 bytes)
@@ -304,13 +314,13 @@ pub async fn socket_send_blockchain(
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) -> Vec<u8> {
     let block_hash: SaitoHash = message.message_data[0..32].try_into().unwrap();
-    let fork_id = u64::from_be_bytes(message.message_data[32..36].try_into().unwrap());
+    let _fork_id = u64::from_be_bytes(message.message_data[32..36].try_into().unwrap());
 
     let mut hashes: Vec<u8> = vec![];
 
     let blockchain = blockchain_lock.read().await;
 
-    let target_block = blockchain.get_latest_block();
+    let _target_block = blockchain.get_latest_block();
 
     if let Some(target_block) = blockchain.get_latest_block() {
         let target_block_hash = target_block.get_hash();

@@ -22,13 +22,12 @@ pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
 pub type Result<T> = std::result::Result<T, Rejection>;
-pub type Clients = Arc<RwLock<HashMap<SaitoHash, Client>>>;
+pub type Peers = Arc<RwLock<HashMap<SaitoHash, Peer>>>;
 
 #[derive(Debug, Clone)]
-pub struct Client {
+pub struct Peer {
     pub has_handshake: bool,
     pub pubkey: Option<SaitoPublicKey>,
-    pub topics: Vec<String>,
     pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
 }
 
@@ -86,14 +85,14 @@ impl APIMessage {
     }
 }
 pub struct Network {
-    clients: Clients,
+    peers: Peers,
     wallet_lock: Arc<RwLock<Wallet>>,
 }
 
 impl Network {
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Network {
         Network {
-            clients: Arc::new(RwLock::new(HashMap::new())),
+            peers: Arc::new(RwLock::new(HashMap::new())),
             wallet_lock,
         }
     }
@@ -114,7 +113,7 @@ impl Network {
             .or(post_transaction_route_filter())
             .or(post_block_route_filter())
             .or(ws_upgrade_route_filter(
-                &self.clients.clone(),
+                &self.peers.clone(),
                 self.wallet_lock.clone(),
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
@@ -264,7 +263,7 @@ mod tests {
         let (publickey, privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(
-            &network.clients.clone(),
+            &network.peers.clone(),
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
@@ -346,10 +345,10 @@ mod tests {
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let network = Network::new(wallet_lock.clone());
-        let (publickey, privatekey) = generate_keys();
+        let (publickey, _privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(
-            &network.clients.clone(),
+            &network.peers.clone(),
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),

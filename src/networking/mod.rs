@@ -36,66 +36,16 @@ ERROR___
 RESULT__
 ```
 
-The basic methods are: Get Block, Get Block Header, Get Lite Block, New Block Announce, Send Transaction, Subscribe to Lite Blocks by pubkey or "module".
-
 ```
 SHAKINIT
 SHAKCOMP
-GETBLKCN
-GETBLKHD
-NEWBLOCK
-SENDTRXN
-SUBBYKEY
-SUBBYMOD
-```
-
-TODO: formalize and rename the concept of "module". Are there any fields beside pubkey and module which we'd like to use to whitelist tx in a lite block?
-
-## Handshake
-
-A node will not accept new socket connections unless it has completed a handshake with the client attempting to open the connection.
-
-A handshake can be initialized by sending a GET request to /handshakeinit and then POSTing a signed challenge to /handshakecomplete(details below).
-
-Serialized Handshake:
-
-```
-    challenger_ip_address   4 bytes(IP as 4 bytes)
-    challengie_ip_address   4 bytes(IP as 4 bytes)
-    challenger_pubkey       33 bytes(SECP256k1 compact form)
-    challengie_pubkey       33 bytes(SECP256k1 compact form)
-    timestamp               8 bytes(big-endian u64),
-    challenger_sig          64 bytes(SECP256k1 signature)
-    challengie_sig          64 bytes(SECP256k1 signature)(optional)
-```
-
-### 1) Initiate a handshake
-
-Returns a serialized handshake signed by the challenger(the node which receives the request)
-
-```
-curl {endpoint}/handshakeinit\?a={pubkey} > test_challenge
-```
-
-### 2) Complete a handshake
-
-The challengie must sign the handshakeinit payload. I.E. sign the entire blob and append the sig(challengie_sig) to it.
-
-The wallet CLI can be used to produce a signed challenge.
-
-```
-cargo run --bin walletcli sign test_challenge signed_challenge
-curl --data-binary "@signed_challenge" -X POST http://127.0.0.1:3030/handshakecomplete
-```
-
-If the payload is valid, this will return a 32 byte token.
-
-### 3) Open a socket
-
-The token can now be used to open a socket connection:
-
-```
-wscat -H socket-token:{token} -c ws://{endpoint}
+REQCHAIN
+SNDCHAIN
+REQBLKHD
+SNDBLKHD
+SNDTRANS
+REQBLOCK
+SNDKYCHN
 ```
 
 ## RPC Messages
@@ -122,103 +72,69 @@ bytes
 0..         UTF8 Encoded Error Message
 ```
 
-### GETBLKHD
+### SHAKINIT
 
-Get a block header(metadata) by block hash.
+A node will not accept new socket connections unless it has completed a handshake with the client attempting to open the connection.
+
+A handshake can be initialized by sending a GET request to /handshakeinit and then POSTing a signed challenge to /handshakecomplete(details below).
+
+Serialized Handshake:
+
+```
+    challenger_ip_address   4 bytes(IP as 4 bytes)
+    challengie_ip_address   4 bytes(IP as 4 bytes)
+    challenger_pubkey       33 bytes(SECP256k1 compact form)
+    challengie_pubkey       33 bytes(SECP256k1 compact form)
+    timestamp               8 bytes(big-endian u64),
+    challenger_sig          64 bytes(SECP256k1 signature)
+    challengie_sig          64 bytes(SECP256k1 signature)(optional)
+```
+
+### SHAKCOMP
+
+The challengie must sign the handshakeinit payload. I.E. sign the entire blob and append the sig(challengie_sig) to it.
+
+The wallet CLI can be used to produce a signed challenge.
+
+### REQCHAIN
+
+triggers: remote server should calculate appropriate response and "send blockchain"
 
 MessageData:
-```
-0-31        Block Hash
-```
-
-### NEWBLOCK
-
-Informs a peer that the longest chain's tip has been grown with the given block id/hash.
-
-MessageData:
-```
-0-7         Block ID(u64)
-8-39        Block Hash
-```
-
-### SENDTRXN
-
-Informs a peer that the longest chain's tip has been grown with the given block id/hash.
-
-MessageData:
-```
-0-7         Block ID(u64)
-8-39        Block Hash
-```
-
-### SUBBYKEY
-
-Subscribe to be sent any new blocks as lite blocks
-
-MessageData:
-```
-[32 bytes]  List of Pubkeys
-```
-
-### SUBBYMOD
-
-
-Subscribe to be sent any new blocks as lite blocks
-
-MessageData:
-```
-0..         Module Name
-```
-
-TODO: Add docs for SHAKINIT and SHAKCOMP
-
-## RPC basic example
-
-After creating a token via /handshakeinit and /handshakecomplete:
 
 ```
-websocat ws://127.0.0.1:3030/wsconnect -H socket-token:$TOKEN -b readfile:rpc_message_file.bin
+0-7         Latest Block ID(u64)
+8-39        Latest Block Hash
+40-61       Fork ID
 ```
 
-## RPC complete example
+RESULT__ contains no data, indicates that the request was successful
 
-Run a node:
+### SNDCHAIN
 
-```
-cargo run
-```
+TODO
 
-In another shell, get your public key from the wallet CLI:
+### SNDBLKHD
 
-```
-cargo run --bin walletcli print
-```
+TODO
 
-Initialize a handshake using your pubkey:
-```
-curl 127.0.0.1:3030/handshakeinit\?a={pubkey} > test_challenge
-```
+### REQBLKHD
 
-E.G.:
-```
-curl 127.0.0.1:3030/handshakeinit\?a=02579d6ff84f661297f38e3eb20953824cfc279fee903a746b3dccb534677fd81a > test_challenge
-```
-Sign the payload with the wallet CLI:
-```
-cargo run --bin walletcli sign test_challenge signed_challenge
-```
+TODO
 
-Send the signed challenge to /handshakecomplete:
-```
-curl --data-binary "@signed_challenge" -X POST http://127.0.0.1:3030/handshakecomplete > ws_token
-```
+### SNDTRANS
 
-Send some data to the socket
-```
-websocat ws://127.0.0.1:3030/wsconnect -H socket-token:$TOKEN -b readfile:some_binary_rpc_call.bin
-```
+TODO
 
-There is also a script in scripts/socket.sh which can be used.
+### REQBLOCK
+
+TODO
+
+
+
+### SNDKYCHN
+
+TODO
 
 */
 

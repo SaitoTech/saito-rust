@@ -11,7 +11,7 @@ use warp::{Filter, Reply};
 use super::handlers::{
     get_block_handler, get_block_handler_json, post_block_handler, ws_upgrade_handler,
 };
-use super::network::Clients;
+use super::network::Peers;
 //
 // cargo run --bin walletcli print
 // 02579d6ff84f661297f38e3eb20953824cfc279fee903a746b3dccb534677fd81a
@@ -35,14 +35,14 @@ use super::network::Clients;
 // POST http sendblockheader
 //
 pub fn ws_upgrade_route_filter(
-    clients: &Clients,
+    clients: &Peers,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::path("wsopen")
         .and(warp::ws())
-        .and(with_clients_filter(clients.clone()))
+        .and(with_peers_filter(clients.clone()))
         .and(with_wallet(wallet_lock))
         .and(with_mempool(mempool_lock))
         .and(with_blockchain(blockchain_lock))
@@ -80,10 +80,10 @@ pub fn post_transaction_route_filter(
         .and_then(post_transaction_handler)
 }
 
-fn with_clients_filter(
-    clients: Clients,
-) -> impl Filter<Extract = (Clients,), Error = Infallible> + Clone {
-    warp::any().map(move || clients.clone())
+fn with_peers_filter(
+    peers: Peers,
+) -> impl Filter<Extract = (Peers,), Error = Infallible> + Clone {
+    warp::any().map(move || peers.clone())
 }
 fn with_wallet(
     wallet_lock: Arc<RwLock<Wallet>>,
