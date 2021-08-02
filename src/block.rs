@@ -403,7 +403,7 @@ impl Block {
         // load the block if it exists on disk.
         //
         if block_type == BlockType::Pruned {
-println!("pruning!");
+            println!("pruning!");
             self.transactions = vec![];
             self.set_block_type(BlockType::Pruned);
             return true;
@@ -1562,11 +1562,9 @@ mod tests {
         assert_eq!(block.transactions.len(), 5);
         assert_eq!(block.get_block_type(), BlockType::Full);
 
-	block.downgrade_block_to_block_type(BlockType::Pruned).await;
+        block.downgrade_block_to_block_type(BlockType::Pruned).await;
 
         assert_eq!(block.transactions.len(), 0);
         assert_eq!(block.get_block_type(), BlockType::Pruned);
     }
-
 }
-

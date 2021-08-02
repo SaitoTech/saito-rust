@@ -141,10 +141,10 @@ impl Slip {
 
     // runs when block is purged for good
     pub fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-	if self.get_utxoset_key() == [0; 74] {
-	    println!("ERROR 572034: asked to remove a slip without its utxoset_key properly set!");
-	    false;
-	}
+        if self.get_utxoset_key() == [0; 74] {
+            println!("ERROR 572034: asked to remove a slip without its utxoset_key properly set!");
+            false;
+        }
         utxoset.remove_entry(&self.get_utxoset_key());
         true
     }
@@ -232,10 +232,10 @@ impl Slip {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
-    use tokio::sync::{RwLock};
     use crate::blockchain::Blockchain;
     use crate::wallet::Wallet;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
 
     #[test]
     fn slip_new_test() {
@@ -285,22 +285,26 @@ mod tests {
     async fn slip_addition_and_removal_from_utxoset() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-	let mut blockchain = blockchain_lock.write().await;
-	let wallet = wallet_lock.write().await;
+        let mut blockchain = blockchain_lock.write().await;
+        let wallet = wallet_lock.write().await;
         let mut slip = Slip::new();
-	slip.set_amount(100_000);
-	slip.set_uuid([1; 32]);
-	slip.set_publickey(wallet.get_publickey());
-	slip.generate_utxoset_key();
+        slip.set_amount(100_000);
+        slip.set_uuid([1; 32]);
+        slip.set_publickey(wallet.get_publickey());
+        slip.generate_utxoset_key();
 
-	// add to utxoset
-	slip.on_chain_reorganization(&mut blockchain.utxoset, true, 2);
-        assert_eq!(blockchain.utxoset.contains_key(&slip.get_utxoset_key()), true);
+        // add to utxoset
+        slip.on_chain_reorganization(&mut blockchain.utxoset, true, 2);
+        assert_eq!(
+            blockchain.utxoset.contains_key(&slip.get_utxoset_key()),
+            true
+        );
 
-	// remove from utxoset
-	slip.purge(&mut blockchain.utxoset);
-        assert_eq!(blockchain.utxoset.contains_key(&slip.get_utxoset_key()), false);
-
+        // remove from utxoset
+        slip.purge(&mut blockchain.utxoset);
+        assert_eq!(
+            blockchain.utxoset.contains_key(&slip.get_utxoset_key()),
+            false
+        );
     }
 }
-

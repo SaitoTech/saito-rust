@@ -252,13 +252,13 @@ impl BlockRing {
 
 #[cfg(test)]
 mod test {
-    use crate::test_utilities::mocks::make_mock_block;
-    use std::sync::Arc;
-    use tokio::sync::{RwLock};
     use crate::block::Block;
     use crate::blockchain::Blockchain;
-    use crate::wallet::Wallet;
+    use crate::test_utilities::mocks::make_mock_block;
     use crate::transaction::Transaction;
+    use crate::wallet::Wallet;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
 
     use super::*;
     #[test]
@@ -363,7 +363,7 @@ mod test {
         blockring.on_chain_reorganization(532, block_5_2.get_hash(), false);
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
 
-	// double reorg in correct and should be fine still
+        // double reorg in correct and should be fine still
         blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
     }
@@ -398,7 +398,6 @@ mod test {
 
     #[tokio::test]
     async fn blockring_add_and_delete_block() {
-
         let mut blockring = BlockRing::new();
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
@@ -442,6 +441,4 @@ mod test {
             false
         );
     }
-
 }
-

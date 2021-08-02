@@ -59,7 +59,7 @@ impl Blockchain {
         self.broadcast_channel_sender = Some(bcs);
     }
 
-    pub fn set_fork_id(&mut self, fork_id : SaitoHash) {
+    pub fn set_fork_id(&mut self, fork_id: SaitoHash) {
         self.fork_id = fork_id;
     }
 
@@ -292,7 +292,7 @@ impl Blockchain {
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
 
-	let block_id;
+        let block_id;
 
         //
         // save to disk
@@ -300,7 +300,7 @@ impl Blockchain {
         let storage = Storage::new();
         {
             let block = self.get_mut_block(block_hash).await;
-	    block_id = block.get_id();
+            block_id = block.get_id();
             storage.write_block_to_disk(block);
 
             //
@@ -329,12 +329,12 @@ impl Blockchain {
         //
         self.update_genesis_period().await;
 
-	//
-	// fork id
-	//
-	let fork_id = self.generate_fork_id(block_id);
-println!("FORK_ID: {:?}", fork_id);
-	self.set_fork_id(fork_id);
+        //
+        // fork id
+        //
+        let fork_id = self.generate_fork_id(block_id);
+        println!("FORK_ID: {:?}", fork_id);
+        self.set_fork_id(fork_id);
 
         //
         // ensure pruning of next block OK will have the right CVs
@@ -365,65 +365,96 @@ println!("FORK_ID: {:?}", fork_id);
 
     pub async fn add_block_failure(&mut self) {}
 
-    pub fn generate_fork_id(&self, block_id : u64) -> SaitoHash {
+    pub fn generate_fork_id(&self, block_id: u64) -> SaitoHash {
+        let mut fork_id = [0; 32];
+        let mut current_block_id = block_id;
 
-	let mut fork_id = [0; 32];
-	let mut current_block_id = block_id;
+        //
+        // roll back to last even 10 blocks
+        //
+        for i in 0..10 {
+            if (current_block_id - i) % 10 == 0 {
+                current_block_id = current_block_id - i;
+                break;
+            }
+        }
 
-	//
-	// roll back to last even 10 blocks
-	//
-	for i in 0..10 {
-	    if (current_block_id-i)%10 == 0 {
-	        current_block_id = current_block_id-i;
-		break;
-	    }
-	}
-
-	//
-	// loop backwards through blockchain
-	//
+        //
+        // loop backwards through blockchain
+        //
         for i in 0..16 {
+            if i == 0 {
+                current_block_id -= 0;
+            }
+            if i == 1 {
+                current_block_id -= 10;
+            }
+            if i == 2 {
+                current_block_id -= 10;
+            }
+            if i == 3 {
+                current_block_id -= 10;
+            }
+            if i == 4 {
+                current_block_id -= 10;
+            }
+            if i == 5 {
+                current_block_id -= 10;
+            }
+            if i == 6 {
+                current_block_id -= 25;
+            }
+            if i == 7 {
+                current_block_id -= 25;
+            }
+            if i == 8 {
+                current_block_id -= 100;
+            }
+            if i == 9 {
+                current_block_id -= 300;
+            }
+            if i == 10 {
+                current_block_id -= 500;
+            }
+            if i == 11 {
+                current_block_id -= 4000;
+            }
+            if i == 12 {
+                current_block_id -= 10000;
+            }
+            if i == 13 {
+                current_block_id -= 20000;
+            }
+            if i == 14 {
+                current_block_id -= 50000;
+            }
+            if i == 15 {
+                current_block_id -= 100000;
+            }
 
-	    if i == 0 { current_block_id -= 0; }
-	    if i == 1 { current_block_id -= 10; }
-	    if i == 2 { current_block_id -= 10; }
-	    if i == 3 { current_block_id -= 10; }
-	    if i == 4 { current_block_id -= 10; }
-	    if i == 5 { current_block_id -= 10; }
-	    if i == 6 { current_block_id -= 25; }
-	    if i == 7 { current_block_id -= 25; }
-	    if i == 8 { current_block_id -= 100; }
-	    if i == 9 { current_block_id -= 300; }
-	    if i == 10 { current_block_id -= 500; }
-	    if i == 11 { current_block_id -= 4000; }
-	    if i == 12 { current_block_id -= 10000; }
-	    if i == 13 { current_block_id -= 20000; }
-	    if i == 14 { current_block_id -= 50000; }
-	    if i == 15 { current_block_id -= 100000; }
+            //
+            // do not loop around if block id < 0
+            //
+            if current_block_id > block_id || current_block_id == 0 {
+                break;
+            }
 
-	    //
-	    // do not loop around if block id < 0
-	    //
-	    if current_block_id > block_id || current_block_id == 0 {
-		break;
-	    }
+            //
+            // index to update
+            //
+            let idx = 2 * i;
 
-	    //
-	    // index to update
-	    //
-	    let idx = 2 * i;
+            //
+            //
+            //
+            let block_hash = self
+                .blockring
+                .get_longest_chain_block_hash_by_block_id(current_block_id);
+            fork_id[idx] = block_hash[idx];
+            fork_id[idx + 1] = block_hash[idx + 1];
+        }
 
-	    //
-	    //
-	    //
-	    let block_hash = self.blockring.get_longest_chain_block_hash_by_block_id(current_block_id);
-	    fork_id[idx] = block_hash[idx];
-	    fork_id[idx+1] = block_hash[idx+1];
-	}
-
-	fork_id
-
+        fork_id
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
@@ -743,11 +774,10 @@ println!("FORK_ID: {:?}", fork_id);
         // actually useful data.
         //
         // so we check that our block is the head of the longest-chain and only
-	// update the genesis period when that is the case.
+        // update the genesis period when that is the case.
         //
         let latest_block_id = self.get_latest_block_id();
         if latest_block_id >= ((GENESIS_PERIOD * 2) + 1) {
-
             //
             // prune blocks
             //
@@ -769,7 +799,10 @@ println!("FORK_ID: {:?}", fork_id);
     // deletes all blocks at a single block_id
     //
     pub async fn delete_blocks(&mut self, delete_block_id: u64) {
-        println!("removing data including from disk at id {}", delete_block_id);
+        println!(
+            "removing data including from disk at id {}",
+            delete_block_id
+        );
 
         let mut block_hashes_copy: Vec<SaitoHash> = vec![];
 
@@ -783,7 +816,7 @@ println!("FORK_ID: {:?}", fork_id);
         println!("number of hashes to remove {}", block_hashes_copy.len());
 
         for hash in block_hashes_copy {
-	    self.delete_block(delete_block_id, hash).await;
+            self.delete_block(delete_block_id, hash).await;
         }
     }
 
@@ -791,7 +824,6 @@ println!("FORK_ID: {:?}", fork_id);
     // deletes a single block
     //
     pub async fn delete_block(&mut self, delete_block_id: u64, delete_block_hash: SaitoHash) {
-
         //
         // ask block to delete itself / utxo-wise
         //
@@ -799,17 +831,16 @@ println!("FORK_ID: {:?}", fork_id);
             let pblock = self.blocks.get(&delete_block_hash).unwrap();
             let pblock_filename = pblock.get_filename().clone();
 
-	    //
-	    // remove slips from wallet
-	    //
-	    let mut wallet = self.wallet_lock.write().await;
-	    wallet.delete_block(pblock);
+            //
+            // remove slips from wallet
+            //
+            let mut wallet = self.wallet_lock.write().await;
+            wallet.delete_block(pblock);
 
-  	    //
-	    // removes utxoset data
-	    //
+            //
+            // removes utxoset data
+            //
             pblock.delete(&mut self.utxoset).await;
-
 
             //
             // deletes block from disk
@@ -818,20 +849,19 @@ println!("FORK_ID: {:?}", fork_id);
             Storage::delete_block_from_disk(pblock_filename).await;
         }
 
-	//
-	// ask blockring to remove
-	//
-        self.blockring.delete_block(delete_block_id, delete_block_hash);
+        //
+        // ask blockring to remove
+        //
+        self.blockring
+            .delete_block(delete_block_id, delete_block_hash);
 
-	//
+        //
         // remove from block index
-	//
+        //
         if self.blocks.contains_key(&delete_block_hash) {
             self.blocks.remove_entry(&delete_block_hash);
         }
-
     }
-
 
     pub async fn downgrade_blockchain_data(&mut self) {
         //
