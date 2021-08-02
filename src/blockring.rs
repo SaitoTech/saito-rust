@@ -25,7 +25,6 @@ impl RingItem {
     pub fn new() -> Self {
         Self {
             lc_pos: None,
-            // lc_pos: usize::MAX,
             block_hashes: vec![],
             block_ids: vec![],
         }
@@ -40,49 +39,57 @@ impl RingItem {
         self.block_ids.push(block_id);
     }
 
+    pub fn delete_block(&mut self, block_id: u64, hash: SaitoHash) {
+        let mut new_block_hashes: Vec<SaitoHash> = vec![];
+        let mut new_block_ids: Vec<u64> = vec![];
+        let mut idx_loop = 0;
+        let mut new_lc_pos = Some(0);
+
+        for i in 0..self.block_ids.len() {
+            if self.block_ids[i] == block_id && self.block_hashes[i] == hash {
+            } else {
+                new_block_hashes.push(self.block_hashes[i]);
+                new_block_ids.push(self.block_ids[i]);
+                if self.lc_pos == Some(i) {
+                    new_lc_pos = Some(idx_loop);
+                }
+                idx_loop += 1;
+            }
+        }
+
+        self.block_hashes = new_block_hashes;
+        self.block_ids = new_block_ids;
+        self.lc_pos = new_lc_pos;
+    }
+
     pub fn on_chain_reorganization(&mut self, hash: SaitoHash, lc: bool) -> bool {
         if !lc {
             self.lc_pos = None;
         } else {
-            //
-            // update new longest-chain
-            //
-            // for i in 0..self.block_hashes.len() {
-            //     if self.block_hashes[i] == hash {
-            //         self.lc_pos = i;
-            //     }
-            // }
-
             self.lc_pos = self.block_hashes.iter().position(|b_hash| b_hash == &hash);
-
-            //
-            // this hash does not exist
-            //
-            // if self.block_ids.len() < self.lc_pos {
-            //     return false;
-            // }
-
             //
             // remove any old indices
             //
-            if let Some(lc_pos) = self.lc_pos {
-                let current_block_id = self.block_ids[lc_pos];
+            /*** WE NOW DELETE MANUALLY when purging ***
+                        if let Some(lc_pos) = self.lc_pos {
+                            let current_block_id = self.block_ids[lc_pos];
 
-                let mut new_block_hashes: Vec<SaitoHash> = vec![];
-                let mut new_block_ids: Vec<u64> = vec![];
+                            let mut new_block_hashes: Vec<SaitoHash> = vec![];
+                            let mut new_block_ids: Vec<u64> = vec![];
 
-                for i in 0..self.block_ids.len() {
-                    if self.block_ids[i] < current_block_id {
-                        self.lc_pos = Some(i);
-                    } else {
-                        new_block_hashes.push(self.block_hashes[i]);
-                        new_block_ids.push(self.block_ids[i]);
-                    }
-                }
+                            for i in 0..self.block_ids.len() {
+                                if self.block_ids[i] < current_block_id {
+                                    self.lc_pos = Some(i);
+                                } else {
+                                    new_block_hashes.push(self.block_hashes[i]);
+                                    new_block_ids.push(self.block_ids[i]);
+                                }
+                            }
 
-                self.block_hashes = new_block_hashes;
-                self.block_ids = new_block_ids;
-            }
+                            self.block_hashes = new_block_hashes;
+                            self.block_ids = new_block_ids;
+                        }
+            ***/
         }
 
         true
@@ -143,19 +150,29 @@ impl BlockRing {
         block_hash: SaitoHash,
     ) -> bool {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
-        println!(
-            "contains block hash at block id... {:?} {}",
-            block_hash, insert_pos
-        );
-        println!("insert pos is: {} {}", insert_pos, GENESIS_PERIOD);
         let res = self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash);
-        println!("ontains block hash at block id 2...");
         return res;
     }
 
     pub fn add_block(&mut self, block: &Block) {
         let insert_pos = block.get_id() % RING_BUFFER_LENGTH;
         self.block_ring[(insert_pos as usize)].add_block(block.get_id(), block.get_hash());
+    }
+
+    pub fn delete_block(&mut self, block_id: u64, block_hash: SaitoHash) {
+        let insert_pos = block_id % RING_BUFFER_LENGTH;
+        self.block_ring[(insert_pos as usize)].delete_block(block_id, block_hash);
+    }
+
+    pub fn get_block_hashes_at_block_id(&mut self, block_id: u64) -> Vec<SaitoHash> {
+        let insert_pos = block_id % RING_BUFFER_LENGTH;
+        let mut v: Vec<SaitoHash> = vec![];
+        for i in 00..self.block_ring[(insert_pos as usize)].block_hashes.len() {
+            if self.block_ring[(insert_pos as usize)].block_ids[i] == block_id {
+                v.push(self.block_ring[(insert_pos as usize)].block_hashes[i].clone());
+            }
+        }
+        return v;
     }
 
     pub fn on_chain_reorganization(&mut self, block_id: u64, hash: SaitoHash, lc: bool) -> bool {
@@ -235,7 +252,13 @@ impl BlockRing {
 
 #[cfg(test)]
 mod test {
+    use crate::block::Block;
+    use crate::blockchain::Blockchain;
     use crate::test_utilities::mocks::make_mock_block;
+    use crate::transaction::Transaction;
+    use crate::wallet::Wallet;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
 
     use super::*;
     #[test]
@@ -335,10 +358,12 @@ mod test {
         blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
 
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
-        // reorg in the wrong location
+
+        // reorg in the wrong block_id location, should not change
         blockring.on_chain_reorganization(532, block_5_2.get_hash(), false);
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
 
+        // double reorg in correct and should be fine still
         blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
         assert_eq!(blockring.get_longest_chain_block_id(), 5);
     }
@@ -346,10 +371,10 @@ mod test {
     #[test]
     fn blockring_test() {
         let mut blockring = BlockRing::new();
-        // TODO: This is wrong, the latest block is null, not 0
         assert_eq!(0, blockring.get_longest_chain_block_id());
         let mock_block = make_mock_block(0, 10, [0; 32], 0);
         blockring.add_block(&mock_block);
+
         // TODO: These next 3 are also wrong, they should probably return None or panic
         assert_eq!(0, blockring.get_longest_chain_block_id());
         assert_eq!([0; 32], blockring.get_longest_chain_block_hash());
@@ -367,6 +392,52 @@ mod test {
         assert_eq!(
             mock_block.get_hash(),
             blockring.get_longest_chain_block_hash_by_block_id(0)
+        );
+    }
+
+    #[tokio::test]
+    async fn blockring_add_and_delete_block() {
+        let mut blockring = BlockRing::new();
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let publickey;
+
+        let mut transactions: Vec<Transaction> = vec![];
+        let _latest_block_id = 3132;
+        let latest_block_hash = [0; 32];
+
+        {
+            let wallet = wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+        }
+
+        //
+        // Add first GOOD block
+        //
+        let mut tx =
+            Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
+        tx.generate_metadata(publickey);
+        transactions.push(tx);
+        let block = Block::generate(
+            &mut transactions,
+            latest_block_hash,
+            wallet_lock.clone(),
+            blockchain_lock.clone(),
+        )
+        .await;
+
+        blockring.add_block(&block);
+
+        assert_eq!(
+            blockring.contains_block_hash_at_block_id(block.get_id(), block.get_hash()),
+            true
+        );
+
+        blockring.delete_block(block.get_id(), block.get_hash());
+
+        assert_eq!(
+            blockring.contains_block_hash_at_block_id(block.get_id(), block.get_hash()),
+            false
         );
     }
 }

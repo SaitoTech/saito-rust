@@ -8,6 +8,7 @@ use crate::{
     hop::HOP_SIZE,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
+    storage::Storage,
     time::create_timestamp,
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
     wallet::Wallet,
@@ -17,6 +18,7 @@ use bigint::uint::U256;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
+use std::string::String;
 use std::{mem, sync::Arc};
 use tokio::sync::RwLock;
 
@@ -53,6 +55,8 @@ pub struct ConsensusValues {
     pub total_rebroadcast_fees_nolan: u64,
     // all ATR txs hashed together
     pub rebroadcast_hash: [u8; 32],
+    // dust falling off chain, needs adding to treasury
+    pub nolan_falling_off_chain: u64,
 }
 impl ConsensusValues {
     #[allow(clippy::too_many_arguments)]
@@ -71,6 +75,7 @@ impl ConsensusValues {
             total_rebroadcast_fees_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
+            nolan_falling_off_chain: 0,
         }
     }
 }
@@ -95,6 +100,24 @@ impl RouterPayout {
     }
 }
 
+///
+/// BlockType is a human-readable indicator of the state of the block
+/// with particular attention to its state of pruning and the amount of
+/// data that is available. It is used by some functions to fetch blocks
+/// that require certain types of data, such as the full set of transactions
+/// or the UTXOSet
+///
+/// Hash - a ghost block sent to lite-clients primarily for SPV mode
+/// Header - the header of the block without transaction data
+/// Full - the full block including transactions and signatures
+///
+#[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone)]
+pub enum BlockType {
+    Ghost,
+    Pruned,
+    Full,
+}
+
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
@@ -113,6 +136,8 @@ pub struct Block {
     /// Transactions
     pub transactions: Vec<Transaction>,
     /// Self-Calculated / Validated
+    pre_hash: SaitoHash,
+    /// Self-Calculated / Validated
     hash: SaitoHash,
     /// total fees paid into block
     total_fees: u64,
@@ -130,6 +155,10 @@ pub struct Block {
     pub total_rebroadcast_nolan: u64,
     // all ATR txs hashed together
     pub rebroadcast_hash: [u8; 32],
+    // name of block on disk
+    pub filename: String,
+    // the state of the block w/ pruning etc
+    pub block_type: BlockType,
 }
 
 impl Block {
@@ -146,6 +175,7 @@ impl Block {
             burnfee: 0,
             difficulty: 0,
             transactions: vec![],
+            pre_hash: [0; 32],
             hash: [0; 32],
             total_fees: 0,
             routing_work_for_creator: 0,
@@ -156,6 +186,8 @@ impl Block {
             total_rebroadcast_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
+            filename: String::new(),
+            block_type: BlockType::Full,
         }
     }
 
@@ -203,8 +235,16 @@ impl Block {
         self.burnfee
     }
 
+    pub fn get_block_type(&self) -> BlockType {
+        self.block_type
+    }
+
     pub fn get_difficulty(&self) -> u64 {
         self.difficulty
+    }
+
+    pub fn get_filename(&self) -> &String {
+        &self.filename
     }
 
     pub fn get_has_golden_ticket(&self) -> bool {
@@ -213,6 +253,10 @@ impl Block {
 
     pub fn get_has_fee_transaction(&self) -> bool {
         self.has_fee_transaction
+    }
+
+    pub fn get_pre_hash(&self) -> SaitoHash {
+        self.pre_hash
     }
 
     pub fn get_total_fees(&self) -> u64 {
@@ -247,12 +291,20 @@ impl Block {
     //    self.transactions = transactions;
     //}
 
+    pub fn set_block_type(&mut self, block_type: BlockType) {
+        self.block_type = block_type;
+    }
+
     pub fn set_id(&mut self, id: u64) {
         self.id = id;
     }
 
     pub fn set_lc(&mut self, lc: bool) {
         self.lc = lc;
+    }
+
+    pub fn set_filename(&mut self, filename: String) {
+        self.filename = filename;
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
@@ -287,6 +339,10 @@ impl Block {
         self.difficulty = difficulty;
     }
 
+    pub fn set_pre_hash(&mut self, pre_hash: SaitoHash) {
+        self.pre_hash = pre_hash;
+    }
+
     pub fn set_hash(&mut self, hash: SaitoHash) {
         self.hash = hash;
     }
@@ -295,43 +351,98 @@ impl Block {
         self.transactions.push(tx);
     }
 
+    //
+    // if the block is not at the proper type, try to upgrade it to have the
+    // data that is necessary for blocks of that type if possible. if this is
+    // not possible, return false. if it is possible, return true once upgraded.
+    //
+    pub async fn upgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
+        if self.block_type == block_type {
+            return true;
+        }
+
+        //
+        // if the block type needed is full and we are not,
+        // load the block if it exists on disk.
+        //
+        if block_type == BlockType::Full {
+            let mut new_block = Storage::load_block_from_disk(self.filename.clone()).await;
+            let hash_for_signature = hash(&new_block.serialize_for_signature());
+            new_block.set_pre_hash(hash_for_signature);
+            let hash_for_hash = hash(&new_block.serialize_for_hash());
+            new_block.set_hash(hash_for_hash);
+
+            //
+            // in-memory swap copying txs in block from mempool
+            //
+            mem::swap(&mut new_block.transactions, &mut self.transactions);
+            //
+            // transactions need hashes
+            //
+            self.generate_metadata();
+            self.set_block_type(BlockType::Full);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    //
+    // if the block is not at the proper type, try to downgrade it by removing elements
+    // that take up significant amounts of data / memory. if this is possible return
+    // true, otherwise return false.
+    //
+    pub async fn downgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
+        //println!("downgrading block: {}", self.get_id());
+
+        if self.block_type == block_type {
+            return true;
+        }
+
+        //
+        // if the block type needed is full and we are not,
+        // load the block if it exists on disk.
+        //
+        if block_type == BlockType::Pruned {
+            println!("pruning!");
+            self.transactions = vec![];
+            self.set_block_type(BlockType::Pruned);
+            return true;
+        }
+
+        return false;
+    }
+
     pub fn sign(&mut self, publickey: SaitoPublicKey, privatekey: SaitoPrivateKey) {
         //
         // we set final data
         //
         self.set_creator(publickey);
-
-        let hash_for_signature = hash(&self.serialize_for_signature());
-        self.set_hash(hash_for_signature);
-
-        self.set_signature(sign(&hash_for_signature, privatekey));
+        self.generate_hashes();
+        self.set_signature(sign(&self.get_pre_hash(), privatekey));
     }
 
-    //
-    // TODO
-    //
-    // hash is nor being serialized from the right data - requires
-    // merkle_root as an input into the hash, and that is not yet
-    // supported. this is a stub that uses the timestamp and the
-    // id -- it exists so each block will still have a unique hash
-    // for blockchain functions.
-    //
-    pub fn generate_hash(&self) -> SaitoHash {
+    pub fn generate_hashes(&mut self) -> SaitoHash {
         //
         // fastest known way that isn't bincode ??
         //
-        let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend(&self.id.to_be_bytes());
-        vbytes.extend(&self.timestamp.to_be_bytes());
-        vbytes.extend(&self.previous_block_hash);
-        vbytes.extend(&self.creator);
-        vbytes.extend(&self.merkle_root);
-        vbytes.extend(&self.signature);
-        vbytes.extend(&self.treasury.to_be_bytes());
-        vbytes.extend(&self.burnfee.to_be_bytes());
-        vbytes.extend(&self.difficulty.to_be_bytes());
+        let hash_for_signature = hash(&self.serialize_for_signature());
+        self.set_pre_hash(hash_for_signature);
+        let hash_for_hash = hash(&self.serialize_for_hash());
+        self.set_hash(hash_for_hash);
 
-        hash(&vbytes)
+        hash_for_hash
+    }
+
+    // serialize the pre_hash and the signature_for_source into a
+    // bytes array that can be hashed and then have the hash set.
+    pub fn serialize_for_hash(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.get_pre_hash());
+        vbytes.extend(&self.get_signature());
+        vbytes.extend(&self.get_previous_block_hash());
+        vbytes
     }
 
     // serialize major block components for block signature
@@ -536,7 +647,7 @@ impl Block {
     //
     // generate hashes and payouts and fee calculations
     //
-    pub fn generate_consensus_values(&self, blockchain: &Blockchain) -> ConsensusValues {
+    pub async fn generate_consensus_values(&self, blockchain: &Blockchain) -> ConsensusValues {
         let mut cv = ConsensusValues::new();
 
         //
@@ -585,6 +696,11 @@ impl Block {
 
             println!("pruned block hash: {:?}", pruned_block_hash);
 
+            //
+            // generate metadata should have prepared us with a pre-prune block
+            // that contains all of the transactions and is ready to have its
+            // ATR rebroadcasts calculated.
+            //
             if let Some(pruned_block) = blockchain.blocks.get(&pruned_block_hash) {
                 //
                 // identify all unspent transactions
@@ -605,7 +721,10 @@ impl Block {
                                 //
                                 // TODO - floating fee based on previous block average
                                 //
-println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
+                                println!(
+                                    "GENERATING REBROADCAST TX: {:?}",
+                                    transaction.get_transaction_type()
+                                );
                                 let rebroadcast_transaction =
                                     Transaction::generate_rebroadcast_transaction(
                                         &transaction,
@@ -624,7 +743,11 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
                                 cv.rebroadcasts.push(rebroadcast_transaction);
                             } else {
                                 //
-                                // dust is collected as fee
+                                // rebroadcast dust is either collected into the treasury or
+                                // distributed as a fee for the next block producer. for now
+                                // we will simply distribute it as a fee. we may need to
+                                // change this if the DUST becomes a significant enough amount
+                                // each block to reduce consensus security.
                                 //
                                 cv.total_rebroadcast_fees_nolan += output.get_amount();
                             }
@@ -683,6 +806,17 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
                 // fee transaction added to consensus values
                 //
                 cv.fee_transaction = Some(transaction);
+            }
+        }
+
+        //
+        // if no GT_IDX, previous block is unspendable and the treasury
+        // should be increased to account for the tokens that have now
+        // disappeared and will never be spent.
+        //
+        if cv.gt_num == 0 {
+            if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+                cv.nolan_falling_off_chain = previous_block.get_total_fees();
             }
         }
 
@@ -849,7 +983,7 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         true
     }
 
-    pub fn validate(
+    pub async fn validate(
         &self,
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
@@ -877,7 +1011,7 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         // to validate it by checking the variables we can see in our block with what
         // they should be given this function.
         //
-        let cv = self.generate_consensus_values(&blockchain);
+        let cv = self.generate_consensus_values(&blockchain).await;
 
         //
         // Previous Block
@@ -890,6 +1024,18 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         // circumstances, such as this being the first block we are adding to our chain.
         //
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+            //
+            // validate treasury
+            //
+            if self.get_treasury() != previous_block.get_treasury() + cv.nolan_falling_off_chain {
+                println!(
+                    "ERROR: treasury does not validate: {} expected versus {} found",
+                    (previous_block.get_treasury() + cv.nolan_falling_off_chain),
+                    self.get_treasury(),
+                );
+                return false;
+            }
+
             //
             // validate burn fee
             //
@@ -1128,12 +1274,14 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         let mut previous_block_burnfee = 0;
         let mut previous_block_timestamp = 0;
         let mut previous_block_difficulty = 0;
+        let mut previous_block_treasury = 0;
 
         if let Some(previous_block) = blockchain.blocks.get(&previous_block_hash) {
             previous_block_id = previous_block.get_id();
             previous_block_burnfee = previous_block.get_burnfee();
             previous_block_timestamp = previous_block.get_timestamp();
             previous_block_difficulty = previous_block.get_difficulty();
+            previous_block_treasury = previous_block.get_treasury();
         }
 
         let mut block = Block::new();
@@ -1160,7 +1308,7 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         //
         // contextual values
         //
-        let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain);
+        let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain).await;
 
         //
         // TODO - remove
@@ -1213,10 +1361,17 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         }
 
         //
-        // validate difficulty
+        // set difficulty
         //
         if cv.expected_difficulty != 0 {
             block.set_difficulty(cv.expected_difficulty);
+        }
+
+        //
+        // set treasury
+        //
+        if cv.nolan_falling_off_chain != 0 {
+            block.set_treasury(previous_block_treasury + cv.nolan_falling_off_chain);
         }
 
         //
@@ -1225,12 +1380,22 @@ println!("GENERATING REBROADCAST TX: {:?}", transaction.get_transaction_type());
         let block_merkle_root = block.generate_merkle_root();
         block.set_merkle_root(block_merkle_root);
 
-        let block_hash = block.generate_hash();
-        block.set_hash(block_hash);
+        //
+        // set the hash too
+        //
+        block.generate_hashes();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
         block
+    }
+
+    pub async fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+        println!("Deleting data in block...");
+        for tx in &self.transactions {
+            tx.delete(utxoset).await;
+        }
+        true
     }
 }
 
@@ -1299,9 +1464,9 @@ mod tests {
     }
 
     #[test]
-    fn block_generate_hash() {
-        let block = Block::new();
-        let hash = block.generate_hash();
+    fn block_generate_hashes() {
+        let mut block = Block::new();
+        let hash = block.generate_hashes();
         assert_ne!(hash, [0; 32]);
     }
 
@@ -1379,18 +1544,26 @@ mod tests {
         assert!(block.generate_merkle_root().len() == 32);
     }
 
-    #[test]
-    fn block_generate_data_to_validate() {
+    #[tokio::test]
+    async fn block_downgrade_test() {
+        let mut block = Block::new();
         let wallet = Wallet::new();
-        let _blockchain = Blockchain::new(Arc::new(RwLock::new(wallet)));
+        let mut transactions = (0..5)
+            .into_iter()
+            .map(|_| {
+                let mut transaction = Transaction::new();
+                transaction.sign(wallet.get_privatekey());
+                transaction
+            })
+            .collect();
+        block.set_transactions(&mut transactions);
+
+        assert_eq!(block.transactions.len(), 5);
+        assert_eq!(block.get_block_type(), BlockType::Full);
+
+        block.downgrade_block_to_block_type(BlockType::Pruned).await;
+
+        assert_eq!(block.transactions.len(), 0);
+        assert_eq!(block.get_block_type(), BlockType::Pruned);
     }
-
-    #[test]
-    fn block_pre_validateion_calculations() {}
-
-    #[test]
-    fn block_onchain_reorganization_test() {}
-
-    #[test]
-    fn block_validation() {}
 }
