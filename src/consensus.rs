@@ -1,13 +1,13 @@
 use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
+use crate::networking::network::Network;
 use crate::storage::Storage;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use std::{future::Future, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
-
 /// The consensus state which exposes a run method
 /// initializes Saito state
 struct Consensus {
@@ -81,9 +81,11 @@ impl Consensus {
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-        let storage = Storage::new();
+        // let network_lock = Arc::new(RwLock::new(Network::new()));
+        let network = Network::new(wallet_lock.clone());
+        let _storage = Storage::new();
 
-        storage.load_blocks_from_disk(blockchain_lock.clone()).await;
+        // storage.load_blocks_from_disk(blockchain_lock.clone()).await;
 
         tokio::select! {
             res = crate::mempool::run(
@@ -114,7 +116,9 @@ impl Consensus {
                     eprintln!("{:?}", err)
                 }
             },
-            res = crate::network::run(
+            res = network.run(
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
