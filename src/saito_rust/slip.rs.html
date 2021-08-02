@@ -267,6 +267,50 @@
 <span id="264">264</span>
 <span id="265">265</span>
 <span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::UtxoSet</span>,
@@ -331,16 +375,21 @@
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> {
             <span class="kw">match</span> <span class="ident">utxoset</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset_key</span>) {
                 <span class="prelude-val">Some</span>(<span class="ident">value</span>) <span class="op">=</span><span class="op">&gt;</span> {
-		    <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">value</span><span class="op">=</span><span class="op">=</span><span class="number">1</span> {
-		        <span class="kw">return</span> <span class="bool-val">true</span>;
-		    } <span class="kw">else</span> {
-			<span class="kw">return</span> <span class="bool-val">false</span>;
-		    }
-	        }
+                    <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">value</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
+                        <span class="kw">return</span> <span class="bool-val">true</span>;
+                    } <span class="kw">else</span> {
+                        <span class="kw">return</span> <span class="bool-val">false</span>;
+                    }
+                }
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-<span class="macro">println!</span>(<span class="string">&quot;value is returned false: {:?} ordinal {} and amount {}&quot;</span>, <span class="self">self</span>.<span class="ident">utxoset_key</span>, <span class="self">self</span>.<span class="ident">get_slip_ordinal</span>(), <span class="self">self</span>.<span class="ident">get_amount</span>());
-		    <span class="kw">return</span> <span class="bool-val">false</span>;
-            	}
+                    <span class="macro">println!</span>(
+                        <span class="string">&quot;value is returned false: {:?} ordinal {} and amount {}&quot;</span>,
+                        <span class="self">self</span>.<span class="ident">utxoset_key</span>,
+                        <span class="self">self</span>.<span class="ident">get_slip_ordinal</span>(),
+                        <span class="self">self</span>.<span class="ident">get_amount</span>()
+                    );
+                    <span class="kw">return</span> <span class="bool-val">false</span>;
+                }
             }
         } <span class="kw">else</span> {
             <span class="kw">return</span> <span class="bool-val">true</span>;
@@ -354,9 +403,9 @@
         <span class="ident">slip_value</span>: <span class="ident">u64</span>,
     ) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> {
-<span class="comment">//println!(&quot;inserting into utxoset: {:?} value {}&quot;, self.utxoset_key, slip_value);</span>
-<span class="comment">//println!(&quot;slip_ordinal: {}&quot;, self.get_slip_ordinal());</span>
-<span class="comment">//println!(&quot;slip_amount: {}&quot;, self.get_amount());</span>
+            <span class="comment">//println!(&quot;inserting into utxoset: {:?} value {}&quot;, self.utxoset_key, slip_value);</span>
+            <span class="comment">//println!(&quot;slip_ordinal: {}&quot;, self.get_slip_ordinal());</span>
+            <span class="comment">//println!(&quot;slip_amount: {}&quot;, self.get_amount());</span>
             <span class="ident">utxoset</span>.<span class="ident">entry</span>(<span class="self">self</span>.<span class="ident">utxoset_key</span>).<span class="ident">or_insert</span>(<span class="ident">slip_value</span>);
         }
     }
@@ -402,6 +451,16 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_slip_type</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip_type</span>: <span class="ident">SlipType</span>) {
         <span class="self">self</span>.<span class="ident">slip_type</span> <span class="op">=</span> <span class="ident">slip_type</span>;
+    }
+
+    <span class="comment">// runs when block is purged for good</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoUTXOSetKey</span>, <span class="ident">u64</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_utxoset_key</span>() <span class="op">=</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">74</span>] {
+            <span class="macro">println!</span>(<span class="string">&quot;ERROR 572034: asked to remove a slip without its utxoset_key properly set!&quot;</span>);
+            <span class="bool-val">false</span>;
+        }
+        <span class="ident">utxoset</span>.<span class="ident">remove_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_utxoset_key</span>());
+        <span class="bool-val">true</span>
     }
 
     <span class="comment">//</span>
@@ -487,6 +546,10 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
+    <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
+    <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+    <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">slip_new_test</span>() {
@@ -524,7 +587,6 @@
         <span class="kw">let</span> <span class="ident">slip</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
         <span class="macro">assert_eq!</span>(<span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>(), [<span class="number">0</span>; <span class="number">74</span>]);
     }
-
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">slip_serialization_for_net_test</span>() {
         <span class="kw">let</span> <span class="ident">slip</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
@@ -532,6 +594,32 @@
         <span class="macro">assert_eq!</span>(<span class="ident">serialized_slip</span>.<span class="ident">len</span>(), <span class="number">75</span>);
         <span class="kw">let</span> <span class="ident">deserilialized_slip</span> <span class="op">=</span> <span class="ident">Slip::deserialize_from_net</span>(<span class="ident">serialized_slip</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">slip</span>, <span class="ident">deserilialized_slip</span>);
+    }
+    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">slip_addition_and_removal_from_utxoset</span>() {
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
+        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slip</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+        <span class="ident">slip</span>.<span class="ident">set_amount</span>(<span class="number">100_000</span>);
+        <span class="ident">slip</span>.<span class="ident">set_uuid</span>([<span class="number">1</span>; <span class="number">32</span>]);
+        <span class="ident">slip</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
+        <span class="ident">slip</span>.<span class="ident">generate_utxoset_key</span>();
+
+        <span class="comment">// add to utxoset</span>
+        <span class="ident">slip</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>, <span class="number">2</span>);
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">blockchain</span>.<span class="ident">utxoset</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>()),
+            <span class="bool-val">true</span>
+        );
+
+        <span class="comment">// remove from utxoset</span>
+        <span class="ident">slip</span>.<span class="ident">purge</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>);
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">blockchain</span>.<span class="ident">utxoset</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>()),
+            <span class="bool-val">false</span>
+        );
     }
 }
 </pre></div>

@@ -409,7 +409,6 @@
 <span id="406">406</span>
 <span id="407">407</span>
 <span id="408">408</span>
-<span id="409">409</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -507,14 +506,13 @@
     <span class="comment">// this handles any transactions broadcast on the same system. it receives the transaction</span>
     <span class="comment">// directly and so does not validate against the UTXOset etc.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">transaction</span>: <span class="ident">Transaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddTransactionResult</span> {
-
         <span class="kw">let</span> <span class="ident">tx_sig_to_insert</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">get_signature</span>();
 
-	<span class="comment">//</span>
-	<span class="comment">// this assigns the amount of routing work that this transaction </span>
-	<span class="comment">// contains to us, which is why we need to provide our publickey</span>
-	<span class="comment">// so that we can calculate routing work.</span>
-	<span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// this assigns the amount of routing work that this transaction</span>
+        <span class="comment">// contains to us, which is why we need to provide our publickey</span>
+        <span class="comment">// so that we can calculate routing work.</span>
+        <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">publickey</span>;
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
@@ -525,7 +523,7 @@
         <span class="kw">let</span> <span class="ident">routing_work_available_for_me</span> <span class="op">=</span>
             <span class="ident">transaction</span>.<span class="ident">get_routing_work_for_publickey</span>(<span class="self">self</span>.<span class="ident">mempool_publickey</span>);
 
-<span class="comment">//        println!(&quot;adding tx with routing work for me: {}&quot;, routing_work_available_for_me);</span>
+        <span class="comment">//        println!(&quot;adding tx with routing work for me: {}&quot;, routing_work_available_for_me);</span>
 
         <span class="kw">if</span> <span class="self">self</span>
             .<span class="ident">transactions</span>

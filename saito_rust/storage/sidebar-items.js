@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Storage",""]]});
+initSidebarItems({"constant":[["BLOCKS_DIR_PATH",""]],"struct":[["Storage",""]]});

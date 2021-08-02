@@ -1010,6 +1010,13 @@
 <span id="1007">1007</span>
 <span id="1008">1008</span>
 <span id="1009">1009</span>
+<span id="1010">1010</span>
+<span id="1011">1011</span>
+<span id="1012">1012</span>
+<span id="1013">1013</span>
+<span id="1014">1014</span>
+<span id="1015">1015</span>
+<span id="1016">1016</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -1481,7 +1488,7 @@
             <span class="ident">work_by_hop</span>.<span class="ident">push</span>(<span class="ident">aggregate_routing_work</span>);
         }
 
-        <span class="macro">println!</span>(<span class="string">&quot;work by hop: {:?}&quot;</span>, <span class="ident">work_by_hop</span>);
+        <span class="comment">//println!(&quot;work by hop: {:?}&quot;, work_by_hop);</span>
 
         <span class="comment">//</span>
         <span class="comment">// find winning routing node</span>
@@ -1491,7 +1498,7 @@
         <span class="kw">let</span> (<span class="ident">zy</span>, <span class="ident">_bolres</span>) <span class="op">=</span> <span class="ident">x</span>.<span class="ident">overflowing_rem</span>(<span class="ident">z</span>);
         <span class="kw">let</span> <span class="ident">winning_routing_work_in_nolan</span> <span class="op">=</span> <span class="ident">zy</span>.<span class="ident">low_u64</span>();
 
-        <span class="macro">println!</span>(<span class="string">&quot;wrwin: {}&quot;</span>, <span class="ident">winning_routing_work_in_nolan</span>);
+        <span class="comment">//println!(&quot;wrwin: {}&quot;, winning_routing_work_in_nolan);</span>
 
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">work_by_hop</span>.<span class="ident">len</span>() {
             <span class="kw">if</span> <span class="ident">winning_routing_work_in_nolan</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">work_by_hop</span>[<span class="ident">i</span>] {
@@ -1538,7 +1545,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) {
-
         <span class="comment">//</span>
         <span class="comment">// we set slip ordinals when signing</span>
         <span class="comment">//</span>
@@ -1660,6 +1666,18 @@
             <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="ident">hop</span>.<span class="ident">serialize_for_net</span>());
         }
         <span class="ident">vbytes</span>
+    }
+
+    <span class="comment">// runs when block is deleted for good</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoUTXOSetKey</span>, <span class="ident">u64</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
+            <span class="ident">input</span>.<span class="ident">delete</span>(<span class="ident">utxoset</span>);
+        });
+        <span class="self">self</span>.<span class="ident">outputs</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">output</span><span class="op">|</span> {
+            <span class="ident">output</span>.<span class="ident">delete</span>(<span class="ident">utxoset</span>);
+        });
+
+        <span class="bool-val">true</span>
     }
 
     <span class="doccomment">/// Runs when the chain is re-organized</span>
@@ -1872,7 +1890,7 @@
         <span class="comment">// fee transactions</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::Fee</span> {
-<span class="comment">//println!(&quot;Fee Transaction&quot;);</span>
+            <span class="comment">//println!(&quot;Fee Transaction&quot;);</span>
             <span class="comment">// signed by block creator ?</span>
         }
 
@@ -1880,26 +1898,23 @@
         <span class="comment">// atr transactions</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::ATR</span> {
-<span class="comment">//println!(&quot;ATR Transaction&quot;);</span>
+            <span class="comment">//println!(&quot;ATR Transaction&quot;);</span>
 
             <span class="comment">// signed by block creator ?</span>
         }
-
 
         <span class="comment">//</span>
         <span class="comment">// normal transactions</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::Normal</span> {
-<span class="comment">//println!(&quot;Normal Transaction&quot;);</span>
-
+            <span class="comment">//println!(&quot;Normal Transaction&quot;);</span>
         }
 
         <span class="comment">//</span>
         <span class="comment">// golden ticket transactions</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::GoldenTicket</span> {
-<span class="comment">//println!(&quot;Golden Ticket Transaction&quot;);</span>
-
+            <span class="comment">//println!(&quot;Golden Ticket Transaction&quot;);</span>
         }
 
         <span class="comment">//</span>
@@ -1911,7 +1926,7 @@
         <span class="comment">// for the faith and support.</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::Vip</span> {
-<span class="comment">//println!(&quot;VIP Transaction&quot;);</span>
+            <span class="comment">//println!(&quot;VIP Transaction&quot;);</span>
 
             <span class="comment">// we should validate that VIP transactions are signed by the</span>
             <span class="comment">// publickey associated with the Saito project.</span>
@@ -1939,9 +1954,8 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">inputs_validate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">par_iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>));
 
-	<span class="ident">inputs_validate</span>
+        <span class="ident">inputs_validate</span>
     }
-
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
