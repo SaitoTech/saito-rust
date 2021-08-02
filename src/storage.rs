@@ -8,6 +8,8 @@ use tokio::sync::RwLock;
 
 use crate::{block::Block, blockchain::Blockchain};
 
+pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
+
 pub struct Storage {
     blocks_dir_path: String,
 }
@@ -19,14 +21,17 @@ impl Storage {
         }
     }
 
-    pub fn write_block_to_disk(&self, block: &Block) {
+    pub fn write_block_to_disk(&self, block: &mut Block) {
         let mut filename = self.blocks_dir_path.clone();
+
         filename.push_str(&hex::encode(block.get_timestamp().to_be_bytes()));
         filename.push_str(&String::from("-"));
-        filename.push_str(&hex::encode(&block.generate_hash()));
+        filename.push_str(&hex::encode(&block.get_hash()));
         filename.push_str(&".sai");
 
-//println!("trying to write to disk: {}", filename);
+        block.set_filename(filename.clone());
+
+        //println!("trying to write to disk: {}", filename);
 
         let mut buffer = File::create(filename).unwrap();
         let byte_array: Vec<u8> = block.serialize_for_net();
@@ -59,7 +64,7 @@ impl Storage {
                 // the hash needs calculation separately after loading
                 //
                 if block.get_hash() == [0; 32] {
-                    let block_hash = block.generate_hash();
+                    let block_hash = block.get_hash();
                     block.set_hash(block_hash);
                 }
                 println!("loading block with hash: {:?}", block.get_hash());
@@ -69,5 +74,29 @@ impl Storage {
                 println!("Loaded block {} of {}", pos, paths.len() - 1);
             }
         }
+    }
+    pub async fn load_block_from_disk(filename: String) -> Block {
+        //let file_to_load = BLOCKS_DIR_PATH.to_string() + &filename;
+        let file_to_load = &filename;
+        let mut f = File::open(file_to_load).unwrap();
+        let mut encoded = Vec::<u8>::new();
+        f.read_to_end(&mut encoded).unwrap();
+        let mut block = Block::deserialize_for_net(encoded);
+
+        //
+        // the hash needs calculation separately after loading
+        //
+        if block.get_hash() == [0; 32] {
+            block.generate_hashes();
+        }
+        println!("loaded block: {}", filename);
+
+        return block;
+    }
+
+    pub async fn delete_block_from_disk(filename: String) -> bool {
+        println!("deleting {}", filename);
+        let _res = std::fs::remove_file(filename);
+        true
     }
 }

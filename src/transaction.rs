@@ -468,7 +468,7 @@ impl Transaction {
             work_by_hop.push(aggregate_routing_work);
         }
 
-        println!("work by hop: {:?}", work_by_hop);
+        //println!("work by hop: {:?}", work_by_hop);
 
         //
         // find winning routing node
@@ -478,7 +478,7 @@ impl Transaction {
         let (zy, _bolres) = x.overflowing_rem(z);
         let winning_routing_work_in_nolan = zy.low_u64();
 
-        println!("wrwin: {}", winning_routing_work_in_nolan);
+        //println!("wrwin: {}", winning_routing_work_in_nolan);
 
         for i in 0..work_by_hop.len() {
             if winning_routing_work_in_nolan <= work_by_hop[i] {
@@ -525,7 +525,6 @@ impl Transaction {
     }
 
     pub fn sign(&mut self, privatekey: SaitoPrivateKey) {
-
         //
         // we set slip ordinals when signing
         //
@@ -647,6 +646,18 @@ impl Transaction {
             vbytes.extend(&hop.serialize_for_net());
         }
         vbytes
+    }
+
+    // runs when block is deleted for good
+    pub async fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+        self.inputs.iter().for_each(|input| {
+            input.delete(utxoset);
+        });
+        self.outputs.iter().for_each(|output| {
+            output.delete(utxoset);
+        });
+
+        true
     }
 
     /// Runs when the chain is re-organized
@@ -859,7 +870,7 @@ impl Transaction {
         // fee transactions
         //
         if transaction_type == TransactionType::Fee {
-//println!("Fee Transaction");
+            //println!("Fee Transaction");
             // signed by block creator ?
         }
 
@@ -867,26 +878,23 @@ impl Transaction {
         // atr transactions
         //
         if transaction_type == TransactionType::ATR {
-//println!("ATR Transaction");
+            //println!("ATR Transaction");
 
             // signed by block creator ?
         }
-
 
         //
         // normal transactions
         //
         if transaction_type == TransactionType::Normal {
-//println!("Normal Transaction");
-
+            //println!("Normal Transaction");
         }
 
         //
         // golden ticket transactions
         //
         if transaction_type == TransactionType::GoldenTicket {
-//println!("Golden Ticket Transaction");
-
+            //println!("Golden Ticket Transaction");
         }
 
         //
@@ -898,7 +906,7 @@ impl Transaction {
         // for the faith and support.
         //
         if transaction_type == TransactionType::Vip {
-//println!("VIP Transaction");
+            //println!("VIP Transaction");
 
             // we should validate that VIP transactions are signed by the
             // publickey associated with the Saito project.
@@ -926,9 +934,8 @@ impl Transaction {
         //
         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
 
-	inputs_validate
+        inputs_validate
     }
-
 }
 
 #[cfg(test)]

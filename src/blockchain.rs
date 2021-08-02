@@ -1,4 +1,9 @@
-use crate::block::Block;
+// length of 1 genesis period
+pub const GENESIS_PERIOD: u64 = 2;
+// prune blocks from index after N blocks
+pub const PRUNE_AFTER_BLOCKS: u64 = 1;
+
+use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
@@ -8,12 +13,10 @@ use crate::wallet::Wallet;
 
 use async_recursion::async_recursion;
 
+use ahash::AHashMap;
+use rayon::prelude::*;
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
-
-use ahash::AHashMap;
-
-pub const GENESIS_PERIOD: u64 = 6;
 
 pub fn bit_pack(top: u32, bottom: u32) -> u64 {
     ((top as u64) << 32) + (bottom as u64)
@@ -35,6 +38,7 @@ pub struct Blockchain {
     pub wallet_lock: Arc<RwLock<Wallet>>,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
     genesis_block_id: u64,
+    fork_id: SaitoHash,
 }
 
 impl Blockchain {
@@ -47,6 +51,7 @@ impl Blockchain {
             wallet_lock,
             broadcast_channel_sender: None,
             genesis_block_id: 0,
+            fork_id: [0; 32],
         }
     }
 
@@ -54,8 +59,15 @@ impl Blockchain {
         self.broadcast_channel_sender = Some(bcs);
     }
 
-    pub async fn add_block(&mut self, block: Block) {
+    pub fn set_fork_id(&mut self, fork_id: SaitoHash) {
+        self.fork_id = fork_id;
+    }
 
+    pub fn get_fork_id(&self) -> SaitoHash {
+        self.fork_id
+    }
+
+    pub async fn add_block(&mut self, block: Block) {
         println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
@@ -280,20 +292,22 @@ impl Blockchain {
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
 
+        let block_id;
+
         //
         // save to disk
         //
         let storage = Storage::new();
-	{
-	    let block = self.get_mut_block(block_hash).await;
+        {
+            let block = self.get_mut_block(block_hash).await;
+            block_id = block.get_id();
             storage.write_block_to_disk(block);
 
-	    //
-	    // TMP - delete transactions
-	    //
-	    //block.transactions = vec![];
-
-	}
+            //
+            // TMP - delete transactions
+            //
+            //block.transactions = vec![];
+        }
         //storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
 
         println!(" ... block save done:            {:?}", create_timestamp());
@@ -313,12 +327,135 @@ impl Blockchain {
         //
         // update_genesis_period and prune old data
         //
-	self.update_genesis_period();
+        self.update_genesis_period().await;
 
+        //
+        // fork id
+        //
+        let fork_id = self.generate_fork_id(block_id);
+        println!("FORK_ID: {:?}", fork_id);
+        self.set_fork_id(fork_id);
 
+        //
+        // ensure pruning of next block OK will have the right CVs
+        //
+        if self.get_latest_block_id() > GENESIS_PERIOD {
+            let pruned_block_hash = self.blockring.get_longest_chain_block_hash_by_block_id(
+                self.get_latest_block_id() - GENESIS_PERIOD,
+            );
+
+            //
+            // TODO
+            //
+            // handle this more efficiently - we should be able to prepare the block
+            // in advance so that this doesn't take up time in block production. we
+            // need to generate_metadata_hashes so that the slips know the utxo_key
+            // to use to check the utxoset.
+            //
+            {
+                let pblock = self.get_mut_block(pruned_block_hash).await;
+                pblock.upgrade_block_to_block_type(BlockType::Full).await;
+                let _transactions_pre_calculated = pblock
+                    .transactions
+                    .par_iter_mut()
+                    .all(|tx| tx.generate_metadata_hashes());
+            }
+        }
     }
 
     pub async fn add_block_failure(&mut self) {}
+
+    pub fn generate_fork_id(&self, block_id: u64) -> SaitoHash {
+        let mut fork_id = [0; 32];
+        let mut current_block_id = block_id;
+
+        //
+        // roll back to last even 10 blocks
+        //
+        for i in 0..10 {
+            if (current_block_id - i) % 10 == 0 {
+                current_block_id = current_block_id - i;
+                break;
+            }
+        }
+
+        //
+        // loop backwards through blockchain
+        //
+        for i in 0..16 {
+            if i == 0 {
+                current_block_id -= 0;
+            }
+            if i == 1 {
+                current_block_id -= 10;
+            }
+            if i == 2 {
+                current_block_id -= 10;
+            }
+            if i == 3 {
+                current_block_id -= 10;
+            }
+            if i == 4 {
+                current_block_id -= 10;
+            }
+            if i == 5 {
+                current_block_id -= 10;
+            }
+            if i == 6 {
+                current_block_id -= 25;
+            }
+            if i == 7 {
+                current_block_id -= 25;
+            }
+            if i == 8 {
+                current_block_id -= 100;
+            }
+            if i == 9 {
+                current_block_id -= 300;
+            }
+            if i == 10 {
+                current_block_id -= 500;
+            }
+            if i == 11 {
+                current_block_id -= 4000;
+            }
+            if i == 12 {
+                current_block_id -= 10000;
+            }
+            if i == 13 {
+                current_block_id -= 20000;
+            }
+            if i == 14 {
+                current_block_id -= 50000;
+            }
+            if i == 15 {
+                current_block_id -= 100000;
+            }
+
+            //
+            // do not loop around if block id < 0
+            //
+            if current_block_id > block_id || current_block_id == 0 {
+                break;
+            }
+
+            //
+            // index to update
+            //
+            let idx = 2 * i;
+
+            //
+            //
+            //
+            let block_hash = self
+                .blockring
+                .get_longest_chain_block_hash_by_block_id(current_block_id);
+            fork_id[idx] = block_hash[idx];
+            fork_id[idx + 1] = block_hash[idx + 1];
+        }
+
+        fork_id
+    }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_longest_chain_block_hash();
@@ -440,6 +577,7 @@ impl Blockchain {
         wind_failure: bool,
     ) -> bool {
         println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
+
         //
         // if we are winding a non-existent chain with a wind_failure it
         // means our wind attempt failed and we should move directly into
@@ -468,7 +606,7 @@ impl Blockchain {
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
         println!(" ... before block.validate:      {:?}", create_timestamp());
-        let does_block_validate = block.validate(&self, &self.utxoset);
+        let does_block_validate = block.validate(&self, &self.utxoset).await;
         println!(" ... after block.validate:       {:?}", create_timestamp());
 
         if does_block_validate {
@@ -511,7 +649,7 @@ impl Blockchain {
             // will know it has rewound the old chain successfully instead of
             // successfully added the new chain.
             //
-println!("this block does not validate!");
+            println!("this block does not validate!");
             if current_wind_index == new_chain.len() - 1 {
                 //
                 // this is the first block we have tried to add
@@ -627,9 +765,7 @@ println!("this block does not validate!");
         }
     }
 
-
-    pub fn update_genesis_period(&mut self) {
-
+    pub async fn update_genesis_period(&mut self) {
         //
         // we need to make sure this is not a random block that is disconnected
         // from our previous genesis_id. If there is no connection between it
@@ -637,30 +773,127 @@ println!("this block does not validate!");
         // the block may be an attack on us intended to force us to discard
         // actually useful data.
         //
-        // we do this by checking that our block is the head of the
-        // verified longest chain.
+        // so we check that our block is the head of the longest-chain and only
+        // update the genesis period when that is the case.
         //
-	let latest_block_id = self.get_latest_block_id();
+        let latest_block_id = self.get_latest_block_id();
         if latest_block_id >= ((GENESIS_PERIOD * 2) + 1) {
-
-println!("PRUNING data from the blockchain and updating the genesis period...");
-
+            //
+            // prune blocks
+            //
             let purge_bid = latest_block_id - (GENESIS_PERIOD * 2);
             self.genesis_block_id = latest_block_id - GENESIS_PERIOD;
 
             //
             // in either case, we are OK to throw out everything below the
             // lowest_block_id that we have found. we use the purge_id to
-	    // handle purges.
-	    //
-            self.purge_blockchain_data(purge_bid);
-	}
+            // handle purges.
+            //
+            self.delete_blocks(purge_bid).await;
+        }
+
+        self.downgrade_blockchain_data().await;
     }
 
-    pub fn purge_blockchain_data(&mut self, _purge_bid: u64) {
+    //
+    // deletes all blocks at a single block_id
+    //
+    pub async fn delete_blocks(&mut self, delete_block_id: u64) {
+        println!(
+            "removing data including from disk at id {}",
+            delete_block_id
+        );
 
+        let mut block_hashes_copy: Vec<SaitoHash> = vec![];
+
+        {
+            let block_hashes = self.blockring.get_block_hashes_at_block_id(delete_block_id);
+            for hash in block_hashes {
+                block_hashes_copy.push(hash.clone());
+            }
+        }
+
+        println!("number of hashes to remove {}", block_hashes_copy.len());
+
+        for hash in block_hashes_copy {
+            self.delete_block(delete_block_id, hash).await;
+        }
     }
 
+    //
+    // deletes a single block
+    //
+    pub async fn delete_block(&mut self, delete_block_id: u64, delete_block_hash: SaitoHash) {
+        //
+        // ask block to delete itself / utxo-wise
+        //
+        {
+            let pblock = self.blocks.get(&delete_block_hash).unwrap();
+            let pblock_filename = pblock.get_filename().clone();
+
+            //
+            // remove slips from wallet
+            //
+            let mut wallet = self.wallet_lock.write().await;
+            wallet.delete_block(pblock);
+
+            //
+            // removes utxoset data
+            //
+            pblock.delete(&mut self.utxoset).await;
+
+            //
+            // deletes block from disk
+            //
+            println!("delete filename {}", pblock_filename);
+            Storage::delete_block_from_disk(pblock_filename).await;
+        }
+
+        //
+        // ask blockring to remove
+        //
+        self.blockring
+            .delete_block(delete_block_id, delete_block_hash);
+
+        //
+        // remove from block index
+        //
+        if self.blocks.contains_key(&delete_block_hash) {
+            self.blocks.remove_entry(&delete_block_hash);
+        }
+    }
+
+    pub async fn downgrade_blockchain_data(&mut self) {
+        //
+        // downgrade blocks still on the chain
+        //
+        let prune_blocks_at_block_id = self.get_latest_block_id() - PRUNE_AFTER_BLOCKS;
+
+        //println!("downgrade blocks at block_id: {}", prune_blocks_at_block_id);
+
+        let mut block_hashes_copy: Vec<SaitoHash> = vec![];
+
+        {
+            let block_hashes = self
+                .blockring
+                .get_block_hashes_at_block_id(prune_blocks_at_block_id);
+            for hash in block_hashes {
+                block_hashes_copy.push(hash.clone());
+            }
+        }
+
+        for hash in block_hashes_copy {
+            //
+            // ask the block to remove its transactions
+            //
+            {
+                let pblock = self.get_mut_block(hash).await;
+                pblock
+                    .downgrade_block_to_block_type(BlockType::Pruned)
+                    .await;
+            }
+        }
+    }
 }
 
 // This function is called on initialization to setup the sending
