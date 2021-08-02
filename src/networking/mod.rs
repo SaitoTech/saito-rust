@@ -14,8 +14,7 @@ This enables high throughput and also 2-way(full-duplex) communication between n
 
 A basic SaitoRPC request looks like the following:
 
-```
-bytes
+```bytes
 0-7     MessageName
 8-11    MessageID(big-endian u32)(optional)
 12..    MessageData
@@ -31,12 +30,12 @@ We reserve 8 bytes for RPC names so that we can easily add and deprecate methods
 
 Two special names are used for responses.
 
-```
+```bytes
 ERROR___
 RESULT__
 ```
 
-```
+```bytes
 SHAKINIT
 SHAKCOMP
 REQCHAIN
@@ -55,8 +54,7 @@ SNDKYCHN
 A response to an RPC method. MessageID is the id of the request it is responding to. Message encoding depends on the request.
 
 MessageData:
-```
-bytes
+```bytes
 0-7         MessageName(same as the request, for convenience so senders don't necessarily need to track MessageID to decode a response)
 7..         Response Data
 ```
@@ -67,8 +65,7 @@ A response to an RPC method.
 MessageID is the id of the request it is responding to.
 
 MessageData:
-```
-bytes
+```bytes
 0..         UTF8 Encoded Error Message
 ```
 
@@ -80,7 +77,7 @@ A handshake can be initialized by sending a GET request to /handshakeinit and th
 
 Serialized Handshake:
 
-```
+```bytes
     challenger_ip_address   4 bytes(IP as 4 bytes)
     challengie_ip_address   4 bytes(IP as 4 bytes)
     challenger_pubkey       33 bytes(SECP256k1 compact form)
@@ -102,7 +99,7 @@ triggers: remote server should calculate appropriate response and "send blockcha
 
 MessageData:
 
-```
+```bytes
 0-7         Latest Block ID(u64)
 8-39        Latest Block Hash
 40-61       Fork ID
