@@ -31,7 +31,7 @@ pub struct Peer {
     pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct APIMessage {
     pub message_name: [u8; 8],
     pub message_id: u32,
@@ -224,6 +224,7 @@ mod tests {
         mempool::Mempool,
         networking::filters::ws_upgrade_route_filter,
         transaction::Transaction,
+        test_utilities::mocks::{make_mock_block},
     };
     use secp256k1::PublicKey;
 
@@ -377,5 +378,77 @@ mod tests {
 
         let mempool = mempool_lock.read().await;
         assert_eq!(mempool.transactions.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_send_blockchain() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let mut blockchain = Blockchain::new(wallet_lock.clone());
+
+        let mock_block_1 = make_mock_block(0, 10, [0; 32], 1);
+        let mock_block_2 = make_mock_block(
+            mock_block_1.get_timestamp(),
+            mock_block_1.get_burnfee(),
+            mock_block_1.get_hash(),
+            mock_block_1.get_id() + 1,
+        );
+        let mock_block_2_hash = mock_block_2.get_hash();
+        let mock_block_3 = make_mock_block(
+            mock_block_2.get_timestamp(),
+            mock_block_2.get_burnfee(),
+            mock_block_2.get_hash(),
+            mock_block_2.get_id() + 1,
+        );
+
+        blockchain.add_block(mock_block_1.clone()).await;
+        blockchain.add_block(mock_block_2.clone()).await;
+        blockchain.add_block(mock_block_3.clone()).await;
+
+        println!("{:?}", blockchain.get_latest_block_hash());
+
+        let blockchain_lock = Arc::new(RwLock::new(blockchain));
+
+        let network = Network::new(wallet_lock.clone());
+        let (publickey, _privatekey) = generate_keys();
+
+        let socket_filter = ws_upgrade_route_filter(
+            &network.peers.clone(),
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        );
+        let mut ws_client = warp::test::ws()
+            .path("/wsopen")
+            .handshake(socket_filter)
+            .await
+            .expect("transaction websocket");
+
+        let mut message_data = vec![127, 0, 0, 1];
+        message_data.extend(
+            PublicKey::from_slice(&publickey)
+                .unwrap()
+                .serialize()
+                .to_vec(),
+        );
+
+        let mut message_bytes: Vec<u8> = vec![];
+        message_bytes.extend_from_slice(&mock_block_2_hash);
+        message_bytes.extend_from_slice(&[0u8; 32]);
+
+        let api_message = APIMessage::new("REQCHAIN", 0, message_bytes);
+        let serialized_api_message = api_message.serialize();
+
+        let _socket_resp = ws_client
+            .send(Message::binary(serialized_api_message))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+        let command = String::from_utf8_lossy(&resp.as_bytes()[0..8]);
+        let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());
+        let msg = resp.as_bytes()[12..].to_vec();
+
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 0);
+        assert_eq!(msg.len(), 64);
     }
 }
