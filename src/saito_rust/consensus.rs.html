@@ -133,17 +133,21 @@
 <span id="130">130</span>
 <span id="131">131</span>
 <span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::network::Network</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">transaction::Transaction</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">future::Future</span>, <span class="ident">sync::Arc</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>};
-
 <span class="doccomment">/// The consensus state which exposes a run method</span>
 <span class="doccomment">/// initializes Saito state</span>
 <span class="kw">struct</span> <span class="ident">Consensus</span> {
@@ -217,9 +221,11 @@
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage::new</span>();
+        <span class="comment">// let network_lock = Arc::new(RwLock::new(Network::new()));</span>
+        <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
+        <span class="kw">let</span> <span class="ident">_storage</span> <span class="op">=</span> <span class="ident">Storage::new</span>();
 
-        <span class="ident">storage</span>.<span class="ident">load_blocks_from_disk</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+        <span class="comment">// storage.load_blocks_from_disk(blockchain_lock.clone()).await;</span>
 
         <span class="macro">tokio::select!</span> {
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::mempool::run</span>(
@@ -250,7 +256,9 @@
                     <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
                 }
             },
-            <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::network::run</span>(
+            <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>(
+                <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {

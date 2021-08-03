@@ -1570,7 +1570,6 @@
 <span id="1567">1567</span>
 <span id="1568">1568</span>
 <span id="1569">1569</span>
-<span id="1570">1570</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::Blockchain</span>,
@@ -1595,6 +1594,8 @@
 <span class="kw">use</span> <span class="ident">std::string::String</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">mem</span>, <span class="ident">sync::Arc</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_HEADER_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">205</span>;
 
 <span class="comment">//</span>
 <span class="comment">// object used when generating and validation transactions, containing the</span>
@@ -2090,7 +2091,7 @@
         <span class="kw">let</span> <span class="ident">burnfee</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">189</span>..<span class="number">197</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
         <span class="kw">let</span> <span class="ident">difficulty</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">197</span>..<span class="number">205</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">start_of_transaction_data</span> <span class="op">=</span> <span class="number">205</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">start_of_transaction_data</span> <span class="op">=</span> <span class="ident">BLOCK_HEADER_SIZE</span>;
         <span class="kw">for</span> <span class="ident">_n</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">transactions_len</span> {
             <span class="kw">let</span> <span class="ident">inputs_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">u32::from_be_bytes</span>(
                 <span class="ident">bytes</span>[<span class="ident">start_of_transaction_data</span>..<span class="ident">start_of_transaction_data</span> <span class="op">+</span> <span class="number">4</span>]
@@ -2497,10 +2498,7 @@
         <span class="macro">println!</span>(<span class="string">&quot; ... block.prevalid - pst hash:  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="comment">//</span>
-        <span class="comment">// CUMULATIVE FEES only AFTER parallel calculations</span>
-        <span class="comment">//</span>
         <span class="comment">// we need to calculate the cumulative figures AFTER the</span>
-        <span class="comment">// transactions have been fleshed out with all of the</span>
         <span class="comment">// original figures.</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cumulative_fees</span> <span class="op">=</span> <span class="number">0</span>;
@@ -2806,7 +2804,7 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">transactions_valid</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">par_iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>));
 
-        <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (done all)  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="comment">// println!(&quot; ... block.validate: (done all)  {:?}&quot;, create_timestamp());</span>
 
         <span class="comment">//</span>
         <span class="comment">// and if our transactions are valid, so is the block...</span>

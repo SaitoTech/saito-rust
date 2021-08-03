@@ -401,14 +401,6 @@
 <span id="398">398</span>
 <span id="399">399</span>
 <span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
-<span id="404">404</span>
-<span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -452,7 +444,7 @@
 <span class="doccomment">/// the `Blockchain`</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Mempool</span> {
     <span class="ident">blocks</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
-    <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>, <span class="comment">// vector so we just copy it over</span>
+    <span class="kw">pub</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>, <span class="comment">// vector so we just copy it over</span>
     <span class="ident">routing_work_in_mempool</span>: <span class="ident">u64</span>,
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">currently_processing_block</span>: <span class="ident">bool</span>,
@@ -624,6 +616,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Check to see if the `Mempool` has enough work to bundle a block</span>
     <span class="doccomment">///</span>
+
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">can_bundle_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">currently_processing_block</span> {
             <span class="kw">return</span> <span class="bool-val">false</span>;
@@ -691,13 +684,9 @@
         <span class="ident">mempool</span>.<span class="ident">set_mempool_privatekey</span>(<span class="ident">privatekey</span>);
     }
 
-    <span class="comment">//</span>
     <span class="comment">// generate blocks 4000, w/ capacity of 4 fails</span>
-    <span class="comment">//</span>
     <span class="kw">let</span> (<span class="ident">mempool_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">mempool_channel_receiver</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
-
     <span class="kw">let</span> <span class="ident">generate_block_sender</span> <span class="op">=</span> <span class="ident">mempool_channel_sender</span>.<span class="ident">clone</span>();
-    <span class="comment">// let generate_transaction_sender = mempool_channel_sender.clone();</span>
     <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">loop</span> {
             <span class="ident">generate_block_sender</span>
@@ -705,11 +694,6 @@
                 .<span class="kw">await</span>
                 .<span class="ident">expect</span>(<span class="string">&quot;error: TryBundleBlock message failed to send&quot;</span>);
             <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">1000</span>));
-            <span class="comment">// generate_transaction_sender</span>
-            <span class="comment">//     .send(MempoolMessage::GenerateTransaction)</span>
-            <span class="comment">//     .await</span>
-            <span class="comment">//     .expect(&quot;error: GenerateTransaction message failed to send&quot;);</span>
-            <span class="comment">// sleep(Duration::from_millis(2000));</span>
         }
     });
 

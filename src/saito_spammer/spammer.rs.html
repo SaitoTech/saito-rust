@@ -135,10 +135,14 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">saito_rust</span>::{
-    <span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">miner::Miner</span>, <span class="ident">transaction::Transaction</span>,
-    <span class="ident">wallet::Wallet</span>,
+    <span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">miner::Miner</span>, <span class="ident">networking::network::Network</span>,
+    <span class="ident">transaction::Transaction</span>, <span class="ident">wallet::Wallet</span>,
 };
 
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
@@ -165,6 +169,7 @@
     <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
     <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
     <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
+    <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
 
     <span class="kw">let</span> <span class="ident">publickey</span>;
     <span class="kw">let</span> <span class="ident">privatekey</span>;
@@ -218,7 +223,7 @@
         }
     });
 
-    <span class="ident">run</span>(<span class="ident">mempool_lock</span>, <span class="ident">blockchain_lock</span>, <span class="ident">miner_lock</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="ident">run</span>(<span class="ident">mempool_lock</span>, <span class="ident">blockchain_lock</span>, <span class="ident">miner_lock</span>, <span class="ident">network</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -227,6 +232,7 @@
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">miner_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Miner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">network</span>: <span class="ident">Network</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">saito_rust::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="kw">let</span> (<span class="ident">broadcast_channel_sender</span>, <span class="ident">broadcast_channel_receiver</span>) <span class="op">=</span> <span class="ident">broadcast::channel</span>(<span class="number">32</span>);
     <span class="macro">tokio::select!</span> {
@@ -258,7 +264,9 @@
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
             }
         },
-        <span class="ident">res</span> <span class="op">=</span> <span class="ident">saito_rust::network::run</span>(
+        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>(
+            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
             <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
             <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
         ) <span class="op">=</span><span class="op">&gt;</span> {

@@ -444,7 +444,6 @@
 <span id="441">441</span>
 <span id="442">442</span>
 <span id="443">443</span>
-<span id="444">444</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::GENESIS_PERIOD</span>;
@@ -821,7 +820,6 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockring</span> <span class="op">=</span> <span class="ident">BlockRing::new</span>();
         <span class="macro">assert_eq!</span>(<span class="number">0</span>, <span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_id</span>());
         <span class="kw">let</span> <span class="ident">mock_block</span> <span class="op">=</span> <span class="ident">make_mock_block</span>(<span class="number">0</span>, <span class="number">10</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="number">0</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;mock block hash {:?}&quot;</span>, <span class="ident">mock_block</span>.<span class="ident">get_hash</span>());
         <span class="ident">blockring</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">mock_block</span>);
 
         <span class="comment">// TODO: These next 3 are also wrong, they should probably return None or panic</span>
