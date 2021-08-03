@@ -1,3 +1,9 @@
+/*!
+# Saito Transaction Spammer
+
+TODO: Fill in these docs
+
+*/
 use saito_rust::{
     blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
     transaction::Transaction, wallet::Wallet,

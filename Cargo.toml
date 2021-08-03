@@ -13,8 +13,8 @@ name = "saito-spammer"
 path = "src/bin/spammer.rs"
 
 [[bin]]
-name = "walletcli"
-path = "src/bin/walletcli.rs"
+name = "saitocli"
+path = "src/bin/saitocli.rs"
 
 [dependencies]
 ahash = "0.7.4"
@@ -26,6 +26,7 @@ enum-variant-count-derive = { path = "enum-variant-count-derive" }
 futures = { version = "0.3", default-features = false }
 blake3 = { version = "1.0.0", features = ["rayon"] }
 base58 = "0.1.0"
+clap = "2.33.3"
 hex = "0.4.3"
 jemallocator = "0.1.9"
 jemalloc-ctl = "0.2.0"
