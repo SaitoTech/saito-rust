@@ -1,7 +1,8 @@
 use crate::block::Block;
+use crate::blockchain::GENESIS_PERIOD;
 use crate::crypto::SaitoHash;
 
-pub const EPOCH_LENGTH: u64 = 21000;
+pub const EPOCH_LENGTH: u64 = GENESIS_PERIOD;
 pub const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
 
 //
@@ -114,7 +115,7 @@ impl BlockRing {
         // initialize the block-ring
         //
         let mut init_block_ring: Vec<RingItem> = vec![];
-        for _i in 0..EPOCH_LENGTH {
+        for _i in 0..RING_BUFFER_LENGTH {
             init_block_ring.push(RingItem::new());
         }
 
@@ -142,7 +143,11 @@ impl BlockRing {
         block_hash: SaitoHash,
     ) -> bool {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
-        self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash)
+println!("contains block hash at block id... {:?} {}", block_hash, insert_pos);
+println!("insert pos is: {} {}", insert_pos, GENESIS_PERIOD);
+        let res = self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash);
+println!("ontains block hash at block id 2...");
+	return res;
     }
 
     pub fn add_block(&mut self, block: &Block) {
@@ -227,6 +232,8 @@ mod test {
     #[test]
     fn blockring_reorganization_test() {
         let mut blockring = BlockRing::new();
+
+        println!("This is a quick test!");
 
         //
         // Good Blocks
