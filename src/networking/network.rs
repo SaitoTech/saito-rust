@@ -224,7 +224,7 @@ mod tests {
         mempool::Mempool,
         networking::filters::ws_upgrade_route_filter,
         transaction::Transaction,
-        test_utilities::mocks::{make_mock_block},
+        test_utilities::mocks::{make_mock_block, make_mock_blockchain},
     };
     use secp256k1::PublicKey;
 
@@ -384,30 +384,11 @@ mod tests {
     async fn test_send_blockchain() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-        let mut blockchain = Blockchain::new(wallet_lock.clone());
+        // let mut blockchain = Blockchain::new(wallet_lock.clone());
 
-        let mock_block_1 = make_mock_block(0, 10, [0; 32], 1);
-        let mock_block_2 = make_mock_block(
-            mock_block_1.get_timestamp(),
-            mock_block_1.get_burnfee(),
-            mock_block_1.get_hash(),
-            mock_block_1.get_id() + 1,
-        );
-        let mock_block_2_hash = mock_block_2.get_hash();
-        let mock_block_3 = make_mock_block(
-            mock_block_2.get_timestamp(),
-            mock_block_2.get_burnfee(),
-            mock_block_2.get_hash(),
-            mock_block_2.get_id() + 1,
-        );
+        let blockchain_lock = make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
 
-        blockchain.add_block(mock_block_1.clone()).await;
-        blockchain.add_block(mock_block_2.clone()).await;
-        blockchain.add_block(mock_block_3.clone()).await;
-
-        println!("{:?}", blockchain.get_latest_block_hash());
-
-        let blockchain_lock = Arc::new(RwLock::new(blockchain));
+        // println!("{:?}", blockchain.get_latest_block_hash());
 
         let network = Network::new(wallet_lock.clone());
         let (publickey, _privatekey) = generate_keys();
@@ -433,7 +414,7 @@ mod tests {
         );
 
         let mut message_bytes: Vec<u8> = vec![];
-        message_bytes.extend_from_slice(&mock_block_2_hash);
+        message_bytes.extend_from_slice(&[0u8; 32]);
         message_bytes.extend_from_slice(&[0u8; 32]);
 
         let api_message = APIMessage::new("REQCHAIN", 0, message_bytes);
