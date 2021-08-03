@@ -80,9 +80,7 @@ pub fn post_transaction_route_filter(
         .and_then(post_transaction_handler)
 }
 
-fn with_peers_filter(
-    peers: Peers,
-) -> impl Filter<Extract = (Peers,), Error = Infallible> + Clone {
+fn with_peers_filter(peers: Peers) -> impl Filter<Extract = (Peers,), Error = Infallible> + Clone {
     warp::any().map(move || peers.clone())
 }
 fn with_wallet(

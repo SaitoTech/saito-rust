@@ -1,4 +1,4 @@
-use std::{sync::Arc};
+use std::sync::Arc;
 
 use futures::{FutureExt, StreamExt};
 // use crate::{Client, Clients};
@@ -15,7 +15,7 @@ use crate::{
     crypto::{hash, verify, SaitoHash, SaitoPublicKey},
     mempool::{AddTransactionResult, Mempool},
     networking::network::{
-        APIMessage, Peer, Peers, HandshakeChallenge, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
+        APIMessage, HandshakeChallenge, Peer, Peers, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
     },
     time::create_timestamp,
     transaction::Transaction,
