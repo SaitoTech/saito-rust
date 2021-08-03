@@ -22,6 +22,8 @@ use std::string::String;
 use std::{mem, sync::Arc};
 use tokio::sync::RwLock;
 
+pub const BLOCK_HEADER_SIZE: usize = 205;
+
 //
 // object used when generating and validation transactions, containing the
 // information that is created selectively according to the transaction fees
@@ -516,7 +518,7 @@ impl Block {
         let burnfee: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
         let difficulty: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
         let mut transactions = vec![];
-        let mut start_of_transaction_data = 205;
+        let mut start_of_transaction_data = BLOCK_HEADER_SIZE;
         for _n in 0..transactions_len {
             let inputs_len: u32 = u32::from_be_bytes(
                 bytes[start_of_transaction_data..start_of_transaction_data + 4]
@@ -923,10 +925,7 @@ impl Block {
         println!(" ... block.prevalid - pst hash:  {:?}", create_timestamp());
 
         //
-        // CUMULATIVE FEES only AFTER parallel calculations
-        //
         // we need to calculate the cumulative figures AFTER the
-        // transactions have been fleshed out with all of the
         // original figures.
         //
         let mut cumulative_fees = 0;
@@ -1232,7 +1231,7 @@ impl Block {
         //
         let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset));
 
-        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
+        // println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         //
         // and if our transactions are valid, so is the block...

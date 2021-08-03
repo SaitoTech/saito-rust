@@ -1,12 +1,12 @@
 use std::{
     fs::{self, File},
-    io::{Read, Write},
+    io::{self, Read, Write},
     sync::Arc,
 };
 
 use tokio::sync::RwLock;
 
-use crate::{block::Block, blockchain::Blockchain};
+use crate::{block::Block, blockchain::Blockchain, crypto::SaitoHash};
 
 pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
 
@@ -19,6 +19,19 @@ impl Storage {
         Storage {
             blocks_dir_path: String::from("./data/blocks/"),
         }
+    }
+
+    /// read from a path to a Vec<u8>
+    pub fn read(path: &str) -> io::Result<Vec<u8>> {
+        let mut f = std::fs::File::open(path)?;
+        let mut data = Vec::<u8>::new();
+        f.read_to_end(&mut data)?;
+        Ok(data)
+    }
+
+    pub fn write(data: Vec<u8>, filename: &str) {
+        let mut buffer = File::create(filename).unwrap();
+        buffer.write_all(&data[..]).unwrap();
     }
 
     pub fn write_block_to_disk(&self, block: &mut Block) {
@@ -37,6 +50,29 @@ impl Storage {
         let byte_array: Vec<u8> = block.serialize_for_net();
         buffer.write_all(&byte_array[..]).unwrap();
     }
+
+    pub async fn stream_block_from_disk(&self, block_hash: SaitoHash) -> io::Result<Vec<u8>> {
+        let mut filename = self.blocks_dir_path.clone();
+
+        filename.push_str(&hex::encode(block_hash));
+        filename.push_str(&".sai");
+
+        let mut f = tokio::fs::File::open(filename).await?;
+        let mut encoded = Vec::<u8>::new();
+        tokio::io::AsyncReadExt::read_to_end(&mut f, &mut encoded).await?;
+
+        Ok(encoded)
+    }
+
+    pub async fn stream_json_block_from_disk(&self, block_hash: SaitoHash) -> io::Result<String> {
+        let mut filename = self.blocks_dir_path.clone();
+        filename.push_str(&"json/");
+        filename.push_str(&hex::encode(block_hash));
+        filename.push_str(&".json");
+
+        fs::read_to_string(filename)
+    }
+
     pub async fn load_blocks_from_disk(&self, blockchain_lock: Arc<RwLock<Blockchain>>) {
         let mut paths: Vec<_> = fs::read_dir(self.blocks_dir_path.clone())
             .unwrap()
@@ -51,7 +87,7 @@ impl Storage {
                 .partial_cmp(&b_metadata.modified().unwrap())
                 .unwrap()
         });
-        for (pos, path) in paths.iter().enumerate() {
+        for (_pos, path) in paths.iter().enumerate() {
             if path.path().to_str().unwrap() != self.blocks_dir_path.clone() + "empty"
                 && path.path().to_str().unwrap() != self.blocks_dir_path.clone() + ".gitignore"
             {
@@ -67,11 +103,11 @@ impl Storage {
                     let block_hash = block.get_hash();
                     block.set_hash(block_hash);
                 }
-                println!("loading block with hash: {:?}", block.get_hash());
+                // println!("loading block with hash: {:?}", block.get_hash());
 
                 let mut blockchain = blockchain_lock.write().await;
                 blockchain.add_block(block).await;
-                println!("Loaded block {} of {}", pos, paths.len() - 1);
+                // println!("Loaded block {} of {}", pos, paths.len() - 1);
             }
         }
     }

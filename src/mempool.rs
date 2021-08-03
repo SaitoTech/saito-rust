@@ -40,7 +40,7 @@ pub enum AddTransactionResult {
 /// the `Blockchain`
 pub struct Mempool {
     blocks: VecDeque<Block>,
-    transactions: Vec<Transaction>, // vector so we just copy it over
+    pub transactions: Vec<Transaction>, // vector so we just copy it over
     routing_work_in_mempool: u64,
     wallet_lock: Arc<RwLock<Wallet>>,
     currently_processing_block: bool,
@@ -212,6 +212,7 @@ impl Mempool {
     ///
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
+
     pub async fn can_bundle_block(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
         if self.currently_processing_block {
             return false;
@@ -279,13 +280,9 @@ pub async fn run(
         mempool.set_mempool_privatekey(privatekey);
     }
 
-    //
     // generate blocks 4000, w/ capacity of 4 fails
-    //
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
-
     let generate_block_sender = mempool_channel_sender.clone();
-    // let generate_transaction_sender = mempool_channel_sender.clone();
     tokio::spawn(async move {
         loop {
             generate_block_sender
@@ -293,11 +290,6 @@ pub async fn run(
                 .await
                 .expect("error: TryBundleBlock message failed to send");
             sleep(Duration::from_millis(1000));
-            // generate_transaction_sender
-            //     .send(MempoolMessage::GenerateTransaction)
-            //     .await
-            //     .expect("error: GenerateTransaction message failed to send");
-            // sleep(Duration::from_millis(2000));
         }
     });
 

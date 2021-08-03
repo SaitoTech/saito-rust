@@ -73,8 +73,6 @@ impl Blockchain {
             create_timestamp(),
             block.transactions.len()
         );
-        //println!(" ... txs in block: {:?}", block.transactions.len());
-        //println!(" ... w/ prev bhsh: {:?}", block.get_previous_block_hash());
 
         //
         // start by extracting some variables that we will use
@@ -141,7 +139,7 @@ impl Blockchain {
             self.blocks.insert(block_hash, block);
         }
 
-        println!(" ... start shared ancestor hunt: {:?}", create_timestamp());
+        // println!(" ... start shared ancestor hunt: {:?}", create_timestamp());
 
         //
         // find shared ancestor of new_block with old_chain
@@ -206,7 +204,7 @@ impl Blockchain {
             // TODO more elegant handling of the first block and other non-longest-chain
             // blocks.
             //
-            println!("We have added a block without a parent block... ");
+            // println!("We have added a block without a parent block... ");
         }
 
         //
@@ -230,7 +228,7 @@ impl Blockchain {
         // with the BlockRing. We fail if the newly-preferred chain is not
         // viable.
         //
-        println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
+        //  println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
             if does_new_chain_validate {
@@ -310,18 +308,18 @@ impl Blockchain {
         }
         //storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
 
-        println!(" ... block save done:            {:?}", create_timestamp());
+        // println!(" ... block save done:            {:?}", create_timestamp());
 
         //
         // TODO - this is merely for testing, we do not intend
         // the routing client to process transactions in its
         // wallet.
         {
-            println!(" ... wallet processing start:    {}", create_timestamp());
+            // println!(" ... wallet processing start:    {}", create_timestamp());
             let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
             wallet.add_block(&block);
-            println!(" ... wallet processing stop:     {}", create_timestamp());
+            // println!(" ... wallet processing stop:     {}", create_timestamp());
         }
 
         //
@@ -470,6 +468,9 @@ impl Blockchain {
         self.blockring.get_longest_chain_block_id()
     }
 
+    pub fn get_block_sync(&self, block_hash: &SaitoHash) -> Option<&Block> {
+        self.blocks.get(block_hash)
+    }
     pub async fn get_block(&self, block_hash: SaitoHash) -> &Block {
         let block = self.blocks.get(&block_hash).unwrap();
         block
@@ -493,15 +494,6 @@ impl Blockchain {
         if self.blockring.get_longest_chain_block_id()
             >= self.blocks.get(&new_chain[0]).unwrap().get_id()
         {
-            println!("{:?}", new_chain);
-            println!("ERROR 2-1: {}", self.blockring.get_longest_chain_block_id());
-            println!(
-                "ERROR 2-2: {}",
-                self.blocks
-                    .get(&new_chain[new_chain.len() - 1])
-                    .unwrap()
-                    .get_id()
-            );
             return false;
         }
 
@@ -610,12 +602,12 @@ impl Blockchain {
         println!(" ... after block.validate:       {:?}", create_timestamp());
 
         if does_block_validate {
-            println!(" ... before block ocr            {:?}", create_timestamp());
+            // println!(" ... before block ocr            {:?}", create_timestamp());
             block.on_chain_reorganization(&mut self.utxoset, true);
-            println!(" ... before blockring ocr:       {:?}", create_timestamp());
+            // println!(" ... before blockring ocr:       {:?}", create_timestamp());
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
-            println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
+            // println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
             //
             // we have received the first entry in new_blocks() which means we

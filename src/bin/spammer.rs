@@ -1,6 +1,6 @@
 use saito_rust::{
-    blockchain::Blockchain, mempool::Mempool, miner::Miner, transaction::Transaction,
-    wallet::Wallet,
+    blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
+    transaction::Transaction, wallet::Wallet,
 };
 
 use std::{sync::Arc, thread::sleep, time::Duration};
@@ -27,6 +27,7 @@ pub async fn main() -> saito_rust::Result<()> {
     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
     let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
+    let network = Network::new(wallet_lock.clone());
 
     let publickey;
     let privatekey;
@@ -80,7 +81,7 @@ pub async fn main() -> saito_rust::Result<()> {
         }
     });
 
-    run(mempool_lock, blockchain_lock, miner_lock).await?;
+    run(mempool_lock, blockchain_lock, miner_lock, network).await?;
 
     Ok(())
 }
@@ -89,6 +90,7 @@ pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     miner_lock: Arc<RwLock<Miner>>,
+    network: Network,
 ) -> saito_rust::Result<()> {
     let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
     tokio::select! {
@@ -120,7 +122,9 @@ pub async fn run(
                 eprintln!("{:?}", err)
             }
         },
-        res = saito_rust::network::run(
+        res = network.run(
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
             broadcast_channel_sender.subscribe()
         ) => {
