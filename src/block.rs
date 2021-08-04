@@ -1407,17 +1407,17 @@ impl Block {
 // functions within the block class, so that all access is
 // compartmentalized and we can move to custom serialization
 //
-impl From<Vec<u8>> for Block {
-    fn from(data: Vec<u8>) -> Self {
-        bincode::deserialize(&data[..]).unwrap()
-    }
-}
+// impl From<Vec<u8>> for Block {
+//     fn from(data: Vec<u8>) -> Self {
+//         bincode::deserialize(&data[..]).unwrap()
+//     }
+// }
 
-impl Into<Vec<u8>> for Block {
-    fn into(self) -> Vec<u8> {
-        bincode::serialize(&self).unwrap()
-    }
-}
+// impl Into<Vec<u8>> for Block {
+//     fn into(self) -> Vec<u8> {
+//         bincode::serialize(&self).unwrap()
+//     }
+// }
 
 #[cfg(test)]
 
