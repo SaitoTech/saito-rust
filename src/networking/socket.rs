@@ -15,12 +15,14 @@ use crate::{
     crypto::{hash, verify, SaitoHash, SaitoPublicKey},
     mempool::{AddTransactionResult, Mempool},
     networking::network::{
-        APIMessage, HandshakeChallenge, Peer, Peers, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
+        APIMessage, HandshakeChallenge, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
     },
     time::create_timestamp,
     transaction::Transaction,
     wallet::Wallet,
 };
+
+use super::peer::{Peer, Peers};
 
 #[derive(Deserialize, Debug)]
 pub struct TopicsRequest {

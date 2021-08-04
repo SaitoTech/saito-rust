@@ -138,4 +138,5 @@ TODO
 pub mod filters;
 pub mod handlers;
 pub mod network;
+pub mod peer;
 pub mod socket;
