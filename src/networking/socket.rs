@@ -362,17 +362,20 @@ pub async fn socket_send_blockchain(
     let blockchain = blockchain_lock.read().await;
 
     if let Some(target_block) = blockchain.get_latest_block() {
-        println!("FOUND TARGET BLOCK");
         let target_block_hash = target_block.get_hash();
+        println!("TARGET BLOCK HASH: {:?}", target_block_hash);
+        println!("SENT BLOCK HASH: {:?}", block_hash);
         if target_block_hash != block_hash {
             hashes.extend_from_slice(&target_block_hash);
             let mut previous_block_hash = target_block.get_previous_block_hash();
             while !blockchain.get_block(&previous_block_hash).is_none()
-                && previous_block_hash != [0; 32]
+                && previous_block_hash != block_hash
             {
-                let block = blockchain.get_block(&previous_block_hash).unwrap();
-                hashes.extend_from_slice(&block.get_hash());
-                previous_block_hash = block.get_previous_block_hash();
+                // println!("{:?}", previous_block_hash);
+                if let Some(block) = blockchain.get_block(&previous_block_hash) {
+                    hashes.extend_from_slice(&block.get_hash());
+                    previous_block_hash = block.get_previous_block_hash();
+                }
             }
         }
         Some(hashes)

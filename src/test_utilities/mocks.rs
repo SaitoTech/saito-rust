@@ -17,7 +17,8 @@ use tokio::sync::RwLock;
 pub async fn make_mock_blockchain(
     wallet_lock: Arc<RwLock<Wallet>>,
     chain_length: u64,
-) -> Arc<RwLock<Blockchain>> {
+) -> (Arc<RwLock<Blockchain>>, Vec<SaitoHash>) {
+    let mut block_hashes: Vec<SaitoHash> = vec![];
     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
     let mut miner = Miner::new(wallet_lock.clone());
 
@@ -61,6 +62,8 @@ pub async fn make_mock_blockchain(
             last_block_hash = block.get_hash();
             last_block_difficulty = block.get_difficulty();
 
+            block_hashes.push(last_block_hash);
+
         // second block
         } else {
             // generate golden ticket
@@ -82,6 +85,8 @@ pub async fn make_mock_blockchain(
                 let blockchain = blockchain_lock.read().await;
                 last_block_hash = blockchain.get_latest_block().unwrap().get_hash();
                 last_block_difficulty = blockchain.get_latest_block().unwrap().get_difficulty();
+
+                block_hashes.push(last_block_hash);
             }
 
             let future_timestamp = create_timestamp() + (i * 120000);
@@ -105,7 +110,7 @@ pub async fn make_mock_blockchain(
         }
     }
 
-    blockchain_lock
+    (blockchain_lock, block_hashes)
 }
 
 pub fn make_mock_block(

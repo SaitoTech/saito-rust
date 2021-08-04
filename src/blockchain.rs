@@ -300,8 +300,6 @@ impl Blockchain {
 
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_longest_chain_block_hash();
-        println!("{:?}", block_hash);
-        println!("{:?}", self.blocks);
         self.blocks.get(&block_hash)
     }
 
