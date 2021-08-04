@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["filters",""],["handlers",""],["network",""],["socket",""]]});
+initSidebarItems({"mod":[["filters",""],["handlers",""],["network",""],["peer",""],["socket",""]]});

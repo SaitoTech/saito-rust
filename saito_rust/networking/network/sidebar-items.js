@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["CHALLENGE_EXPIRATION_TIME",""],["CHALLENGE_SIZE",""]],"struct":[["APIMessage",""],["HandshakeChallenge",""],["Network",""],["Peer",""]],"type":[["Peers",""],["Result",""]]});
+initSidebarItems({"constant":[["CHALLENGE_EXPIRATION_TIME",""],["CHALLENGE_SIZE",""]],"struct":[["APIMessage",""],["HandshakeChallenge",""],["Network",""]],"type":[["Result",""]]});
