@@ -11,7 +11,7 @@ use warp::{Filter, Reply};
 use super::handlers::{
     get_block_handler, get_block_handler_json, post_block_handler, ws_upgrade_handler,
 };
-use super::network::Peers;
+use super::peer::Peers;
 //
 // cargo run --bin walletcli print
 // 02579d6ff84f661297f38e3eb20953824cfc279fee903a746b3dccb534677fd81a

@@ -1,4 +1,4 @@
-use super::network::{Peer, Peers};
+use super::peer::{Peer, Peers};
 use crate::blockchain::Blockchain;
 use crate::crypto::{hash, SaitoHash};
 use crate::mempool::Mempool;
