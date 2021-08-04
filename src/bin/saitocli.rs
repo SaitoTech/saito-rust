@@ -38,7 +38,7 @@ cargo run --bin saitocli -- tx --amount 1 --to gYsu1fVHjP6Z8CHCzti9K9xb5JPqpEL7z
 ```
 or
 ```bash
-cargo run --bin cli -- tx -a 1 -t gYsu1fVHjP6Z8CHCzti9K9xb5JPqpEL7zi7arvLiVANm -f tx.out
+cargo run --bin saitocli -- tx -a 1 -t gYsu1fVHjP6Z8CHCzti9K9xb5JPqpEL7zi7arvLiVANm -f tx.out
 ```
 */
 use base58::FromBase58;

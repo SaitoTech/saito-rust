@@ -7,10 +7,31 @@ use crate::networking::socket;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
+use base58::ToBase58;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use warp::reject::Reject;
+use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
+
+#[derive(Debug)]
+struct Invalid;
+impl Reject for Invalid {}
+
+#[derive(Debug)]
+struct AlreadyExists;
+impl Reject for AlreadyExists {}
+
+struct Message {
+    msg: String,
+}
+
+impl warp::Reply for Message {
+    fn into_response(self) -> warp::reply::Response {
+        Response::new(format!("message: {}", self.msg).into())
+    }
+}
 
 pub async fn ws_upgrade_handler(
     ws: warp::ws::Ws,
@@ -40,7 +61,12 @@ pub async fn ws_upgrade_handler(
         )
     }))
 }
-pub async fn post_transaction_handler(mut body: impl Buf) -> Result<impl Reply> {
+
+pub async fn post_transaction_handler(
+    mut body: impl Buf,
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> Result<impl Reply> {
     let mut buffer = vec![];
     while body.has_remaining() {
         buffer.append(&mut body.chunk().to_vec());
@@ -48,10 +74,32 @@ pub async fn post_transaction_handler(mut body: impl Buf) -> Result<impl Reply> 
         body.advance(cnt);
     }
 
-    let tx = Transaction::deserialize_from_net(buffer);
-    println!("{:?}", tx.get_signature());
+    let mut tx = Transaction::deserialize_from_net(buffer);
+    let blockchain = blockchain_lock.read().await;
+    tx.generate_metadata(tx.inputs[0].get_publickey());
+    if tx.validate(&blockchain.utxoset) {
+        let response = std::str::from_utf8(&tx.get_signature().to_base58().as_bytes())
+            .unwrap()
+            .to_string();
 
-    Ok(warp::reply())
+        //let response = String::from("OK");
+        let mut mempool = mempool_lock.write().await;
+        let add_tx_result = mempool.add_transaction(tx).await;
+        match add_tx_result {
+            crate::mempool::AddTransactionResult::Accepted => Ok(Message { msg: response }),
+            crate::mempool::AddTransactionResult::Exists => {
+                Err(warp::reject::custom(AlreadyExists))
+            }
+            crate::mempool::AddTransactionResult::Invalid => {
+                panic!("This appears unused, implement if needed");
+            }
+            crate::mempool::AddTransactionResult::Rejected => {
+                panic!("This appears unused, implement if needed");
+            }
+        }
+    } else {
+        Err(warp::reject::custom(Invalid))
+    }
 }
 
 pub async fn post_block_handler(mut body: impl Buf) -> Result<impl Reply> {

@@ -72,11 +72,15 @@ pub fn post_block_route_filter(
 }
 
 pub fn post_transaction_route_filter(
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
 ) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::post()
         .and(warp::path("sendtransaction"))
         .and(warp::path::end())
         .and(body::aggregate())
+        .and(with_mempool(mempool_lock))
+        .and(with_blockchain(blockchain_lock))
         .and_then(post_transaction_handler)
 }
 

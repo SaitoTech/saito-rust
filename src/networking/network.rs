@@ -102,7 +102,10 @@ impl Network {
         // }
 
         let routes = get_block_route_filter()
-            .or(post_transaction_route_filter())
+            .or(post_transaction_route_filter(
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+            ))
             .or(post_block_route_filter())
             .or(ws_upgrade_route_filter(
                 &self.peers.clone(),
