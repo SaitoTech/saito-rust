@@ -28,8 +28,8 @@ pub async fn make_mock_blockchain(
     let mut last_block_difficulty: u64 = 0;
     let publickey;
 
-    let mut test_block_hash: SaitoHash;
-    let mut test_block_id: u64;
+    // let mut test_block_hash: SaitoHash;
+    // let mut test_block_id: u64;
 
     {
         let wallet = wallet_lock.read().await;
@@ -62,8 +62,6 @@ pub async fn make_mock_blockchain(
             last_block_hash = block.get_hash();
             last_block_difficulty = block.get_difficulty();
 
-            block_hashes.push(last_block_hash);
-
         // second block
         } else {
             // generate golden ticket
@@ -86,7 +84,6 @@ pub async fn make_mock_blockchain(
                 last_block_hash = blockchain.get_latest_block().unwrap().get_hash();
                 last_block_difficulty = blockchain.get_latest_block().unwrap().get_difficulty();
 
-                block_hashes.push(last_block_hash);
             }
 
             let future_timestamp = create_timestamp() + (i * 120000);
@@ -101,10 +98,13 @@ pub async fn make_mock_blockchain(
             .await;
         }
 
-        test_block_hash = block.get_hash();
-        test_block_id = block.get_id();
+        // test_block_hash = block.get_hash();
+        // test_block_id = block.get_id();
+
+        block_hashes.push(block.get_hash());
 
         {
+            println!("{}", i);
             let mut blockchain = blockchain_lock.write().await;
             blockchain.add_block(block).await;
         }

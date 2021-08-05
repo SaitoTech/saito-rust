@@ -156,6 +156,7 @@ async fn peer_msg(
                 // }
                 let api_message_response;
                 if let Some(bytes) = socket_send_blockchain(api_message, blockchain_lock).await {
+                    println!("OUR BYTES: {:?}", bytes);
                     api_message_response = APIMessage {
                         message_name: String::from("RESULT__")
                             .as_bytes()
@@ -365,6 +366,7 @@ pub async fn socket_send_blockchain(
         let target_block_hash = target_block.get_hash();
         println!("TARGET BLOCK HASH: {:?}", target_block_hash);
         println!("SENT BLOCK HASH: {:?}", block_hash);
+        println!("ARE THEY EQUAL? {}", target_block_hash == block_hash);
         if target_block_hash != block_hash {
             hashes.extend_from_slice(&target_block_hash);
             let mut previous_block_hash = target_block.get_previous_block_hash();
@@ -377,10 +379,12 @@ pub async fn socket_send_blockchain(
                     previous_block_hash = block.get_previous_block_hash();
                 }
             }
+        } else {
+            // println!("THEY ARE EQUAL");
+            // println!("{:?}", hashes);
         }
         Some(hashes)
     } else {
-        println!("NO BLOCKS ADDED TO CHAIN, ENDING");
         None
     }
 

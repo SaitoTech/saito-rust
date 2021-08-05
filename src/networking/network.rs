@@ -227,7 +227,6 @@ mod tests {
         test_utilities::mocks::{make_mock_block, make_mock_blockchain},
     };
     use secp256k1::PublicKey;
-    use std::borrow::Cow;
 
     #[tokio::test]
     async fn test_challenge_serialize() {
@@ -386,6 +385,8 @@ mod tests {
         let command: String = borrowed_command.to_string();
         let index: u32 = u32::from_be_bytes(message.as_bytes()[8..12].try_into().unwrap());
         let msg = message.as_bytes()[12..].to_vec();
+        // console.log(msg);
+        println!("OUR MSG: {:?}", msg);
         (command, index, msg)
     }
 
@@ -400,8 +401,14 @@ mod tests {
         {
             let blockchain = blockchain_lock.read().await;
             // println!("{:?}", blockchain.blocks);
-            for (key, block) in blockchain.blocks.clone() {
-                println!("{:?}", block.get_hash());
+            // for hash in blockchain.blockring.block_ring.block_hashes.clone() {
+            //     println!("BLOCK RING HASH      {:?}", hash);
+            // }
+
+            println!("LONGEST CHANI LATEST HASH   {:?}", blockchain.get_latest_block_hash());
+
+            for hash in block_hashes.clone() {
+                println!("RETURNED HASHES:     {:?}", hash);
             }
         }
 
@@ -461,6 +468,43 @@ mod tests {
         assert_eq!(index, 0);
         assert_eq!(msg.len(), 96);
 
+        // next block should have only 2 hashes
+        message_bytes = vec![];
+        message_bytes.extend_from_slice(&block_hashes[1]);
+        message_bytes.extend_from_slice(&[0u8; 32]);
+
+        let api_message = APIMessage::new("REQCHAIN", 0, message_bytes);
+        let serialized_api_message = api_message.serialize();
+
+        let _socket_resp = ws_client
+            .send(Message::binary(serialized_api_message))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+        let (command, index, msg) = parse_response(resp);
+
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 0);
+        assert_eq!(msg.len(), 64);
+
+        // next block should have only 2 hashes
+        message_bytes = vec![];
+        message_bytes.extend_from_slice(&block_hashes[2]);
+        message_bytes.extend_from_slice(&[0u8; 32]);
+
+        let api_message = APIMessage::new("REQCHAIN", 0, message_bytes);
+        let serialized_api_message = api_message.serialize();
+
+        let _socket_resp = ws_client
+            .send(Message::binary(serialized_api_message))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+        let (command, index, msg) = parse_response(resp);
+
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 0);
+        assert_eq!(msg.len(), 32);
+
+        // sending the latest block hash should return with nothing
         message_bytes = vec![];
         message_bytes.extend_from_slice(&block_hashes[3]);
         message_bytes.extend_from_slice(&[0u8; 32]);
@@ -476,6 +520,6 @@ mod tests {
 
         assert_eq!(command, "RESULT__");
         assert_eq!(index, 0);
-        assert_eq!(msg.len(), 32);
+        assert_eq!(msg.len(), 0);
     }
 }

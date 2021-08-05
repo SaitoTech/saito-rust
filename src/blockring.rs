@@ -16,7 +16,7 @@ pub const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
 #[derive(Debug)]
 pub struct RingItem {
     lc_pos: Option<usize>, // which idx in the vectors below points to the longest-chain block
-    block_hashes: Vec<SaitoHash>,
+    pub block_hashes: Vec<SaitoHash>,
     block_ids: Vec<u64>,
 }
 
@@ -102,7 +102,7 @@ pub struct BlockRing {
     // include Slice-VecDeque and have a slice that points to
     // contiguous entries for rapid lookups, inserts and updates?
     //
-    block_ring: Vec<RingItem>,
+    pub block_ring: Vec<RingItem>,
     /// a ring of blocks, index is not the block_id.
     block_ring_lc_pos: Option<usize>,
 }
