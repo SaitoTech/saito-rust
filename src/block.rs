@@ -97,6 +97,89 @@ impl RouterPayout {
 
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct BlockHeader {
+    id: u64,
+    timestamp: u64,
+    previous_block_hash: [u8; 32],
+    #[serde_as(as = "[_; 33]")]
+    creator: [u8; 33],
+    merkle_root: [u8; 32],
+    #[serde_as(as = "[_; 64]")]
+    signature: [u8; 64],
+    treasury: u64,
+    burnfee: u64,
+    difficulty: u64,
+}
+
+impl BlockHeader {
+    #[allow(clippy::clippy::new_without_default)]
+    pub fn new(
+        id: u64,
+        timestamp: u64,
+        previous_block_hash: SaitoHash,
+        creator: SaitoPublicKey,
+        merkle_root: SaitoHash,
+        signature: SaitoSignature,
+        treasury: u64,
+        burnfee: u64,
+        difficulty: u64
+    ) -> Self {
+        Self {
+            id,
+            timestamp,
+            previous_block_hash,
+            creator,
+            merkle_root,
+            signature,
+            treasury,
+            burnfee,
+            difficulty,
+        }
+    }
+
+    pub fn serialize_for_net(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.id.to_be_bytes());
+        vbytes.extend(&self.timestamp.to_be_bytes());
+        vbytes.extend(&self.previous_block_hash);
+        vbytes.extend(&self.creator);
+        vbytes.extend(&self.merkle_root);
+        vbytes.extend(&self.signature);
+        vbytes.extend(&self.treasury.to_be_bytes());
+        vbytes.extend(&self.burnfee.to_be_bytes());
+        vbytes.extend(&self.difficulty.to_be_bytes());
+        vbytes
+    }
+
+    pub fn deserialize_for_net(bytes: Vec<u8>) -> BlockHeader {
+        let id: u64 = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
+        let timestamp: u64 = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
+        let previous_block_hash: SaitoHash = bytes[20..52].try_into().unwrap();
+        let creator: SaitoPublicKey = bytes[52..85].try_into().unwrap();
+        let merkle_root: SaitoHash = bytes[85..117].try_into().unwrap();
+        let signature: SaitoSignature = bytes[117..181].try_into().unwrap();
+
+        let treasury: u64 = u64::from_be_bytes(bytes[181..189].try_into().unwrap());
+        let burnfee: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
+        let difficulty: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
+
+        BlockHeader::new(
+            id,
+            timestamp,
+            previous_block_hash,
+            creator,
+            merkle_root,
+            signature,
+            treasury,
+            burnfee,
+            difficulty
+        )
+
+    }
+}
+
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
     /// Consensus Level Variables
     id: u64,
@@ -156,6 +239,20 @@ impl Block {
             total_rebroadcast_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
+        }
+    }
+
+    pub fn get_header(&self) -> BlockHeader {
+        BlockHeader {
+            id: self.id,
+            timestamp: self.timestamp,
+            previous_block_hash: self.previous_block_hash,
+            creator: self.creator,
+            merkle_root: self.merkle_root,
+            signature: self.signature,
+            treasury: self.treasury,
+            burnfee: self.burnfee,
+            difficulty: self.difficulty,
         }
     }
 

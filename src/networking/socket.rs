@@ -193,7 +193,36 @@ async fn peer_msg(
         }
         "REQBLKHD" => {
             tokio::spawn(async move {
-                let _message_id = api_message.message_id;
+                let message_id = api_message.message_id;
+                let api_message_response;
+                if let Some(bytes) = socket_send_block_header(api_message, blockchain_lock).await {
+                    api_message_response = APIMessage {
+                        message_name: String::from("RESULT__")
+                            .as_bytes()
+                            .try_into()
+                            .unwrap(),
+                        message_id: message_id,
+                        message_data: bytes,
+                    };
+                } else {
+                    api_message_response = APIMessage {
+                        message_name: String::from("ERROR___")
+                            .as_bytes()
+                            .try_into()
+                            .unwrap(),
+                        message_id: message_id,
+                        message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
+                    };
+                }
+
+                let mut peers = peers.write().await;
+                let mut peer = peers.get_mut(&id).unwrap();
+                peer.has_handshake = true;
+                let _foo = peer
+                    .sender
+                    .as_ref()
+                    .unwrap()
+                    .send(Ok(Message::binary(api_message_response.serialize())));
             });
         }
         "SNDBLKHD" => {
@@ -352,6 +381,22 @@ pub fn socket_receive_transaction(message: APIMessage) -> Option<Transaction> {
     Some(tx)
 }
 
+pub async fn socket_send_block_header(
+    message: APIMessage,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> Option<Vec<u8>> {
+    let block_hash: SaitoHash = message.message_data[0..32].try_into().unwrap();
+    let blockchain = blockchain_lock.read().await;
+
+    match blockchain.get_block(&block_hash) {
+        Some(target_block) => {
+            let block_header = target_block.get_header();
+            Some(block_header.serialize_for_net())
+        }
+        None => None
+    }
+}
+
 pub async fn socket_send_blockchain(
     message: APIMessage,
     blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -364,24 +409,17 @@ pub async fn socket_send_blockchain(
 
     if let Some(target_block) = blockchain.get_latest_block() {
         let target_block_hash = target_block.get_hash();
-        println!("TARGET BLOCK HASH: {:?}", target_block_hash);
-        println!("SENT BLOCK HASH: {:?}", block_hash);
-        println!("ARE THEY EQUAL? {}", target_block_hash == block_hash);
         if target_block_hash != block_hash {
             hashes.extend_from_slice(&target_block_hash);
             let mut previous_block_hash = target_block.get_previous_block_hash();
             while !blockchain.get_block(&previous_block_hash).is_none()
                 && previous_block_hash != block_hash
             {
-                // println!("{:?}", previous_block_hash);
                 if let Some(block) = blockchain.get_block(&previous_block_hash) {
                     hashes.extend_from_slice(&block.get_hash());
                     previous_block_hash = block.get_previous_block_hash();
                 }
             }
-        } else {
-            // println!("THEY ARE EQUAL");
-            // println!("{:?}", hashes);
         }
         Some(hashes)
     } else {
