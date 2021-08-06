@@ -149,6 +149,10 @@ pub struct Block {
     pub has_golden_ticket: bool,
     // has fee transaction
     pub has_fee_transaction: bool,
+    // golden ticket index
+    pub golden_ticket_idx: u64,
+    // fee transaction index
+    pub fee_transaction_idx: u64,
     // number of rebroadcast slips
     pub total_rebroadcast_slips: u64,
     // number of rebroadcast txs
@@ -182,6 +186,8 @@ impl Block {
             lc: false,
             has_golden_ticket: false,
             has_fee_transaction: false,
+            golden_ticket_idx: 0,
+            fee_transaction_idx: 0,
             total_rebroadcast_slips: 0,
             total_rebroadcast_nolan: 0,
             // must be initialized zeroed-out for proper hashing
@@ -255,6 +261,14 @@ impl Block {
         self.has_fee_transaction
     }
 
+    pub fn get_golden_ticket_idx(&self) -> u64 {
+        self.golden_ticket_idx
+    }
+
+    pub fn get_fee_transaction_idx(&self) -> u64 {
+        self.fee_transaction_idx
+    }
+
     pub fn get_pre_hash(&self) -> SaitoHash {
         self.pre_hash
     }
@@ -277,6 +291,14 @@ impl Block {
 
     pub fn set_has_fee_transaction(&mut self, hft: bool) {
         self.has_fee_transaction = hft;
+    }
+
+    pub fn set_golden_ticket_idx(&mut self, idx: u64) {
+        self.golden_ticket_idx = idx;
+    }
+
+    pub fn set_fee_transaction_idx(&mut self, idx: u64) {
+        self.fee_transaction_idx = idx;
     }
 
     pub fn set_total_fees(&mut self, total_fees: u64) {
@@ -933,6 +955,8 @@ impl Block {
 
         let mut has_golden_ticket = false;
         let mut has_fee_transaction = false;
+	let mut golden_ticket_idx = 0;
+	let mut fee_transaction_idx = 0;
 
         //
         // we have to do a single sweep through all of the transactions in
@@ -944,7 +968,10 @@ impl Block {
         // like counting up our ATR transactions and generating the hash
         // commitment for all of our rebroadcasts.
         //
-        for transaction in &mut self.transactions {
+        for i in 0..self.transactions.len() {
+
+	    let mut transaction = &mut self.transactions[i];
+
             cumulative_fees = transaction.generate_metadata_cumulative_fees(cumulative_fees);
             cumulative_work = transaction.generate_metadata_cumulative_work(cumulative_work);
 
@@ -952,8 +979,14 @@ impl Block {
             // also check the transactions for golden ticket and fees
             //
             match transaction.get_transaction_type() {
-                TransactionType::Fee => has_fee_transaction = true,
-                TransactionType::GoldenTicket => has_golden_ticket = true,
+                TransactionType::Fee => {
+		    has_fee_transaction = true;
+		    fee_transaction_idx = i as u64;
+                }
+		TransactionType::GoldenTicket => { 
+		    has_golden_ticket = true;
+		    golden_ticket_idx = i as u64;
+                }
                 TransactionType::ATR => {
                     let mut vbytes: Vec<u8> = vec![];
                     vbytes.extend(&self.rebroadcast_hash);
@@ -971,6 +1004,8 @@ impl Block {
 
         self.set_has_fee_transaction(has_fee_transaction);
         self.set_has_golden_ticket(has_golden_ticket);
+        self.set_fee_transaction_idx(fee_transaction_idx);
+        self.set_golden_ticket_idx(golden_ticket_idx);
 
         //
         // update block with total fees

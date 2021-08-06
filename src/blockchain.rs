@@ -10,6 +10,7 @@ use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
+use crate::staking::Staking;
 
 use async_recursion::async_recursion;
 
@@ -32,6 +33,7 @@ pub type UtxoSet = AHashMap<SaitoUTXOSetKey, u64>;
 
 #[derive(Debug)]
 pub struct Blockchain {
+    pub staking: Staking,
     pub utxoset: UtxoSet,
     pub blockring: BlockRing,
     pub blocks: AHashMap<SaitoHash, Block>,
@@ -45,6 +47,7 @@ impl Blockchain {
     #[allow(clippy::clippy::new_without_default)]
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Blockchain {
+            staking: Staking::new(),
             utxoset: AHashMap::new(),
             blockring: BlockRing::new(),
             blocks: AHashMap::new(),
@@ -602,12 +605,21 @@ impl Blockchain {
         println!(" ... after block.validate:       {:?}", create_timestamp());
 
         if does_block_validate {
-            // println!(" ... before block ocr            {:?}", create_timestamp());
+            println!(" ... before block ocr            {:?}", create_timestamp());
+
+	    // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
-            // println!(" ... before blockring ocr:       {:?}", create_timestamp());
+            println!(" ... before blockring ocr:       {:?}", create_timestamp());
+
+	    // blockring update
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
             // println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
+
+	    // staking tables update
+	    self.staking
+                .on_chain_reorganization(block, true);
+
 
             //
             // we have received the first entry in new_blocks() which means we
@@ -722,9 +734,17 @@ impl Blockchain {
     ) -> bool {
         let block = &self.blocks[&old_chain[current_unwind_index]];
 
+	// utxoset update
         block.on_chain_reorganization(&mut self.utxoset, false);
+
+	// blockring update
         self.blockring
             .on_chain_reorganization(block.get_id(), block.get_hash(), false);
+
+	// staking tables
+	self.staking
+            .on_chain_reorganization(block, true);
+
 
         if current_unwind_index == old_chain.len() - 1 {
             //
