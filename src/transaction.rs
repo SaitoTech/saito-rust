@@ -12,7 +12,7 @@ use crate::{
 };
 use ahash::AHashMap;
 use bigint::uint::U256;
-use enum_variant_count_derive::TryFromByte;
+use macros::TryFromByte;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 

@@ -295,11 +295,11 @@ impl Blockchain {
         //
         // save to disk
         //
-        let storage = Storage::new();
+        //let storage = Storage::new();
         {
             let block = self.get_mut_block(block_hash).await;
             block_id = block.get_id();
-            storage.write_block_to_disk(block);
+            Storage::write_block_to_disk(block);
 
             //
             // TMP - delete transactions

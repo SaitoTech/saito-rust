@@ -11,15 +11,15 @@ use crate::{block::Block, blockchain::Blockchain, crypto::SaitoHash};
 pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
 
 pub struct Storage {
-    blocks_dir_path: String,
+    // blocks_dir_path: String,
 }
 
 impl Storage {
-    pub fn new() -> Self {
-        Storage {
-            blocks_dir_path: String::from("./data/blocks/"),
-        }
-    }
+    // pub fn new() -> Self {
+    //     Storage {
+    //         blocks_dir_path: String::from("./data/blocks/"),
+    //     }
+    // }
 
     /// read from a path to a Vec<u8>
     pub fn read(path: &str) -> io::Result<Vec<u8>> {
@@ -34,8 +34,8 @@ impl Storage {
         buffer.write_all(&data[..]).unwrap();
     }
 
-    pub fn write_block_to_disk(&self, block: &mut Block) {
-        let mut filename = self.blocks_dir_path.clone();
+    pub fn write_block_to_disk(block: &mut Block) {
+        let mut filename = String::from(BLOCKS_DIR_PATH).clone();
 
         filename.push_str(&hex::encode(block.get_timestamp().to_be_bytes()));
         filename.push_str(&String::from("-"));
@@ -51,8 +51,8 @@ impl Storage {
         buffer.write_all(&byte_array[..]).unwrap();
     }
 
-    pub async fn stream_block_from_disk(&self, block_hash: SaitoHash) -> io::Result<Vec<u8>> {
-        let mut filename = self.blocks_dir_path.clone();
+    pub async fn stream_block_from_disk(block_hash: SaitoHash) -> io::Result<Vec<u8>> {
+        let mut filename = String::from(BLOCKS_DIR_PATH).clone();
 
         filename.push_str(&hex::encode(block_hash));
         filename.push_str(&".sai");
@@ -64,8 +64,8 @@ impl Storage {
         Ok(encoded)
     }
 
-    pub async fn stream_json_block_from_disk(&self, block_hash: SaitoHash) -> io::Result<String> {
-        let mut filename = self.blocks_dir_path.clone();
+    pub async fn stream_json_block_from_disk(block_hash: SaitoHash) -> io::Result<String> {
+        let mut filename = String::from(BLOCKS_DIR_PATH).clone();
         filename.push_str(&"json/");
         filename.push_str(&hex::encode(block_hash));
         filename.push_str(&".json");
@@ -73,8 +73,8 @@ impl Storage {
         fs::read_to_string(filename)
     }
 
-    pub async fn load_blocks_from_disk(&self, blockchain_lock: Arc<RwLock<Blockchain>>) {
-        let mut paths: Vec<_> = fs::read_dir(self.blocks_dir_path.clone())
+    pub async fn load_blocks_from_disk(blockchain_lock: Arc<RwLock<Blockchain>>) {
+        let mut paths: Vec<_> = fs::read_dir(String::from(BLOCKS_DIR_PATH).clone())
             .unwrap()
             .map(|r| r.unwrap())
             .collect();
@@ -88,8 +88,9 @@ impl Storage {
                 .unwrap()
         });
         for (_pos, path) in paths.iter().enumerate() {
-            if path.path().to_str().unwrap() != self.blocks_dir_path.clone() + "empty"
-                && path.path().to_str().unwrap() != self.blocks_dir_path.clone() + ".gitignore"
+            if path.path().to_str().unwrap() != String::from(BLOCKS_DIR_PATH).clone() + "empty"
+                && path.path().to_str().unwrap()
+                    != String::from(BLOCKS_DIR_PATH).clone() + ".gitignore"
             {
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
@@ -135,4 +136,9 @@ impl Storage {
         let _res = std::fs::remove_file(filename);
         true
     }
+}
+
+pub trait Persistable {
+    fn save(&self);
+    fn load(&self) -> Self;
 }

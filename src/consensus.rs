@@ -2,7 +2,6 @@ use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
 use crate::networking::network::Network;
-use crate::storage::Storage;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use std::{future::Future, sync::Arc};
@@ -83,7 +82,7 @@ impl Consensus {
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
         // let network_lock = Arc::new(RwLock::new(Network::new()));
         let network = Network::new(wallet_lock.clone());
-        let _storage = Storage::new();
+        //let _storage = Storage::new();
 
         // storage.load_blocks_from_disk(blockchain_lock.clone()).await;
 
