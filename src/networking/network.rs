@@ -223,8 +223,8 @@ mod tests {
         crypto::{generate_keys, hash, verify, SaitoSignature},
         mempool::Mempool,
         networking::filters::ws_upgrade_route_filter,
+        test_utilities::mocks::make_mock_blockchain,
         transaction::Transaction,
-        test_utilities::mocks::{make_mock_blockchain},
     };
     use secp256k1::PublicKey;
 
@@ -392,7 +392,8 @@ mod tests {
     async fn test_send_block_header() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-        let (blockchain_lock, block_hashes) = make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
+        let (blockchain_lock, block_hashes) =
+            make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
         let network = Network::new(wallet_lock.clone());
 
         let socket_filter = ws_upgrade_route_filter(
@@ -429,7 +430,8 @@ mod tests {
     async fn test_send_blockchain() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-        let (blockchain_lock, block_hashes) = make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;
+        let (blockchain_lock, block_hashes) =
+            make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;
         let network = Network::new(wallet_lock.clone());
 
         let socket_filter = ws_upgrade_route_filter(

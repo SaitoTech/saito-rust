@@ -122,7 +122,7 @@ impl BlockHeader {
         signature: SaitoSignature,
         treasury: u64,
         burnfee: u64,
-        difficulty: u64
+        difficulty: u64,
     ) -> Self {
         Self {
             id,
@@ -172,9 +172,8 @@ impl BlockHeader {
             signature,
             treasury,
             burnfee,
-            difficulty
+            difficulty,
         )
-
     }
 }
 

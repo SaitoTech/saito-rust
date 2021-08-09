@@ -103,7 +103,7 @@ async fn peer_msg(
                                     .sender
                                     .as_ref()
                                     .unwrap()
-                                     .send(Ok(Message::binary(api_message.serialize())));
+                                    .send(Ok(Message::binary(api_message.serialize())));
                             }
                         }
                         AddTransactionResult::Invalid => {
@@ -158,19 +158,13 @@ async fn peer_msg(
                 if let Some(bytes) = socket_send_blockchain(api_message, blockchain_lock).await {
                     println!("OUR BYTES: {:?}", bytes);
                     api_message_response = APIMessage {
-                        message_name: String::from("RESULT__")
-                            .as_bytes()
-                            .try_into()
-                            .unwrap(),
+                        message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
                         message_id: message_id,
                         message_data: bytes,
                     };
                 } else {
                     api_message_response = APIMessage {
-                        message_name: String::from("ERROR___")
-                            .as_bytes()
-                            .try_into()
-                            .unwrap(),
+                        message_name: String::from("ERROR___").as_bytes().try_into().unwrap(),
                         message_id: message_id,
                         message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
                     };
@@ -197,19 +191,13 @@ async fn peer_msg(
                 let api_message_response;
                 if let Some(bytes) = socket_send_block_header(api_message, blockchain_lock).await {
                     api_message_response = APIMessage {
-                        message_name: String::from("RESULT__")
-                            .as_bytes()
-                            .try_into()
-                            .unwrap(),
+                        message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
                         message_id: message_id,
                         message_data: bytes,
                     };
                 } else {
                     api_message_response = APIMessage {
-                        message_name: String::from("ERROR___")
-                            .as_bytes()
-                            .try_into()
-                            .unwrap(),
+                        message_name: String::from("ERROR___").as_bytes().try_into().unwrap(),
                         message_id: message_id,
                         message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
                     };
@@ -393,7 +381,7 @@ pub async fn socket_send_block_header(
             let block_header = target_block.get_header();
             Some(block_header.serialize_for_net())
         }
-        None => None
+        None => None,
     }
 }
 
@@ -425,5 +413,4 @@ pub async fn socket_send_blockchain(
     } else {
         None
     }
-
 }

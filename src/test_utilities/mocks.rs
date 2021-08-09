@@ -6,8 +6,8 @@ use crate::{
     golden_ticket::GoldenTicket,
     miner::Miner,
     slip::{Slip, SlipType},
+    time::create_timestamp,
     transaction::Transaction,
-    time::{create_timestamp},
     wallet::Wallet,
 };
 
@@ -42,12 +42,9 @@ pub async fn make_mock_blockchain(
 
         // first block
         if i == 0 {
-            let mut tx = Transaction::generate_vip_transaction(
-                wallet_lock.clone(),
-                publickey,
-                10_000_000,
-            )
-            .await;
+            let mut tx =
+                Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000)
+                    .await;
             tx.generate_metadata(publickey);
             transactions.push(tx);
 
@@ -83,7 +80,6 @@ pub async fn make_mock_blockchain(
                 let blockchain = blockchain_lock.read().await;
                 last_block_hash = blockchain.get_latest_block().unwrap().get_hash();
                 last_block_difficulty = blockchain.get_latest_block().unwrap().get_difficulty();
-
             }
 
             let future_timestamp = create_timestamp() + (i * 120000);
