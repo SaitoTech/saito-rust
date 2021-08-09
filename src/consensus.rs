@@ -77,12 +77,15 @@ impl Consensus {
         // broadcast cross-system messages. See SaitoMessage ENUM above
         // for information on cross-system notifications.
         //
+        let mut settings = config::Config::default();
+        settings.merge(config::File::with_name("config")).unwrap();
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
         // let network_lock = Arc::new(RwLock::new(Network::new()));
-        let network = Network::new(wallet_lock.clone());
+        let network = Network::new(wallet_lock.clone(), settings);
         let _storage = Storage::new();
 
         // storage.load_blocks_from_disk(blockchain_lock.clone()).await;

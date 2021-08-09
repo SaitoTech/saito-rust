@@ -1,6 +1,6 @@
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
-use crate::crypto::{sign_blob, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
+use crate::crypto::{sign_blob, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
 use crate::mempool::Mempool;
 use crate::networking::filters::{
     get_block_route_filter, post_block_route_filter, post_transaction_route_filter,
@@ -15,8 +15,10 @@ use std::convert::TryInto;
 use std::sync::Arc;
 use warp::{Filter, Rejection};
 
-use super::peer::Peers;
+use super::peer::{Peers, PeerSetting};
 use serde::{Deserialize, Serialize};
+
+use config::Config;
 
 pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
@@ -78,13 +80,24 @@ impl APIMessage {
 }
 pub struct Network {
     peers: Peers,
+    peer_settings: Option<Vec<PeerSetting>>,
     wallet_lock: Arc<RwLock<Wallet>>,
 }
 
 impl Network {
-    pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Network {
+    pub fn new(wallet_lock: Arc<RwLock<Wallet>>, settings: Config) -> Network {
+        // let mut settings = config::Config::default();
+        // settings.merge(config::File::with_name("config")).unwrap();
+
+        let peer_settings = match settings.get::<Vec<PeerSetting>>("network.peers") {
+            Ok(peer_settings) => Some(peer_settings),
+            Err(_) => None
+        };
+        println!("{:?}", peer_settings);
+
         Network {
             peers: Arc::new(RwLock::new(HashMap::new())),
+            peer_settings,
             wallet_lock,
         }
     }
@@ -98,6 +111,12 @@ impl Network {
     ) -> crate::Result<()> {
         println!("network run");
 
+        let mut settings = config::Config::default();
+        settings.merge(config::File::with_name("config")).unwrap();
+
+        let host: [u8; 4] = settings.get::<[u8; 4]>("network.host").unwrap();
+        let port: u16 = settings.get::<u16>("network.port").unwrap();
+
         let routes = get_block_route_filter()
             .or(post_transaction_route_filter(
                 mempool_lock.clone(),
@@ -110,7 +129,7 @@ impl Network {
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
             ));
-        warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+        warp::serve(routes).run((host, port)).await;
         Ok(())
     }
 }
@@ -250,10 +269,14 @@ mod tests {
     }
     #[tokio::test]
     async fn test_handshake_new() {
+        let mut settings = config::Config::default();
+        settings.merge(config::File::with_name("config")).unwrap();
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let network = Network::new(wallet_lock.clone());
+        let network = Network::new(wallet_lock.clone(), settings);
+
         let (publickey, privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(
@@ -335,10 +358,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_transaction() {
+        let mut settings = config::Config::default();
+        settings.merge(config::File::with_name("config")).unwrap();
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let network = Network::new(wallet_lock.clone());
+        let network = Network::new(wallet_lock.clone(), settings);
         let (publickey, _privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(
@@ -383,11 +409,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_block_header() {
+        let mut settings = config::Config::default();
+        settings.merge(config::File::with_name("config")).unwrap();
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
-        let network = Network::new(wallet_lock.clone());
+        let network = Network::new(wallet_lock.clone(), settings);
 
         let socket_filter = ws_upgrade_route_filter(
             &network.peers.clone(),
@@ -421,11 +450,14 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_blockchain() {
+        let mut settings = config::Config::default();
+        settings.merge(config::File::with_name("config")).unwrap();
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;
-        let network = Network::new(wallet_lock.clone());
+        let network = Network::new(wallet_lock.clone(), settings);
 
         let socket_filter = ws_upgrade_route_filter(
             &network.peers.clone(),
