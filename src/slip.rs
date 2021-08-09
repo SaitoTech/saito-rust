@@ -26,6 +26,8 @@ pub enum SlipType {
     RouterOutput,
     StakerInput,
     StakerOutput,
+    StakerDeposit,
+    StakerPending,
     Other, // need more than one value for TryFromBytes
 }
 

@@ -1,5 +1,5 @@
 // length of 1 genesis period
-pub const GENESIS_PERIOD: u64 = 2;
+pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
 pub const PRUNE_AFTER_BLOCKS: u64 = 1;
 

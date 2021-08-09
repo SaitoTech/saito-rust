@@ -670,6 +670,7 @@ impl Block {
     // generate hashes and payouts and fee calculations
     //
     pub async fn generate_consensus_values(&self, blockchain: &Blockchain) -> ConsensusValues {
+
         let mut cv = ConsensusValues::new();
 
         //
@@ -796,6 +797,7 @@ impl Block {
             // payout is from last block
             //
             if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+
                 let mut transaction = Transaction::new();
                 transaction.set_transaction_type(TransactionType::Fee);
 
@@ -807,7 +809,7 @@ impl Block {
 
                 let block_payouts: RouterPayout = previous_block.find_winning_router(random_number);
                 let router_publickey = block_payouts.publickey;
-                let _next_random_number = block_payouts.random_number;
+                let next_random_number = block_payouts.random_number;
 
                 let mut output1 = Slip::new();
                 output1.set_publickey(miner_publickey);
@@ -824,6 +826,64 @@ impl Block {
                 transaction.add_output(output1);
                 transaction.add_output(output2);
 
+		//
+		// do we have any staker payments to make
+		//
+            	if let Some(previous_previous_block) = blockchain.blocks.get(&previous_block.get_previous_block_hash()) {
+
+		    //
+		    // if the previous_block did not contain a golden ticket, then we can make a 
+		    // payout to a random staker.
+		    //
+		    if previous_block.get_has_golden_ticket() == false {
+
+			//
+			let mut slip_ordinal_to_apply = 2;
+
+	                //
+                        // calculate miner and router payments
+                        //
+			// TODO - this is wrong because the stake does not get the payment from the 
+			// previous block but rather the previous genesis period. or whatever is 
+			// lower.
+			//
+                        let previous_staker_payment = previous_previous_block.get_total_fees() / 2;
+                        let previous_router_payment = previous_previous_block.get_total_fees() - previous_staker_payment;
+
+			//
+			// next_random_number
+			//
+	                let staker_slip_option = blockchain.staking
+			                            .find_winning_staker(next_random_number);
+			let another_random_number = hash(&next_random_number.to_vec());
+                	let block_payouts2: RouterPayout = previous_block.find_winning_router(another_random_number);
+                	let previous_winning_router = block_payouts2.publickey;
+
+			//
+			// in case we loop back further, use this random number
+			//
+                	let yet_another_random_number = block_payouts2.random_number;
+
+			if let Some(staker_slip) = staker_slip_option {
+                	    let mut output3 = Slip::new();
+                	    output3.set_publickey(staker_slip.get_publickey());
+                	    output3.set_amount(previous_staker_payment);
+                	    output3.set_slip_type(SlipType::StakerOutput);
+                	    output3.set_slip_ordinal(slip_ordinal_to_apply);
+			    slip_ordinal_to_apply += 1;
+                	    transaction.add_output(output3);
+			}
+
+                	let mut output4 = Slip::new();
+                	output4.set_publickey(previous_winning_router);
+                	output4.set_amount(previous_router_payment);
+                	output4.set_slip_type(SlipType::RouterOutput);
+                	output4.set_slip_ordinal(slip_ordinal_to_apply);
+                	transaction.add_output(output4);
+
+		    }
+		}
+
                 //
                 // fee transaction added to consensus values
                 //
@@ -831,14 +891,24 @@ impl Block {
             }
         }
 
-        //
-        // if no GT_IDX, previous block is unspendable and the treasury
-        // should be increased to account for the tokens that have now
-        // disappeared and will never be spent.
-        //
+	//
+	// if there is no golden ticket AND the previous_block did not have a golden ticket
+	// either then there has been no payout for the previous_previous_block and we 
+	// should capture the funds in the treasury.
+	//
         if cv.gt_num == 0 {
             if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-                cv.nolan_falling_off_chain = previous_block.get_total_fees();
+		if previous_block.get_has_golden_ticket() == false {
+            	    if let Some(previous_previous_block) = blockchain.blocks.get(&previous_block.get_previous_block_hash()) {
+        	        //
+        	        // TODO - we can look into upgrading consensus eventually to stop coinage from
+			// slipping off the chain. but we can punt on that until receding further into 
+			// the chain is understood in terms of its impact on spam-attacks on the chain
+			// tip.
+        	        //
+                        cv.nolan_falling_off_chain = previous_previous_block.get_total_fees();
+		    }
+		}
             }
         }
 
