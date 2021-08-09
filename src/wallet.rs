@@ -40,6 +40,22 @@ impl Wallet {
         }
     }
 
+    //
+    // removes all slips in block when pruned / deleted
+    //
+    pub fn delete_block(&mut self, block: &Block) {
+        for tx in &block.transactions {
+            for input in tx.get_inputs() {
+                self.delete_slip(input);
+            }
+            for output in tx.get_outputs() {
+                if output.get_amount() > 0 {
+                    self.delete_slip(output);
+                }
+            }
+        }
+    }
+
     pub fn add_slip(&mut self, block: &Block, transaction: &Transaction, slip: &Slip, lc: bool) {
         let mut wallet_slip = WalletSlip::new();
 
@@ -97,6 +113,7 @@ impl Wallet {
                     input.set_publickey(my_publickey);
                     input.set_amount(slip.get_amount());
                     input.set_uuid(slip.get_uuid());
+                    input.set_slip_ordinal(slip.get_slip_ordinal());
                     inputs.push(input);
 
                     slip.set_spent(true);

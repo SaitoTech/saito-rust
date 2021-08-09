@@ -158,7 +158,7 @@ pub fn make_mock_block(
 
     block.set_transactions(&mut vec![transaction]);
     block.set_merkle_root(block.generate_merkle_root());
-    block.set_hash(block.generate_hash());
+    block.generate_hashes();
 
     block
 }

@@ -8,28 +8,20 @@ use crate::networking::filters::{
 };
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
-use tokio::sync::{broadcast, mpsc, RwLock};
-use warp::ws::Message;
+use tokio::sync::{broadcast, RwLock};
 
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::sync::Arc;
 use warp::{Filter, Rejection};
 
+use super::peer::Peers;
 use serde::{Deserialize, Serialize};
 
 pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
 pub type Result<T> = std::result::Result<T, Rejection>;
-pub type Peers = Arc<RwLock<HashMap<SaitoHash, Peer>>>;
-
-#[derive(Debug, Clone)]
-pub struct Peer {
-    pub has_handshake: bool,
-    pub pubkey: Option<SaitoPublicKey>,
-    pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
-}
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct APIMessage {
@@ -105,12 +97,12 @@ impl Network {
         _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
     ) -> crate::Result<()> {
         println!("network run");
-        // while let Ok(_message) = broadcast_channel_receiver.recv().await {
-        //     //println!("NEW BLOCK!");
-        // }
 
         let routes = get_block_route_filter()
-            .or(post_transaction_route_filter())
+            .or(post_transaction_route_filter(
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+            ))
             .or(post_block_route_filter())
             .or(ws_upgrade_route_filter(
                 &self.peers.clone(),
@@ -227,6 +219,7 @@ mod tests {
         transaction::Transaction,
     };
     use secp256k1::PublicKey;
+    use warp::ws::Message;
 
     #[tokio::test]
     async fn test_challenge_serialize() {

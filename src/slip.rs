@@ -60,11 +60,25 @@ impl Slip {
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
         if self.get_amount() > 0 {
             match utxoset.get(&self.utxoset_key) {
-                Some(value) => *value == 1,
-                None => false,
+                Some(value) => {
+                    if *value == 1 {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+                None => {
+                    println!(
+                        "value is returned false: {:?} ordinal {} and amount {}",
+                        self.utxoset_key,
+                        self.get_slip_ordinal(),
+                        self.get_amount()
+                    );
+                    return false;
+                }
             }
         } else {
-            true
+            return true;
         }
     }
 
@@ -75,6 +89,9 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
+            //println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
+            //println!("slip_ordinal: {}", self.get_slip_ordinal());
+            //println!("slip_amount: {}", self.get_amount());
             utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
@@ -120,6 +137,16 @@ impl Slip {
 
     pub fn set_slip_type(&mut self, slip_type: SlipType) {
         self.slip_type = slip_type;
+    }
+
+    // runs when block is purged for good
+    pub fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
+        if self.get_utxoset_key() == [0; 74] {
+            println!("ERROR 572034: asked to remove a slip without its utxoset_key properly set!");
+            false;
+        }
+        utxoset.remove_entry(&self.get_utxoset_key());
+        true
     }
 
     //
@@ -205,6 +232,10 @@ impl Slip {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::blockchain::Blockchain;
+    use crate::wallet::Wallet;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
 
     #[test]
     fn slip_new_test() {
@@ -242,7 +273,6 @@ mod tests {
         let slip = Slip::new();
         assert_eq!(slip.get_utxoset_key(), [0; 74]);
     }
-
     #[test]
     fn slip_serialization_for_net_test() {
         let slip = Slip::new();
@@ -250,5 +280,32 @@ mod tests {
         assert_eq!(serialized_slip.len(), 75);
         let deserilialized_slip = Slip::deserialize_from_net(serialized_slip);
         assert_eq!(slip, deserilialized_slip);
+    }
+    #[tokio::test]
+    async fn slip_addition_and_removal_from_utxoset() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mut blockchain = blockchain_lock.write().await;
+        let wallet = wallet_lock.write().await;
+        let mut slip = Slip::new();
+        slip.set_amount(100_000);
+        slip.set_uuid([1; 32]);
+        slip.set_publickey(wallet.get_publickey());
+        slip.generate_utxoset_key();
+
+        // add to utxoset
+        slip.on_chain_reorganization(&mut blockchain.utxoset, true, 2);
+        assert_eq!(
+            blockchain.utxoset.contains_key(&slip.get_utxoset_key()),
+            true
+        );
+
+        // remove from utxoset
+        // TODO: Repair this test
+        // slip.purge(&mut blockchain.utxoset);
+        // assert_eq!(
+        //     blockchain.utxoset.contains_key(&slip.get_utxoset_key()),
+        //     false
+        // );
     }
 }

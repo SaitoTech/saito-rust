@@ -96,47 +96,22 @@ impl Mempool {
     pub async fn add_transaction(&mut self, mut transaction: Transaction) -> AddTransactionResult {
         let tx_sig_to_insert = transaction.get_signature();
 
-        /////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////
-        // TODO -- this is just testing -- remove async too    //
-        /////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////
+        //
+        // this assigns the amount of routing work that this transaction
+        // contains to us, which is why we need to provide our publickey
+        // so that we can calculate routing work.
+        //
         let publickey;
         {
             let wallet = self.wallet_lock.read().await;
             publickey = wallet.get_publickey();
         }
-        /***
-
-                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
-                transaction.add_hop_to_path(self.wallet_lock.clone(), publickey).await;
-            //
-            // note that this calculates the total fees, so needs to
-            // be handled well. Stephen may have some ideas on how we
-            // can better name these functions. what this is really
-            // doing is filling in the total fee amounts so that we
-            // can calculate the routing work below to know how much
-            // this contributes to our mempool.
-            //
-        ***/
         transaction.generate_metadata(publickey);
-
-        ////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////
-        // REMOVE ONCE NETWORK CAN PASS ROUTING SIGS //
-        /////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////
-        /////////////////////////////////////////////////////////
 
         let routing_work_available_for_me =
             transaction.get_routing_work_for_publickey(self.mempool_publickey);
 
-        //println!("total fees in tx: {}", transaction.get_total_fees());
-        //println!("routing paths: {:?}", transaction.get_path());
-        //println!("routing work for me in this tx: {}", routing_work_available_for_me);
+        //        println!("adding tx with routing work for me: {}", routing_work_available_for_me);
 
         if self
             .transactions

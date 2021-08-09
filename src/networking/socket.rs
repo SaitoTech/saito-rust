@@ -15,12 +15,14 @@ use crate::{
     crypto::{hash, verify, SaitoHash, SaitoPublicKey},
     mempool::{AddTransactionResult, Mempool},
     networking::network::{
-        APIMessage, HandshakeChallenge, Peer, Peers, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
+        APIMessage, HandshakeChallenge, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
     },
     time::create_timestamp,
     transaction::Transaction,
     wallet::Wallet,
 };
+
+use super::peer::{Peer, Peers};
 
 #[derive(Deserialize, Debug)]
 pub struct TopicsRequest {
@@ -143,18 +145,8 @@ async fn peer_msg(
         "REQCHAIN" => {
             tokio::spawn(async move {
                 let message_id = api_message.message_id;
-                // let message = api_message.message_data();
-                // let _block_id: u64 = u64::from_be_bytes(message[0..8].try_into().unwrap());
-                // let block_hash: SaitoHash = message[8..40].try_into().unwrap();
-                // let _fork_id: SaitoHash = message[40..62].try_into().unwrap();
-                // let blockchain = blockchain_lock.read().await;
-                // let block = blockchain.get_block(&block_hash);
-                // if block.is_none() {
-                //     // Not sure what to do in this case...
-                // } else {
-                //     // I tried looking at returnLastSharedBlockId and updateForkId and coudln't figure out what fork_id is or how to use it
-                // }
                 let api_message_response;
+
                 if let Some(bytes) = socket_send_blockchain(api_message, blockchain_lock).await {
                     println!("OUR BYTES: {:?}", bytes);
                     api_message_response = APIMessage {
@@ -376,7 +368,7 @@ pub async fn socket_send_block_header(
     let block_hash: SaitoHash = message.message_data[0..32].try_into().unwrap();
     let blockchain = blockchain_lock.read().await;
 
-    match blockchain.get_block(&block_hash) {
+    match blockchain.get_block_sync(&block_hash) {
         Some(target_block) => {
             let block_header = target_block.get_header();
             Some(block_header.serialize_for_net())
@@ -400,10 +392,10 @@ pub async fn socket_send_blockchain(
         if target_block_hash != block_hash {
             hashes.extend_from_slice(&target_block_hash);
             let mut previous_block_hash = target_block.get_previous_block_hash();
-            while !blockchain.get_block(&previous_block_hash).is_none()
+            while !blockchain.get_block_sync(&previous_block_hash).is_none()
                 && previous_block_hash != block_hash
             {
-                if let Some(block) = blockchain.get_block(&previous_block_hash) {
+                if let Some(block) = blockchain.get_block_sync(&previous_block_hash) {
                     hashes.extend_from_slice(&block.get_hash());
                     previous_block_hash = block.get_previous_block_hash();
                 }
