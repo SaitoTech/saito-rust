@@ -118,12 +118,11 @@ pub async fn post_block_handler(mut body: impl Buf) -> Result<impl Reply> {
 
 pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
     println!("GET BLOCK");
-    let storage = Storage::new();
 
     let mut block_hash = [0u8; 32];
     hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
 
-    match storage.stream_block_from_disk(block_hash).await {
+    match Storage::stream_block_from_disk(block_hash).await {
         Ok(block_bytes) => Ok(block_bytes),
         Err(_err) => {
             eprintln!("{:?}", _err);
@@ -134,12 +133,11 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
 
 pub async fn get_block_handler_json(str_block_hash: String) -> Result<impl Reply> {
     println!("GET BLOCK");
-    let storage = Storage::new();
 
     let mut block_hash = [0u8; 32];
     hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
 
-    match storage.stream_json_block_from_disk(block_hash).await {
+    match Storage::stream_json_block_from_disk(block_hash).await {
         Ok(json_data) => Ok(warp::reply::json(&json_data)),
         Err(_err) => {
             eprintln!("{:?}", _err);

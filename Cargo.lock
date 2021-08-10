@@ -435,15 +435,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-variant-count-derive"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -866,6 +857,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1572,12 +1572,12 @@ dependencies = [
  "chrono",
  "clap",
  "criterion",
- "enum-variant-count-derive",
  "futures",
  "hex",
  "jemalloc-ctl",
  "jemallocator",
  "lazy_static",
+ "macros",
  "merkle",
  "rand 0.8.4",
  "rayon",

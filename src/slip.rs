@@ -5,7 +5,7 @@ use crate::{
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
 
-use enum_variant_count_derive::TryFromByte;
+use macros::TryFromByte;
 use std::convert::{TryFrom, TryInto};
 
 /// The size of a serilized slip in bytes.
@@ -26,7 +26,6 @@ pub enum SlipType {
     RouterOutput,
     StakerInput,
     StakerOutput,
-    Other, // need more than one value for TryFromBytes
 }
 
 #[serde_with::serde_as]
