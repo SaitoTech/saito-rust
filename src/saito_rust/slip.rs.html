@@ -310,7 +310,6 @@
 <span id="308">308</span>
 <span id="309">309</span>
 <span id="310">310</span>
-<span id="311">311</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::UtxoSet</span>,
@@ -319,7 +318,7 @@
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
-<span class="kw">use</span> <span class="ident">enum_variant_count_derive::TryFromByte</span>;
+<span class="kw">use</span> <span class="ident">macros::TryFromByte</span>;
 <span class="kw">use</span> <span class="ident">std::convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>};
 
 <span class="doccomment">/// The size of a serilized slip in bytes.</span>
@@ -340,7 +339,6 @@
     <span class="ident">RouterOutput</span>,
     <span class="ident">StakerInput</span>,
     <span class="ident">StakerOutput</span>,
-    <span class="ident">Other</span>, <span class="comment">// need more than one value for TryFromBytes</span>
 }
 
 <span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>

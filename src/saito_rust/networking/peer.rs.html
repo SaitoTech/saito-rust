@@ -14,8 +14,24 @@
 <span id="12">12</span>
 <span id="13">13</span>
 <span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage</span>::{<span class="ident">Persistable</span>, <span class="ident">Storage</span>};
+<span class="kw">use</span> <span class="ident">macros::Persistable</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
@@ -23,11 +39,21 @@
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Peers</span> <span class="op">=</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">SaitoHash</span>, <span class="ident">Peer</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Persistable</span>)]</span>
+<span class="comment">// #[persist_with_name(get_name)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Peer</span> {
     <span class="kw">pub</span> <span class="ident">has_handshake</span>: <span class="ident">bool</span>,
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Option&lt;[_; 33]&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">pubkey</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoPublicKey</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
     <span class="kw">pub</span> <span class="ident">sender</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">mpsc::UnboundedSender</span><span class="op">&lt;</span><span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">Message</span>, <span class="ident">warp::Error</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
+<span class="comment">// Demo of Persistable usage</span>
+<span class="comment">// impl Peer {</span>
+<span class="comment">//     pub fn get_name(&amp;self) -&gt; String {</span>
+<span class="comment">//         hex::encode(&amp;self.pubkey.unwrap())</span>
+<span class="comment">//     }</span>
+<span class="comment">// }</span>
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="saito_rust" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>

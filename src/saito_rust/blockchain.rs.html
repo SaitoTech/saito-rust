@@ -1514,11 +1514,11 @@
         <span class="comment">//</span>
         <span class="comment">// save to disk</span>
         <span class="comment">//</span>
-        <span class="kw">let</span> <span class="ident">storage</span> <span class="op">=</span> <span class="ident">Storage::new</span>();
+        <span class="comment">//let storage = Storage::new();</span>
         {
             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="ident">block_hash</span>).<span class="kw">await</span>;
             <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
-            <span class="ident">storage</span>.<span class="ident">write_block_to_disk</span>(<span class="ident">block</span>);
+            <span class="ident">Storage::write_block_to_disk</span>(<span class="ident">block</span>);
 
             <span class="comment">//</span>
             <span class="comment">// TMP - delete transactions</span>
