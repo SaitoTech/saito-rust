@@ -595,14 +595,14 @@
     }
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">slip_addition_and_removal_from_utxoset</span>() {
-        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>))));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slip</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
         <span class="ident">slip</span>.<span class="ident">set_amount</span>(<span class="number">100_000</span>);
         <span class="ident">slip</span>.<span class="ident">set_uuid</span>([<span class="number">1</span>; <span class="number">32</span>]);
-        <span class="ident">slip</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
+        <span class="ident">slip</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_public_key</span>());
         <span class="ident">slip</span>.<span class="ident">generate_utxoset_key</span>();
 
         <span class="comment">// add to utxoset</span>

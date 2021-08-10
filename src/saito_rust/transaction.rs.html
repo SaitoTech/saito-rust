@@ -1163,7 +1163,7 @@
         <span class="ident">with_fee</span>: <span class="ident">u64</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">wallet_publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
+        <span class="kw">let</span> <span class="ident">wallet_publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_public_key</span>();
 
         <span class="kw">let</span> <span class="ident">available_balance</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_available_balance</span>();
         <span class="kw">let</span> <span class="ident">total_requested</span> <span class="op">=</span> <span class="ident">with_payment</span> <span class="op">+</span> <span class="ident">with_fee</span>;
@@ -1981,10 +1981,10 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">transaction_sign_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
-        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
 
         <span class="ident">tx</span>.<span class="ident">set_outputs</span>(<span class="macro">vec!</span>[<span class="ident">Slip::new</span>()]);
-        <span class="ident">tx</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
+        <span class="ident">tx</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_private_key</span>());
 
         <span class="macro">assert_eq!</span>(<span class="ident">tx</span>.<span class="ident">get_outputs</span>()[<span class="number">0</span>].<span class="ident">get_slip_ordinal</span>(), <span class="number">0</span>);
         <span class="macro">assert_ne!</span>(<span class="ident">tx</span>.<span class="ident">get_signature</span>(), [<span class="number">0</span>; <span class="number">64</span>]);

@@ -3031,8 +3031,8 @@
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
 
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
-        <span class="kw">let</span> <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
+        <span class="kw">let</span> <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_public_key</span>();
+        <span class="kw">let</span> <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_private_key</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">previous_block_id</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">previous_block_burnfee</span> <span class="op">=</span> <span class="number">0</span>;
@@ -3116,7 +3116,7 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fee_tx</span> <span class="op">=</span> <span class="ident">cv</span>.<span class="ident">fee_transaction</span>.<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">fee_tx</span>.<span class="ident">serialize_for_signature</span>());
             <span class="ident">fee_tx</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
-            <span class="ident">fee_tx</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
+            <span class="ident">fee_tx</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_private_key</span>());
 
             <span class="comment">//</span>
             <span class="comment">// and we add it to the block</span>
@@ -3149,7 +3149,7 @@
         <span class="comment">//</span>
         <span class="ident">block</span>.<span class="ident">generate_hashes</span>();
 
-        <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>(), <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
+        <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_public_key</span>(), <span class="ident">wallet</span>.<span class="ident">get_private_key</span>());
 
         <span class="ident">block</span>
     }
@@ -3217,12 +3217,12 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">block_sign_test</span>() {
-        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
 
-        <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>(), <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
+        <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_public_key</span>(), <span class="ident">wallet</span>.<span class="ident">get_private_key</span>());
 
-        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">creator</span>, <span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">creator</span>, <span class="ident">wallet</span>.<span class="ident">get_public_key</span>());
         <span class="macro">assert_ne!</span>(<span class="ident">block</span>.<span class="ident">get_hash</span>(), [<span class="number">0</span>; <span class="number">32</span>]);
         <span class="macro">assert_ne!</span>(<span class="ident">block</span>.<span class="ident">get_signature</span>(), [<span class="number">0</span>; <span class="number">64</span>]);
     }
@@ -3292,13 +3292,13 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">block_merkle_root_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
-        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">5</span>)
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
-                <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
+                <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_private_key</span>());
                 <span class="ident">transaction</span>
             })
             .<span class="ident">collect</span>();
@@ -3311,12 +3311,12 @@
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">block_downgrade_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
-        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">5</span>)
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
-                <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
+                <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_private_key</span>());
                 <span class="ident">transaction</span>
             })
             .<span class="ident">collect</span>();
