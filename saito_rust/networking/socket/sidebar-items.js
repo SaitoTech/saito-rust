@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["new_handshake_challenge",""],["peer_connection",""],["socket_handshake_complete",""],["socket_receive_transaction",""],["socket_send_blockchain",""]],"struct":[["TopicsRequest",""]]});
+initSidebarItems({"fn":[["new_handshake_challenge",""],["peer_connection",""],["socket_handshake_complete",""],["socket_receive_transaction",""],["socket_send_block_header",""],["socket_send_blockchain",""]],"struct":[["TopicsRequest",""]]});

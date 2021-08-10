@@ -462,7 +462,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RingItem</span> {
     <span class="ident">lc_pos</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>, <span class="comment">// which idx in the vectors below points to the longest-chain block</span>
-    <span class="ident">block_hashes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">block_hashes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span>,
     <span class="ident">block_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
 }
 
@@ -555,7 +555,7 @@
     <span class="comment">// include Slice-VecDeque and have a slice that points to</span>
     <span class="comment">// contiguous entries for rapid lookups, inserts and updates?</span>
     <span class="comment">//</span>
-    <span class="ident">block_ring</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RingItem</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">block_ring</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RingItem</span><span class="op">&gt;</span>,
     <span class="doccomment">/// a ring of blocks, index is not the block_id.</span>
     <span class="ident">block_ring_lc_pos</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
 }

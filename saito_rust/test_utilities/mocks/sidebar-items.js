@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["make_mock_block",""],["make_mock_tx",""]]});
+initSidebarItems({"fn":[["make_mock_block",""],["make_mock_blockchain",""],["make_mock_tx",""]]});
