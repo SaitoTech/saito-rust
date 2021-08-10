@@ -28,7 +28,16 @@ pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
     }
     (public_key.serialize(), secret_bytes)
 }
-
+/// Create and return a keypair with  the given hex u8 array as the private key
+pub fn keys_from_slice(slice: &[u8]) -> (SaitoPublicKey, SaitoPrivateKey) {
+    let secret_key = SecretKey::from_slice(slice).unwrap();
+    let public_key = PublicKey::from_secret_key(&SECP256K1, &secret_key);
+    let mut secret_bytes = [0u8; 32];
+    for i in 0..32 {
+        secret_bytes[i] = secret_key[i];
+    }
+    (public_key.serialize(), secret_bytes)
+}
 pub fn sign_blob(vbytes: &mut Vec<u8>, privatekey: SaitoPrivateKey) -> &mut Vec<u8> {
     let sig = sign(&hash(vbytes.as_ref()), privatekey);
     vbytes.extend(&sig);

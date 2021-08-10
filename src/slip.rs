@@ -282,14 +282,14 @@ mod tests {
     }
     #[tokio::test]
     async fn slip_addition_and_removal_from_utxoset() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut blockchain = blockchain_lock.write().await;
         let wallet = wallet_lock.write().await;
         let mut slip = Slip::new();
         slip.set_amount(100_000);
         slip.set_uuid([1; 32]);
-        slip.set_publickey(wallet.get_publickey());
+        slip.set_publickey(wallet.get_public_key());
         slip.generate_utxoset_key();
 
         // add to utxoset

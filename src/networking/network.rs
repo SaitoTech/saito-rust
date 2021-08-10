@@ -250,7 +250,7 @@ mod tests {
     }
     #[tokio::test]
     async fn test_handshake_new() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let network = Network::new(wallet_lock.clone());
@@ -335,7 +335,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_transaction() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let network = Network::new(wallet_lock.clone());

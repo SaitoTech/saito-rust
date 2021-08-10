@@ -145,7 +145,7 @@ impl Transaction {
         with_fee: u64,
     ) -> Transaction {
         let mut wallet = wallet_lock.write().await;
-        let wallet_publickey = wallet.get_publickey();
+        let wallet_publickey = wallet.get_public_key();
 
         let available_balance = wallet.get_available_balance();
         let total_requested = with_payment + with_fee;
@@ -963,10 +963,10 @@ mod tests {
     #[test]
     fn transaction_sign_test() {
         let mut tx = Transaction::new();
-        let wallet = Wallet::new();
+        let wallet = Wallet::new("test/testwallet", Some("asdf"));
 
         tx.set_outputs(vec![Slip::new()]);
-        tx.sign(wallet.get_privatekey());
+        tx.sign(wallet.get_private_key());
 
         assert_eq!(tx.get_outputs()[0].get_slip_ordinal(), 0);
         assert_ne!(tx.get_signature(), [0; 64]);

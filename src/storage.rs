@@ -140,5 +140,5 @@ impl Storage {
 
 pub trait Persistable {
     fn save(&self);
-    fn load(&self) -> Self;
+    fn load(filename: &str) -> Self;
 }

@@ -1363,8 +1363,8 @@ impl Block {
         let blockchain = blockchain_lock.read().await;
 
         let wallet = wallet_lock.read().await;
-        let publickey = wallet.get_publickey();
-        let privatekey = wallet.get_privatekey();
+        let publickey = wallet.get_public_key();
+        let privatekey = wallet.get_private_key();
 
         let mut previous_block_id = 0;
         let mut previous_block_burnfee = 0;
@@ -1448,7 +1448,7 @@ impl Block {
             let mut fee_tx = cv.fee_transaction.unwrap();
             let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
             fee_tx.set_hash_for_signature(hash_for_signature);
-            fee_tx.sign(wallet.get_privatekey());
+            fee_tx.sign(wallet.get_private_key());
 
             //
             // and we add it to the block
@@ -1481,7 +1481,7 @@ impl Block {
         //
         block.generate_hashes();
 
-        block.sign(wallet.get_publickey(), wallet.get_privatekey());
+        block.sign(wallet.get_public_key(), wallet.get_private_key());
 
         block
     }
@@ -1549,12 +1549,12 @@ mod tests {
 
     #[test]
     fn block_sign_test() {
-        let wallet = Wallet::new();
+        let wallet = Wallet::new("test/testwallet", Some("asdf"));
         let mut block = Block::new();
 
-        block.sign(wallet.get_publickey(), wallet.get_privatekey());
+        block.sign(wallet.get_public_key(), wallet.get_private_key());
 
-        assert_eq!(block.creator, wallet.get_publickey());
+        assert_eq!(block.creator, wallet.get_public_key());
         assert_ne!(block.get_hash(), [0; 32]);
         assert_ne!(block.get_signature(), [0; 64]);
     }
@@ -1624,13 +1624,13 @@ mod tests {
     #[test]
     fn block_merkle_root_test() {
         let mut block = Block::new();
-        let wallet = Wallet::new();
+        let wallet = Wallet::new("test/testwallet", Some("asdf"));
 
         let mut transactions = (0..5)
             .into_iter()
             .map(|_| {
                 let mut transaction = Transaction::new();
-                transaction.sign(wallet.get_privatekey());
+                transaction.sign(wallet.get_private_key());
                 transaction
             })
             .collect();
@@ -1643,12 +1643,12 @@ mod tests {
     #[tokio::test]
     async fn block_downgrade_test() {
         let mut block = Block::new();
-        let wallet = Wallet::new();
+        let wallet = Wallet::new("test/testwallet", Some("asdf"));
         let mut transactions = (0..5)
             .into_iter()
             .map(|_| {
                 let mut transaction = Transaction::new();
-                transaction.sign(wallet.get_privatekey());
+                transaction.sign(wallet.get_private_key());
                 transaction
             })
             .collect();

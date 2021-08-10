@@ -1,7 +1,7 @@
 use proc_macro::{self, TokenStream};
 use proc_macro2::TokenTree;
 use quote::quote;
-use syn::{DeriveInput, parse_macro_input};
+use syn::{parse_macro_input, DeriveInput};
 
 ///
 /// A derive macro which implements TryFrom<u8> for an enum.
@@ -39,10 +39,10 @@ pub fn try_from_byte(input: TokenStream) -> TokenStream {
 ///
 /// A derive macro which implments Persistable save/load functions.
 ///
-/// optional attribute persist_with_name can be added to specify a 
+/// optional attribute persist_with_name can be added to specify a
 /// method which should be called to get the name of the file
 /// where the data should be stored. For example, the method might
-/// return a hex-based hash or a string like {timestamp}-{hash} for 
+/// return a hex-based hash or a string like {timestamp}-{hash} for
 /// a block. Should have the signature:
 ///
 /// ```rust
@@ -63,21 +63,22 @@ pub fn persistable(input: TokenStream) -> TokenStream {
     // of the name of the method indicated
     for attr in attrs {
         if attr.path.is_ident("persist_with_name") {
-            attr.tokens.into_iter().for_each(|tokentree| {
-                match tokentree {
+            attr.tokens
+                .into_iter()
+                .for_each(|tokentree| match tokentree {
                     TokenTree::Group(group) => {
-                        group.stream().into_iter().for_each(|subtokentree| {
-                            match subtokentree {
+                        group
+                            .stream()
+                            .into_iter()
+                            .for_each(|subtokentree| match subtokentree {
                                 TokenTree::Ident(ident) => {
                                     with_name_method = Some(ident);
                                 }
                                 _ => {}
-                            }
-                        });
+                            });
                     }
                     _ => {}
-                }
-            });
+                });
         }
     }
     // if a persist_with_name attribute was not passed, we will use the
@@ -87,26 +88,27 @@ pub fn persistable(input: TokenStream) -> TokenStream {
     // into the output TokenStream
     let file_name_append_token_stream;
     if with_name_method.is_some() {
-        file_name_append_token_stream = quote!{
+        file_name_append_token_stream = quote! {
+            let mut filename: String = String::from("data/");
             filename.push_str(&self.#with_name_method());
         };
     } else {
-        file_name_append_token_stream = quote!{
+        file_name_append_token_stream = quote! {
+            let mut filename: String = String::from("data/");
             filename.push_str(#struct_name);
         };
     }
     // Build the output TokenStream which implements the save/load functions.
-    let output = quote!{
+    let output = quote! {
         impl Persistable for #ident {
             fn save(&self) {
                 let serialized = serde_json::to_string(&self).unwrap();
-                let mut filename: String = String::from("data/");
                 #file_name_append_token_stream
                 Storage::write(serialized.as_bytes().to_vec(), &filename);
             }
-            fn load(&self) -> Self {
+            fn load(relative_filename: &str) -> Self {
                 let mut filename: String = String::from("data/");
-                #file_name_append_token_stream
+                filename.push_str(relative_filename);
                 let serialized = Storage::read(&filename).unwrap();
                 let out = serde_json::from_str(std::str::from_utf8(&serialized[..]).unwrap()).unwrap();
                 out

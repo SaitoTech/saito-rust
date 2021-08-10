@@ -4,6 +4,7 @@ use crate::miner::Miner;
 use crate::networking::network::Network;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
+use clap::{App, Arg};
 use std::{future::Future, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
@@ -76,7 +77,28 @@ impl Consensus {
         // broadcast cross-system messages. See SaitoMessage ENUM above
         // for information on cross-system notifications.
         //
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let matches = App::new("Saito Runtime")
+            .about("Runs a Saito Node")
+            .arg(
+                Arg::with_name("key_path")
+                    .short("k")
+                    .long("key_path")
+                    .default_value("keyfile")
+                    .takes_value(true)
+                    .help("Path to encrypted key file"),
+            )
+            .arg(
+                Arg::with_name("password")
+                    .short("p")
+                    .long("password")
+                    .takes_value(true)
+                    .help("amount to send"),
+            )
+            .get_matches();
+
+        let key_path = matches.value_of("key_path").unwrap();
+        let password = matches.value_of("password");
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
