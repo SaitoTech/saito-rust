@@ -295,11 +295,11 @@ impl Blockchain {
         //
         // save to disk
         //
-        let storage = Storage::new();
+        //let storage = Storage::new();
         {
             let block = self.get_mut_block(block_hash).await;
             block_id = block.get_id();
-            storage.write_block_to_disk(block);
+            Storage::write_block_to_disk(block);
 
             //
             // TMP - delete transactions
@@ -1007,7 +1007,7 @@ mod tests {
 
     #[tokio::test]
     async fn add_blocks_test_1() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
 
@@ -1019,7 +1019,7 @@ mod tests {
 
         {
             let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
+            publickey = wallet.get_public_key();
         }
 
         //
@@ -1110,13 +1110,12 @@ mod tests {
         }
     }
 
-    //
     // this test produces four blocks in a row, with all subsequent blocks
     // containing a golden ticket, but no other transactions.
-    //
+
     #[tokio::test]
     async fn produce_four_blocks_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut miner = Miner::new(wallet_lock.clone());
 
@@ -1131,7 +1130,7 @@ mod tests {
 
         {
             let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
+            publickey = wallet.get_public_key();
         }
 
         for i in 0..4 {

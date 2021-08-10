@@ -5,7 +5,7 @@ use crate::{
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
 
-use enum_variant_count_derive::TryFromByte;
+use macros::TryFromByte;
 use std::convert::{TryFrom, TryInto};
 
 /// The size of a serilized slip in bytes.
@@ -26,7 +26,6 @@ pub enum SlipType {
     RouterOutput,
     StakerInput,
     StakerOutput,
-    Other, // need more than one value for TryFromBytes
 }
 
 #[serde_with::serde_as]
@@ -283,14 +282,14 @@ mod tests {
     }
     #[tokio::test]
     async fn slip_addition_and_removal_from_utxoset() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut blockchain = blockchain_lock.write().await;
         let wallet = wallet_lock.write().await;
         let mut slip = Slip::new();
         slip.set_amount(100_000);
         slip.set_uuid([1; 32]);
-        slip.set_publickey(wallet.get_publickey());
+        slip.set_publickey(wallet.get_public_key());
         slip.generate_utxoset_key();
 
         // add to utxoset

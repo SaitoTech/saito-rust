@@ -104,7 +104,7 @@ impl Mempool {
         let publickey;
         {
             let wallet = self.wallet_lock.read().await;
-            publickey = wallet.get_publickey();
+            publickey = wallet.get_public_key();
         }
         transaction.generate_metadata(publickey);
 
@@ -272,8 +272,8 @@ pub async fn run(
         mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
         {
             let wallet = mempool.wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-            privatekey = wallet.get_privatekey();
+            publickey = wallet.get_public_key();
+            privatekey = wallet.get_private_key();
         }
 
         mempool.set_mempool_publickey(publickey);
@@ -381,14 +381,14 @@ mod tests {
 
     #[test]
     fn mempool_new_test() {
-        let wallet = Wallet::new();
+        let wallet = Wallet::new("test/testwallet", Some("asdf"));
         let mempool = Mempool::new(Arc::new(RwLock::new(wallet)));
         assert_eq!(mempool.blocks, VecDeque::new());
     }
 
     #[test]
     fn mempool_add_block_test() {
-        let wallet = Wallet::new();
+        let wallet = Wallet::new("test/testwallet", Some("asdf"));
         let mut mempool = Mempool::new(Arc::new(RwLock::new(wallet)));
 
         let block = Block::new();

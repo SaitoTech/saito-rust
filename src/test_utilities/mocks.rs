@@ -33,7 +33,7 @@ pub async fn make_mock_blockchain(
 
     {
         let wallet = wallet_lock.read().await;
-        publickey = wallet.get_publickey();
+        publickey = wallet.get_public_key();
     }
 
     for i in 0..chain_length as u64 {
@@ -122,16 +122,16 @@ pub fn make_mock_block(
         timestamp,
         prev_timestamp,
     );
-    let wallet = Wallet::new();
+    let wallet = Wallet::new("test/testwallet", Some("asdf"));
     let mut mock_input = Slip::new();
-    mock_input.set_publickey(wallet.get_publickey());
+    mock_input.set_publickey(wallet.get_public_key());
     mock_input.set_uuid([0; 32]);
     mock_input.set_amount(1);
     mock_input.set_slip_ordinal(0);
     mock_input.set_slip_type(SlipType::Normal);
 
     let mut mock_output = Slip::new();
-    mock_output.set_publickey(wallet.get_publickey());
+    mock_output.set_publickey(wallet.get_public_key());
     mock_output.set_uuid([0; 32]);
     mock_output.set_amount(1);
     mock_output.set_slip_ordinal(0);
@@ -142,14 +142,14 @@ pub fn make_mock_block(
     transaction.add_input(mock_input);
     transaction.add_output(mock_output);
 
-    transaction.sign(wallet.get_privatekey());
+    transaction.sign(wallet.get_private_key());
 
     let mut block = Block::new();
 
     block.set_id(block_id);
     block.set_timestamp(timestamp);
     block.set_previous_block_hash(previous_block_hash);
-    block.set_creator(wallet.get_publickey());
+    block.set_creator(wallet.get_public_key());
     block.set_merkle_root([2; 32]);
     block.set_signature([3; 64]);
     block.set_difficulty(0);
@@ -167,8 +167,8 @@ pub async fn make_mock_tx(wallet_mutex: Arc<RwLock<Wallet>>) -> Transaction {
     let wallet = wallet_mutex.read().await;
     let mut transaction = Transaction::new();
     transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
-    let wallet_publickey = wallet.get_publickey();
-    let wallet_privatekey = wallet.get_privatekey();
+    let wallet_publickey = wallet.get_public_key();
+    let wallet_privatekey = wallet.get_private_key();
     let mut input1 = Slip::new();
     input1.set_publickey(wallet_publickey);
     input1.set_amount(1000000);

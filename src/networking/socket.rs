@@ -62,7 +62,7 @@ async fn peer_msg(
         }
         "SHAKCOMP" => {
             tokio::spawn(async move {
-                if let Some(_hash) = socket_handshake_complete(&api_message, wallet_lock) {
+                if let Some(challenge) = socket_handshake_complete(&api_message, wallet_lock) {
                     let api_message_response = APIMessage {
                         message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
                         message_id: api_message.message_id,
@@ -70,7 +70,9 @@ async fn peer_msg(
                     };
                     let mut peers = peers.write().await;
                     let mut peer = peers.get_mut(&id).unwrap();
+                    println!("handshake complete!");
                     peer.has_handshake = true;
+                    peer.pubkey = Some(challenge.challengie_pubkey());
                     let _foo = peer
                         .sender
                         .as_ref()
@@ -132,8 +134,7 @@ async fn peer_msg(
 
                     // Return message to original peer
                     let mut peers = peers.write().await;
-                    let mut peer = peers.get_mut(&id).unwrap();
-                    peer.has_handshake = true;
+                    let peer = peers.get_mut(&id).unwrap();
                     let _foo = peer
                         .sender
                         .as_ref()
@@ -291,18 +292,8 @@ pub async fn new_handshake_challenge(
     wallet_lock: Arc<RwLock<Wallet>>,
 ) -> crate::Result<Vec<u8>> {
     let wallet = wallet_lock.read().await;
-    let my_pubkey = wallet.get_publickey();
-    let my_privkey = wallet.get_privatekey();
-
-    // let mut hex_pubkey: [u8; 66] = [0; 66];
-    // hex_pubkey.clone_from_slice(raw_query_str[2..68].as_bytes());
-
-    // let mut peer_pubkey: SaitoPublicKey = [0u8; 33];
-    // match hex::decode_to_slice(hex_pubkey, &mut peer_pubkey as &mut [u8]) {
-    //     // TODO figure out how to return more meaningful errors from Warp and replace all the warp::reject
-    //     Err(_e) => return Err(warp::reject()),
-    //     _ => {}
-    // };
+    let my_pubkey = wallet.get_public_key();
+    let my_privkey = wallet.get_private_key();
 
     let mut peer_octets: [u8; 4] = [0; 4];
     peer_octets[0..4].clone_from_slice(&message.message_data[0..4]);
@@ -326,7 +317,7 @@ pub async fn new_handshake_challenge(
 pub fn socket_handshake_complete(
     message: &APIMessage,
     _wallet_lock: Arc<RwLock<Wallet>>,
-) -> Option<SaitoHash> {
+) -> Option<HandshakeChallenge> {
     let (challenge, my_sig, their_sig) =
         HandshakeChallenge::deserialize_with_both_sigs(&message.message_data());
     if challenge.timestamp() < create_timestamp() - CHALLENGE_EXPIRATION_TIME {
@@ -353,7 +344,7 @@ pub fn socket_handshake_complete(
         return None;
     }
 
-    Some(hash(&message.message_data))
+    Some(challenge)
 }
 
 pub fn socket_receive_transaction(message: APIMessage) -> Option<Transaction> {

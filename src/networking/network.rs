@@ -110,7 +110,6 @@ impl Network {
         _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
     ) -> crate::Result<()> {
         println!("network run");
-
         let mut settings = config::Config::default();
         settings.merge(config::File::with_name("config")).unwrap();
 
@@ -272,7 +271,7 @@ mod tests {
         let mut settings = config::Config::default();
         settings.merge(config::File::with_name("config")).unwrap();
 
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let network = Network::new(wallet_lock.clone(), settings);
@@ -361,7 +360,7 @@ mod tests {
         let mut settings = config::Config::default();
         settings.merge(config::File::with_name("config")).unwrap();
 
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let network = Network::new(wallet_lock.clone(), settings);
@@ -400,11 +399,9 @@ mod tests {
     }
 
     fn parse_response(message: Message) -> (String, u32, Vec<u8>) {
-        let borrowed_command = String::from_utf8_lossy(&message.as_bytes()[0..8]);
-        let command: String = borrowed_command.to_string();
-        let index: u32 = u32::from_be_bytes(message.as_bytes()[8..12].try_into().unwrap());
-        let msg = message.as_bytes()[12..].to_vec();
-        (command, index, msg)
+        let api_message = APIMessage::deserialize(message);
+        let command = String::from_utf8_lossy(&api_message.message_name).to_string();
+        (command, api_message.message_id, api_message.message_data)
     }
 
     #[tokio::test]
@@ -412,7 +409,7 @@ mod tests {
         let mut settings = config::Config::default();
         settings.merge(config::File::with_name("config")).unwrap();
 
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
@@ -453,11 +450,11 @@ mod tests {
         let mut settings = config::Config::default();
         settings.merge(config::File::with_name("config")).unwrap();
 
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;
-        let network = Network::new(wallet_lock.clone(), settings);
+        let network = Network::new(wallet_lock.clone());
 
         let socket_filter = ws_upgrade_route_filter(
             &network.peers.clone(),

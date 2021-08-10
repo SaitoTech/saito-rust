@@ -43,7 +43,7 @@ impl Miner {
 
             {
                 let wallet = self.wallet_lock.read().await;
-                publickey = wallet.get_publickey();
+                publickey = wallet.get_public_key();
             }
 
             let random_bytes = hash(&generate_random_bytes(32));
@@ -75,7 +75,7 @@ impl Miner {
         block_difficulty: u64,
     ) -> GoldenTicket {
         let wallet = self.wallet_lock.read().await;
-        let publickey = wallet.get_publickey();
+        let publickey = wallet.get_public_key();
         let mut random_bytes = hash(&generate_random_bytes(32));
         let mut solution = GoldenTicket::generate_solution(random_bytes, publickey);
 
