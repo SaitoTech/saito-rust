@@ -1,11 +1,113 @@
-use crate::block::Block;
-use crate::burnfee::BurnFee;
-use crate::crypto::{generate_random_bytes, hash, SaitoHash};
-use crate::slip::{Slip, SlipType};
-use crate::transaction::Transaction;
-use crate::wallet::Wallet;
+use crate::{
+    block::Block,
+    blockchain::Blockchain,
+    burnfee::BurnFee,
+    crypto::{generate_random_bytes, hash, SaitoHash},
+    golden_ticket::GoldenTicket,
+    miner::Miner,
+    slip::{Slip, SlipType},
+    time::create_timestamp,
+    transaction::Transaction,
+    wallet::Wallet,
+};
+
 use std::sync::Arc;
 use tokio::sync::RwLock;
+
+pub async fn make_mock_blockchain(
+    wallet_lock: Arc<RwLock<Wallet>>,
+    chain_length: u64,
+) -> (Arc<RwLock<Blockchain>>, Vec<SaitoHash>) {
+    let mut block_hashes: Vec<SaitoHash> = vec![];
+    let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+    let mut miner = Miner::new(wallet_lock.clone());
+
+    let current_block_hash = [0; 32];
+    let mut transactions: Vec<Transaction>;
+    let mut last_block_hash: SaitoHash = [0; 32];
+    let mut last_block_difficulty: u64 = 0;
+    let publickey;
+
+    // let mut test_block_hash: SaitoHash;
+    // let mut test_block_id: u64;
+
+    {
+        let wallet = wallet_lock.read().await;
+        publickey = wallet.get_publickey();
+    }
+
+    for i in 0..chain_length as u64 {
+        transactions = vec![];
+        let block: Block;
+
+        // first block
+        if i == 0 {
+            let mut tx =
+                Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000)
+                    .await;
+            tx.generate_metadata(publickey);
+            transactions.push(tx);
+
+            block = Block::generate(
+                &mut transactions,
+                current_block_hash,
+                wallet_lock.clone(),
+                blockchain_lock.clone(),
+            )
+            .await;
+
+            last_block_hash = block.get_hash();
+            last_block_difficulty = block.get_difficulty();
+
+        // second block
+        } else {
+            // generate golden ticket
+            let golden_ticket: GoldenTicket = miner
+                .mine_on_block_until_golden_ticket_found(last_block_hash, last_block_difficulty)
+                .await;
+
+            let mut transaction: Transaction;
+
+            {
+                let mut wallet = wallet_lock.write().await;
+                transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
+            }
+
+            transaction.generate_metadata(publickey);
+            transactions.push(transaction);
+
+            {
+                let blockchain = blockchain_lock.read().await;
+                last_block_hash = blockchain.get_latest_block().unwrap().get_hash();
+                last_block_difficulty = blockchain.get_latest_block().unwrap().get_difficulty();
+            }
+
+            let future_timestamp = create_timestamp() + (i * 120000);
+
+            block = Block::generate_with_timestamp(
+                &mut transactions,
+                last_block_hash,
+                wallet_lock.clone(),
+                blockchain_lock.clone(),
+                future_timestamp,
+            )
+            .await;
+        }
+
+        // test_block_hash = block.get_hash();
+        // test_block_id = block.get_id();
+
+        block_hashes.push(block.get_hash());
+
+        {
+            println!("{}", i);
+            let mut blockchain = blockchain_lock.write().await;
+            blockchain.add_block(block).await;
+        }
+    }
+
+    (blockchain_lock, block_hashes)
+}
 
 pub fn make_mock_block(
     prev_timestamp: u64,

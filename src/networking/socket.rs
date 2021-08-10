@@ -84,7 +84,7 @@ async fn peer_msg(
         "SENDTRXN" => {
             tokio::spawn(async move {
                 let message_id = api_message.message_id;
-                if let Some(tx) = socket_receive_transaction(api_message) {
+                if let Some(tx) = socket_receive_transaction(api_message.clone()) {
                     let mut mempool = mempool_lock.write().await;
                     let api_message_response;
                     match mempool.add_transaction(tx).await {
@@ -97,10 +97,22 @@ async fn peer_msg(
                                 message_id: message_id,
                                 message_data: String::from("OK").as_bytes().try_into().unwrap(),
                             };
+
+                            // the tx is accepted, we will propagate it to all available peers
+                            let mut peers = peers.write().await;
+                            peers.retain(|&k, _| k != id);
+
+                            for (_, peer) in peers.iter() {
+                                let _foo = peer
+                                    .sender
+                                    .as_ref()
+                                    .unwrap()
+                                    .send(Ok(Message::binary(api_message.serialize())));
+                            }
                         }
                         AddTransactionResult::Invalid => {
                             api_message_response = APIMessage {
-                                message_name: String::from("RESULT__")
+                                message_name: String::from("ERROR___")
                                     .as_bytes()
                                     .try_into()
                                     .unwrap(),
@@ -110,7 +122,7 @@ async fn peer_msg(
                         }
                         AddTransactionResult::Rejected => {
                             api_message_response = APIMessage {
-                                message_name: String::from("RESULT__")
+                                message_name: String::from("ERROR___")
                                     .as_bytes()
                                     .try_into()
                                     .unwrap(),
@@ -120,6 +132,7 @@ async fn peer_msg(
                         }
                     }
 
+                    // Return message to original peer
                     let mut peers = peers.write().await;
                     let peer = peers.get_mut(&id).unwrap();
                     let _foo = peer
@@ -132,18 +145,32 @@ async fn peer_msg(
         }
         "REQCHAIN" => {
             tokio::spawn(async move {
-                let _message_id = api_message.message_id;
-                let message = api_message.message_data();
-                let _block_id: u64 = u64::from_be_bytes(message[0..8].try_into().unwrap());
-                let block_hash: SaitoHash = message[8..40].try_into().unwrap();
-                let _fork_id: SaitoHash = message[40..62].try_into().unwrap();
-                let blockchain = blockchain_lock.read().await;
-                let block = blockchain.get_block_sync(&block_hash);
-                if block.is_none() {
-                    // Not sure what to do in this case...
+                let message_id = api_message.message_id;
+                let api_message_response;
+
+                if let Some(bytes) = socket_send_blockchain(api_message, blockchain_lock).await {
+                    println!("OUR BYTES: {:?}", bytes);
+                    api_message_response = APIMessage {
+                        message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
+                        message_id: message_id,
+                        message_data: bytes,
+                    };
                 } else {
-                    // I tried looking at returnLastSharedBlockId and updateForkId and coudln't figure out what fork_id is or how to use it
+                    api_message_response = APIMessage {
+                        message_name: String::from("ERROR___").as_bytes().try_into().unwrap(),
+                        message_id: message_id,
+                        message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
+                    };
                 }
+
+                let mut peers = peers.write().await;
+                let mut peer = peers.get_mut(&id).unwrap();
+                peer.has_handshake = true;
+                let _foo = peer
+                    .sender
+                    .as_ref()
+                    .unwrap()
+                    .send(Ok(Message::binary(api_message_response.serialize())));
             });
         }
         "SNDCHAIN" => {
@@ -153,7 +180,30 @@ async fn peer_msg(
         }
         "REQBLKHD" => {
             tokio::spawn(async move {
-                let _message_id = api_message.message_id;
+                let message_id = api_message.message_id;
+                let api_message_response;
+                if let Some(bytes) = socket_send_block_header(api_message, blockchain_lock).await {
+                    api_message_response = APIMessage {
+                        message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
+                        message_id: message_id,
+                        message_data: bytes,
+                    };
+                } else {
+                    api_message_response = APIMessage {
+                        message_name: String::from("ERROR___").as_bytes().try_into().unwrap(),
+                        message_id: message_id,
+                        message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
+                    };
+                }
+
+                let mut peers = peers.write().await;
+                let mut peer = peers.get_mut(&id).unwrap();
+                peer.has_handshake = true;
+                let _foo = peer
+                    .sender
+                    .as_ref()
+                    .unwrap()
+                    .send(Ok(Message::binary(api_message_response.serialize())));
             });
         }
         "SNDBLKHD" => {
@@ -302,18 +352,31 @@ pub fn socket_receive_transaction(message: APIMessage) -> Option<Transaction> {
     Some(tx)
 }
 
+pub async fn socket_send_block_header(
+    message: APIMessage,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> Option<Vec<u8>> {
+    let block_hash: SaitoHash = message.message_data[0..32].try_into().unwrap();
+    let blockchain = blockchain_lock.read().await;
+
+    match blockchain.get_block_sync(&block_hash) {
+        Some(target_block) => {
+            let block_header = target_block.get_header();
+            Some(block_header.serialize_for_net())
+        }
+        None => None,
+    }
+}
+
 pub async fn socket_send_blockchain(
     message: APIMessage,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-) -> Vec<u8> {
+) -> Option<Vec<u8>> {
     let block_hash: SaitoHash = message.message_data[0..32].try_into().unwrap();
-    let _fork_id = u64::from_be_bytes(message.message_data[32..36].try_into().unwrap());
+    let _fork_id: SaitoHash = message.message_data[32..64].try_into().unwrap();
 
     let mut hashes: Vec<u8> = vec![];
-
     let blockchain = blockchain_lock.read().await;
-
-    let _target_block = blockchain.get_latest_block();
 
     if let Some(target_block) = blockchain.get_latest_block() {
         let target_block_hash = target_block.get_hash();
@@ -321,14 +384,16 @@ pub async fn socket_send_blockchain(
             hashes.extend_from_slice(&target_block_hash);
             let mut previous_block_hash = target_block.get_previous_block_hash();
             while !blockchain.get_block_sync(&previous_block_hash).is_none()
-                && previous_block_hash != [0; 32]
+                && previous_block_hash != block_hash
             {
-                let block = blockchain.get_block_sync(&previous_block_hash).unwrap();
-                hashes.extend_from_slice(&block.get_hash());
-                previous_block_hash = block.get_previous_block_hash();
+                if let Some(block) = blockchain.get_block_sync(&previous_block_hash) {
+                    hashes.extend_from_slice(&block.get_hash());
+                    previous_block_hash = block.get_previous_block_hash();
+                }
             }
         }
+        Some(hashes)
+    } else {
+        None
     }
-
-    hashes
 }

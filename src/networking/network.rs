@@ -1,6 +1,6 @@
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
-use crate::crypto::{sign_blob, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
+use crate::crypto::{sign_blob, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
 use crate::mempool::Mempool;
 use crate::networking::filters::{
     get_block_route_filter, post_block_route_filter, post_transaction_route_filter,
@@ -23,7 +23,7 @@ pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
 pub type Result<T> = std::result::Result<T, Rejection>;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct APIMessage {
     pub message_name: [u8; 8],
     pub message_id: u32,
@@ -97,9 +97,6 @@ impl Network {
         _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
     ) -> crate::Result<()> {
         println!("network run");
-        // while let Ok(_message) = broadcast_channel_receiver.recv().await {
-        //     //println!("NEW BLOCK!");
-        // }
 
         let routes = get_block_route_filter()
             .or(post_transaction_route_filter(
@@ -218,6 +215,7 @@ mod tests {
         crypto::{generate_keys, hash, verify, SaitoSignature},
         mempool::Mempool,
         networking::filters::ws_upgrade_route_filter,
+        test_utilities::mocks::make_mock_blockchain,
         transaction::Transaction,
     };
     use secp256k1::PublicKey;
@@ -373,5 +371,165 @@ mod tests {
 
         let mempool = mempool_lock.read().await;
         assert_eq!(mempool.transactions.len(), 1);
+    }
+
+    fn parse_response(message: Message) -> (String, u32, Vec<u8>) {
+        let borrowed_command = String::from_utf8_lossy(&message.as_bytes()[0..8]);
+        let command: String = borrowed_command.to_string();
+        let index: u32 = u32::from_be_bytes(message.as_bytes()[8..12].try_into().unwrap());
+        let msg = message.as_bytes()[12..].to_vec();
+        (command, index, msg)
+    }
+
+    #[tokio::test]
+    async fn test_send_block_header() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let (blockchain_lock, block_hashes) =
+            make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
+        let network = Network::new(wallet_lock.clone());
+
+        let socket_filter = ws_upgrade_route_filter(
+            &network.peers.clone(),
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        );
+        let mut ws_client = warp::test::ws()
+            .path("/wsopen")
+            .handshake(socket_filter)
+            .await
+            .expect("transaction websocket");
+
+        let mut message_bytes: Vec<u8> = vec![];
+        message_bytes.extend_from_slice(&block_hashes[0]);
+        message_bytes.extend_from_slice(&[0u8; 32]);
+
+        let api_message = APIMessage::new("REQBLKHD", 0, message_bytes);
+        let serialized_api_message = api_message.serialize();
+
+        let _socket_resp = ws_client
+            .send(Message::binary(serialized_api_message))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+        let (command, index, msg) = parse_response(resp);
+
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 0);
+        assert_eq!(msg.len(), 201);
+    }
+
+    #[tokio::test]
+    async fn test_send_blockchain() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let (blockchain_lock, block_hashes) =
+            make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;
+        let network = Network::new(wallet_lock.clone());
+
+        let socket_filter = ws_upgrade_route_filter(
+            &network.peers.clone(),
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        );
+        let mut ws_client = warp::test::ws()
+            .path("/wsopen")
+            .handshake(socket_filter)
+            .await
+            .expect("transaction websocket");
+
+        //
+        // first confirm the whole blockchain is received when sent zeroed block hash
+        let mut message_bytes: Vec<u8> = vec![];
+        message_bytes.extend_from_slice(&[0u8; 32]);
+        message_bytes.extend_from_slice(&[0u8; 32]);
+
+        let api_message = APIMessage::new("REQCHAIN", 0, message_bytes);
+        let serialized_api_message = api_message.serialize();
+
+        let _socket_resp = ws_client
+            .send(Message::binary(serialized_api_message))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+        let command = String::from_utf8_lossy(&resp.as_bytes()[0..8]);
+        let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());
+        let msg = resp.as_bytes()[12..].to_vec();
+
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 0);
+        assert_eq!(msg.len(), 128);
+
+        // then confirm that the program only receives three hashes
+        message_bytes = vec![];
+        message_bytes.extend_from_slice(&block_hashes[0]);
+        message_bytes.extend_from_slice(&[0u8; 32]);
+
+        let api_message = APIMessage::new("REQCHAIN", 0, message_bytes);
+        let serialized_api_message = api_message.serialize();
+
+        let _socket_resp = ws_client
+            .send(Message::binary(serialized_api_message))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+        let (command, index, msg) = parse_response(resp);
+
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 0);
+        assert_eq!(msg.len(), 96);
+
+        // next block should have only 2 hashes
+        message_bytes = vec![];
+        message_bytes.extend_from_slice(&block_hashes[1]);
+        message_bytes.extend_from_slice(&[0u8; 32]);
+
+        let api_message = APIMessage::new("REQCHAIN", 0, message_bytes);
+        let serialized_api_message = api_message.serialize();
+
+        let _socket_resp = ws_client
+            .send(Message::binary(serialized_api_message))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+        let (command, index, msg) = parse_response(resp);
+
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 0);
+        assert_eq!(msg.len(), 64);
+
+        // next block should have only 2 hashes
+        message_bytes = vec![];
+        message_bytes.extend_from_slice(&block_hashes[2]);
+        message_bytes.extend_from_slice(&[0u8; 32]);
+
+        let api_message = APIMessage::new("REQCHAIN", 0, message_bytes);
+        let serialized_api_message = api_message.serialize();
+
+        let _socket_resp = ws_client
+            .send(Message::binary(serialized_api_message))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+        let (command, index, msg) = parse_response(resp);
+
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 0);
+        assert_eq!(msg.len(), 32);
+
+        // sending the latest block hash should return with nothing
+        message_bytes = vec![];
+        message_bytes.extend_from_slice(&block_hashes[3]);
+        message_bytes.extend_from_slice(&[0u8; 32]);
+
+        let api_message = APIMessage::new("REQCHAIN", 0, message_bytes);
+        let serialized_api_message = api_message.serialize();
+
+        let _socket_resp = ws_client
+            .send(Message::binary(serialized_api_message))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+        let (command, index, msg) = parse_response(resp);
+
+        assert_eq!(command, "RESULT__");
+        assert_eq!(index, 0);
+        assert_eq!(msg.len(), 0);
     }
 }
