@@ -33,7 +33,7 @@ pub async fn make_mock_blockchain(
 
     {
         let wallet = wallet_lock.read().await;
-        publickey = wallet.get_publickey();
+        publickey = wallet.get_public_key();
     }
 
     for i in 0..chain_length as u64 {

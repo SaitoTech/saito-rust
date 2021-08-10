@@ -1,6 +1,6 @@
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
-use crate::crypto::{sign_blob, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
+use crate::crypto::{sign_blob, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
 use crate::mempool::Mempool;
 use crate::networking::filters::{
     get_block_route_filter, post_block_route_filter, post_transaction_route_filter,
@@ -383,7 +383,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_block_header() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
@@ -421,7 +421,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_blockchain() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;
