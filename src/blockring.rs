@@ -398,7 +398,7 @@ mod test {
     #[tokio::test]
     async fn blockring_add_and_delete_block() {
         let mut blockring = BlockRing::new();
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
 
@@ -408,7 +408,7 @@ mod test {
 
         {
             let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
+            publickey = wallet.get_public_key();
         }
 
         //
