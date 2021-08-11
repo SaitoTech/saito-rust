@@ -52,17 +52,6 @@ impl APIMessage {
     pub fn message_data(&self) -> &Vec<u8> {
         &self.message_data
     }
-    pub fn new_with_data_from_str(
-        message_name: &str,
-        message_id: u32,
-        message_data: &str,
-    ) -> APIMessage {
-        APIMessage {
-            message_name: String::from(message_name).as_bytes().try_into().unwrap(),
-            message_id: message_id,
-            message_data: String::from(message_data).as_bytes().try_into().unwrap(),
-        }
-    }
     pub fn deserialize(bytes: &Vec<u8>) -> APIMessage {
         let message_name: [u8; 8] = bytes[0..8].try_into().unwrap();
         let message_id: u32 = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
@@ -304,7 +293,7 @@ mod tests {
                 .serialize()
                 .to_vec(),
         );
-        let api_message = APIMessage::new("SHAKINIT", 42, message_data);
+        let api_message = APIMessage::new("SHAKINIT", 0, message_data);
 
         let serialized_api_message = api_message.serialize();
 
@@ -482,6 +471,7 @@ mod tests {
 
         //
         // first confirm the whole blockchain is received when sent zeroed block hash
+        //
         let mut message_bytes: Vec<u8> = vec![];
         message_bytes.extend_from_slice(&[0u8; 32]);
         message_bytes.extend_from_slice(&[0u8; 32]);

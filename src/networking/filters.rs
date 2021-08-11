@@ -12,28 +12,7 @@ use super::handlers::{
     get_block_handler, get_block_handler_json, post_block_handler, ws_upgrade_handler,
 };
 use super::peer::Peers;
-//
-// cargo run --bin walletcli print
-// 02579d6ff84f661297f38e3eb20953824cfc279fee903a746b3dccb534677fd81a
-// curl 127.0.0.1:3030/handshakeinit\?a={pubkey} > test_challenge
-// curl 127.0.0.1:3030/handshakeinit\?a=02579d6ff84f661297f38e3eb20953824cfc279fee903a746b3dccb534677fd81a > test_challenge
-// cargo run --bin walletcli sign test_challenge signed_challenge
-// curl --data-binary "@signed_challenge" -X POST http://127.0.0.1:3030/handshakecomplete
-// wscat -H socket-token:{token} -c ws://127.0.0.1:3030/wsconnect
-// wscat -H socket-token:bf096eae9d673a5295560a8bd1a3ddf166516c5c09a7e482f734ae92aade6b9b -c ws://127.0.0.1:3030/wsconnect
-// wscat -H socket-token:83d1178b7e6080ddcf3f4a273a2ef1554ea060fd15f6db647660cbc99e1faf67 -c ws://127.0.0.1:3030/wsconnect
-// wscat -H socket-token:e6e5477c79ff669cc3e3eb5e909dc115d30e5a1142e9d80a5e238636a74c69b8 -c ws://127.0.0.1:3030/wsconnect
-// websocat ws://127.0.0.1:3030/wsconnect -H socket-token:$TOKEN -b readfile:test_challenge
-//
-//
-// GET http handshakeinit
-// GET http handshakecomplete
-// GET ws wsconnect
-// POST ws wsconnect
-// GET http block
-// POST http sendtransaction
-// POST http sendblockheader
-//
+
 pub fn ws_upgrade_route_filter(
     clients: &Peers,
     wallet_lock: Arc<RwLock<Wallet>>,
