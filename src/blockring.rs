@@ -67,29 +67,6 @@ impl RingItem {
             self.lc_pos = None;
         } else {
             self.lc_pos = self.block_hashes.iter().position(|b_hash| b_hash == &hash);
-            //
-            // remove any old indices
-            //
-            /*** WE NOW DELETE MANUALLY when purging ***
-                        if let Some(lc_pos) = self.lc_pos {
-                            let current_block_id = self.block_ids[lc_pos];
-
-                            let mut new_block_hashes: Vec<SaitoHash> = vec![];
-                            let mut new_block_ids: Vec<u64> = vec![];
-
-                            for i in 0..self.block_ids.len() {
-                                if self.block_ids[i] < current_block_id {
-                                    self.lc_pos = Some(i);
-                                } else {
-                                    new_block_hashes.push(self.block_hashes[i]);
-                                    new_block_ids.push(self.block_ids[i]);
-                                }
-                            }
-
-                            self.block_hashes = new_block_hashes;
-                            self.block_ids = new_block_ids;
-                        }
-            ***/
         }
 
         true

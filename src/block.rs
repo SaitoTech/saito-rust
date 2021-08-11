@@ -133,6 +133,7 @@ pub struct Block {
     treasury: u64,
     burnfee: u64,
     difficulty: u64,
+    staking_treasury: u64,
     /// Transactions
     pub transactions: Vec<Transaction>,
     /// Self-Calculated / Validated
@@ -178,6 +179,7 @@ impl Block {
             treasury: 0,
             burnfee: 0,
             difficulty: 0,
+            staking_treasury: 0,
             transactions: vec![],
             pre_hash: [0; 32],
             hash: [0; 32],
@@ -235,6 +237,10 @@ impl Block {
 
     pub fn get_treasury(&self) -> u64 {
         self.treasury
+    }
+
+    pub fn get_staking_treasury(&self) -> u64 {
+        self.staking_treasury
     }
 
     pub fn get_burnfee(&self) -> u64 {
@@ -347,6 +353,10 @@ impl Block {
 
     pub fn set_signature(&mut self, signature: SaitoSignature) {
         self.signature = signature;
+    }
+
+    pub fn set_staking_treasury(&mut self, staking_treasury: u64) {
+        self.staking_treasury = staking_treasury;
     }
 
     pub fn set_treasury(&mut self, treasury: u64) {
@@ -790,7 +800,7 @@ impl Block {
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
-            let random_number = golden_ticket.get_random();
+            let random_number = hash(&golden_ticket.get_random().to_vec());
             let miner_publickey = golden_ticket.get_publickey();
 
             //
@@ -806,7 +816,6 @@ impl Block {
                 //
                 let miner_payment = previous_block.get_total_fees() / 2;
                 let router_payment = previous_block.get_total_fees() - miner_payment;
-
                 let block_payouts: RouterPayout = previous_block.find_winning_router(random_number);
                 let router_publickey = block_payouts.publickey;
                 let next_random_number = block_payouts.random_number;
@@ -843,12 +852,14 @@ impl Block {
 	                //
                         // calculate miner and router payments
                         //
-			// TODO - this is wrong because the stake does not get the payment from the 
-			// previous block but rather the previous genesis period. or whatever is 
-			// lower.
+			// the staker payout is contained in the slip of the winner. this is 
+			// because we calculate it afresh every time we reset the staking table
+			// the payment for the router requires calculating the amount that will
+			// be withheld for the staker treasury, which is what previous_staker_
+			// payment is measuring.
 			//
                         let previous_staker_payment = previous_previous_block.get_total_fees() / 2;
-                        let previous_router_payment = previous_previous_block.get_total_fees() - previous_staker_payment;
+			let previous_router_payment = previous_previous_block.get_total_fees() - previous_staker_payment;
 
 			//
 			// next_random_number
@@ -859,15 +870,10 @@ impl Block {
                 	let block_payouts2: RouterPayout = previous_block.find_winning_router(another_random_number);
                 	let previous_winning_router = block_payouts2.publickey;
 
-			//
-			// in case we loop back further, use this random number
-			//
-                	let yet_another_random_number = block_payouts2.random_number;
-
 			if let Some(staker_slip) = staker_slip_option {
                 	    let mut output3 = Slip::new();
                 	    output3.set_publickey(staker_slip.get_publickey());
-                	    output3.set_amount(previous_staker_payment);
+                	    output3.set_amount(staker_slip.get_amount());
                 	    output3.set_slip_type(SlipType::StakerOutput);
                 	    output3.set_slip_ordinal(slip_ordinal_to_apply);
 			    slip_ordinal_to_apply += 1;
@@ -880,6 +886,11 @@ impl Block {
                 	output4.set_slip_type(SlipType::RouterOutput);
                 	output4.set_slip_ordinal(slip_ordinal_to_apply);
                 	transaction.add_output(output4);
+
+			//
+			// in case we loop back further, use this random number
+			//
+                	let _yet_another_random_number = block_payouts2.random_number;
 
 		    }
 		}
@@ -916,6 +927,7 @@ impl Block {
     }
 
     pub fn find_winning_router(&self, random_number: SaitoHash) -> RouterPayout {
+
         let mut rp = RouterPayout::new();
 
         //
@@ -933,7 +945,7 @@ impl Block {
         //
         if y == 0 {
             rp.publickey = [0; 33];
-            rp.random_number = random_number;
+            rp.random_number = hash(&random_number.to_vec());
             return rp;
         }
 
@@ -971,9 +983,11 @@ impl Block {
         // hash random number to pick routing node
         //
         let random_number2 = hash(&random_number.to_vec());
-
+println!("rannum2: {:?}", random_number);
+println!("rannum3: {:?}", random_number2);
         rp.publickey = winning_tx.get_winning_routing_node(random_number2);
         rp.random_number = hash(&random_number2.to_vec());
+println!("rannum4: {:?}", rp.random_number);
 
         rp
     }

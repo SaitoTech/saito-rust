@@ -33,6 +33,7 @@ pub enum TransactionType {
     GoldenTicket,
     ATR,
     Vip,
+    StakerDeposit,
     Other,
 }
 

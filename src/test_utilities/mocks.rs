@@ -1,7 +1,11 @@
 use crate::block::Block;
+use crate::blockchain::Blockchain;
+use crate::miner::Miner;
+use crate::golden_ticket::GoldenTicket;
 use crate::burnfee::BurnFee;
-use crate::crypto::{generate_random_bytes, hash, SaitoHash};
+use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey};
 use crate::slip::{Slip, SlipType};
+use crate::time::{create_timestamp};
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use std::sync::Arc;
@@ -62,6 +66,7 @@ pub fn make_mock_block(
 }
 
 pub async fn make_mock_tx(wallet_mutex: Arc<RwLock<Wallet>>) -> Transaction {
+
     let wallet = wallet_mutex.read().await;
     let mut transaction = Transaction::new();
     transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
@@ -84,3 +89,54 @@ pub async fn make_mock_tx(wallet_mutex: Arc<RwLock<Wallet>>) -> Transaction {
     transaction.sign(wallet_privatekey);
     transaction
 }
+
+
+
+pub async fn make_mock_block_with_info(blockchain_lock : Arc<RwLock<Blockchain>>, wallet_lock : Arc<RwLock<Wallet>>, publickey : SaitoPublicKey, last_block_hash : SaitoHash, transactions : Vec<Transaction> , timestamp: u64 , vip_transactions : usize , normal_transactions : usize , golden_ticket : bool) -> Block {
+
+        let mut transactions: Vec<Transaction> = vec![];
+        let mut miner = Miner::new(wallet_lock.clone());
+	let blockchain = blockchain_lock.read().await;
+
+
+	for i in 0..vip_transactions {
+            let mut tx = Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
+            tx.generate_metadata(publickey);
+	    transactions.push(tx);
+	}
+
+	for i in 0..normal_transactions {
+	}
+
+	if golden_ticket {
+	    let blk = blockchain.get_block(last_block_hash).await;
+            let last_block_difficulty = blk.get_difficulty();
+            let golden_ticket: GoldenTicket = miner
+                .mine_on_block_until_golden_ticket_found(last_block_hash, last_block_difficulty)
+                .await;
+            let mut tx2: Transaction;
+            {
+                let mut wallet = wallet_lock.write().await;
+                tx2 = wallet.create_golden_ticket_transaction(golden_ticket).await;
+            }
+            tx2.generate_metadata(publickey);
+            transactions.push(tx2);	
+        }
+
+
+        //
+        // create block
+        //
+        let block = Block::generate_with_timestamp(
+            &mut transactions,
+            last_block_hash,
+            wallet_lock.clone(),
+            blockchain_lock.clone(),
+            timestamp,
+        )
+        .await;
+
+	return block;
+
+}
+

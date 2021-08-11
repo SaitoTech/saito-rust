@@ -24,10 +24,8 @@ pub enum SlipType {
     MinerOutput,
     RouterInput,
     RouterOutput,
-    StakerInput,
     StakerOutput,
     StakerDeposit,
-    StakerPending,
     Other, // need more than one value for TryFromBytes
 }
 
