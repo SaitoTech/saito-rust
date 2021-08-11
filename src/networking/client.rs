@@ -114,6 +114,8 @@ impl SaitoClient {
                     [..CHALLENGE_SIZE]
                     .try_into()
                     .unwrap();
+
+                println!("{:?}", deserialize_challenge);
                 // TODO verify that this pubkey is actually the peer we are hoping to reach...
                 let sig_is_valid = verify(
                     &hash(&raw_challenge.to_vec()),

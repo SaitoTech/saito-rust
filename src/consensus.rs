@@ -79,9 +79,6 @@ impl Consensus {
         // for information on cross-system notifications.
         //
 
-        let mut settings = config::Config::default();
-        settings.merge(config::File::with_name("config")).unwrap();
-
         let matches = App::new("Saito Runtime")
             .about("Runs a Saito Node")
             .arg(
@@ -99,30 +96,27 @@ impl Consensus {
                     .takes_value(true)
                     .help("amount to send"),
             )
-            .subcommand(
-                App::new("client")
-                    .about("Connect this node as a client only to another server")
-                    .arg(
-                        Arg::with_name("server")
-                            .short("s")
-                            .long("server")
-                            .takes_value(true)
-                            .help("location of server"),
-                    ),
+            .arg(
+                Arg::with_name("config")
+                    .short("c")
+                    .long("config")
+                    .takes_value(true)
+                    .help("config file name"),
             )
             .get_matches();
 
+        let config_name = match matches.value_of("config") {
+            Some(name) => name,
+            None => "config"
+        };
+
+        let mut settings = config::Config::default();
+        settings.merge(config::File::with_name(config_name)).unwrap();
+
         let key_path = matches.value_of("key_path").unwrap();
         let password = matches.value_of("password");
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
 
-        // if let Some(ref sub_matches) = matches.subcommand_matches("client") {
-            // let server: String = match sub_matches.value_of("server") {
-            //     Some(server) => String::from(server),
-            //     None => String::from("ws://127.0.0.1:3000/wsopen"),
-            // };
-            // SaitoClient::new(&server, wallet_lock.clone()).await;
-        // } else {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));

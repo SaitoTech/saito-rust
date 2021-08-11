@@ -120,19 +120,20 @@ impl Network {
                 blockchain_lock.clone(),
             ));
 
-        warp::serve(routes).run((host, port)).await;
-
         if let Some(peer_settings) = self.peer_settings() {
             for peer in peer_settings {
                 let host_string = peer.host
-                  .iter()
-                  .map(|int| int.to_string())
-                  .collect::<Vec<String>>()
-                  .join(".");
-                let url_string = format!("{}{}{}{}", "ws://", host_string, peer.port.to_string(), "/wsopen");
+                    .iter()
+                    .map(|int| int.to_string())
+                    .collect::<Vec<String>>()
+                    .join(".");
+                let url_string = format!("{}{}{}{}{}", "ws://", host_string, ":", peer.port.to_string(), "/wsopen");
+                println!("{:?}", url_string);
                 SaitoClient::new(&url_string[..], self.wallet_lock.clone()).await;
             }
         }
+
+        warp::serve(routes).run((host, port)).await;
 
         Ok(())
     }
