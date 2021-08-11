@@ -116,63 +116,63 @@ impl Consensus {
         let password = matches.value_of("password");
         let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
 
-        if let Some(ref sub_matches) = matches.subcommand_matches("client") {
-            let server: String = match sub_matches.value_of("server") {
-                Some(server) => String::from(server),
-                None => String::from("ws://127.0.0.1:3000/wsopen"),
-            };
-            SaitoClient::new(&server, wallet_lock.clone()).await;
-        } else {
-            let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-            let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-            let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
+        // if let Some(ref sub_matches) = matches.subcommand_matches("client") {
+            // let server: String = match sub_matches.value_of("server") {
+            //     Some(server) => String::from(server),
+            //     None => String::from("ws://127.0.0.1:3000/wsopen"),
+            // };
+            // SaitoClient::new(&server, wallet_lock.clone()).await;
+        // } else {
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
 
-            let network = Network::new(wallet_lock.clone(), settings);
+        let network = Network::new(wallet_lock.clone(), settings);
 
-            tokio::select! {
-                res = crate::mempool::run(
-                    mempool_lock.clone(),
-                    blockchain_lock.clone(),
-                    broadcast_channel_sender.clone(),
-                    broadcast_channel_receiver
-                ) => {
-                    if let Err(err) = res {
-                        eprintln!("{:?}", err)
-                    }
-                },
-                res = crate::blockchain::run(
-                    blockchain_lock.clone(),
-                    broadcast_channel_sender.clone(),
-                    broadcast_channel_sender.subscribe()
-                ) => {
-                    if let Err(err) = res {
-                        eprintln!("{:?}", err)
-                    }
-                },
-                res = crate::miner::run(
-                    miner_lock.clone(),
-                    broadcast_channel_sender.clone(),
-                    broadcast_channel_sender.subscribe()
-                ) => {
-                    if let Err(err) = res {
-                        eprintln!("{:?}", err)
-                    }
-                },
-                res = network.run(
-                    mempool_lock.clone(),
-                    blockchain_lock.clone(),
-                    broadcast_channel_sender.clone(),
-                    broadcast_channel_sender.subscribe()
-                ) => {
-                    if let Err(err) = res {
-                        eprintln!("{:?}", err)
-                    }
+        tokio::select! {
+            res = crate::mempool::run(
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+                broadcast_channel_sender.clone(),
+                broadcast_channel_receiver
+            ) => {
+                if let Err(err) = res {
+                    eprintln!("{:?}", err)
                 }
-                _ = self._shutdown_complete_tx.closed() => {
-                    println!("Shutdown message complete")
+            },
+            res = crate::blockchain::run(
+                blockchain_lock.clone(),
+                broadcast_channel_sender.clone(),
+                broadcast_channel_sender.subscribe()
+            ) => {
+                if let Err(err) = res {
+                    eprintln!("{:?}", err)
+                }
+            },
+            res = crate::miner::run(
+                miner_lock.clone(),
+                broadcast_channel_sender.clone(),
+                broadcast_channel_sender.subscribe()
+            ) => {
+                if let Err(err) = res {
+                    eprintln!("{:?}", err)
+                }
+            },
+            res = network.run(
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+                broadcast_channel_sender.clone(),
+                broadcast_channel_sender.subscribe()
+            ) => {
+                if let Err(err) = res {
+                    eprintln!("{:?}", err)
                 }
             }
+            _ = self._shutdown_complete_tx.closed() => {
+                println!("Shutdown message complete")
+            }
         }
+        // }
 
         //let _storage = Storage::new();
 

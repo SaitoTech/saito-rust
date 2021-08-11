@@ -16,6 +16,7 @@ use std::sync::Arc;
 use warp::{Filter, Rejection};
 
 use super::peer::{PeerSetting, Peers};
+use super::client::SaitoClient;
 use serde::{Deserialize, Serialize};
 
 use config::Config;
@@ -78,9 +79,6 @@ pub struct Network {
 
 impl Network {
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>, settings: Config) -> Network {
-        // let mut settings = config::Config::default();
-        // settings.merge(config::File::with_name("config")).unwrap();
-
         let peer_settings = match settings.get::<Vec<PeerSetting>>("network.peers") {
             Ok(peer_settings) => Some(peer_settings),
             Err(_) => None,
@@ -98,6 +96,7 @@ impl Network {
         &self,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
+        // network_lock: Arc<RwLock<Network>>,
         _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
         _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
     ) -> crate::Result<()> {
@@ -120,9 +119,24 @@ impl Network {
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
             ));
+
         warp::serve(routes).run((host, port)).await;
+
+        if let Some(peer_settings) = self.peer_settings() {
+            for peer in peer_settings {
+                let host_string = peer.host
+                  .iter()
+                  .map(|int| int.to_string())
+                  .collect::<Vec<String>>()
+                  .join(".");
+                let url_string = format!("{}{}{}{}", "ws://", host_string, peer.port.to_string(), "/wsopen");
+                SaitoClient::new(&url_string[..], self.wallet_lock.clone()).await;
+            }
+        }
+
         Ok(())
     }
+
     pub fn peer_settings(&self) -> &Option<Vec<PeerSetting>> {
         &self.peer_settings
     }

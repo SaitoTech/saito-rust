@@ -62,6 +62,7 @@ impl SaitoClient {
         }
         saito_client
     }
+
     pub async fn send(&mut self, command: String, message: Vec<u8>) {
         let api_message = APIMessage::new(&command, self.request_count, message);
         self.requests
@@ -70,6 +71,7 @@ impl SaitoClient {
 
         let _foo = self.write_sink.send(api_message.serialize().into()).await;
     }
+
     async fn recv(&mut self, api_message: &APIMessage) {
         let command_sent = self.requests.remove(&api_message.message_id);
         match command_sent {
@@ -101,6 +103,7 @@ impl SaitoClient {
             }
         }
     }
+
     async fn handle_response(&mut self, command_name: [u8; 8], response_api_message: &APIMessage) {
         match String::from_utf8_lossy(&command_name).to_string().as_ref() {
             "SHAKINIT" => {
