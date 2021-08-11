@@ -29,11 +29,14 @@ pub async fn main() -> saito_rust::Result<()> {
         }
     }
 
+    let mut settings = config::Config::default();
+    settings.merge(config::File::with_name("config")).unwrap();
+
     let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
     let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-    let network = Network::new(wallet_lock.clone());
+    let network = Network::new(wallet_lock.clone(), settings);
 
     let publickey;
     let privatekey;
