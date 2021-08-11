@@ -135,6 +135,7 @@ TODO
 
 */
 
+pub mod client;
 pub mod filters;
 pub mod handlers;
 pub mod network;
