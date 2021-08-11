@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Peer",""]],"type":[["Peers",""]]});
+initSidebarItems({"struct":[["Peer",""],["PeerSetting",""]],"type":[["Peers",""]]});
