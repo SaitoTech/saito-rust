@@ -22,7 +22,7 @@ A basic SaitoRPC request looks like the following:
 
 The MessageName is typically the method which the sender wishes to invoke, e.g. GETBLOCK. The ID is used to match requests to responses, similar to the ID in JSON-RPC.
 
-MessageData is arbirary data whose form depends on the type of message(MessageName).
+MessageData is arbitrary data whose form depends on the type of message(MessageName).
 
 ## MessageName
 
@@ -135,9 +135,11 @@ TODO
 
 */
 
+pub mod api_message;
 pub mod client;
 pub mod filters;
 pub mod handlers;
+pub mod message_types;
 pub mod network;
 pub mod peer;
 pub mod socket;

@@ -12,7 +12,10 @@ use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, Web
 
 use crate::{
     crypto::{hash, sign_blob, verify, SaitoPrivateKey, SaitoPublicKey},
-    networking::network::{APIMessage, HandshakeChallenge, CHALLENGE_SIZE},
+    networking::{
+        api_message::APIMessage, message_types::handshake_challenge::HandshakeChallenge,
+        network::CHALLENGE_SIZE,
+    },
     wallet::Wallet,
 };
 

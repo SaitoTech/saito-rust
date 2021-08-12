@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use futures::{FutureExt, StreamExt};
-// use crate::{Client, Clients};
 
 use serde::Deserialize;
 use std::convert::TryInto;
-//use serde_json::from_str;
 use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
@@ -14,15 +12,17 @@ use crate::{
     blockchain::Blockchain,
     crypto::{hash, verify, SaitoHash, SaitoPublicKey},
     mempool::{AddTransactionResult, Mempool},
-    networking::network::{
-        APIMessage, HandshakeChallenge, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE,
-    },
+    networking::network::{CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE},
     time::create_timestamp,
     transaction::Transaction,
     wallet::Wallet,
 };
 
-use super::peer::{Peer, Peers};
+use super::{
+    api_message::APIMessage,
+    message_types::handshake_challenge::HandshakeChallenge,
+    peer::{Peer, Peers},
+};
 
 #[derive(Deserialize, Debug)]
 pub struct TopicsRequest {
