@@ -1,23 +1,19 @@
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
-use crate::crypto::{sign_blob, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
 use crate::mempool::Mempool;
 use crate::networking::filters::{
     get_block_route_filter, post_block_route_filter, post_transaction_route_filter,
     ws_upgrade_route_filter,
 };
-use crate::time::create_timestamp;
 use crate::wallet::Wallet;
 use tokio::sync::{broadcast, RwLock};
 
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::sync::Arc;
 use warp::{Filter, Rejection};
 
 use super::client::SaitoClient;
 use super::peer::{PeerSetting, Peers};
-use serde::{Deserialize, Serialize};
 
 use config::Config;
 
@@ -26,51 +22,6 @@ pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
 pub type Result<T> = std::result::Result<T, Rejection>;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
-pub struct APIMessage {
-    pub message_name: [u8; 8],
-    pub message_id: u32,
-    pub message_data: Vec<u8>,
-}
-
-impl APIMessage {
-    pub fn new(message_name: &str, message_id: u32, message_data: Vec<u8>) -> APIMessage {
-        APIMessage {
-            message_name: String::from(message_name).as_bytes().try_into().unwrap(),
-            message_id: message_id,
-            message_data: message_data,
-        }
-    }
-    pub fn message_name(&self) -> &[u8; 8] {
-        &self.message_name
-    }
-    pub fn message_name_as_str(&self) -> String {
-        String::from_utf8_lossy(&self.message_name).to_string()
-    }
-    pub fn message_id(&self) -> u32 {
-        self.message_id
-    }
-    pub fn message_data(&self) -> &Vec<u8> {
-        &self.message_data
-    }
-    pub fn deserialize(bytes: &Vec<u8>) -> APIMessage {
-        let message_name: [u8; 8] = bytes[0..8].try_into().unwrap();
-        let message_id: u32 = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
-        let message_data = bytes[12..].try_into().unwrap();
-        APIMessage {
-            message_name: message_name,
-            message_id: message_id,
-            message_data: message_data,
-        }
-    }
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend(&self.message_name);
-        vbytes.extend(&self.message_id.to_be_bytes());
-        vbytes.extend(&self.message_data);
-        vbytes
-    }
-}
 pub struct Network {
     peers: Peers,
     peer_settings: Option<Vec<PeerSetting>>,
@@ -151,127 +102,24 @@ impl Network {
     }
 }
 
-#[serde_with::serde_as]
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct HandshakeChallenge {
-    challenger_ip_address: [u8; 4],
-    challengie_ip_address: [u8; 4],
-    #[serde_as(as = "[_; 33]")]
-    challenger_pubkey: SaitoPublicKey,
-    #[serde_as(as = "[_; 33]")]
-    challengie_pubkey: SaitoPublicKey,
-    timestamp: u64,
-}
-impl HandshakeChallenge {
-    pub fn new(
-        challenger_ip_address: [u8; 4],
-        challengie_ip_address: [u8; 4],
-        challenger_pubkey: SaitoPublicKey,
-        challengie_pubkey: SaitoPublicKey,
-    ) -> HandshakeChallenge {
-        HandshakeChallenge {
-            challenger_ip_address: challenger_ip_address,
-            challengie_ip_address: challengie_ip_address,
-            challenger_pubkey: challenger_pubkey,
-            challengie_pubkey: challengie_pubkey,
-            timestamp: create_timestamp(),
-        }
-    }
-    pub fn deserialize_raw(bytes: &Vec<u8>) -> HandshakeChallenge {
-        let mut challenger_octet: [u8; 4] = [0; 4];
-        challenger_octet[0..4].clone_from_slice(&bytes[0..4]);
-        let mut challengie_octet: [u8; 4] = [0; 4];
-        challengie_octet[0..4].clone_from_slice(&bytes[4..8]);
-
-        let challenger_pubkey: SaitoPublicKey = bytes[8..41].try_into().unwrap();
-        let challengie_pubkey: SaitoPublicKey = bytes[41..74].try_into().unwrap();
-        let timestamp: u64 = u64::from_be_bytes(bytes[74..CHALLENGE_SIZE].try_into().unwrap());
-
-        HandshakeChallenge {
-            challenger_ip_address: challenger_octet,
-            challengie_ip_address: challengie_octet,
-            challenger_pubkey: challenger_pubkey,
-            challengie_pubkey: challengie_pubkey,
-            timestamp: timestamp,
-        }
-    }
-    pub fn deserialize_with_sig(bytes: &Vec<u8>) -> (HandshakeChallenge, SaitoSignature) {
-        let handshake_challenge = HandshakeChallenge::deserialize_raw(bytes);
-        let signature: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
-            .try_into()
-            .unwrap();
-        (handshake_challenge, signature)
-    }
-    pub fn deserialize_with_both_sigs(
-        bytes: &Vec<u8>,
-    ) -> (HandshakeChallenge, SaitoSignature, SaitoSignature) {
-        let handshake_challenge = HandshakeChallenge::deserialize_raw(bytes);
-        let signature1: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
-            .try_into()
-            .unwrap();
-        let signature2: SaitoSignature = bytes[CHALLENGE_SIZE + 64..CHALLENGE_SIZE + 128]
-            .try_into()
-            .unwrap();
-        (handshake_challenge, signature1, signature2)
-    }
-    pub fn serialize_raw(&self) -> Vec<u8> {
-        let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend(&self.challenger_ip_address);
-        vbytes.extend(&self.challengie_ip_address);
-        vbytes.extend(&self.challenger_pubkey);
-        vbytes.extend(&self.challengie_pubkey);
-        vbytes.extend(&self.timestamp.to_be_bytes());
-        vbytes
-    }
-    pub fn serialize_with_sig(&self, privatekey: SaitoPrivateKey) -> Vec<u8> {
-        sign_blob(&mut self.serialize_raw(), privatekey).to_owned()
-    }
-
-    pub fn challenger_ip_address(&self) -> [u8; 4] {
-        self.challenger_ip_address
-    }
-    pub fn challengie_ip_address(&self) -> [u8; 4] {
-        self.challengie_ip_address
-    }
-    pub fn challenger_pubkey(&self) -> SaitoPublicKey {
-        self.challenger_pubkey
-    }
-    pub fn challengie_pubkey(&self) -> SaitoPublicKey {
-        self.challengie_pubkey
-    }
-    pub fn timestamp(&self) -> u64 {
-        self.timestamp
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use std::convert::TryInto;
+
     use super::*;
     use crate::{
-        crypto::{generate_keys, hash, verify, SaitoSignature},
+        crypto::{generate_keys, hash, sign_blob, verify, SaitoSignature},
         mempool::Mempool,
-        networking::filters::ws_upgrade_route_filter,
+        networking::{
+            api_message::APIMessage, filters::ws_upgrade_route_filter,
+            message_types::handshake_challenge::HandshakeChallenge,
+        },
         test_utilities::mocks::make_mock_blockchain,
         transaction::Transaction,
     };
     use secp256k1::PublicKey;
     use warp::ws::Message;
 
-    #[tokio::test]
-    async fn test_challenge_serialize() {
-        let (publickey, privatekey) = generate_keys();
-        let challenge = HandshakeChallenge {
-            challenger_ip_address: [127, 0, 0, 1],
-            challengie_ip_address: [127, 0, 0, 1],
-            challenger_pubkey: publickey,
-            challengie_pubkey: publickey,
-            timestamp: create_timestamp(),
-        };
-        let serialized_challenge = challenge.serialize_with_sig(privatekey);
-        let deserialized_challenge =
-            HandshakeChallenge::deserialize_with_sig(&serialized_challenge);
-        assert_eq!(challenge, deserialized_challenge.0);
-    }
     #[tokio::test]
     async fn test_message_serialize() {
         let api_message = APIMessage {
