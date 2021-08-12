@@ -15,6 +15,7 @@ use std::convert::TryInto;
 use std::sync::Arc;
 use warp::{Filter, Rejection};
 
+use super::client::SaitoClient;
 use super::peer::{PeerSetting, Peers};
 use serde::{Deserialize, Serialize};
 
@@ -52,17 +53,6 @@ impl APIMessage {
     pub fn message_data(&self) -> &Vec<u8> {
         &self.message_data
     }
-    pub fn new_with_data_from_str(
-        message_name: &str,
-        message_id: u32,
-        message_data: &str,
-    ) -> APIMessage {
-        APIMessage {
-            message_name: String::from(message_name).as_bytes().try_into().unwrap(),
-            message_id: message_id,
-            message_data: String::from(message_data).as_bytes().try_into().unwrap(),
-        }
-    }
     pub fn deserialize(bytes: &Vec<u8>) -> APIMessage {
         let message_name: [u8; 8] = bytes[0..8].try_into().unwrap();
         let message_id: u32 = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
@@ -89,9 +79,6 @@ pub struct Network {
 
 impl Network {
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>, settings: Config) -> Network {
-        // let mut settings = config::Config::default();
-        // settings.merge(config::File::with_name("config")).unwrap();
-
         let peer_settings = match settings.get::<Vec<PeerSetting>>("network.peers") {
             Ok(peer_settings) => Some(peer_settings),
             Err(_) => None,
@@ -109,6 +96,7 @@ impl Network {
         &self,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
+        // network_lock: Arc<RwLock<Network>>,
         _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
         _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
     ) -> crate::Result<()> {
@@ -131,9 +119,33 @@ impl Network {
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
             ));
+
+        if let Some(peer_settings) = self.peer_settings() {
+            for peer in peer_settings {
+                let host_string = peer
+                    .host
+                    .iter()
+                    .map(|int| int.to_string())
+                    .collect::<Vec<String>>()
+                    .join(".");
+                let url_string = format!(
+                    "{}{}{}{}{}",
+                    "ws://",
+                    host_string,
+                    ":",
+                    peer.port.to_string(),
+                    "/wsopen"
+                );
+                println!("{:?}", url_string);
+                SaitoClient::new(&url_string[..], self.wallet_lock.clone()).await;
+            }
+        }
+
         warp::serve(routes).run((host, port)).await;
+
         Ok(())
     }
+
     pub fn peer_settings(&self) -> &Option<Vec<PeerSetting>> {
         &self.peer_settings
     }
@@ -329,7 +341,7 @@ mod tests {
 
         assert_eq!(
             deserialize_challenge.0.challenger_ip_address(),
-            [42, 42, 42, 42]
+            [127, 0, 0, 1]
         );
         assert_eq!(
             deserialize_challenge.0.challengie_ip_address(),
@@ -482,6 +494,7 @@ mod tests {
 
         //
         // first confirm the whole blockchain is received when sent zeroed block hash
+        //
         let mut message_bytes: Vec<u8> = vec![];
         message_bytes.extend_from_slice(&[0u8; 32]);
         message_bytes.extend_from_slice(&[0u8; 32]);

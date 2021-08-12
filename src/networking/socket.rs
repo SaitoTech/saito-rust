@@ -45,11 +45,11 @@ async fn peer_msg(
                 if let Ok(serialized_handshake_challenge) =
                     new_handshake_challenge(&api_message, wallet_lock).await
                 {
-                    let api_message_response = APIMessage {
-                        message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
-                        message_id: api_message.message_id,
-                        message_data: serialized_handshake_challenge,
-                    };
+                    let api_message_response = APIMessage::new(
+                        &String::from("RESULT__"),
+                        api_message.message_id,
+                        serialized_handshake_challenge,
+                    );
                     let peers = peers.write().await;
                     let peer = peers.get(&id).unwrap();
                     let _foo = peer
@@ -63,11 +63,11 @@ async fn peer_msg(
         "SHAKCOMP" => {
             tokio::spawn(async move {
                 if let Some(challenge) = socket_handshake_complete(&api_message, wallet_lock) {
-                    let api_message_response = APIMessage {
-                        message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
-                        message_id: api_message.message_id,
-                        message_data: String::from("OK").as_bytes().try_into().unwrap(),
-                    };
+                    let api_message_response = APIMessage::new(
+                        &String::from("RESULT__"),
+                        api_message.message_id,
+                        String::from("OK").as_bytes().try_into().unwrap(),
+                    );
                     let mut peers = peers.write().await;
                     let mut peer = peers.get_mut(&id).unwrap();
                     println!("handshake complete!");
@@ -89,15 +89,11 @@ async fn peer_msg(
                     let api_message_response;
                     match mempool.add_transaction(tx).await {
                         AddTransactionResult::Accepted | AddTransactionResult::Exists => {
-                            api_message_response = APIMessage {
-                                message_name: String::from("RESULT__")
-                                    .as_bytes()
-                                    .try_into()
-                                    .unwrap(),
-                                message_id: message_id,
-                                message_data: String::from("OK").as_bytes().try_into().unwrap(),
-                            };
-
+                            api_message_response = APIMessage::new(
+                                &String::from("RESULT__"),
+                                message_id,
+                                String::from("OK").as_bytes().try_into().unwrap(),
+                            );
                             // the tx is accepted, we will propagate it to all available peers
                             let mut peers = peers.write().await;
                             peers.retain(|&k, _| k != id);
@@ -111,24 +107,18 @@ async fn peer_msg(
                             }
                         }
                         AddTransactionResult::Invalid => {
-                            api_message_response = APIMessage {
-                                message_name: String::from("ERROR___")
-                                    .as_bytes()
-                                    .try_into()
-                                    .unwrap(),
-                                message_id: message_id,
-                                message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
-                            };
+                            api_message_response = APIMessage::new(
+                                &String::from("ERROR___"),
+                                message_id,
+                                String::from("Invalid").as_bytes().try_into().unwrap(),
+                            );
                         }
                         AddTransactionResult::Rejected => {
-                            api_message_response = APIMessage {
-                                message_name: String::from("ERROR___")
-                                    .as_bytes()
-                                    .try_into()
-                                    .unwrap(),
-                                message_id: message_id,
-                                message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
-                            };
+                            api_message_response = APIMessage::new(
+                                &String::from("ERROR___"),
+                                message_id,
+                                String::from("Rejected").as_bytes().try_into().unwrap(),
+                            );
                         }
                     }
 
@@ -149,18 +139,14 @@ async fn peer_msg(
                 let api_message_response;
 
                 if let Some(bytes) = socket_send_blockchain(api_message, blockchain_lock).await {
-                    println!("OUR BYTES: {:?}", bytes);
-                    api_message_response = APIMessage {
-                        message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
-                        message_id: message_id,
-                        message_data: bytes,
-                    };
+                    api_message_response =
+                        APIMessage::new(&String::from("RESULT__"), message_id, bytes);
                 } else {
-                    api_message_response = APIMessage {
-                        message_name: String::from("ERROR___").as_bytes().try_into().unwrap(),
-                        message_id: message_id,
-                        message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
-                    };
+                    api_message_response = APIMessage::new(
+                        &String::from("ERROR___"),
+                        message_id,
+                        String::from("ERROR").as_bytes().try_into().unwrap(),
+                    );
                 }
 
                 let mut peers = peers.write().await;
@@ -183,17 +169,14 @@ async fn peer_msg(
                 let message_id = api_message.message_id;
                 let api_message_response;
                 if let Some(bytes) = socket_send_block_header(api_message, blockchain_lock).await {
-                    api_message_response = APIMessage {
-                        message_name: String::from("RESULT__").as_bytes().try_into().unwrap(),
-                        message_id: message_id,
-                        message_data: bytes,
-                    };
+                    api_message_response =
+                        APIMessage::new(&String::from("RESULT__"), message_id, bytes);
                 } else {
-                    api_message_response = APIMessage {
-                        message_name: String::from("ERROR___").as_bytes().try_into().unwrap(),
-                        message_id: message_id,
-                        message_data: String::from("ERROR").as_bytes().try_into().unwrap(),
-                    };
+                    api_message_response = APIMessage::new(
+                        &String::from("ERROR___"),
+                        message_id,
+                        String::from("ERROR").as_bytes().try_into().unwrap(),
+                    );
                 }
 
                 let mut peers = peers.write().await;
@@ -300,7 +283,7 @@ pub async fn new_handshake_challenge(
     let peer_pubkey: SaitoPublicKey = message.message_data[4..37].try_into().unwrap();
 
     // TODO configure the node's IP somewhere...
-    let my_octets: [u8; 4] = [42, 42, 42, 42];
+    let my_octets: [u8; 4] = [127, 0, 0, 1];
 
     // TODO get the IP of this socket connection somehow and validate it..
     // let peer_octets: [u8; 4] = match addr.unwrap().ip() {
