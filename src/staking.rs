@@ -365,15 +365,15 @@ mod tests {
     use super::*;
     use crate::test_utilities::mocks::make_mock_block_with_info;
     use crate::{
-        block::Block,
-	golden_ticket::GoldenTicket,
+	blockchain::Blockchain,
 	miner::Miner,
 	slip::{Slip, SlipType},
+	time::{create_timestamp},
 	transaction::Transaction,
+	wallet::Wallet,
     };
-    use std::sync::Arc;
-    use tokio::sync::{broadcast, mpsc, RwLock};
-
+    use tokio::sync::{RwLock};
+    use std::{sync::Arc};
 
     #[test]
     fn staking_table_test() {
@@ -427,7 +427,7 @@ mod tests {
         let mut latest_block_id: u64;
         let mut latest_block_hash = [0; 32];
         let mut latest_block_difficulty: u64;
-        let mut miner = Miner::new(wallet_lock.clone());
+        let miner = Miner::new(wallet_lock.clone());
 
         {
             let wallet = wallet_lock.read().await;
@@ -519,7 +519,7 @@ mod tests {
 	//
 	// TEST STAKER PAID
 	//
-        let mut blockchain = blockchain_lock.write().await;
+        let blockchain = blockchain_lock.write().await;
 	let blk = blockchain.get_block(latest_block_hash).await;
 
 

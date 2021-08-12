@@ -875,7 +875,7 @@ impl Block {
 			// if we were paying them from THIS loop of the blockchain rather than the
 			// average amount.
 			cv.staking_treasury = previous_staker_payment as i64;
-
+println!("setting staker treasury as: {}", cv.staking_treasury);
 
 			//
 			// next_random_number
@@ -893,6 +893,7 @@ impl Block {
 
 			    // remove from staking treasury as we are paying out
 			    cv.staking_treasury -= staker_slip.get_amount() as i64;
+println!("setting staker treasury as 2: {}", cv.staking_treasury);
 
                 	    output3.set_slip_type(SlipType::StakerOutput);
                 	    output3.set_slip_ordinal(slip_ordinal_to_apply);
@@ -1180,9 +1181,12 @@ println!("rannum4: {:?}", rp.random_number);
 	    //
 	    let mut adjusted_staking_treasury = previous_block.get_staking_treasury();
 	    if cv.staking_treasury < 0 {
-	        adjusted_staking_treasury -= (cv.staking_treasury * -1) as u64;
-	    } else {
-	        adjusted_staking_treasury += cv.staking_treasury as u64;
+		let x = cv.staking_treasury * -1;
+		if adjusted_staking_treasury > x as u64 {
+	            adjusted_staking_treasury -= x as u64;
+		} else {
+	            adjusted_staking_treasury = 0;
+		}
 	    }
 	    if self.get_staking_treasury() != adjusted_staking_treasury {
                 println!(
@@ -1540,7 +1544,12 @@ println!("rannum4: {:?}", rp.random_number);
         if cv.staking_treasury != 0 {
 	    let mut adjusted_staking_treasury = previous_block_staking_treasury;
 	    if cv.staking_treasury < 0 {
-	        adjusted_staking_treasury -= (cv.staking_treasury * -1) as u64;
+		let x = cv.staking_treasury * -1;
+		if adjusted_staking_treasury > x as u64 {
+	            adjusted_staking_treasury -= x as u64;
+		} else {
+	            adjusted_staking_treasury = 0;
+		}
 	    } else {
 	        adjusted_staking_treasury += cv.staking_treasury as u64;
 	    }
