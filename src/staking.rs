@@ -482,15 +482,7 @@ mod tests {
 	let mut current_timestamp = create_timestamp();
 	let mut block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 10, 0, false).await;
         latest_block_hash = block.get_hash();
-
-        //
-        // add to blockchain
-        //
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
-        }
-
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
 
 	//
 	// BLOCK 2
@@ -498,15 +490,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 120000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, false).await;
         latest_block_hash = block.get_hash();
-
-        //
-        // add to blockchain
-        //
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
-        }
-
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
 
 	//
 	// BLOCK 3
@@ -514,15 +498,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 240000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, true).await;
         latest_block_hash = block.get_hash();
-
-        //
-        // add to blockchain
-        //
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
-        }
-
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
 
 	//
 	// BLOCK 4
@@ -530,15 +506,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 360000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, false).await;
         latest_block_hash = block.get_hash();
-
-        //
-        // add to blockchain
-        //
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
-        }
-
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
 
 	//
 	// BLOCK 5
@@ -546,14 +514,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 480000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, true).await;
         latest_block_hash = block.get_hash();
-
-        //
-        // add to blockchain
-        //
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
-        }
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
 
 
 

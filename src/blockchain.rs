@@ -289,6 +289,11 @@ impl Blockchain {
             }
         }
     }
+    pub async fn add_block_to_blockchain(blockchain_lock : Arc<RwLock<Blockchain>>, block: Block) {
+        let mut blockchain = blockchain_lock.write().await;
+        return blockchain.add_block(block).await;
+    }
+
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
