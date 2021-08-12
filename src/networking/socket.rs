@@ -72,7 +72,7 @@ async fn peer_msg(
                     let mut peer = peers.get_mut(&id).unwrap();
                     println!("handshake complete!");
                     peer.has_handshake = true;
-                    peer.pubkey = Some(challenge.challengie_pubkey());
+                    peer.pubkey = Some(challenge.opponent_pubkey());
                     let _foo = peer
                         .sender
                         .as_ref()
@@ -291,7 +291,10 @@ pub async fn new_handshake_challenge(
     //     _ => panic!("Saito Handshake does not support IPV6"),
     // };
 
-    let challenge = HandshakeChallenge::new(my_octets, peer_octets, my_pubkey, peer_pubkey);
+    let challenge = HandshakeChallenge::new(
+        (my_octets, my_pubkey),
+        (peer_octets, peer_pubkey)
+    );
     let serialized_challenge = challenge.serialize_with_sig(my_privkey);
 
     Ok(serialized_challenge)
@@ -301,25 +304,25 @@ pub fn socket_handshake_complete(
     message: &APIMessage,
     _wallet_lock: Arc<RwLock<Wallet>>,
 ) -> Option<HandshakeChallenge> {
-    let (challenge, my_sig, their_sig) =
-        HandshakeChallenge::deserialize_with_both_sigs(&message.message_data());
+    // let (challenge, my_sig, their_sig) =
+    let challenge = HandshakeChallenge::deserialize(&message.message_data());
     if challenge.timestamp() < create_timestamp() - CHALLENGE_EXPIRATION_TIME {
         println!("Error validating timestamp for handshake complete");
         return None;
     }
     if !verify(
         &hash(&message.message_data[..CHALLENGE_SIZE + 64].to_vec()),
-        their_sig,
-        challenge.challengie_pubkey(),
+        challenge.opponent_sig().unwrap(),
+        challenge.opponent_pubkey(),
     ) {
         // TODO figure out how to return more meaningful errors from Warp and replace all the warp::reject
         // return Err("ERROR WITH SIG VALIDATION");
-        println!("Error with validating challengie sig");
+        println!("Error with validating opponent sig");
         return None;
     }
     if !verify(
         &hash(&message.message_data[..CHALLENGE_SIZE].to_vec()),
-        my_sig,
+        challenge.challenger_sig().unwrap(),
         challenge.challenger_pubkey(),
     ) {
         // TODO figure out how to return more meaningful errors from Warp and replace all the warp::reject

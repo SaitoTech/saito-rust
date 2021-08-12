@@ -6,132 +6,117 @@ use std::convert::TryInto;
 
 #[derive(Debug, PartialEq)]
 pub struct HandshakeChallenge {
-    challenger_ip_address: [u8; 4],
-    challengie_ip_address: [u8; 4],
-    challenger_pubkey: SaitoPublicKey,
-    challengie_pubkey: SaitoPublicKey,
-    timestamp: u64,
-    challenger_sig: Option<SaitoSignature>,
-    challengie_sig: Option<SaitoSignature>,
+    pub challenger_node: HandshakeNode,
+    pub opponent_node: HandshakeNode,
+    pub timestamp: u64
 }
+
+#[derive(Debug, PartialEq)]
+pub struct HandshakeNode{
+    pub ip_address: [u8; 4],
+    pub public_key: SaitoPublicKey,
+    pub sig: Option<SaitoSignature>,
+}
+
 impl HandshakeChallenge {
     pub fn new(
-        challenger_ip_address: [u8; 4],
-        challengie_ip_address: [u8; 4],
-        challenger_pubkey: SaitoPublicKey,
-        challengie_pubkey: SaitoPublicKey,
-    ) -> HandshakeChallenge {
-        HandshakeChallenge {
-            challenger_ip_address: challenger_ip_address,
-            challengie_ip_address: challengie_ip_address,
-            challenger_pubkey: challenger_pubkey,
-            challengie_pubkey: challengie_pubkey,
-            timestamp: create_timestamp(),
-            challenger_sig: None,
-            challengie_sig: None,
+        (challenger_ip_address, challenger_public_key): ([u8; 4], SaitoPublicKey),
+        (opponent_ip_adress, opponent_public_key): ([u8; 4], SaitoPublicKey),
+    ) -> Self {
+        Self {
+            challenger_node: HandshakeNode {
+                ip_address: challenger_ip_address,
+                public_key: challenger_public_key,
+                sig: None
+            },
+            opponent_node: HandshakeNode {
+                ip_address: opponent_ip_adress,
+                public_key: opponent_public_key,
+                sig: None
+            },
+            timestamp: create_timestamp()
         }
     }
-    // pub fn deserialize_raw(bytes: &Vec<u8>) -> HandshakeChallenge {
-    //     let mut challenger_octet: [u8; 4] = [0; 4];
-    //     challenger_octet[0..4].clone_from_slice(&bytes[0..4]);
-    //     let mut challengie_octet: [u8; 4] = [0; 4];
-    //     challengie_octet[0..4].clone_from_slice(&bytes[4..8]);
 
-    //     let challenger_pubkey: SaitoPublicKey = bytes[8..41].try_into().unwrap();
-    //     let challengie_pubkey: SaitoPublicKey = bytes[41..74].try_into().unwrap();
-    //     let timestamp: u64 = u64::from_be_bytes(bytes[74..CHALLENGE_SIZE].try_into().unwrap());
-
-    //     HandshakeChallenge {
-    //         challenger_ip_address: challenger_octet,
-    //         challengie_ip_address: challengie_octet,
-    //         challenger_pubkey: challenger_pubkey,
-    //         challengie_pubkey: challengie_pubkey,
-    //         timestamp: timestamp,
-
-    //         challenger_sig: None,
-    //         challengie_sig: None,
-    //     }
-    // }
-    // pub fn deserialize_with_sig(bytes: &Vec<u8>) -> (HandshakeChallenge, SaitoSignature) {
-    //     let handshake_challenge = HandshakeChallenge::deserialize_raw(bytes);
-    //     let signature: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
-    //         .try_into()
-    //         .unwrap();
-    //     (handshake_challenge, signature)
-    // }
-    // pub fn deserialize_with_both_sigs(
-    //     bytes: &Vec<u8>,
-    // ) -> (HandshakeChallenge, SaitoSignature, SaitoSignature) {
-    //     let handshake_challenge = HandshakeChallenge::deserialize_raw(bytes);
-    //     let signature1: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
-    //         .try_into()
-    //         .unwrap();
-    //     let signature2: SaitoSignature = bytes[CHALLENGE_SIZE + 64..CHALLENGE_SIZE + 128]
-    //         .try_into()
-    //         .unwrap();
-    //     (handshake_challenge, signature1, signature2)
-    // }
-
-    pub fn deserialize(
-        bytes: &Vec<u8>,
-    ) -> HandshakeChallenge {
-
-
+    pub fn deserialize(bytes: &Vec<u8>) -> HandshakeChallenge {
         let mut challenger_octet: [u8; 4] = [0; 4];
         challenger_octet[0..4].clone_from_slice(&bytes[0..4]);
-        let mut challengie_octet: [u8; 4] = [0; 4];
-        challengie_octet[0..4].clone_from_slice(&bytes[4..8]);
+        let mut opponent_octet: [u8; 4] = [0; 4];
+        opponent_octet[0..4].clone_from_slice(&bytes[4..8]);
 
         let challenger_pubkey: SaitoPublicKey = bytes[8..41].try_into().unwrap();
-        let challengie_pubkey: SaitoPublicKey = bytes[41..74].try_into().unwrap();
+        let opponent_pubkey: SaitoPublicKey = bytes[41..74].try_into().unwrap();
         let timestamp: u64 = u64::from_be_bytes(bytes[74..CHALLENGE_SIZE].try_into().unwrap());
 
-        let handshake_challenge = HandshakeChallenge {
-            challenger_ip_address: challenger_octet,
-            challengie_ip_address: challengie_octet,
-            challenger_pubkey: challenger_pubkey,
-            challengie_pubkey: challengie_pubkey,
-            timestamp: timestamp,
-            challenger_sig: None,
-            challengie_sig: None,
-        };
+        let mut handshake_challenge = HandshakeChallenge::new(
+            (challenger_octet, challenger_pubkey),
+            (opponent_octet, opponent_pubkey),
+        );
+
+        handshake_challenge.set_timestamp(timestamp);
+
         if bytes.len() > CHALLENGE_SIZE {
-            handshake_challenge.challenger_sig = Some(bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64].try_into().unwrap());
+            handshake_challenge.set_challenger_sig(Some(bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64].try_into().unwrap()));
         }
 
         if bytes.len() > CHALLENGE_SIZE + 64 {
-            handshake_challenge.challengie_sig = Some(bytes[CHALLENGE_SIZE + 64..CHALLENGE_SIZE + 128].try_into().unwrap());
+            handshake_challenge.set_opponent_sig(Some(bytes[CHALLENGE_SIZE + 64..CHALLENGE_SIZE + 128].try_into().unwrap()));
         }
         handshake_challenge
     }
 
     pub fn serialize_raw(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
-        vbytes.extend(&self.challenger_ip_address);
-        vbytes.extend(&self.challengie_ip_address);
-        vbytes.extend(&self.challenger_pubkey);
-        vbytes.extend(&self.challengie_pubkey);
+        vbytes.extend(&self.challenger_node.ip_address);
+        vbytes.extend(&self.opponent_node.ip_address);
+        vbytes.extend(&self.challenger_node.public_key);
+        vbytes.extend(&self.opponent_node.public_key);
         vbytes.extend(&self.timestamp.to_be_bytes());
         vbytes
     }
+
     pub fn serialize_with_sig(&self, privatekey: SaitoPrivateKey) -> Vec<u8> {
         sign_blob(&mut self.serialize_raw(), privatekey).to_owned()
     }
 
     pub fn challenger_ip_address(&self) -> [u8; 4] {
-        self.challenger_ip_address
+        self.challenger_node.ip_address
     }
-    pub fn challengie_ip_address(&self) -> [u8; 4] {
-        self.challengie_ip_address
+
+    pub fn opponent_ip_address(&self) -> [u8; 4] {
+        self.opponent_node.ip_address
     }
+
     pub fn challenger_pubkey(&self) -> SaitoPublicKey {
-        self.challenger_pubkey
+        self.challenger_node.public_key
     }
-    pub fn challengie_pubkey(&self) -> SaitoPublicKey {
-        self.challengie_pubkey
+
+    pub fn opponent_pubkey(&self) -> SaitoPublicKey {
+        self.opponent_node.public_key
     }
+
+    pub fn challenger_sig(&self) -> Option<SaitoSignature> {
+        self.challenger_node.sig
+    }
+
+    pub fn opponent_sig(&self) -> Option<SaitoSignature> {
+        self.opponent_node.sig
+    }
+
     pub fn timestamp(&self) -> u64 {
         self.timestamp
+    }
+
+    pub fn set_timestamp(&mut self, timestamp: u64) {
+        self.timestamp = timestamp;
+    }
+
+    pub fn set_challenger_sig(&mut self, sig: Option<SaitoSignature>) {
+        self.challenger_node.sig = sig
+    }
+
+    pub fn set_opponent_sig(&mut self, sig: Option<SaitoSignature>) {
+        self.opponent_node.sig = sig
     }
 }
 
@@ -145,17 +130,20 @@ mod tests {
     #[tokio::test]
     async fn test_challenge_serialize() {
         let (publickey, privatekey) = generate_keys();
-        let challenge = HandshakeChallenge::new([127, 0, 0, 1],[127, 0, 0, 1],publickey, publickey);
-        //  {
-        //     challenger_ip_address: [127, 0, 0, 1],
-        //     challengie_ip_address: [127, 0, 0, 1],
-        //     challenger_pubkey: publickey,
-        //     challengie_pubkey: publickey,
-        //     timestamp: create_timestamp(),
-        // };
+        let challenge = HandshakeChallenge::new(
+            ([127, 0, 0, 1], publickey),
+            ([127, 0, 0, 1], publickey)
+        );
+
         let serialized_challenge = challenge.serialize_with_sig(privatekey);
-        let deserialized_challenge =
-            HandshakeChallenge::deserialize_with_sig(&serialized_challenge);
-        assert_eq!(challenge, deserialized_challenge.0);
+        let deserialized_challenge = HandshakeChallenge::deserialize(&serialized_challenge);
+
+        assert_eq!(challenge.challenger_ip_address(), deserialized_challenge.challenger_ip_address());
+        assert_eq!(challenge.challenger_ip_address(), deserialized_challenge.challenger_ip_address());
+
+        assert_eq!(challenge.challenger_pubkey(), deserialized_challenge.challenger_pubkey());
+        assert_eq!(challenge.opponent_pubkey(), deserialized_challenge.opponent_pubkey());
+
+        assert_eq!(challenge.timestamp, deserialized_challenge.timestamp);
     }
 }

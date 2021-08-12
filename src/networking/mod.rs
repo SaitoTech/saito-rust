@@ -79,17 +79,17 @@ Serialized Handshake:
 
 ```bytes
     challenger_ip_address   4 bytes(IP as 4 bytes)
-    challengie_ip_address   4 bytes(IP as 4 bytes)
+    opponent_ip_address   4 bytes(IP as 4 bytes)
     challenger_pubkey       33 bytes(SECP256k1 compact form)
-    challengie_pubkey       33 bytes(SECP256k1 compact form)
+    opponent_pubkey       33 bytes(SECP256k1 compact form)
     timestamp               8 bytes(big-endian u64),
     challenger_sig          64 bytes(SECP256k1 signature)
-    challengie_sig          64 bytes(SECP256k1 signature)(optional)
+    opponent_sig          64 bytes(SECP256k1 signature)(optional)
 ```
 
 ### SHAKCOMP
 
-The challengie must sign the handshakeinit payload. I.E. sign the entire blob and append the sig(challengie_sig) to it.
+The opponent must sign the handshakeinit payload. I.E. sign the entire blob and append the sig(opponent_sig) to it.
 
 The wallet CLI can be used to produce a signed challenge.
 

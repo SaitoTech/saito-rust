@@ -180,7 +180,7 @@ mod tests {
         assert_eq!(index, 42);
 
         let deserialize_challenge =
-            HandshakeChallenge::deserialize_with_sig(&resp.as_bytes()[12..].to_vec());
+            HandshakeChallenge::deserialize(&resp.as_bytes()[12..].to_vec());
         let raw_challenge: [u8; CHALLENGE_SIZE] =
             resp.as_bytes()[12..][..CHALLENGE_SIZE].try_into().unwrap();
         let sig: SaitoSignature = resp.as_bytes()[12..][CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
@@ -188,18 +188,18 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            deserialize_challenge.0.challenger_ip_address(),
+            deserialize_challenge.challenger_ip_address(),
             [127, 0, 0, 1]
         );
         assert_eq!(
-            deserialize_challenge.0.challengie_ip_address(),
+            deserialize_challenge.opponent_ip_address(),
             [127, 0, 0, 1]
         );
-        assert_eq!(deserialize_challenge.0.challengie_pubkey(), publickey);
+        assert_eq!(deserialize_challenge.opponent_pubkey(), publickey);
         assert!(verify(
             &hash(&raw_challenge.to_vec()),
             sig,
-            deserialize_challenge.0.challenger_pubkey()
+            deserialize_challenge.challenger_pubkey()
         ));
 
         let signed_challenge =

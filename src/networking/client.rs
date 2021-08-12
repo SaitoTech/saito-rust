@@ -13,7 +13,8 @@ use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, Web
 use crate::{
     crypto::{hash, sign_blob, verify, SaitoPrivateKey, SaitoPublicKey},
     networking::{
-        api_message::APIMessage, message_types::handshake_challenge::HandshakeChallenge,
+        api_message::APIMessage,
+        message_types::handshake_challenge::HandshakeChallenge,
         network::CHALLENGE_SIZE,
     },
     wallet::Wallet,
@@ -104,12 +105,15 @@ impl SaitoClient {
             }
         }
     }
+
     async fn handle_response(&mut self, command_name: [u8; 8], response_api_message: &APIMessage) {
         match String::from_utf8_lossy(&command_name).to_string().as_ref() {
             "SHAKINIT" => {
                 println!("GOT SHAKINIT RESPONSE");
-                let (deserialize_challenge, signature) =
-                    HandshakeChallenge::deserialize_with_sig(&response_api_message.message_data);
+                // let deserialize_challenge, signature) =
+                let deserialize_challenge =
+                    HandshakeChallenge::deserialize(&response_api_message.message_data);
+                let signature = deserialize_challenge.opponent_node.sig.unwrap();
                 let raw_challenge: [u8; CHALLENGE_SIZE] = response_api_message.message_data
                     [..CHALLENGE_SIZE]
                     .try_into()
@@ -120,7 +124,7 @@ impl SaitoClient {
                 let sig_is_valid = verify(
                     &hash(&raw_challenge.to_vec()),
                     signature,
-                    deserialize_challenge.challengie_pubkey(),
+                    deserialize_challenge.opponent_node.public_key,
                 );
                 if !sig_is_valid {
                     println!("Invalid signature sent in SHAKINIT");
