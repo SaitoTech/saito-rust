@@ -204,7 +204,7 @@ async fn peer_msg(
                 let _message_id = api_message.message_id;
             });
         }
-        "SNDKYCHN" => {
+        "SNDKYLST" => {
             tokio::spawn(async move {
                 let _message_id = api_message.message_id;
             });
