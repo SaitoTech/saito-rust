@@ -153,6 +153,9 @@
 <span id="151">151</span>
 <span id="152">152</span>
 <span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">convert::TryInto</span>};
 
@@ -168,7 +171,10 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">sign_blob</span>, <span class="ident">verify</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>},
-    <span class="ident">networking::network</span>::{<span class="ident">APIMessage</span>, <span class="ident">HandshakeChallenge</span>, <span class="ident">CHALLENGE_SIZE</span>},
+    <span class="ident">networking</span>::{
+        <span class="ident">api_message::APIMessage</span>, <span class="ident">message_types::handshake_challenge::HandshakeChallenge</span>,
+        <span class="ident">network::CHALLENGE_SIZE</span>,
+    },
     <span class="ident">wallet::Wallet</span>,
 };
 

@@ -386,11 +386,9 @@
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">FutureExt</span>, <span class="ident">StreamExt</span>};
-<span class="comment">// use crate::{Client, Clients};</span>
 
 <span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
-<span class="comment">//use serde_json::from_str;</span>
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">tokio_stream::wrappers::UnboundedReceiverStream</span>;
 <span class="kw">use</span> <span class="ident">warp::ws</span>::{<span class="ident">Message</span>, <span class="ident">WebSocket</span>};
@@ -399,15 +397,17 @@
     <span class="ident">blockchain::Blockchain</span>,
     <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">verify</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>},
     <span class="ident">mempool</span>::{<span class="ident">AddTransactionResult</span>, <span class="ident">Mempool</span>},
-    <span class="ident">networking::network</span>::{
-        <span class="ident">APIMessage</span>, <span class="ident">HandshakeChallenge</span>, <span class="ident">CHALLENGE_EXPIRATION_TIME</span>, <span class="ident">CHALLENGE_SIZE</span>,
-    },
+    <span class="ident">networking::network</span>::{<span class="ident">CHALLENGE_EXPIRATION_TIME</span>, <span class="ident">CHALLENGE_SIZE</span>},
     <span class="ident">time::create_timestamp</span>,
     <span class="ident">transaction::Transaction</span>,
     <span class="ident">wallet::Wallet</span>,
 };
 
-<span class="kw">use</span> <span class="kw">super</span><span class="ident">::peer</span>::{<span class="ident">Peer</span>, <span class="ident">Peers</span>};
+<span class="kw">use</span> <span class="kw">super</span>::{
+    <span class="ident">api_message::APIMessage</span>,
+    <span class="ident">message_types::handshake_challenge::HandshakeChallenge</span>,
+    <span class="ident">peer</span>::{<span class="ident">Peer</span>, <span class="ident">Peers</span>},
+};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TopicsRequest</span> {

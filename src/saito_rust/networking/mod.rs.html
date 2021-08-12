@@ -143,6 +143,8 @@
 <span id="141">141</span>
 <span id="142">142</span>
 <span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 
@@ -168,7 +170,7 @@ A basic SaitoRPC request looks like the following:
 
 The MessageName is typically the method which the sender wishes to invoke, e.g. GETBLOCK. The ID is used to match requests to responses, similar to the ID in JSON-RPC.
 
-MessageData is arbirary data whose form depends on the type of message(MessageName).
+MessageData is arbitrary data whose form depends on the type of message(MessageName).
 
 ## MessageName
 
@@ -281,9 +283,11 @@ TODO
 
 */</span>
 
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">api_message</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">client</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">filters</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">handlers</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">message_types</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">network</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">peer</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">socket</span>;
