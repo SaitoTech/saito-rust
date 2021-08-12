@@ -67,8 +67,6 @@ impl Consensus {
         //
         let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
 
-
-
         let matches = App::new("Saito Runtime")
             .about("Runs a Saito Node")
             .arg(
@@ -97,11 +95,13 @@ impl Consensus {
 
         let config_name = match matches.value_of("config") {
             Some(name) => name,
-            None => "config"
+            None => "config",
         };
 
         let mut settings = config::Config::default();
-        settings.merge(config::File::with_name(config_name)).unwrap();
+        settings
+            .merge(config::File::with_name(config_name))
+            .unwrap();
 
         let key_path = matches.value_of("key_path").unwrap();
         let password = matches.value_of("password");
@@ -175,15 +175,6 @@ impl Consensus {
                 }
             }
         }
-        // }
-
-        //let _storage = Storage::new();
-
-        // storage.load_blocks_from_disk(blockchain_lock.clone()).await;
-
-        //let _storage = Storage::new();
-
-        // storage.load_blocks_from_disk(blockchain_lock.clone()).await;
 
         Ok(())
     }

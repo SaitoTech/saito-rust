@@ -15,8 +15,8 @@ use std::convert::TryInto;
 use std::sync::Arc;
 use warp::{Filter, Rejection};
 
-use super::peer::{PeerSetting, Peers};
 use super::client::SaitoClient;
+use super::peer::{PeerSetting, Peers};
 use serde::{Deserialize, Serialize};
 
 use config::Config;
@@ -122,12 +122,20 @@ impl Network {
 
         if let Some(peer_settings) = self.peer_settings() {
             for peer in peer_settings {
-                let host_string = peer.host
+                let host_string = peer
+                    .host
                     .iter()
                     .map(|int| int.to_string())
                     .collect::<Vec<String>>()
                     .join(".");
-                let url_string = format!("{}{}{}{}{}", "ws://", host_string, ":", peer.port.to_string(), "/wsopen");
+                let url_string = format!(
+                    "{}{}{}{}{}",
+                    "ws://",
+                    host_string,
+                    ":",
+                    peer.port.to_string(),
+                    "/wsopen"
+                );
                 println!("{:?}", url_string);
                 SaitoClient::new(&url_string[..], self.wallet_lock.clone()).await;
             }
@@ -308,7 +316,7 @@ mod tests {
                 .serialize()
                 .to_vec(),
         );
-        let api_message = APIMessage::new("SHAKINIT", 0, message_data);
+        let api_message = APIMessage::new("SHAKINIT", 42, message_data);
 
         let serialized_api_message = api_message.serialize();
 
@@ -333,7 +341,7 @@ mod tests {
 
         assert_eq!(
             deserialize_challenge.0.challenger_ip_address(),
-            [42, 42, 42, 42]
+            [127, 0, 0, 1]
         );
         assert_eq!(
             deserialize_challenge.0.challengie_ip_address(),
