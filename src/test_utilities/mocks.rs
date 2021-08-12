@@ -3,7 +3,7 @@ use crate::blockchain::Blockchain;
 use crate::miner::Miner;
 use crate::golden_ticket::GoldenTicket;
 use crate::burnfee::BurnFee;
-use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey};
+use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey, SaitoPrivateKey};
 use crate::slip::{Slip, SlipType};
 use crate::time::{create_timestamp};
 use crate::transaction::Transaction;
@@ -92,12 +92,17 @@ pub async fn make_mock_tx(wallet_mutex: Arc<RwLock<Wallet>>) -> Transaction {
 
 
 
-pub async fn make_mock_block_with_info(blockchain_lock : Arc<RwLock<Blockchain>>, wallet_lock : Arc<RwLock<Wallet>>, publickey : SaitoPublicKey, last_block_hash : SaitoHash, transactions : Vec<Transaction> , timestamp: u64 , vip_transactions : usize , normal_transactions : usize , golden_ticket : bool) -> Block {
+pub async fn make_mock_block_with_info(blockchain_lock : Arc<RwLock<Blockchain>>, wallet_lock : Arc<RwLock<Wallet>>, publickey : SaitoPublicKey, last_block_hash : SaitoHash, timestamp: u64 , vip_transactions : usize , normal_transactions : usize , golden_ticket : bool) -> Block {
 
         let mut transactions: Vec<Transaction> = vec![];
         let mut miner = Miner::new(wallet_lock.clone());
 	let blockchain = blockchain_lock.read().await;
+	let privatekey : SaitoPrivateKey;
 
+	{
+	    let wallet = wallet_lock.read().await;
+	    privatekey = wallet.get_privatekey();
+	}
 
 	for i in 0..vip_transactions {
             let mut tx = Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
@@ -106,6 +111,14 @@ pub async fn make_mock_block_with_info(blockchain_lock : Arc<RwLock<Blockchain>>
 	}
 
 	for i in 0..normal_transactions {
+
+            let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), publickey, 5000, 5000).await;
+
+            // sign ...
+            transaction.sign(privatekey);
+	    transaction.generate_metadata(publickey);
+            transactions.push(transaction);
+
 	}
 
 	if golden_ticket {
