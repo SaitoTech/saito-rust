@@ -123,6 +123,88 @@ pub enum BlockType {
 
 #[serde_with::serde_as]
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct BlockHeader {
+    id: u64,
+    timestamp: u64,
+    previous_block_hash: [u8; 32],
+    #[serde_as(as = "[_; 33]")]
+    creator: [u8; 33],
+    merkle_root: [u8; 32],
+    #[serde_as(as = "[_; 64]")]
+    signature: [u8; 64],
+    treasury: u64,
+    burnfee: u64,
+    difficulty: u64,
+}
+
+impl BlockHeader {
+    #[allow(clippy::clippy::new_without_default)]
+    pub fn new(
+        id: u64,
+        timestamp: u64,
+        previous_block_hash: SaitoHash,
+        creator: SaitoPublicKey,
+        merkle_root: SaitoHash,
+        signature: SaitoSignature,
+        treasury: u64,
+        burnfee: u64,
+        difficulty: u64,
+    ) -> Self {
+        Self {
+            id,
+            timestamp,
+            previous_block_hash,
+            creator,
+            merkle_root,
+            signature,
+            treasury,
+            burnfee,
+            difficulty,
+        }
+    }
+
+    pub fn serialize_for_net(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.id.to_be_bytes());
+        vbytes.extend(&self.timestamp.to_be_bytes());
+        vbytes.extend(&self.previous_block_hash);
+        vbytes.extend(&self.creator);
+        vbytes.extend(&self.merkle_root);
+        vbytes.extend(&self.signature);
+        vbytes.extend(&self.treasury.to_be_bytes());
+        vbytes.extend(&self.burnfee.to_be_bytes());
+        vbytes.extend(&self.difficulty.to_be_bytes());
+        vbytes
+    }
+
+    pub fn deserialize_for_net(bytes: Vec<u8>) -> BlockHeader {
+        let id: u64 = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
+        let timestamp: u64 = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
+        let previous_block_hash: SaitoHash = bytes[20..52].try_into().unwrap();
+        let creator: SaitoPublicKey = bytes[52..85].try_into().unwrap();
+        let merkle_root: SaitoHash = bytes[85..117].try_into().unwrap();
+        let signature: SaitoSignature = bytes[117..181].try_into().unwrap();
+
+        let treasury: u64 = u64::from_be_bytes(bytes[181..189].try_into().unwrap());
+        let burnfee: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
+        let difficulty: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
+
+        BlockHeader::new(
+            id,
+            timestamp,
+            previous_block_hash,
+            creator,
+            merkle_root,
+            signature,
+            treasury,
+            burnfee,
+            difficulty,
+        )
+    }
+}
+
+#[serde_with::serde_as]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
     /// Consensus Level Variables
     id: u64,
@@ -199,6 +281,20 @@ impl Block {
             rebroadcast_hash: [0; 32],
             filename: String::new(),
             block_type: BlockType::Full,
+        }
+    }
+
+    pub fn get_header(&self) -> BlockHeader {
+        BlockHeader {
+            id: self.id,
+            timestamp: self.timestamp,
+            previous_block_hash: self.previous_block_hash,
+            creator: self.creator,
+            merkle_root: self.merkle_root,
+            signature: self.signature,
+            treasury: self.treasury,
+            burnfee: self.burnfee,
+            difficulty: self.difficulty,
         }
     }
 
@@ -1429,8 +1525,8 @@ println!("rannum4: {:?}", rp.random_number);
         let blockchain = blockchain_lock.read().await;
 
         let wallet = wallet_lock.read().await;
-        let publickey = wallet.get_publickey();
-        let privatekey = wallet.get_privatekey();
+        let publickey = wallet.get_public_key();
+        let privatekey = wallet.get_private_key();
 
         let mut previous_block_id = 0;
         let mut previous_block_burnfee = 0;
@@ -1516,7 +1612,7 @@ println!("rannum4: {:?}", rp.random_number);
             let mut fee_tx = cv.fee_transaction.unwrap();
             let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
             fee_tx.set_hash_for_signature(hash_for_signature);
-            fee_tx.sign(wallet.get_privatekey());
+            fee_tx.sign(wallet.get_private_key());
 
             //
             // and we add it to the block
@@ -1567,7 +1663,7 @@ println!("rannum4: {:?}", rp.random_number);
         //
         block.generate_hashes();
 
-        block.sign(wallet.get_publickey(), wallet.get_privatekey());
+        block.sign(wallet.get_public_key(), wallet.get_private_key());
 
         block
     }
@@ -1635,12 +1731,12 @@ mod tests {
 
     #[test]
     fn block_sign_test() {
-        let wallet = Wallet::new();
+        let wallet = Wallet::new("test/testwallet", Some("asdf"));
         let mut block = Block::new();
 
-        block.sign(wallet.get_publickey(), wallet.get_privatekey());
+        block.sign(wallet.get_public_key(), wallet.get_private_key());
 
-        assert_eq!(block.creator, wallet.get_publickey());
+        assert_eq!(block.creator, wallet.get_public_key());
         assert_ne!(block.get_hash(), [0; 32]);
         assert_ne!(block.get_signature(), [0; 64]);
     }
@@ -1710,13 +1806,13 @@ mod tests {
     #[test]
     fn block_merkle_root_test() {
         let mut block = Block::new();
-        let wallet = Wallet::new();
+        let wallet = Wallet::new("test/testwallet", Some("asdf"));
 
         let mut transactions = (0..5)
             .into_iter()
             .map(|_| {
                 let mut transaction = Transaction::new();
-                transaction.sign(wallet.get_privatekey());
+                transaction.sign(wallet.get_private_key());
                 transaction
             })
             .collect();
@@ -1729,12 +1825,12 @@ mod tests {
     #[tokio::test]
     async fn block_downgrade_test() {
         let mut block = Block::new();
-        let wallet = Wallet::new();
+        let wallet = Wallet::new("test/testwallet", Some("asdf"));
         let mut transactions = (0..5)
             .into_iter()
             .map(|_| {
                 let mut transaction = Transaction::new();
-                transaction.sign(wallet.get_privatekey());
+                transaction.sign(wallet.get_private_key());
                 transaction
             })
             .collect();
