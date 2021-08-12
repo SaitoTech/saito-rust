@@ -5,7 +5,6 @@ use crate::golden_ticket::GoldenTicket;
 use crate::burnfee::BurnFee;
 use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey, SaitoPrivateKey};
 use crate::slip::{Slip, SlipType};
-use crate::time::{create_timestamp};
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use std::sync::Arc;
@@ -104,13 +103,13 @@ pub async fn make_mock_block_with_info(blockchain_lock : Arc<RwLock<Blockchain>>
 	    privatekey = wallet.get_privatekey();
 	}
 
-	for i in 0..vip_transactions {
+	for _i in 0..vip_transactions {
             let mut tx = Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
             tx.generate_metadata(publickey);
 	    transactions.push(tx);
 	}
 
-	for i in 0..normal_transactions {
+	for _i in 0..normal_transactions {
 
             let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), publickey, 5000, 5000).await;
 

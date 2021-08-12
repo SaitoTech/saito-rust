@@ -58,7 +58,7 @@ pub struct ConsensusValues {
     // dust falling off chain, needs adding to treasury
     pub nolan_falling_off_chain: u64,
     // staker treasury -> amount to add
-    pub staking_treasury: u64,
+    pub staking_treasury: i64,
 }
 impl ConsensusValues {
     #[allow(clippy::too_many_arguments)]
@@ -556,7 +556,6 @@ impl Block {
         let treasury: u64 = u64::from_be_bytes(bytes[181..189].try_into().unwrap());
         let staking_treasury: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
 
-
         let burnfee: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
         let difficulty: u64 = u64::from_be_bytes(bytes[205..213].try_into().unwrap());
         let mut transactions = vec![];
@@ -604,6 +603,7 @@ impl Block {
         block.set_treasury(treasury);
         block.set_burnfee(burnfee);
         block.set_difficulty(difficulty);
+        block.set_staking_treasury(staking_treasury);
 
         block.set_transactions(&mut transactions);
         block
@@ -874,7 +874,7 @@ impl Block {
 			// the staker treasury gets the amount that would be paid out to the staker
 			// if we were paying them from THIS loop of the blockchain rather than the
 			// average amount.
-			cv.staking_treasury = previous_staker_payment;
+			cv.staking_treasury = previous_staker_payment as i64;
 
 
 			//
@@ -890,6 +890,10 @@ impl Block {
                 	    let mut output3 = Slip::new();
                 	    output3.set_publickey(staker_slip.get_publickey());
                 	    output3.set_amount(staker_slip.get_amount());
+
+			    // remove from staking treasury as we are paying out
+			    cv.staking_treasury -= staker_slip.get_amount() as i64;
+
                 	    output3.set_slip_type(SlipType::StakerOutput);
                 	    output3.set_slip_ordinal(slip_ordinal_to_apply);
 			    slip_ordinal_to_apply += 1;
@@ -1070,7 +1074,7 @@ println!("rannum4: {:?}", rp.random_number);
         //
         for i in 0..self.transactions.len() {
 
-	    let mut transaction = &mut self.transactions[i];
+	    let transaction = &mut self.transactions[i];
 
             cumulative_fees = transaction.generate_metadata_cumulative_fees(cumulative_fees);
             cumulative_work = transaction.generate_metadata_cumulative_work(cumulative_work);
@@ -1174,10 +1178,16 @@ println!("rannum4: {:?}", rp.random_number);
 	    //
 	    // validate staking treasury 
 	    //
-	    if self.get_staking_treasury() != previous_block.get_staking_treasury() + cv.staking_treasury {
+	    let mut adjusted_staking_treasury = previous_block.get_staking_treasury();
+	    if cv.staking_treasury < 0 {
+	        adjusted_staking_treasury -= (cv.staking_treasury * -1) as u64;
+	    } else {
+	        adjusted_staking_treasury += cv.staking_treasury as u64;
+	    }
+	    if self.get_staking_treasury() != adjusted_staking_treasury {
                 println!(
                     "ERROR: staking treasury does not validate: {} expected versus {} found",
-                    (previous_block.get_staking_treasury() + cv.staking_treasury),
+                    adjusted_staking_treasury,
                     self.get_staking_treasury(),
                 );
                 return false;
@@ -1528,7 +1538,13 @@ println!("rannum4: {:?}", rp.random_number);
         // set staking treasury
         //
         if cv.staking_treasury != 0 {
-            block.set_staking_treasury(previous_block_staking_treasury + cv.staking_treasury);
+	    let mut adjusted_staking_treasury = previous_block_staking_treasury;
+	    if cv.staking_treasury < 0 {
+	        adjusted_staking_treasury -= (cv.staking_treasury * -1) as u64;
+	    } else {
+	        adjusted_staking_treasury += cv.staking_treasury as u64;
+	    }
+            block.set_staking_treasury(adjusted_staking_treasury);
         }
 
         //

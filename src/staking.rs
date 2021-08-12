@@ -1,16 +1,12 @@
 use crate::{
     block::Block,
-    blockchain::{Blockchain, GENESIS_PERIOD},
+    blockchain::{GENESIS_PERIOD},
     crypto::{hash, SaitoHash},
     golden_ticket::GoldenTicket,
     slip::{Slip, SlipType},
-    time::{create_timestamp},
     transaction::{TransactionType},
-    wallet::Wallet,
 };
 use bigint::uint::U256;
-use std::sync::Arc;
-use tokio::sync::{broadcast, mpsc, RwLock};
 
 #[derive(Debug, Clone)]
 pub struct Staking {
@@ -257,9 +253,9 @@ println!("The payout for staker {} with {} is {}", i, my_staked_amount, my_payou
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 golden_ticket_transaction.get_message().to_vec(),
             );
-            let mut router_random_number1 = hash(&golden_ticket.get_random().to_vec()); // router block1
+            let router_random_number1 = hash(&golden_ticket.get_random().to_vec()); // router block1
 	    let staker_random_number = hash(&router_random_number1.to_vec());	// staker block2
-	    let router_random_number2 = hash(&staker_random_number.to_vec());	// router block2
+	    let _router_random_number2 = hash(&staker_random_number.to_vec());	// router block2
 
 	    if fee_transaction.outputs.len() < 3 { return true; }
 	    if fee_transaction.inputs.len() < 1 { return true; }
@@ -327,7 +323,7 @@ println!("The payout for staker {} with {} is {}", i, my_staked_amount, my_payou
 		//
 		//
 	  	self.remove_pending(staker_output.clone());
-		for z in 0..fee_transaction.inputs.len() {
+		for _z in 0..fee_transaction.inputs.len() {
 		    let slip_type = staker_input.get_slip_type();
 		    if slip_type == SlipType::StakerDeposit {
 		        self.add_deposit(staker_input.clone());
@@ -375,6 +371,8 @@ mod tests {
 	slip::{Slip, SlipType},
 	transaction::Transaction,
     };
+    use std::sync::Arc;
+    use tokio::sync::{broadcast, mpsc, RwLock};
 
 
     #[test]
