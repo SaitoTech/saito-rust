@@ -1,21 +1,18 @@
 use crate::crypto::{sign_blob, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
 
-use crate::networking::api_message::APIMessage;
 use crate::networking::network::CHALLENGE_SIZE;
 use crate::time::create_timestamp;
-use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
-#[serde_with::serde_as]
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct HandshakeChallenge {
     challenger_ip_address: [u8; 4],
     challengie_ip_address: [u8; 4],
-    #[serde_as(as = "[_; 33]")]
     challenger_pubkey: SaitoPublicKey,
-    #[serde_as(as = "[_; 33]")]
     challengie_pubkey: SaitoPublicKey,
     timestamp: u64,
+    challenger_sig: Option<SaitoSignature>,
+    challengie_sig: Option<SaitoSignature>,
 }
 impl HandshakeChallenge {
     pub fn new(
@@ -30,9 +27,56 @@ impl HandshakeChallenge {
             challenger_pubkey: challenger_pubkey,
             challengie_pubkey: challengie_pubkey,
             timestamp: create_timestamp(),
+            challenger_sig: None,
+            challengie_sig: None,
         }
     }
-    pub fn deserialize_raw(bytes: &Vec<u8>) -> HandshakeChallenge {
+    // pub fn deserialize_raw(bytes: &Vec<u8>) -> HandshakeChallenge {
+    //     let mut challenger_octet: [u8; 4] = [0; 4];
+    //     challenger_octet[0..4].clone_from_slice(&bytes[0..4]);
+    //     let mut challengie_octet: [u8; 4] = [0; 4];
+    //     challengie_octet[0..4].clone_from_slice(&bytes[4..8]);
+
+    //     let challenger_pubkey: SaitoPublicKey = bytes[8..41].try_into().unwrap();
+    //     let challengie_pubkey: SaitoPublicKey = bytes[41..74].try_into().unwrap();
+    //     let timestamp: u64 = u64::from_be_bytes(bytes[74..CHALLENGE_SIZE].try_into().unwrap());
+
+    //     HandshakeChallenge {
+    //         challenger_ip_address: challenger_octet,
+    //         challengie_ip_address: challengie_octet,
+    //         challenger_pubkey: challenger_pubkey,
+    //         challengie_pubkey: challengie_pubkey,
+    //         timestamp: timestamp,
+
+    //         challenger_sig: None,
+    //         challengie_sig: None,
+    //     }
+    // }
+    // pub fn deserialize_with_sig(bytes: &Vec<u8>) -> (HandshakeChallenge, SaitoSignature) {
+    //     let handshake_challenge = HandshakeChallenge::deserialize_raw(bytes);
+    //     let signature: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
+    //         .try_into()
+    //         .unwrap();
+    //     (handshake_challenge, signature)
+    // }
+    // pub fn deserialize_with_both_sigs(
+    //     bytes: &Vec<u8>,
+    // ) -> (HandshakeChallenge, SaitoSignature, SaitoSignature) {
+    //     let handshake_challenge = HandshakeChallenge::deserialize_raw(bytes);
+    //     let signature1: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
+    //         .try_into()
+    //         .unwrap();
+    //     let signature2: SaitoSignature = bytes[CHALLENGE_SIZE + 64..CHALLENGE_SIZE + 128]
+    //         .try_into()
+    //         .unwrap();
+    //     (handshake_challenge, signature1, signature2)
+    // }
+
+    pub fn deserialize(
+        bytes: &Vec<u8>,
+    ) -> HandshakeChallenge {
+
+
         let mut challenger_octet: [u8; 4] = [0; 4];
         challenger_octet[0..4].clone_from_slice(&bytes[0..4]);
         let mut challengie_octet: [u8; 4] = [0; 4];
@@ -42,33 +86,25 @@ impl HandshakeChallenge {
         let challengie_pubkey: SaitoPublicKey = bytes[41..74].try_into().unwrap();
         let timestamp: u64 = u64::from_be_bytes(bytes[74..CHALLENGE_SIZE].try_into().unwrap());
 
-        HandshakeChallenge {
+        let handshake_challenge = HandshakeChallenge {
             challenger_ip_address: challenger_octet,
             challengie_ip_address: challengie_octet,
             challenger_pubkey: challenger_pubkey,
             challengie_pubkey: challengie_pubkey,
             timestamp: timestamp,
+            challenger_sig: None,
+            challengie_sig: None,
+        };
+        if bytes.len() > CHALLENGE_SIZE {
+            handshake_challenge.challenger_sig = Some(bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64].try_into().unwrap());
         }
+
+        if bytes.len() > CHALLENGE_SIZE + 64 {
+            handshake_challenge.challengie_sig = Some(bytes[CHALLENGE_SIZE + 64..CHALLENGE_SIZE + 128].try_into().unwrap());
+        }
+        handshake_challenge
     }
-    pub fn deserialize_with_sig(bytes: &Vec<u8>) -> (HandshakeChallenge, SaitoSignature) {
-        let handshake_challenge = HandshakeChallenge::deserialize_raw(bytes);
-        let signature: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
-            .try_into()
-            .unwrap();
-        (handshake_challenge, signature)
-    }
-    pub fn deserialize_with_both_sigs(
-        bytes: &Vec<u8>,
-    ) -> (HandshakeChallenge, SaitoSignature, SaitoSignature) {
-        let handshake_challenge = HandshakeChallenge::deserialize_raw(bytes);
-        let signature1: SaitoSignature = bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
-            .try_into()
-            .unwrap();
-        let signature2: SaitoSignature = bytes[CHALLENGE_SIZE + 64..CHALLENGE_SIZE + 128]
-            .try_into()
-            .unwrap();
-        (handshake_challenge, signature1, signature2)
-    }
+
     pub fn serialize_raw(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&self.challenger_ip_address);
@@ -99,23 +135,24 @@ impl HandshakeChallenge {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use crate::{
         crypto::generate_keys, networking::message_types::handshake_challenge::HandshakeChallenge,
-        time::create_timestamp,
     };
 
     #[tokio::test]
     async fn test_challenge_serialize() {
         let (publickey, privatekey) = generate_keys();
-        let challenge = HandshakeChallenge {
-            challenger_ip_address: [127, 0, 0, 1],
-            challengie_ip_address: [127, 0, 0, 1],
-            challenger_pubkey: publickey,
-            challengie_pubkey: publickey,
-            timestamp: create_timestamp(),
-        };
+        let challenge = HandshakeChallenge::new([127, 0, 0, 1],[127, 0, 0, 1],publickey, publickey);
+        //  {
+        //     challenger_ip_address: [127, 0, 0, 1],
+        //     challengie_ip_address: [127, 0, 0, 1],
+        //     challenger_pubkey: publickey,
+        //     challengie_pubkey: publickey,
+        //     timestamp: create_timestamp(),
+        // };
         let serialized_challenge = challenge.serialize_with_sig(privatekey);
         let deserialized_challenge =
             HandshakeChallenge::deserialize_with_sig(&serialized_challenge);
