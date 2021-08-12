@@ -22,7 +22,7 @@ use std::string::String;
 use std::{mem, sync::Arc};
 use tokio::sync::RwLock;
 
-pub const BLOCK_HEADER_SIZE: usize = 205;
+pub const BLOCK_HEADER_SIZE: usize = 213;
 
 //
 // object used when generating and validation transactions, containing the
@@ -57,6 +57,8 @@ pub struct ConsensusValues {
     pub rebroadcast_hash: [u8; 32],
     // dust falling off chain, needs adding to treasury
     pub nolan_falling_off_chain: u64,
+    // staker treasury -> amount to add
+    pub staking_treasury: u64,
 }
 impl ConsensusValues {
     #[allow(clippy::too_many_arguments)]
@@ -76,6 +78,7 @@ impl ConsensusValues {
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
             nolan_falling_off_chain: 0,
+            staking_treasury: 0,
         }
     }
 }
@@ -489,6 +492,7 @@ impl Block {
         vbytes.extend(&self.creator);
         vbytes.extend(&self.merkle_root);
         vbytes.extend(&self.treasury.to_be_bytes());
+        vbytes.extend(&self.staking_treasury.to_be_bytes());
         vbytes.extend(&self.burnfee.to_be_bytes());
         vbytes.extend(&self.difficulty.to_be_bytes());
         vbytes
@@ -503,6 +507,7 @@ impl Block {
     /// [merkle_root - 32 bytes - SHA 256 hash
     /// [signature - 64 bytes - Secp25k1 sig]
     /// [treasury - 8 bytes - u64]
+    /// [staking_treasury - 8 bytes - u64]
     /// [burnfee - 8 bytes - u64]
     /// [difficulty - 8 bytes - u64]
     /// [transaction][transaction][transaction]...
@@ -516,6 +521,7 @@ impl Block {
         vbytes.extend(&self.merkle_root);
         vbytes.extend(&self.signature);
         vbytes.extend(&self.treasury.to_be_bytes());
+        vbytes.extend(&self.staking_treasury.to_be_bytes());
         vbytes.extend(&self.burnfee.to_be_bytes());
         vbytes.extend(&self.difficulty.to_be_bytes());
         let mut serialized_txs = vec![];
@@ -534,6 +540,7 @@ impl Block {
     /// [merkle_root - 32 bytes - SHA 256 hash
     /// [signature - 64 bytes - Secp25k1 sig]
     /// [treasury - 8 bytes - u64]
+    /// [staking_treasury - 8 bytes - u64]
     /// [burnfee - 8 bytes - u64]
     /// [difficulty - 8 bytes - u64]
     /// [transaction][transaction][transaction]...
@@ -547,8 +554,11 @@ impl Block {
         let signature: SaitoSignature = bytes[117..181].try_into().unwrap();
 
         let treasury: u64 = u64::from_be_bytes(bytes[181..189].try_into().unwrap());
-        let burnfee: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
-        let difficulty: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
+        let staking_treasury: u64 = u64::from_be_bytes(bytes[189..197].try_into().unwrap());
+
+
+        let burnfee: u64 = u64::from_be_bytes(bytes[197..205].try_into().unwrap());
+        let difficulty: u64 = u64::from_be_bytes(bytes[205..213].try_into().unwrap());
         let mut transactions = vec![];
         let mut start_of_transaction_data = BLOCK_HEADER_SIZE;
         for _n in 0..transactions_len {
@@ -790,6 +800,7 @@ impl Block {
             }
         }
 
+
         //
         // calculate fee transaction
         //
@@ -860,6 +871,11 @@ impl Block {
 			//
                         let previous_staker_payment = previous_previous_block.get_total_fees() / 2;
 			let previous_router_payment = previous_previous_block.get_total_fees() - previous_staker_payment;
+			// the staker treasury gets the amount that would be paid out to the staker
+			// if we were paying them from THIS loop of the blockchain rather than the
+			// average amount.
+			cv.staking_treasury = previous_staker_payment;
+
 
 			//
 			// next_random_number
@@ -1155,6 +1171,19 @@ println!("rannum4: {:?}", rp.random_number);
                 return false;
             }
 
+	    //
+	    // validate staking treasury 
+	    //
+	    if self.get_staking_treasury() != previous_block.get_staking_treasury() + cv.staking_treasury {
+                println!(
+                    "ERROR: staking treasury does not validate: {} expected versus {} found",
+                    (previous_block.get_staking_treasury() + cv.staking_treasury),
+                    self.get_staking_treasury(),
+                );
+                return false;
+	    }
+
+
             //
             // validate burn fee
             //
@@ -1394,6 +1423,7 @@ println!("rannum4: {:?}", rp.random_number);
         let mut previous_block_timestamp = 0;
         let mut previous_block_difficulty = 0;
         let mut previous_block_treasury = 0;
+        let mut previous_block_staking_treasury = 0;
 
         if let Some(previous_block) = blockchain.blocks.get(&previous_block_hash) {
             previous_block_id = previous_block.get_id();
@@ -1401,6 +1431,7 @@ println!("rannum4: {:?}", rp.random_number);
             previous_block_timestamp = previous_block.get_timestamp();
             previous_block_difficulty = previous_block.get_difficulty();
             previous_block_treasury = previous_block.get_treasury();
+            previous_block_staking_treasury = previous_block.get_staking_treasury();
         }
 
         let mut block = Block::new();
@@ -1491,6 +1522,13 @@ println!("rannum4: {:?}", rp.random_number);
         //
         if cv.nolan_falling_off_chain != 0 {
             block.set_treasury(previous_block_treasury + cv.nolan_falling_off_chain);
+        }
+
+        //
+        // set staking treasury
+        //
+        if cv.staking_treasury != 0 {
+            block.set_staking_treasury(previous_block_staking_treasury + cv.staking_treasury);
         }
 
         //
@@ -1593,7 +1631,7 @@ mod tests {
     fn block_serialize_for_signature_hash() {
         let block = Block::new();
         let serialized_body = block.serialize_for_signature();
-        assert_eq!(serialized_body.len(), 137);
+        assert_eq!(serialized_body.len(), 145);
     }
 
     #[test]
