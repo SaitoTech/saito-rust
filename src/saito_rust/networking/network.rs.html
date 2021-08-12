@@ -583,6 +583,19 @@
 <span id="581">581</span>
 <span id="582">582</span>
 <span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::consensus::SaitoMessage</span>;
@@ -601,6 +614,7 @@
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">Filter</span>, <span class="ident">Rejection</span>};
 
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::client::SaitoClient</span>;
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::peer</span>::{<span class="ident">PeerSetting</span>, <span class="ident">Peers</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
@@ -638,17 +652,6 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">message_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">message_data</span>
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_with_data_from_str</span>(
-        <span class="ident">message_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">message_id</span>: <span class="ident">u32</span>,
-        <span class="ident">message_data</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">APIMessage</span> {
-        <span class="ident">APIMessage</span> {
-            <span class="ident">message_name</span>: <span class="ident">String::from</span>(<span class="ident">message_name</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(),
-            <span class="ident">message_id</span>: <span class="ident">message_id</span>,
-            <span class="ident">message_data</span>: <span class="ident">String::from</span>(<span class="ident">message_data</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(),
-        }
-    }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">APIMessage</span> {
         <span class="kw">let</span> <span class="ident">message_name</span>: [<span class="ident">u8</span>; <span class="number">8</span>] <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">0</span>..<span class="number">8</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">message_id</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">u32::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">8</span>..<span class="number">12</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
@@ -675,9 +678,6 @@
 
 <span class="kw">impl</span> <span class="ident">Network</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">settings</span>: <span class="ident">Config</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Network</span> {
-        <span class="comment">// let mut settings = config::Config::default();</span>
-        <span class="comment">// settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();</span>
-
         <span class="kw">let</span> <span class="ident">peer_settings</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerSetting</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="string">&quot;network.peers&quot;</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">peer_settings</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">peer_settings</span>),
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
@@ -695,6 +695,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="comment">// network_lock: Arc&lt;RwLock&lt;Network&gt;&gt;,</span>
         <span class="ident">_broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
         <span class="ident">_broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
@@ -717,9 +718,33 @@
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
             ));
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">peer_settings</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">peer_settings</span>() {
+            <span class="kw">for</span> <span class="ident">peer</span> <span class="kw">in</span> <span class="ident">peer_settings</span> {
+                <span class="kw">let</span> <span class="ident">host_string</span> <span class="op">=</span> <span class="ident">peer</span>
+                    .<span class="ident">host</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">int</span><span class="op">|</span> <span class="ident">int</span>.<span class="ident">to_string</span>())
+                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>()
+                    .<span class="ident">join</span>(<span class="string">&quot;.&quot;</span>);
+                <span class="kw">let</span> <span class="ident">url_string</span> <span class="op">=</span> <span class="macro">format!</span>(
+                    <span class="string">&quot;{}{}{}{}{}&quot;</span>,
+                    <span class="string">&quot;ws://&quot;</span>,
+                    <span class="ident">host_string</span>,
+                    <span class="string">&quot;:&quot;</span>,
+                    <span class="ident">peer</span>.<span class="ident">port</span>.<span class="ident">to_string</span>(),
+                    <span class="string">&quot;/wsopen&quot;</span>
+                );
+                <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">url_string</span>);
+                <span class="ident">SaitoClient::new</span>(<span class="kw-2">&amp;</span><span class="ident">url_string</span>[..], <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+            }
+        }
+
         <span class="ident">warp::serve</span>(<span class="ident">routes</span>).<span class="ident">run</span>((<span class="ident">host</span>, <span class="ident">port</span>)).<span class="kw">await</span>;
+
         <span class="prelude-val">Ok</span>(())
     }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">peer_settings</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerSetting</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">peer_settings</span>
     }
@@ -915,7 +940,7 @@
 
         <span class="macro">assert_eq!</span>(
             <span class="ident">deserialize_challenge</span>.<span class="number">0</span>.<span class="ident">challenger_ip_address</span>(),
-            [<span class="number">42</span>, <span class="number">42</span>, <span class="number">42</span>, <span class="number">42</span>]
+            [<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>]
         );
         <span class="macro">assert_eq!</span>(
             <span class="ident">deserialize_challenge</span>.<span class="number">0</span>.<span class="ident">challengie_ip_address</span>(),
@@ -1068,6 +1093,7 @@
 
         <span class="comment">//</span>
         <span class="comment">// first confirm the whole blockchain is received when sent zeroed block hash</span>
+        <span class="comment">//</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">message_bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="ident">message_bytes</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">32</span>]);
         <span class="ident">message_bytes</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">32</span>]);
