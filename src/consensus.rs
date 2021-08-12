@@ -67,20 +67,7 @@ impl Consensus {
         //
         let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
 
-        //
-        // all objects requiring multithread read / write access are
-        // wrapped in Tokio::RwLock for read().await / write().await
-        // access. This requires cloning the lock and that clone
-        // being sent into the async threads rather than the original
-        //
-        // major classes get a clone of the broadcast channel sender
-        // which is assigned to them on Object::run so they can
-        // broadcast cross-system messages. See SaitoMessage ENUM above
-        // for information on cross-system notifications.
-        //
 
-        let mut settings = config::Config::default();
-        settings.merge(config::File::with_name("config")).unwrap();
 
         let matches = App::new("Saito Runtime")
             .about("Runs a Saito Node")
@@ -99,21 +86,36 @@ impl Consensus {
                     .takes_value(true)
                     .help("amount to send"),
             )
-            .subcommand(
-                App::new("client")
-                    .about("Connect this node as a client only to another server")
-                    .arg(
-                        Arg::with_name("server")
-                            .short("s")
-                            .long("server")
-                            .takes_value(true)
-                            .help("location of server"),
-                    ),
+            .arg(
+                Arg::with_name("config")
+                    .short("c")
+                    .long("config")
+                    .takes_value(true)
+                    .help("config file name"),
             )
             .get_matches();
 
+        let config_name = match matches.value_of("config") {
+            Some(name) => name,
+            None => "config"
+        };
+
+        let mut settings = config::Config::default();
+        settings.merge(config::File::with_name(config_name)).unwrap();
+
         let key_path = matches.value_of("key_path").unwrap();
         let password = matches.value_of("password");
+        //
+        // all objects requiring multithread read / write access are
+        // wrapped in Tokio::RwLock for read().await / write().await
+        // access. This requires cloning the lock and that clone
+        // being sent into the async threads rather than the original
+        //
+        // major classes get a clone of the broadcast channel sender
+        // which is assigned to them on Object::run so they can
+        // broadcast cross-system messages. See SaitoMessage ENUM above
+        // for information on cross-system notifications.
+        //
         let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
 
         if let Some(ref sub_matches) = matches.subcommand_matches("client") {
@@ -173,6 +175,11 @@ impl Consensus {
                 }
             }
         }
+        // }
+
+        //let _storage = Storage::new();
+
+        // storage.load_blocks_from_disk(blockchain_lock.clone()).await;
 
         //let _storage = Storage::new();
 

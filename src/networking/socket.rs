@@ -283,7 +283,7 @@ pub async fn new_handshake_challenge(
     let peer_pubkey: SaitoPublicKey = message.message_data[4..37].try_into().unwrap();
 
     // TODO configure the node's IP somewhere...
-    let my_octets: [u8; 4] = [42, 42, 42, 42];
+    let my_octets: [u8; 4] = [127, 0, 0, 1];
 
     // TODO get the IP of this socket connection somehow and validate it..
     // let peer_octets: [u8; 4] = match addr.unwrap().ip() {
