@@ -1,7 +1,7 @@
 // length of 1 genesis period
 pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
-pub const PRUNE_AFTER_BLOCKS: u64 = 1;
+pub const PRUNE_AFTER_BLOCKS: u64 = 10;
 
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
@@ -881,9 +881,12 @@ impl Blockchain {
     }
 
     pub async fn downgrade_blockchain_data(&mut self) {
+
         //
         // downgrade blocks still on the chain
         //
+	if PRUNE_AFTER_BLOCKS > self.get_latest_block_id() { return; }
+
         let prune_blocks_at_block_id = self.get_latest_block_id() - PRUNE_AFTER_BLOCKS;
 
         //println!("downgrade blocks at block_id: {}", prune_blocks_at_block_id);
@@ -1044,7 +1047,7 @@ mod tests {
 
         {
             let wallet = wallet_lock.read().await;
-            publickey = wallet.get_public_key();
+            publickey = wallet.get_publickey();
         }
 
         //
@@ -1155,7 +1158,7 @@ mod tests {
 
         {
             let wallet = wallet_lock.read().await;
-            publickey = wallet.get_public_key();
+            publickey = wallet.get_publickey();
         }
 
         for i in 0..4 {

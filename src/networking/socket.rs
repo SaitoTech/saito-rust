@@ -275,8 +275,8 @@ pub async fn new_handshake_challenge(
     wallet_lock: Arc<RwLock<Wallet>>,
 ) -> crate::Result<Vec<u8>> {
     let wallet = wallet_lock.read().await;
-    let my_pubkey = wallet.get_public_key();
-    let my_privkey = wallet.get_private_key();
+    let my_pubkey = wallet.get_publickey();
+    let my_privkey = wallet.get_privatekey();
 
     let mut peer_octets: [u8; 4] = [0; 4];
     peer_octets[0..4].clone_from_slice(&message.message_data[0..4]);

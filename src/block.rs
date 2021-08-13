@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::Blockchain,
+    blockchain::{Blockchain, GENESIS_PERIOD},
     burnfee::BurnFee,
     crypto::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
@@ -828,7 +828,7 @@ impl Block {
         //
         // calculate automatic transaction rebroadcasts / ATR / atr
         //
-        if self.get_id() > 2 {
+        if self.get_id() > GENESIS_PERIOD {
             let pruned_block_hash = blockchain
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(self.get_id() - 2);
@@ -971,7 +971,6 @@ impl Block {
 			// if we were paying them from THIS loop of the blockchain rather than the
 			// average amount.
 			cv.staking_treasury = previous_staker_payment as i64;
-println!("setting staker treasury as: {}", cv.staking_treasury);
 
 			//
 			// next_random_number
@@ -989,12 +988,18 @@ println!("setting staker treasury as: {}", cv.staking_treasury);
 
 			    // remove from staking treasury as we are paying out
 			    cv.staking_treasury -= staker_slip.get_amount() as i64;
-println!("setting staker treasury as 2: {}", cv.staking_treasury);
 
                 	    output3.set_slip_type(SlipType::StakerOutput);
                 	    output3.set_slip_ordinal(slip_ordinal_to_apply);
 			    slip_ordinal_to_apply += 1;
                 	    transaction.add_output(output3);
+
+
+			    //
+			    // add staker input as tx input so it is spent
+			    //
+			    transaction.add_input(staker_slip);
+
 			}
 
                 	let mut output4 = Slip::new();
@@ -1100,11 +1105,8 @@ println!("setting staker treasury as 2: {}", cv.staking_treasury);
         // hash random number to pick routing node
         //
         let random_number2 = hash(&random_number.to_vec());
-println!("rannum2: {:?}", random_number);
-println!("rannum3: {:?}", random_number2);
         rp.publickey = winning_tx.get_winning_routing_node(random_number2);
         rp.random_number = hash(&random_number2.to_vec());
-println!("rannum4: {:?}", rp.random_number);
 
         rp
     }
@@ -1489,12 +1491,12 @@ println!("rannum4: {:?}", rp.random_number);
         //
         let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset));
 
-        // println!(" ... block.validate: (done all)  {:?}", create_timestamp());
+        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         //
         // and if our transactions are valid, so is the block...
         //
-        println!(" ... are txs valid: {}", transactions_valid);
+        //println!(" ... are txs valid: {}", transactions_valid);
         transactions_valid
     }
 
@@ -1525,8 +1527,8 @@ println!("rannum4: {:?}", rp.random_number);
         let blockchain = blockchain_lock.read().await;
 
         let wallet = wallet_lock.read().await;
-        let publickey = wallet.get_public_key();
-        let privatekey = wallet.get_private_key();
+        let publickey = wallet.get_publickey();
+        let privatekey = wallet.get_privatekey();
 
         let mut previous_block_id = 0;
         let mut previous_block_burnfee = 0;
@@ -1612,7 +1614,7 @@ println!("rannum4: {:?}", rp.random_number);
             let mut fee_tx = cv.fee_transaction.unwrap();
             let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
             fee_tx.set_hash_for_signature(hash_for_signature);
-            fee_tx.sign(wallet.get_private_key());
+            fee_tx.sign(wallet.get_privatekey());
 
             //
             // and we add it to the block
@@ -1663,7 +1665,7 @@ println!("rannum4: {:?}", rp.random_number);
         //
         block.generate_hashes();
 
-        block.sign(wallet.get_public_key(), wallet.get_private_key());
+        block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
         block
     }
@@ -1734,9 +1736,9 @@ mod tests {
         let wallet = Wallet::new("test/testwallet", Some("asdf"));
         let mut block = Block::new();
 
-        block.sign(wallet.get_public_key(), wallet.get_private_key());
+        block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
-        assert_eq!(block.creator, wallet.get_public_key());
+        assert_eq!(block.creator, wallet.get_publickey());
         assert_ne!(block.get_hash(), [0; 32]);
         assert_ne!(block.get_signature(), [0; 64]);
     }
@@ -1812,7 +1814,7 @@ mod tests {
             .into_iter()
             .map(|_| {
                 let mut transaction = Transaction::new();
-                transaction.sign(wallet.get_private_key());
+                transaction.sign(wallet.get_privatekey());
                 transaction
             })
             .collect();
@@ -1830,7 +1832,7 @@ mod tests {
             .into_iter()
             .map(|_| {
                 let mut transaction = Transaction::new();
-                transaction.sign(wallet.get_private_key());
+                transaction.sign(wallet.get_privatekey());
                 transaction
             })
             .collect();

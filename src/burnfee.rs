@@ -17,6 +17,13 @@ impl BurnFee {
         current_block_timestamp: u64,
         previous_block_timestamp: u64,
     ) -> u64 {
+	//
+	// impossible if times misordered
+	//
+        if previous_block_timestamp >= current_block_timestamp {
+	    return 10_000_000_000_000_000_000;
+	}
+
         let elapsed_time = match current_block_timestamp - previous_block_timestamp {
             0 => 1,
             diff => diff,
@@ -49,6 +56,12 @@ impl BurnFee {
         current_block_timestamp: u64,
         previous_block_timestamp: u64,
     ) -> u64 {
+	//
+	// impossible if times misordered
+	//
+        if previous_block_timestamp >= current_block_timestamp {
+	    return 10_000_000_000_000_000_000;
+	}
         let timestamp_difference = match current_block_timestamp - previous_block_timestamp {
             0 => 1,
             diff => diff,

@@ -44,7 +44,7 @@ impl SaitoClient {
         let publickey: SaitoPublicKey;
         {
             let wallet = saito_client.wallet_lock.read().await;
-            publickey = wallet.get_public_key();
+            publickey = wallet.get_publickey();
         }
 
         let mut message_data = vec![127, 0, 0, 1];
@@ -128,7 +128,7 @@ impl SaitoClient {
                     let privatekey: SaitoPrivateKey;
                     {
                         let wallet = self.wallet_lock.read().await;
-                        privatekey = wallet.get_private_key();
+                        privatekey = wallet.get_privatekey();
                     }
                     let signed_challenge =
                         sign_blob(&mut response_api_message.message_data.to_vec(), privatekey)

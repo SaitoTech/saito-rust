@@ -1,5 +1,4 @@
 use std::path::Path;
-
 use crate::storage::{Persistable, Storage};
 use aes::Aes128;
 use block_modes::block_padding::Pkcs7;
@@ -12,7 +11,7 @@ use crate::crypto::{
     SaitoSignature, SaitoUTXOSetKey,
 };
 use crate::golden_ticket::GoldenTicket;
-use crate::slip::Slip;
+use crate::slip::{Slip, SlipType};
 use crate::transaction::{Transaction, TransactionType};
 use serde::{Deserialize, Serialize};
 
@@ -23,16 +22,17 @@ type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 /// slips that are used to form transactions on the network.
 #[derive(Clone, Debug)]
 pub struct Wallet {
-    public_key: SaitoPublicKey,
-    private_key: SaitoPrivateKey,
+    publickey: SaitoPublicKey,
+    privatekey: SaitoPrivateKey,
     slips: Vec<WalletSlip>,
+    staked_slips: Vec<WalletSlip>,
 }
 
 #[serde_with::serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize, Persistable, Default)]
 #[persist_with_name(get_file_name)]
 pub struct EncryptedWallet {
-    encrypted_private_key: Vec<u8>,
+    encrypted_privatekey: Vec<u8>,
     #[serde(skip)]
     file_path: String,
 }
@@ -43,13 +43,23 @@ impl EncryptedWallet {
     }
 }
 impl Wallet {
+    pub fn default() -> Self {
+        let (publickey, privatekey) = generate_keys();
+        Wallet {
+            publickey,
+            privatekey,
+            slips: vec![],
+            staked_slips: vec![],
+        }
+    }
     pub fn new(key_path: &str, password: Option<&str>) -> Self {
         let (publickey, privatekey) = Wallet::load_keys(key_path, password);
         println!("Loaded wallet {}", hex::encode(publickey));
         Wallet {
-            public_key: publickey,
-            private_key: privatekey,
+            publickey: publickey,
+            privatekey: privatekey,
             slips: vec![],
+	    staked_slips: vec![],
         }
     }
 
@@ -84,7 +94,7 @@ impl Wallet {
 
         let ciphertext = cipher.encrypt_vec(&privatekey);
         let encrypted_wallet = EncryptedWallet {
-            encrypted_private_key: ciphertext,
+            encrypted_privatekey: ciphertext,
             file_path: key_file_path.to_string().clone(),
         };
         encrypted_wallet.save();
@@ -102,7 +112,7 @@ impl Wallet {
 
         let encrypted_wallet = EncryptedWallet::load(&key_file_path);
 
-        Wallet::decrypt_key_file(encrypted_wallet.encrypted_private_key, &password)
+        Wallet::decrypt_key_file(encrypted_wallet.encrypted_privatekey, &password)
     }
 
     fn decrypt_key_file(ciphertext: Vec<u8>, password: &str) -> Vec<u8> {
@@ -164,7 +174,11 @@ impl Wallet {
         wallet_slip.set_block_hash(block.get_hash());
         wallet_slip.set_lc(lc);
 
-        self.slips.push(wallet_slip);
+	if slip.get_slip_type() == SlipType::StakerDeposit || slip.get_slip_type() == SlipType::StakerOutput {
+            self.staked_slips.push(wallet_slip);
+	} else {
+            self.slips.push(wallet_slip);
+	}
     }
 
     pub fn delete_slip(&mut self, slip: &Slip) {
@@ -173,12 +187,12 @@ impl Wallet {
         });
     }
 
-    pub fn get_private_key(&self) -> SaitoPrivateKey {
-        self.private_key
+    pub fn get_privatekey(&self) -> SaitoPrivateKey {
+        self.privatekey
     }
 
-    pub fn get_public_key(&self) -> SaitoPublicKey {
-        self.public_key
+    pub fn get_publickey(&self) -> SaitoPublicKey {
+        self.publickey
     }
 
     pub fn get_available_balance(&self) -> u64 {
@@ -196,7 +210,7 @@ impl Wallet {
         let mut outputs: Vec<Slip> = vec![];
         let mut nolan_in: u64 = 0;
         let mut nolan_out: u64 = 0;
-        let my_publickey = self.get_public_key();
+        let my_publickey = self.get_publickey();
 
         //
         // grab inputs
@@ -253,7 +267,7 @@ impl Wallet {
     }
 
     pub fn sign(&self, message_bytes: &[u8]) -> SaitoSignature {
-        sign(message_bytes, self.private_key)
+        sign(message_bytes, self.privatekey)
     }
 
     pub async fn create_golden_ticket_transaction(
@@ -267,12 +281,12 @@ impl Wallet {
         transaction.set_message(golden_ticket.serialize_for_transaction());
 
         let mut input1 = Slip::new();
-        input1.set_publickey(self.get_public_key());
+        input1.set_publickey(self.get_publickey());
         input1.set_amount(0);
         input1.set_uuid([0; 32]);
 
         let mut output1 = Slip::new();
-        output1.set_publickey(self.get_public_key());
+        output1.set_publickey(self.get_publickey());
         output1.set_amount(0);
         output1.set_uuid([0; 32]);
 
@@ -282,7 +296,7 @@ impl Wallet {
         let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
         transaction.set_hash_for_signature(hash_for_signature);
 
-        transaction.sign(self.get_private_key());
+        transaction.sign(self.get_privatekey());
 
         transaction
     }

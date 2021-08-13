@@ -385,7 +385,7 @@ mod test {
 
         {
             let wallet = wallet_lock.read().await;
-            publickey = wallet.get_public_key();
+            publickey = wallet.get_publickey();
         }
 
         //

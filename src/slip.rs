@@ -59,11 +59,13 @@ impl Slip {
 
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
         if self.get_amount() > 0 {
+println!("utxoset key: {:?}", &self.utxoset_key);
             match utxoset.get(&self.utxoset_key) {
                 Some(value) => {
                     if *value == 1 {
                         return true;
                     } else {
+println!("value is {} at {:?}", *value, &self.utxoset_key);
                         return false;
                     }
                 }
@@ -80,6 +82,7 @@ impl Slip {
         } else {
             return true;
         }
+	return true;
     }
 
     pub fn on_chain_reorganization(
@@ -290,7 +293,7 @@ mod tests {
         let mut slip = Slip::new();
         slip.set_amount(100_000);
         slip.set_uuid([1; 32]);
-        slip.set_publickey(wallet.get_public_key());
+        slip.set_publickey(wallet.get_publickey());
         slip.generate_utxoset_key();
 
         // add to utxoset

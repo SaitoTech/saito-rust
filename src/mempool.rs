@@ -104,7 +104,7 @@ impl Mempool {
         let publickey;
         {
             let wallet = self.wallet_lock.read().await;
-            publickey = wallet.get_public_key();
+            publickey = wallet.get_publickey();
         }
         transaction.generate_metadata(publickey);
 
@@ -272,8 +272,8 @@ pub async fn run(
         mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
         {
             let wallet = mempool.wallet_lock.read().await;
-            publickey = wallet.get_public_key();
-            privatekey = wallet.get_private_key();
+            publickey = wallet.get_publickey();
+            privatekey = wallet.get_privatekey();
         }
 
         mempool.set_mempool_publickey(publickey);
