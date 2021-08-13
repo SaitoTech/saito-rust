@@ -13,8 +13,7 @@ use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, Web
 use crate::{
     crypto::{hash, sign_blob, verify, SaitoPrivateKey, SaitoPublicKey},
     networking::{
-        api_message::APIMessage,
-        message_types::handshake_challenge::HandshakeChallenge,
+        api_message::APIMessage, message_types::handshake_challenge::HandshakeChallenge,
         network::CHALLENGE_SIZE,
     },
     wallet::Wallet,
@@ -64,8 +63,10 @@ impl SaitoClient {
             let api_message = APIMessage::deserialize(&result.unwrap().into_data());
             saito_client.recv(&api_message).await;
         }
+
         saito_client
     }
+
     pub async fn send(&mut self, command: String, message: Vec<u8>) {
         let api_message = APIMessage::new(&command, self.request_count, message);
         self.requests
@@ -74,6 +75,7 @@ impl SaitoClient {
 
         let _foo = self.write_sink.send(api_message.serialize().into()).await;
     }
+
     async fn recv(&mut self, api_message: &APIMessage) {
         let command_sent = self.requests.remove(&api_message.message_id);
         match command_sent {
@@ -109,8 +111,6 @@ impl SaitoClient {
     async fn handle_response(&mut self, command_name: [u8; 8], response_api_message: &APIMessage) {
         match String::from_utf8_lossy(&command_name).to_string().as_ref() {
             "SHAKINIT" => {
-                println!("GOT SHAKINIT RESPONSE");
-                // let deserialize_challenge, signature) =
                 let deserialize_challenge =
                     HandshakeChallenge::deserialize(&response_api_message.message_data);
                 let signature = deserialize_challenge.opponent_node.sig.unwrap();
@@ -151,6 +151,7 @@ impl SaitoClient {
             _ => {}
         }
     }
+
     fn handle_error_response(&mut self, command_name: [u8; 8], _response_api_message: &APIMessage) {
         println!(
             "Error response for command {}",

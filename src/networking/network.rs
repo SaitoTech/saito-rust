@@ -191,10 +191,7 @@ mod tests {
             deserialize_challenge.challenger_ip_address(),
             [127, 0, 0, 1]
         );
-        assert_eq!(
-            deserialize_challenge.opponent_ip_address(),
-            [127, 0, 0, 1]
-        );
+        assert_eq!(deserialize_challenge.opponent_ip_address(), [127, 0, 0, 1]);
         assert_eq!(deserialize_challenge.opponent_pubkey(), publickey);
         assert!(verify(
             &hash(&raw_challenge.to_vec()),
@@ -252,7 +249,7 @@ mod tests {
                 .to_vec(),
         );
         let transaction = Transaction::new();
-        let api_message = APIMessage::new("SENDTRXN", 0, transaction.serialize_for_net());
+        let api_message = APIMessage::new("SNDTRANS", 0, transaction.serialize_for_net());
         let serialized_api_message = api_message.serialize();
 
         // TODO repair this test

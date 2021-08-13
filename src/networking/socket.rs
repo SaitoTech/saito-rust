@@ -52,11 +52,9 @@ async fn peer_msg(
                     );
                     let peers = peers.write().await;
                     let peer = peers.get(&id).unwrap();
-                    let _foo = peer
-                        .sender
-                        .as_ref()
-                        .unwrap()
-                        .send(Ok(Message::binary(api_message_response.serialize())));
+                    peer.send_message(&api_message_response)
+                        .map_err(|err| println!("{:?}", err))
+                        .ok();
                 }
             });
         }
@@ -73,15 +71,113 @@ async fn peer_msg(
                     println!("handshake complete!");
                     peer.has_handshake = true;
                     peer.pubkey = Some(challenge.opponent_pubkey());
-                    let _foo = peer
-                        .sender
-                        .as_ref()
-                        .unwrap()
-                        .send(Ok(Message::binary(api_message_response.serialize())));
+
+                    peer.send_message(&api_message_response)
+                        .map_err(|err| println!("{:?}", err))
+                        .ok();
                 }
             });
         }
-        "SENDTRXN" => {
+        "REQBLOCK" => {
+            tokio::spawn(async move {
+                let message_id = api_message.message_id;
+                let mut message_queue: Vec<APIMessage> = vec![];
+
+                if let Some(bytes) = socket_req_block(api_message, blockchain_lock).await {
+                    let message_data = String::from("OK").as_bytes().try_into().unwrap();
+                    message_queue.push(
+                        APIMessage::new(&String::from("RESULT__"), message_id, message_data)
+                    );
+                    message_queue.push(
+                        APIMessage::new(&String::from("SNDBLOCK"), message_id, bytes)
+                    )
+                } else {
+                    message_queue.push(
+                        APIMessage::new(
+                            &String::from("ERROR___"),
+                            message_id,
+                            String::from("ERROR").as_bytes().try_into().unwrap(),
+                        )
+                    );
+                }
+
+                let mut peers = peers.write().await;
+                let peer = peers.get_mut(&id).unwrap();
+
+                for api_message in message_queue.iter() {
+                    peer.send_message(&api_message)
+                        .map_err(|err| println!("{:?}", err))
+                        .ok();
+                }
+            });
+        }
+        "REQBLKHD" => {
+            tokio::spawn(async move {
+                let message_id = api_message.message_id;
+                let mut message_queue: Vec<APIMessage> = vec![];
+                if let Some(bytes) = socket_send_block_header(api_message, blockchain_lock).await {
+                    let message_data = String::from("OK").as_bytes().try_into().unwrap();
+                    message_queue.push(
+                        APIMessage::new(&String::from("RESULT__"), message_id, message_data)
+                    );
+                    message_queue.push(
+                        APIMessage::new(&String::from("SNDBLKHD"), message_id, bytes)
+                    )
+                } else {
+                    message_queue.push(
+                        APIMessage::new(
+                            &String::from("ERROR___"),
+                            message_id,
+                            String::from("ERROR").as_bytes().try_into().unwrap(),
+                        )
+                    );
+                }
+
+                let mut peers = peers.write().await;
+                let peer = peers.get_mut(&id).unwrap();
+
+                for api_message in message_queue.iter() {
+                    peer.send_message(&api_message)
+                        .map_err(|err| println!("{:?}", err))
+                        .ok();
+                }
+            });
+        }
+        "REQCHAIN" => {
+            tokio::spawn(async move {
+                let message_id = api_message.message_id;
+                let mut message_queue: Vec<APIMessage> = vec![];
+
+                if let Some(bytes) = socket_send_blockchain(api_message, blockchain_lock).await {
+                    let message_data = String::from("OK").as_bytes().try_into().unwrap();
+                    message_queue.push(
+                        APIMessage::new(&String::from("RESULT__"), message_id, message_data)
+                    );
+                    message_queue.push(
+                        APIMessage::new(&String::from("SNDCHAIN"), message_id, bytes)
+                    )
+                } else {
+                    let message_data = String::from("ERROR").as_bytes().try_into().unwrap();
+                    message_queue.push(
+                        APIMessage::new(
+                            &String::from("ERROR___"),
+                            message_id,
+                            message_data,
+                        )
+                    );
+                }
+
+                let mut peers = peers.write().await;
+                let peer = peers.get_mut(&id).unwrap();
+
+                for api_message in message_queue.iter() {
+                    peer.send_message(&api_message)
+                        .map_err(|err| println!("{:?}", err))
+                        .ok();
+                }
+            });
+        }
+        "SNDTRANS" => {
             tokio::spawn(async move {
                 let message_id = api_message.message_id;
                 if let Some(tx) = socket_receive_transaction(api_message.clone()) {
@@ -99,11 +195,10 @@ async fn peer_msg(
                             peers.retain(|&k, _| k != id);
 
                             for (_, peer) in peers.iter() {
-                                let _foo = peer
-                                    .sender
-                                    .as_ref()
-                                    .unwrap()
-                                    .send(Ok(Message::binary(api_message.serialize())));
+                                match peer.send_message(&api_message_response) {
+                                    Err(e) => println!("{:?}", e),
+                                    _ => (),
+                                }
                             }
                         }
                         AddTransactionResult::Invalid => {
@@ -125,81 +220,19 @@ async fn peer_msg(
                     // Return message to original peer
                     let mut peers = peers.write().await;
                     let peer = peers.get_mut(&id).unwrap();
-                    let _foo = peer
-                        .sender
-                        .as_ref()
-                        .unwrap()
-                        .send(Ok(Message::binary(api_message_response.serialize())));
+                    peer.send_message(&api_message_response)
+                        .map_err(|err| println!("{:?}", err))
+                        .ok();
                 }
             });
         }
-        "REQCHAIN" => {
-            tokio::spawn(async move {
-                let message_id = api_message.message_id;
-                let api_message_response;
-
-                if let Some(bytes) = socket_send_blockchain(api_message, blockchain_lock).await {
-                    api_message_response =
-                        APIMessage::new(&String::from("RESULT__"), message_id, bytes);
-                } else {
-                    api_message_response = APIMessage::new(
-                        &String::from("ERROR___"),
-                        message_id,
-                        String::from("ERROR").as_bytes().try_into().unwrap(),
-                    );
-                }
-
-                let mut peers = peers.write().await;
-                let mut peer = peers.get_mut(&id).unwrap();
-                peer.has_handshake = true;
-                let _foo = peer
-                    .sender
-                    .as_ref()
-                    .unwrap()
-                    .send(Ok(Message::binary(api_message_response.serialize())));
-            });
-        }
+        // These willl never be accessed because this is the "server" portion of warp
         "SNDCHAIN" => {
             tokio::spawn(async move {
                 let _message_id = api_message.message_id;
             });
         }
-        "REQBLKHD" => {
-            tokio::spawn(async move {
-                let message_id = api_message.message_id;
-                let api_message_response;
-                if let Some(bytes) = socket_send_block_header(api_message, blockchain_lock).await {
-                    api_message_response =
-                        APIMessage::new(&String::from("RESULT__"), message_id, bytes);
-                } else {
-                    api_message_response = APIMessage::new(
-                        &String::from("ERROR___"),
-                        message_id,
-                        String::from("ERROR").as_bytes().try_into().unwrap(),
-                    );
-                }
-
-                let mut peers = peers.write().await;
-                let mut peer = peers.get_mut(&id).unwrap();
-                peer.has_handshake = true;
-                let _foo = peer
-                    .sender
-                    .as_ref()
-                    .unwrap()
-                    .send(Ok(Message::binary(api_message_response.serialize())));
-            });
-        }
         "SNDBLKHD" => {
-            tokio::spawn(async move {
-                let _message_id = api_message.message_id;
-            });
-        }
-        "SNDTRANS" => {
-            tokio::spawn(async move {
-                let _message_id = api_message.message_id;
-            });
-        }
-        "REQBLOCK" => {
             tokio::spawn(async move {
                 let _message_id = api_message.message_id;
             });
@@ -291,10 +324,7 @@ pub async fn new_handshake_challenge(
     //     _ => panic!("Saito Handshake does not support IPV6"),
     // };
 
-    let challenge = HandshakeChallenge::new(
-        (my_octets, my_pubkey),
-        (peer_octets, peer_pubkey)
-    );
+    let challenge = HandshakeChallenge::new((my_octets, my_pubkey), (peer_octets, peer_pubkey));
     let serialized_challenge = challenge.serialize_with_sig(my_privkey);
 
     Ok(serialized_challenge)
@@ -336,6 +366,19 @@ pub fn socket_handshake_complete(
 pub fn socket_receive_transaction(message: APIMessage) -> Option<Transaction> {
     let tx = Transaction::deserialize_from_net(message.message_data);
     Some(tx)
+}
+
+pub async fn socket_req_block(
+    message: APIMessage,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> Option<Vec<u8>> {
+    let block_hash: SaitoHash = message.message_data[0..32].try_into().unwrap();
+    let blockchain = blockchain_lock.read().await;
+
+    match blockchain.get_block_sync(&block_hash) {
+        Some(target_block) => Some(target_block.serialize_for_net()),
+        None => None,
+    }
 }
 
 pub async fn socket_send_block_header(
