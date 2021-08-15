@@ -788,8 +788,6 @@ impl Transaction {
 
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
 
-println!("Validate Here!");
-
         //
         // User-Sent Transactions
         //
@@ -841,7 +839,6 @@ println!("Validate Here!");
                 println!("ERROR 582039: less than 1 input in transaction");
                 return false;
             }
-println!("Validate Here 2!");
 
             //
             // validate routing path sigs

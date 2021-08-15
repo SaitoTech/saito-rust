@@ -43,8 +43,8 @@ pub async fn main() -> saito_rust::Result<()> {
 
     {
         let wallet = wallet_lock.read().await;
-        publickey = wallet.get_public_key();
-        privatekey = wallet.get_private_key();
+        publickey = wallet.get_publickey();
+        privatekey = wallet.get_privatekey();
     }
 
     tokio::spawn(async move {

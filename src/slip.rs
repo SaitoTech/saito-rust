@@ -26,6 +26,8 @@ pub enum SlipType {
     RouterOutput,
     StakerOutput,
     StakerDeposit,
+    StakerWithdrawalPending,
+    StakerWithdrawalStaking,
     Other, // need more than one value for TryFromBytes
 }
 
@@ -36,6 +38,7 @@ pub struct Slip {
     publickey: SaitoPublicKey,
     uuid: SaitoHash,
     amount: u64,
+    payout: u64,
     slip_ordinal: u8,
     slip_type: SlipType,
     #[serde_as(as = "[_; 74]")]
@@ -50,6 +53,7 @@ impl Slip {
             publickey: [0; 33],
             uuid: [0; 32],
             amount: 0,
+            payout: 0,
             slip_ordinal: 0,
             slip_type: SlipType::Normal,
             utxoset_key: [0; 74],
@@ -92,9 +96,9 @@ println!("value is {} at {:?}", *value, &self.utxoset_key);
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
-            //println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
-            //println!("slip_ordinal: {}", self.get_slip_ordinal());
-            //println!("slip_amount: {}", self.get_amount());
+            println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
+            println!("slip_ordinal: {}", self.get_slip_ordinal());
+            println!("slip_amount: {}", self.get_amount());
             utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
@@ -151,6 +155,9 @@ println!("value is {} at {:?}", *value, &self.utxoset_key);
         utxoset.remove_entry(&self.get_utxoset_key());
         true
     }
+
+
+
 
     //
     // Serialization

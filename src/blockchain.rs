@@ -622,9 +622,19 @@ impl Blockchain {
             // println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
 	    // staking tables update
-	    self.staking
+	    let (res_spend, res_unspend, res_delete) = self.staking
                 .on_chain_reorganization(block, true);
 
+	    //
+	    // we cannot pass the UTXOSet into the staking object to update as that would
+	    // require multiple mutable borrows of the blockchain object, so we receive 
+	    // return vectors of the slips that need to be inserted, spent or deleted and
+	    // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
+	    // is in the staking tables.
+	    //
+	    for i in 0..res_spend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1); }
+	    for i in 0..res_unspend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0); }
+	    for i in 0..res_delete.len() { res_spend[i].delete(&mut self.utxoset); }
 
             //
             // we have received the first entry in new_blocks() which means we
@@ -747,8 +757,19 @@ impl Blockchain {
             .on_chain_reorganization(block.get_id(), block.get_hash(), false);
 
 	// staking tables
-	self.staking
+	let (res_spend, res_unspend, res_delete) = self.staking
             .on_chain_reorganization(block, true);
+
+	//
+	// we cannot pass the UTXOSet into the staking object to update as that would
+	// require multiple mutable borrows of the blockchain object, so we receive 
+	// return vectors of the slips that need to be inserted, spent or deleted and
+	// handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
+	// is in the staking tables.
+	//
+	for i in 0..res_spend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1); }
+	for i in 0..res_unspend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0); }
+	for i in 0..res_delete.len() { res_spend[i].delete(&mut self.utxoset); }
 
 
         if current_unwind_index == old_chain.len() - 1 {
@@ -781,6 +802,7 @@ impl Blockchain {
             return res;
         }
     }
+
 
     pub async fn update_genesis_period(&mut self) {
         //

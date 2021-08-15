@@ -1,12 +1,13 @@
 use crate::{
     block::Block,
     blockchain::{GENESIS_PERIOD},
-    crypto::{hash, SaitoHash},
+    crypto::{hash, SaitoHash, SaitoUTXOSetKey},
     golden_ticket::GoldenTicket,
     slip::{Slip, SlipType},
     transaction::{TransactionType},
 };
 use bigint::uint::U256;
+use ahash::AHashMap;
 
 #[derive(Debug, Clone)]
 pub struct Staking {
@@ -71,7 +72,13 @@ impl Staking {
     // pending and pending-deposits slips into the staking table with the updated
     // expected payout.
     //
-    pub fn reset_staker_table(&mut self , staking_treasury: u64) {
+    // returns three vectors with slips to SPEND, UNSPEND, DELETE
+    //
+    pub fn reset_staker_table(&mut self , staking_treasury: u64) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
+
+	let mut res_spend: Vec<Slip> = vec![];
+	let mut res_unspend: Vec<Slip> = vec![];
+	let mut res_delete: Vec<Slip> = vec![];
 
 	//
         // move pending into staking table
@@ -82,7 +89,7 @@ impl Staking {
 	self.deposits = vec![];
 
 	if self.stakers.len() == 0 {
-	    return;
+	    return (res_spend, res_unspend, res_delete);
 	}
 
 	//
@@ -141,7 +148,11 @@ impl Staking {
 	    self.stakers[i].set_amount(my_payout);
 
 	}
+
+        return (res_spend, res_unspend, res_delete);
     }
+
+
 
     pub fn add_deposit(&mut self, slip : Slip) {
 	self.deposits.push(slip);
@@ -168,6 +179,7 @@ impl Staking {
 
 
     pub fn remove_staker(&mut self, slip : Slip) -> bool {
+println!("removing staker with utxoset_key: {:?}", slip.get_utxoset_key());
 	for i in 0..self.stakers.len() {
 	    if slip.get_utxoset_key() == self.stakers[i].get_utxoset_key() {
 		let _removed_slip = self.stakers.remove(i);    
@@ -192,11 +204,20 @@ impl Staking {
     //
     // handle staking / pending / deposit tables
     //
+    // returns slips to SPEND, UNSPEND and DELETE
+    // 
+    // this is required as staking table controlled by blockchain and Rust
+    // restricts us from passing the UTXOSET into this part of the program.
+    //
     pub fn on_chain_reorganization(
         &mut self,
 	block: &Block,
         longest_chain: bool,
-    ) -> bool {
+    ) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
+
+	let mut res_spend: Vec<Slip> = vec![];
+	let mut res_unspend: Vec<Slip> = vec![];
+	let mut res_delete: Vec<Slip> = vec![];
 
 	//
 	// add/remove deposits
@@ -248,8 +269,8 @@ println!("updating the staking tables in staking OCR");
 
 println!("checking lens: {} {}", fee_transaction.outputs.len(), fee_transaction.inputs.len());
 
-	    if fee_transaction.outputs.len() < 3 { return true; }
-	    if fee_transaction.inputs.len() < 1 { return true; }
+	    if fee_transaction.outputs.len() < 3 { return (res_spend, res_unspend, res_delete); }
+	    if fee_transaction.inputs.len() < 1 { return (res_spend, res_unspend, res_delete); }
 
 	    let staker_output = fee_transaction.outputs[2].clone(); // 3rd output is staker
 	    let staker_input = fee_transaction.inputs[0].clone(); // 1st input is staker
@@ -273,7 +294,7 @@ println!("ok, ready to roll...");
 println!("Rolling forward and moving into pending!");
 		if self.stakers.len() == 0 {
 		    //self.reset_staker_table(block.get_staking_treasury());
-		    self.reset_staker_table(100_000_000);
+		    let res = self.reset_staker_table(100_000_000);
 		}
 
 		//
@@ -291,7 +312,7 @@ println!("moving from staker into pending: {}", lucky_staker.get_amount());
 		//
 		if self.stakers.len() == 0 {
 		    //self.reset_staker_table(block.get_staking_treasury());
-		    self.reset_staker_table(100_000_000);
+		    let (res_spend, res_unspend, res_delete) = self.reset_staker_table(100_000_000);
 		}
 
 
@@ -349,7 +370,7 @@ println!("moving from staker into pending: {}", lucky_staker.get_amount());
 	    }
 	}
 
-        true
+        return (res_spend, res_unspend, res_delete);
 
     }
 }
@@ -371,7 +392,9 @@ mod tests {
     #[test]
     fn staking_table_test() {
 
+        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
 	let mut staking = Staking::new();
+	let mut blockchain = Blockchain::new(wallet_lock.clone());
 
 	let mut slip1 = Slip::new();
 	slip1.set_amount(200_000_000);
@@ -436,7 +459,8 @@ mod tests {
 	    slip2.set_amount(300_000_000);
 	    slip2.set_slip_type(SlipType::StakerDeposit);
 
-	    slip1.set_publickey();
+	    slip1.set_publickey(publickey);
+	    slip2.set_publickey(publickey);
 
 	    slip1.generate_utxoset_key();
 	    slip2.generate_utxoset_key();
@@ -447,14 +471,15 @@ mod tests {
 	    blockchain.staking.add_deposit(slip1);
 	    blockchain.staking.add_deposit(slip2);
 
-	    blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
- 	}
+	    blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito 	
+
+	}
 
 	//
 	// BLOCK 1
 	//
 	let mut current_timestamp = create_timestamp();
-	let mut block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 10, 0, false).await;
+	let mut block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 3, 0, false).await;
         latest_block_hash = block.get_hash();
 	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
 
@@ -550,11 +575,10 @@ mod tests {
 	    println!("PENDING 3: {:?}", blockchain.staking.pending);
 	    println!("DEPOSIT 3: {:?}", blockchain.staking.deposits);
 
-            assert_eq!(blk.get_has_fee_transaction(), true);
-            assert_eq!(blk.get_fee_transaction_idx(), 2); // normal tx, golden ticket, fee tx
-
-println!("{:?}", blk.transactions[2].get_outputs());
-            assert_eq!(blk.transactions[2].get_outputs()[2].get_slip_type(), SlipType::StakerOutput);
+            //assert_eq!(blk.get_has_fee_transaction(), true);
+            //assert_eq!(blk.get_fee_transaction_idx(), 2); // normal tx, golden ticket, fee tx
+	    //println!("{:?}", blk.transactions[2].get_outputs());
+            //assert_eq!(blk.transactions[2].get_outputs()[2].get_slip_type(), SlipType::StakerOutput);
 	}
 
 	assert_eq!(0, 1);
