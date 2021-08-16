@@ -1,8 +1,8 @@
 use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
-use crate::networking::client::SaitoClient;
 use crate::networking::network::Network;
+use crate::networking::peer::{OutboundPeer, PeersDB};
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use clap::{App, Arg};
@@ -123,13 +123,14 @@ impl Consensus {
                 Some(server) => String::from(server),
                 None => String::from("ws://127.0.0.1:3000/wsopen"),
             };
-            SaitoClient::new(&server, wallet_lock.clone()).await;
+            OutboundPeer::new(&server, wallet_lock.clone()).await;
         } else {
             let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
             let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
             let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
+            let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
 
-            let network = Network::new(wallet_lock.clone(), settings);
+            let network = Network::new(wallet_lock.clone(), peers_db_lock.clone(), settings);
 
             tokio::select! {
                 res = crate::mempool::run(

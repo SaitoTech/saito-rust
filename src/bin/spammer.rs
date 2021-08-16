@@ -4,6 +4,7 @@
 TODO: Fill in these docs
 
 */
+use saito_rust::networking::peer::PeersDB;
 use saito_rust::{
     blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
     transaction::Transaction, wallet::Wallet,
@@ -36,7 +37,9 @@ pub async fn main() -> saito_rust::Result<()> {
     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
     let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-    let network = Network::new(wallet_lock.clone(), settings);
+    let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
+
+    let network = Network::new(wallet_lock.clone(), peers_db_lock.clone(), settings);
 
     let publickey;
     let privatekey;

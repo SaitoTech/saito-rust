@@ -1,19 +1,16 @@
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::mempool::Mempool;
-use crate::networking::filters::{
-    get_block_route_filter, post_block_route_filter, post_transaction_route_filter,
-    ws_upgrade_route_filter,
-};
+use crate::networking::filters::{get_block_route_filter, ws_upgrade_route_filter};
+use crate::networking::peer::OutboundPeer;
+
 use crate::wallet::Wallet;
 use tokio::sync::{broadcast, RwLock};
 
-use std::collections::HashMap;
 use std::sync::Arc;
 use warp::{Filter, Rejection};
 
-use super::client::SaitoClient;
-use super::peer::{PeerSetting, Peers};
+use super::peer::{PeerSetting, PeersDB};
 
 use config::Config;
 
@@ -23,13 +20,17 @@ pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 pub type Result<T> = std::result::Result<T, Rejection>;
 
 pub struct Network {
-    peers: Peers,
+    peers_db_lock: Arc<RwLock<PeersDB>>,
     peer_settings: Option<Vec<PeerSetting>>,
     wallet_lock: Arc<RwLock<Wallet>>,
 }
 
 impl Network {
-    pub fn new(wallet_lock: Arc<RwLock<Wallet>>, settings: Config) -> Network {
+    pub fn new(
+        wallet_lock: Arc<RwLock<Wallet>>,
+        peers_db_lock: Arc<RwLock<PeersDB>>,
+        settings: Config,
+    ) -> Network {
         let peer_settings = match settings.get::<Vec<PeerSetting>>("network.peers") {
             Ok(peer_settings) => Some(peer_settings),
             Err(_) => None,
@@ -37,7 +38,7 @@ impl Network {
         println!("{:?}", peer_settings);
 
         Network {
-            peers: Arc::new(RwLock::new(HashMap::new())),
+            peers_db_lock,
             peer_settings,
             wallet_lock,
         }
@@ -58,18 +59,12 @@ impl Network {
         let host: [u8; 4] = settings.get::<[u8; 4]>("network.host").unwrap();
         let port: u16 = settings.get::<u16>("network.port").unwrap();
 
-        let routes = get_block_route_filter()
-            .or(post_transaction_route_filter(
-                mempool_lock.clone(),
-                blockchain_lock.clone(),
-            ))
-            .or(post_block_route_filter())
-            .or(ws_upgrade_route_filter(
-                &self.peers.clone(),
-                self.wallet_lock.clone(),
-                mempool_lock.clone(),
-                blockchain_lock.clone(),
-            ));
+        let routes = get_block_route_filter().or(ws_upgrade_route_filter(
+            self.peers_db_lock.clone(),
+            self.wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        ));
 
         if let Some(peer_settings) = self.peer_settings() {
             for peer in peer_settings {
@@ -88,7 +83,7 @@ impl Network {
                     "/wsopen"
                 );
                 println!("{:?}", url_string);
-                SaitoClient::new(&url_string[..], self.wallet_lock.clone()).await;
+                OutboundPeer::new(&url_string[..], self.wallet_lock.clone()).await;
             }
         }
 
@@ -140,12 +135,13 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let network = Network::new(wallet_lock.clone(), settings);
+        let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
+        let network = Network::new(wallet_lock.clone(), peers_db_lock.clone(), settings);
 
         let (publickey, privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(
-            &network.peers.clone(),
+            network.peers_db_lock.clone(),
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
@@ -191,10 +187,7 @@ mod tests {
             deserialize_challenge.challenger_ip_address(),
             [127, 0, 0, 1]
         );
-        assert_eq!(
-            deserialize_challenge.opponent_ip_address(),
-            [127, 0, 0, 1]
-        );
+        assert_eq!(deserialize_challenge.opponent_ip_address(), [127, 0, 0, 1]);
         assert_eq!(deserialize_challenge.opponent_pubkey(), publickey);
         assert!(verify(
             &hash(&raw_challenge.to_vec()),
@@ -229,11 +222,12 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let network = Network::new(wallet_lock.clone(), settings);
+        let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
+
         let (publickey, _privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(
-            &network.peers.clone(),
+            peers_db_lock.clone(),
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
@@ -280,10 +274,10 @@ mod tests {
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
-        let network = Network::new(wallet_lock.clone(), settings);
+        let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
 
         let socket_filter = ws_upgrade_route_filter(
-            &network.peers.clone(),
+            peers_db_lock.clone(),
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
@@ -326,10 +320,10 @@ mod tests {
         let mut settings = config::Config::default();
         settings.merge(config::File::with_name("config")).unwrap();
 
-        let network = Network::new(wallet_lock.clone(), settings);
+        let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
 
         let socket_filter = ws_upgrade_route_filter(
-            &network.peers.clone(),
+            peers_db_lock.clone(),
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),

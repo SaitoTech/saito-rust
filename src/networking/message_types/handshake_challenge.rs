@@ -8,11 +8,11 @@ use std::convert::TryInto;
 pub struct HandshakeChallenge {
     pub challenger_node: HandshakeNode,
     pub opponent_node: HandshakeNode,
-    pub timestamp: u64
+    pub timestamp: u64,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct HandshakeNode{
+pub struct HandshakeNode {
     pub ip_address: [u8; 4],
     pub public_key: SaitoPublicKey,
     pub sig: Option<SaitoSignature>,
@@ -27,14 +27,14 @@ impl HandshakeChallenge {
             challenger_node: HandshakeNode {
                 ip_address: challenger_ip_address,
                 public_key: challenger_public_key,
-                sig: None
+                sig: None,
             },
             opponent_node: HandshakeNode {
                 ip_address: opponent_ip_adress,
                 public_key: opponent_public_key,
-                sig: None
+                sig: None,
             },
-            timestamp: create_timestamp()
+            timestamp: create_timestamp(),
         }
     }
 
@@ -56,11 +56,19 @@ impl HandshakeChallenge {
         handshake_challenge.set_timestamp(timestamp);
 
         if bytes.len() > CHALLENGE_SIZE {
-            handshake_challenge.set_challenger_sig(Some(bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64].try_into().unwrap()));
+            handshake_challenge.set_challenger_sig(Some(
+                bytes[CHALLENGE_SIZE..CHALLENGE_SIZE + 64]
+                    .try_into()
+                    .unwrap(),
+            ));
         }
 
         if bytes.len() > CHALLENGE_SIZE + 64 {
-            handshake_challenge.set_opponent_sig(Some(bytes[CHALLENGE_SIZE + 64..CHALLENGE_SIZE + 128].try_into().unwrap()));
+            handshake_challenge.set_opponent_sig(Some(
+                bytes[CHALLENGE_SIZE + 64..CHALLENGE_SIZE + 128]
+                    .try_into()
+                    .unwrap(),
+            ));
         }
         handshake_challenge
     }
@@ -120,7 +128,6 @@ impl HandshakeChallenge {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -130,19 +137,29 @@ mod tests {
     #[tokio::test]
     async fn test_challenge_serialize() {
         let (publickey, privatekey) = generate_keys();
-        let challenge = HandshakeChallenge::new(
-            ([127, 0, 0, 1], publickey),
-            ([127, 0, 0, 1], publickey)
-        );
+        let challenge =
+            HandshakeChallenge::new(([127, 0, 0, 1], publickey), ([127, 0, 0, 1], publickey));
 
         let serialized_challenge = challenge.serialize_with_sig(privatekey);
         let deserialized_challenge = HandshakeChallenge::deserialize(&serialized_challenge);
 
-        assert_eq!(challenge.challenger_ip_address(), deserialized_challenge.challenger_ip_address());
-        assert_eq!(challenge.challenger_ip_address(), deserialized_challenge.challenger_ip_address());
+        assert_eq!(
+            challenge.challenger_ip_address(),
+            deserialized_challenge.challenger_ip_address()
+        );
+        assert_eq!(
+            challenge.challenger_ip_address(),
+            deserialized_challenge.challenger_ip_address()
+        );
 
-        assert_eq!(challenge.challenger_pubkey(), deserialized_challenge.challenger_pubkey());
-        assert_eq!(challenge.opponent_pubkey(), deserialized_challenge.opponent_pubkey());
+        assert_eq!(
+            challenge.challenger_pubkey(),
+            deserialized_challenge.challenger_pubkey()
+        );
+        assert_eq!(
+            challenge.opponent_pubkey(),
+            deserialized_challenge.opponent_pubkey()
+        );
 
         assert_eq!(challenge.timestamp, deserialized_challenge.timestamp);
     }
