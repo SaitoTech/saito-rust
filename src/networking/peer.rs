@@ -38,8 +38,8 @@ pub trait PeerTrait {
     async fn send_error_response(&mut self, message_id: u32, message: Vec<u8>);
     fn set_has_completed_handshake(&mut self, has_completed_handshake: bool);
     fn get_has_completed_handshake(&mut self) -> bool;
-    fn set_pubkey(&mut self, pub_key: SaitoPublicKey);
-    fn get_pubkey(&mut self) -> SaitoPublicKey;
+    fn set_public_key(&mut self, pub_key: SaitoPublicKey);
+    fn get_public_key(&mut self) -> Option<SaitoPublicKey>;
 }
 
 #[serde_with::serde_as]
@@ -47,7 +47,7 @@ pub trait PeerTrait {
 pub struct InboundPeer {
     pub has_handshake: bool,
     #[serde_as(as = "Option<[_; 33]>")]
-    pub pubkey: Option<SaitoPublicKey>,
+    pub public_key: Option<SaitoPublicKey>,
     #[serde(skip)]
     pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
 }
@@ -73,19 +73,17 @@ impl PeerTrait for InboundPeer {
         self.send(&String::from("ERROR___"), message_id, message)
             .await;
     }
-    fn set_has_completed_handshake(&mut self, _has_completed_handshake: bool) {
-        // TODO implement me!!
+    fn set_has_completed_handshake(&mut self, has_completed_handshake: bool) {
+        self.has_handshake = has_completed_handshake;
     }
     fn get_has_completed_handshake(&mut self) -> bool {
-        // TODO implement me!!
-        true
+        self.has_handshake
     }
-    fn set_pubkey(&mut self, _pub_key: SaitoPublicKey) {
-        // TODO implement me!!
+    fn set_public_key(&mut self, public_key: SaitoPublicKey) {
+        self.public_key = Some(public_key)
     }
-    fn get_pubkey(&mut self) -> SaitoPublicKey {
-        // TODO implement me!!
-        [0; 33]
+    fn get_public_key(&mut self) -> Option<SaitoPublicKey> {
+        self.public_key
     }
 }
 pub struct OutboundPeer {
@@ -130,12 +128,11 @@ impl PeerTrait for OutboundPeer {
         // TODO implement me!!
         true
     }
-    fn set_pubkey(&mut self, _pub_key: SaitoPublicKey) {
-        // TODO implement me!!
+    fn set_public_key(&mut self, public_key: SaitoPublicKey) {
+        // self.public_key = public_key
     }
-    fn get_pubkey(&mut self) -> SaitoPublicKey {
-        // TODO implement me!!
-        [0; 33]
+    fn get_public_key(&mut self) -> Option<SaitoPublicKey> {
+        None
     }
 }
 

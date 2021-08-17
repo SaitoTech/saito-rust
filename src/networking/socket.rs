@@ -140,7 +140,7 @@ async fn peer_msg(
                     let mut peers_db = peers_db_lock.write().await;
                     let peer = peers_db.get_mut(&id).unwrap().as_mut();
                     peer.set_has_completed_handshake(true);
-                    peer.set_pubkey(challenge.opponent_pubkey());
+                    peer.set_public_key(challenge.opponent_pubkey());
                     peer.send_response(
                         api_message.message_id,
                         String::from("OK").as_bytes().try_into().unwrap(),

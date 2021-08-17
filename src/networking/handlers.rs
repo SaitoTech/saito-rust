@@ -46,7 +46,7 @@ pub async fn ws_upgrade_handler(
     println!("id {:?}", id);
     let peer = InboundPeer {
         has_handshake: true,
-        pubkey: None,
+        public_key: None,
         sender: None,
     };
 
