@@ -1,14 +1,11 @@
 use crate::blockchain::Blockchain;
-use crate::crypto::{hash, SaitoHash};
 use crate::mempool::Mempool;
 use crate::networking::network::Result;
-use crate::networking::peer::InboundPeer;
-use crate::networking::socket;
+use crate::networking::peer::handle_inbound_peer_connection;
 use crate::storage::Storage;
 use crate::wallet::Wallet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use uuid::Uuid;
 use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Rejection, Reply};
@@ -40,22 +37,16 @@ pub async fn ws_upgrade_handler(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) -> std::result::Result<impl Reply, Rejection> {
-    let id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-    //    let key = hash(&bytes);
-
-    println!("id {:?}", id);
-    let peer = InboundPeer {
-        has_handshake: true,
-        public_key: None,
-        sender: None,
-    };
+    // let peer = InboundPeer {
+    //     has_handshake: false,
+    //     public_key: None,
+    //     sender: None,
+    // };
 
     Ok(ws.on_upgrade(move |socket| {
-        socket::handle_inbound_peer_connection(
+        handle_inbound_peer_connection(
             socket,
-            id,
             peers_db_lock,
-            peer,
             wallet_lock,
             mempool_lock,
             blockchain_lock,

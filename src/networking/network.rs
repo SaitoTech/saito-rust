@@ -1,11 +1,12 @@
 use crate::blockchain::Blockchain;
-use crate::consensus::SaitoMessage;
+use crate::crypto::{SaitoHash, hash};
 use crate::mempool::Mempool;
 use crate::networking::filters::{get_block_route_filter, ws_upgrade_route_filter};
 use crate::networking::peer::OutboundPeer;
 
 use crate::wallet::Wallet;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{RwLock};
+use uuid::Uuid;
 
 use std::sync::Arc;
 use warp::{Filter, Rejection};
@@ -20,16 +21,20 @@ pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 pub type Result<T> = std::result::Result<T, Rejection>;
 
 pub struct Network {
-    peers_db_lock: Arc<RwLock<PeersDB>>,
     peer_settings: Option<Vec<PeerSetting>>,
     wallet_lock: Arc<RwLock<Wallet>>,
+    mempool_lock: Arc<RwLock<Mempool>>,
+    peers_db_lock: Arc<RwLock<PeersDB>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
 }
 
 impl Network {
     pub fn new(
+        settings: Config,
         wallet_lock: Arc<RwLock<Wallet>>,
         peers_db_lock: Arc<RwLock<PeersDB>>,
-        settings: Config,
+        mempool_lock: Arc<RwLock<Mempool>>,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Network {
         let peer_settings = match settings.get::<Vec<PeerSetting>>("network.peers") {
             Ok(peer_settings) => Some(peer_settings),
@@ -38,19 +43,22 @@ impl Network {
         println!("{:?}", peer_settings);
 
         Network {
-            peers_db_lock,
             peer_settings,
             wallet_lock,
+            peers_db_lock,
+            mempool_lock,
+            blockchain_lock,
         }
     }
 
     pub async fn run(
         &self,
-        mempool_lock: Arc<RwLock<Mempool>>,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
+        // mempool_lock: Arc<RwLock<Mempool>>,
+        // blockchain_lock: Arc<RwLock<Blockchain>>,
+        // peers_db_lock: Arc<RwLock<PeersDB>>,
         // network_lock: Arc<RwLock<Network>>,
-        _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
-        _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
+        // _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+        // _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
     ) -> crate::Result<()> {
         println!("network run");
         let mut settings = config::Config::default();
@@ -62,8 +70,8 @@ impl Network {
         let routes = get_block_route_filter().or(ws_upgrade_route_filter(
             self.peers_db_lock.clone(),
             self.wallet_lock.clone(),
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
+            self.mempool_lock.clone(),
+            self.blockchain_lock.clone(),
         ));
 
         if let Some(peer_settings) = self.peer_settings() {
@@ -83,7 +91,19 @@ impl Network {
                     "/wsopen"
                 );
                 println!("{:?}", url_string);
-                OutboundPeer::new(&url_string[..], self.wallet_lock.clone()).await;
+                
+                let peer_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
+                let peer = OutboundPeer::new(
+                    &url_string[..], 
+                    self.peers_db_lock.clone(),
+                    self.wallet_lock.clone(),
+                    self.mempool_lock.clone(),
+                    self.blockchain_lock.clone(),
+                ).await;
+                self.peers_db_lock
+                    .write()
+                    .await
+                    .insert(peer_id.clone(), Box::new(peer));
             }
         }
 
@@ -136,7 +156,7 @@ mod tests {
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
-        let network = Network::new(wallet_lock.clone(), peers_db_lock.clone(), settings);
+        let network = Network::new(settings, wallet_lock.clone(), peers_db_lock.clone(), mempool_lock.clone(), blockchain_lock.clone());
 
         let (publickey, privatekey) = generate_keys();
 
@@ -302,7 +322,7 @@ mod tests {
 
         let api_message = APIMessage::deserialize(&resp.as_bytes().to_vec());
 
-        assert_eq!(api_message.message_name_as_str(), "RESULT__");
+        assert_eq!(api_message.message_name_as_string(), "RESULT__");
         assert_eq!(api_message.message_id, 0);
         assert_eq!(api_message.message_data.len(), 201);
     }
@@ -372,7 +392,7 @@ mod tests {
 
         let api_message = APIMessage::deserialize(&resp.as_bytes().to_vec());
 
-        assert_eq!(api_message.message_name_as_str(), "RESULT__");
+        assert_eq!(api_message.message_name_as_string(), "RESULT__");
         assert_eq!(api_message.message_id, 0);
         // TODO this is length 0 on my machine...
         // assert_eq!(api_message.message_data.len(), 96);

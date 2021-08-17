@@ -39,7 +39,7 @@ pub async fn main() -> saito_rust::Result<()> {
     let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
     let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
 
-    let network = Network::new(wallet_lock.clone(), peers_db_lock.clone(), settings);
+    let network = Network::new(settings, wallet_lock.clone(), peers_db_lock.clone(), mempool_lock.clone(), blockchain_lock.clone());
 
     let publickey;
     let privatekey;
@@ -134,12 +134,7 @@ pub async fn run(
                 eprintln!("{:?}", err)
             }
         },
-        res = network.run(
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
-            broadcast_channel_sender.clone(),
-            broadcast_channel_sender.subscribe()
-        ) => {
+        res = network.run() => {
             if let Err(err) = res {
                 eprintln!("{:?}", err)
             }
