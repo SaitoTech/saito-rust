@@ -3,12 +3,14 @@ use crate::mempool::Mempool;
 use crate::networking::network::Result;
 use crate::networking::peer::handle_inbound_peer_connection;
 use crate::storage::Storage;
+use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use warp::reject::Reject;
 use warp::reply::Response;
-use warp::{Rejection, Reply};
+use warp::{Rejection, Reply, Buf};
+use base58::ToBase58;
 
 use super::peer::PeersDB;
 
@@ -54,45 +56,46 @@ pub async fn ws_upgrade_handler(
     }))
 }
 
-// pub async fn post_transaction_handler(
-//     mut body: impl Buf,
-//     mempool_lock: Arc<RwLock<Mempool>>,
-//     blockchain_lock: Arc<RwLock<Blockchain>>,
-// ) -> Result<impl Reply> {
-//     let mut buffer = vec![];
-//     while body.has_remaining() {
-//         buffer.append(&mut body.chunk().to_vec());
-//         let cnt = body.chunk().len();
-//         body.advance(cnt);
-//     }
+pub async fn post_transaction_handler(
+    mut body: impl Buf,
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> Result<impl Reply> {
+    let mut buffer = vec![];
+    while body.has_remaining() {
+        buffer.append(&mut body.chunk().to_vec());
+        let cnt = body.chunk().len();
+        body.advance(cnt);
+    }
 
-//     let mut tx = Transaction::deserialize_from_net(buffer);
-//     let blockchain = blockchain_lock.read().await;
-//     tx.generate_metadata(tx.inputs[0].get_publickey());
-//     if tx.validate(&blockchain.utxoset) {
-//         let response = std::str::from_utf8(&tx.get_signature().to_base58().as_bytes())
-//             .unwrap()
-//             .to_string();
 
-//         //let response = String::from("OK");
-//         let mut mempool = mempool_lock.write().await;
-//         let add_tx_result = mempool.add_transaction(tx).await;
-//         match add_tx_result {
-//             crate::mempool::AddTransactionResult::Accepted => Ok(Message { msg: response }),
-//             crate::mempool::AddTransactionResult::Exists => {
-//                 Err(warp::reject::custom(AlreadyExists))
-//             }
-//             crate::mempool::AddTransactionResult::Invalid => {
-//                 panic!("This appears unused, implement if needed");
-//             }
-//             crate::mempool::AddTransactionResult::Rejected => {
-//                 panic!("This appears unused, implement if needed");
-//             }
-//         }
-//     } else {
-//         Err(warp::reject::custom(Invalid))
-//     }
-// }
+    let mut tx = Transaction::deserialize_from_net(buffer);
+    let blockchain = blockchain_lock.read().await;
+    tx.generate_metadata(tx.inputs[0].get_publickey());
+    if tx.validate(&blockchain.utxoset) {
+        let response = std::str::from_utf8(&tx.get_signature().to_base58().as_bytes())
+            .unwrap()
+            .to_string();
+
+        //let response = String::from("OK");
+        let mut mempool = mempool_lock.write().await;
+        let add_tx_result = mempool.add_transaction(tx).await;
+        match add_tx_result {
+            crate::mempool::AddTransactionResult::Accepted => Ok(Message { msg: response }),
+            crate::mempool::AddTransactionResult::Exists => {
+                Err(warp::reject::custom(AlreadyExists))
+            }
+            crate::mempool::AddTransactionResult::Invalid => {
+                panic!("This appears unused, implement if needed");
+            }
+            crate::mempool::AddTransactionResult::Rejected => {
+                panic!("This appears unused, implement if needed");
+            }
+        }
+    } else {
+        Err(warp::reject::custom(Invalid))
+    }
+}
 
 // pub async fn post_block_handler(mut body: impl Buf) -> Result<impl Reply> {
 //     let mut buffer = vec![];

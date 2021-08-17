@@ -92,6 +92,7 @@ impl Storage {
                 && path.path().to_str().unwrap()
                     != String::from(BLOCKS_DIR_PATH).clone() + ".gitignore"
             {
+                println!("PATH: {:?}", path);
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
@@ -101,8 +102,7 @@ impl Storage {
                 // the hash needs calculation separately after loading
                 //
                 if block.get_hash() == [0; 32] {
-                    let block_hash = block.get_hash();
-                    block.set_hash(block_hash);
+                    block.generate_hashes();
                 }
                 // println!("loading block with hash: {:?}", block.get_hash());
 
@@ -112,6 +112,7 @@ impl Storage {
             }
         }
     }
+
     pub async fn load_block_from_disk(filename: String) -> Block {
         //let file_to_load = BLOCKS_DIR_PATH.to_string() + &filename;
         let file_to_load = &filename;

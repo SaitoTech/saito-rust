@@ -136,10 +136,8 @@ TODO
 */
 
 pub mod api_message;
-pub mod client;
 pub mod filters;
 pub mod handlers;
 pub mod message_types;
 pub mod network;
 pub mod peer;
-pub mod socket;

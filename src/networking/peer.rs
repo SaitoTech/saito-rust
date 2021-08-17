@@ -10,12 +10,12 @@ use async_trait::async_trait;
 use futures::stream::{SplitSink, SplitStream};
 use secp256k1::PublicKey;
 use serde::{Deserialize, Serialize};
-use tokio_stream::wrappers::UnboundedReceiverStream;
-use uuid::Uuid;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
+use tokio_stream::wrappers::UnboundedReceiverStream;
+use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
 
 use super::api_message::APIMessage;
@@ -61,7 +61,7 @@ pub trait PeerTrait {
     async fn handle_peer_command_response(
         &mut self,
         command_name: [u8; 8],
-        peer_id: SaitoHash, 
+        peer_id: SaitoHash,
         response_api_message: &APIMessage,
     );
     fn handle_peer_command_error_response(
@@ -116,7 +116,7 @@ impl PeerTrait for InboundPeer {
                 match command_sent {
                     Some(command_name) => {
                         self.handle_peer_command_response(command_name, peer_id, &api_message)
-                        .await;
+                            .await;
                     }
                     None => {
                         println!(
@@ -140,7 +140,7 @@ impl PeerTrait for InboundPeer {
                             api_message.message_id
                         );
                     }
-                }   
+                }
             }
             "SHAKINIT" => {
                 tokio::spawn(async move {
@@ -149,8 +149,11 @@ impl PeerTrait for InboundPeer {
                     {
                         let mut peers_db = peers_db_lock.write().await;
                         let peer = peers_db.get_mut(&peer_id).unwrap().as_mut();
-                        peer.send_response(api_message.message_id, serialized_handshake_challenge)
+                        // peer.send_response(api_message.message_id, serialized_handshake_challenge)
+                        //     .await;:
+                        peer.send_command(&String::from("SHAKCOMP"), serialized_handshake_challenge)
                             .await;
+                        println!("INITIALIZING HANDSHAKE");
                     }
                 });
             }
@@ -158,11 +161,20 @@ impl PeerTrait for InboundPeer {
                 tokio::spawn(async move {
                     match socket_handshake_verify(&api_message.message_data()) {
                         Some(deserialize_challenge) => {
-    
-                            socket_handshake_complete(peers_db_lock.clone(), peer_id, deserialize_challenge.opponent_pubkey()).await;
+                            socket_handshake_complete(
+                                peers_db_lock.clone(),
+                                peer_id,
+                                deserialize_challenge.opponent_pubkey(),
+                            )
+                            .await;
                             let mut peers_db = peers_db_lock.write().await;
                             let peer = peers_db.get_mut(&peer_id).unwrap().as_mut();
-                            peer.send_response(api_message.message_id, String::from("OK").as_bytes().try_into().unwrap()).await;
+                            peer.send_response(
+                                api_message.message_id,
+                                String::from("OK").as_bytes().try_into().unwrap(),
+                            )
+                            .await;
+                            println!("COMPLETE!");
                         }
                         None => {
                             println!("Error verifying peer handshake signature");
@@ -173,10 +185,10 @@ impl PeerTrait for InboundPeer {
             "REQBLOCK" => {
                 tokio::spawn(async move {
                     let message_id = api_message.message_id;
-    
+
                     let mut peers_db = peers_db_lock.write().await;
                     let peer = peers_db.get_mut(&peer_id).unwrap().as_mut();
-    
+
                     if let Some(bytes) = socket_req_block(&api_message, blockchain_lock).await {
                         let message_data = String::from("OK").as_bytes().try_into().unwrap();
                         peer.send_response(message_id, message_data).await;
@@ -192,8 +204,10 @@ impl PeerTrait for InboundPeer {
                     let message_id = api_message.message_id;
                     let mut peers_db = peers_db_lock.write().await;
                     let peer = peers_db.get_mut(&peer_id).unwrap().as_mut();
-    
-                    if let Some(bytes) = socket_send_block_header(&api_message, blockchain_lock).await {
+
+                    if let Some(bytes) =
+                        socket_send_block_header(&api_message, blockchain_lock).await
+                    {
                         let message_data = String::from("OK").as_bytes().try_into().unwrap();
                         peer.send_response(message_id, message_data).await;
                         peer.send_command(&String::from("SNDBLKHD"), bytes).await;
@@ -201,17 +215,17 @@ impl PeerTrait for InboundPeer {
                         let message_data = String::from("ERROR").as_bytes().try_into().unwrap();
                         peer.send_error_response(message_id, message_data).await;
                     }
-    
                 });
             }
             "REQCHAIN" => {
                 tokio::spawn(async move {
                     let message_id = api_message.message_id;
-    
+
                     let mut peers_db = peers_db_lock.write().await;
                     let peer = peers_db.get_mut(&peer_id).unwrap().as_mut();
-    
-                    if let Some(bytes) = socket_send_blockchain(&api_message, blockchain_lock).await {
+
+                    if let Some(bytes) = socket_send_blockchain(&api_message, blockchain_lock).await
+                    {
                         let message_data = String::from("OK").as_bytes().try_into().unwrap();
                         peer.send_response(message_id, message_data).await;
                         peer.send_command(&String::from("SNDBLKHD"), bytes).await;
@@ -280,14 +294,14 @@ impl PeerTrait for InboundPeer {
     async fn handle_peer_command_response(
         &mut self,
         command_name: [u8; 8],
-        peer_id: SaitoHash, 
+        peer_id: SaitoHash,
         response_api_message: &APIMessage,
     ) {
         match String::from_utf8_lossy(&command_name).to_string().as_ref() {
             "SHAKINIT" => {
                 // SHAKINIT response
                 // We should sign the response and send a SHAKCOMP.
-                // We want to reuse socket_handshake_verify, so we will sign first before 
+                // We want to reuse socket_handshake_verify, so we will sign first before
                 // verifying the peer's signature
                 let privatekey: SaitoPrivateKey;
                 {
@@ -300,10 +314,17 @@ impl PeerTrait for InboundPeer {
                 match socket_handshake_verify(&signed_challenge) {
                     Some(deserialize_challenge) => {
                         // TODO make this a peer method and remove the first argument
-                        socket_handshake_complete(self.base_peer.peers_db_lock.clone(), peer_id, deserialize_challenge.challenger_pubkey()).await;
+                        socket_handshake_complete(
+                            self.base_peer.peers_db_lock.clone(),
+                            peer_id,
+                            deserialize_challenge.challenger_pubkey(),
+                        )
+                        .await;
                         let mut peers_db = self.base_peer.peers_db_lock.write().await;
                         let peer = peers_db.get_mut(&peer_id).unwrap().as_mut();
-                        peer.send_command(&String::from("SHAKCOMP"), signed_challenge).await;
+                        peer.send_command(&String::from("SHAKCOMP"), signed_challenge)
+                            .await;
+                        println!("SHAKECOMPLETE!");
                     }
                     None => {
                         println!("Error verifying peer handshake signature");
@@ -311,7 +332,10 @@ impl PeerTrait for InboundPeer {
                 }
             }
             "SHAKCOMP" => {
-                println!("GOT SHAKCOMP RESPONSE {}", String::from_utf8_lossy(&response_api_message.message_data()).to_string());
+                println!(
+                    "GOT SHAKCOMP RESPONSE {}",
+                    String::from_utf8_lossy(&response_api_message.message_data()).to_string()
+                );
             }
             "REQBLOCK" => {
                 println!("GOT REQBLOCK RESPONSE");
@@ -350,11 +374,8 @@ impl PeerTrait for InboundPeer {
             "SHAKCOMP" => {
                 // TODO delete the peer if there is an error here
             }
-            _ => {
-
-            }
+            _ => {}
         }
-        
     }
     fn set_has_completed_handshake(&mut self, has_completed_handshake: bool) {
         self.base_peer.has_completed_handshake = has_completed_handshake;
@@ -387,13 +408,10 @@ impl InboundPeer {
                 mempool_lock,
                 blockchain_lock,
             },
-            sender: None
+            sender: None,
         }
     }
-    
-   
 }
-
 
 #[async_trait]
 impl PeerTrait for OutboundPeer {
@@ -405,7 +423,7 @@ impl PeerTrait for OutboundPeer {
             .await
             .unwrap();
     }
-    
+
     async fn send_command(&mut self, command: &String, message: Vec<u8>) {
         // TODO implement me
         self.base_peer.requests.insert(
@@ -413,7 +431,8 @@ impl PeerTrait for OutboundPeer {
             String::from(command).as_bytes().try_into().unwrap(),
         );
         self.base_peer.request_count += 1;
-        self.send(command, self.base_peer.request_count - 1, message).await;
+        self.send(command, self.base_peer.request_count - 1, message)
+            .await;
     }
     async fn send_response(&mut self, message_id: u32, message: Vec<u8>) {
         self.send(&String::from("RESULT__"), message_id, message)
@@ -442,23 +461,21 @@ impl PeerTrait for OutboundPeer {
     async fn handle_peer_command_response(
         &mut self,
         _command_name: [u8; 8],
-        _peer_id: SaitoHash, 
+        _peer_id: SaitoHash,
         _response_api_message: &APIMessage,
     ) {
-      
     }
     fn handle_peer_command_error_response(
         &mut self,
         command_name: [u8; 8],
         _response_api_message: &APIMessage,
     ) {
- 
     }
 }
 
 impl OutboundPeer {
     pub async fn new(
-        peer_url: &str, 
+        peer_url: &str,
         peers_db_lock: Arc<RwLock<PeersDB>>,
         wallet_lock: Arc<RwLock<Wallet>>,
         mempool_lock: Arc<RwLock<Mempool>>,
@@ -485,7 +502,6 @@ impl OutboundPeer {
             write_sink: write_sink,
         };
 
-
         let publickey: SaitoPublicKey;
         {
             let wallet = peer.base_peer.wallet_lock.read().await;
@@ -500,17 +516,19 @@ impl OutboundPeer {
                 .to_vec(),
         );
 
+        println!("SENDING SHHAKEINIT");
+        peer.send_command(&String::from("SHAKINIT"), message_data)
+            .await;
+
         while let Some(result) = peer.read_stream.next().await {
+            println!("NEW MESSAGE");
             let api_message = APIMessage::deserialize(&result.unwrap().into_data());
             peer.handle_peer_command(&api_message, peer_id).await;
         }
-        peer
-            .send_command(&String::from("SHAKINIT"), message_data)
-            .await;
+
         peer
     }
 }
-
 
 pub async fn handle_inbound_peer_connection(
     ws: WebSocket,
@@ -537,7 +555,7 @@ pub async fn handle_inbound_peer_connection(
     println!("peer channel created");
     peer.sender = Some(peer_sender);
     println!("peer sender set");
-    
+
     let peer_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
     peers_db_lock
         .write()
@@ -558,13 +576,11 @@ pub async fn handle_inbound_peer_connection(
                 break;
             }
         };
+        println!("RECEIVING MESSAGE IN PEER CONNECTION");
         let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());
         let mut peers_db = peers_db_lock.write().await;
         let peer = peers_db.get_mut(&peer_id).unwrap().as_mut();
-        peer.handle_peer_command(
-            &api_message,
-            peer_id,
-        ).await;
+        peer.handle_peer_command(&api_message, peer_id).await;
     }
     peers_db_lock.write().await.remove(&peer_id);
     println!("{:?} disconnected", peer_id);
@@ -597,10 +613,7 @@ pub async fn new_handshake_challenge(
     Ok(serialized_challenge)
 }
 
-pub fn socket_handshake_verify(
-    message_data: &Vec<u8>,
-) -> Option<HandshakeChallenge> {
-
+pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChallenge> {
     let challenge = HandshakeChallenge::deserialize(message_data);
     if challenge.timestamp() < create_timestamp() - CHALLENGE_EXPIRATION_TIME {
         println!("Error validating timestamp for handshake complete");
@@ -630,13 +643,17 @@ pub fn socket_handshake_verify(
     Some(challenge)
 }
 // adds peer to peer DB
-pub async fn socket_handshake_complete(peers_db_lock: Arc<RwLock<PeersDB>>, peer_id: SaitoHash, peer_public_key: SaitoPublicKey) {
+pub async fn socket_handshake_complete(
+    peers_db_lock: Arc<RwLock<PeersDB>>,
+    peer_id: SaitoHash,
+    peer_public_key: SaitoPublicKey,
+) {
+    println!("HANDSHAKE COMPLETE, setting to completed");
     let mut peers_db = peers_db_lock.write().await;
     let peer = peers_db.get_mut(&peer_id).unwrap().as_mut();
     peer.set_has_completed_handshake(true);
     peer.set_public_key(peer_public_key);
 }
-
 
 pub fn socket_receive_transaction(message: APIMessage) -> Option<Transaction> {
     let tx = Transaction::deserialize_from_net(message.message_data);
@@ -702,8 +719,6 @@ pub async fn socket_send_blockchain(
     }
 }
 
-
-
 // async fn handle_peer_command(base_peer: &BasePeer, api_message: &APIMessage, peer_id: SaitoHash) {
 //     match api_message.message_name_as_string().as_str() {
 //         "RESULT__" => {
@@ -735,7 +750,7 @@ pub async fn socket_send_blockchain(
 //                         api_message.message_id
 //                     );
 //                 }
-//             }   
+//             }
 //         }
 //         "SHAKINIT" => {
 //             tokio::spawn(async move {
@@ -865,7 +880,6 @@ pub async fn socket_send_blockchain(
 //             });
 //         }
 
-
 //         _ => {
 //             // If anything other than RESULT__ or ERROR___ is sent here, there is a problem.
 //             // The "client" side of the connection sends APIMessage and the "network/server" side responds.
@@ -877,17 +891,17 @@ pub async fn socket_send_blockchain(
 //         }
 //     }
 // }
- 
+
 // async fn handle_peer_command_response(
 //     command_name: [u8; 8],
-//     peer_id: SaitoHash, 
+//     peer_id: SaitoHash,
 //     response_api_message: &APIMessage,
 // ) {
 //     match String::from_utf8_lossy(&command_name).to_string().as_ref() {
 //         "SHAKINIT" => {
 //             // SHAKINIT response
 //             // We should sign the response and send a SHAKCOMP.
-//             // We want to reuse socket_handshake_verify, so we will sign first before 
+//             // We want to reuse socket_handshake_verify, so we will sign first before
 //             // verifying the peer's signature
 //             let privatekey: SaitoPrivateKey;
 //             {

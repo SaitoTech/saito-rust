@@ -4,9 +4,9 @@ use crate::wallet::Wallet;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use warp::{Filter, Reply};
+use warp::{Filter, Reply, body};
 
-use super::handlers::{get_block_handler, ws_upgrade_handler};
+use super::handlers::{get_block_handler, post_transaction_handler, ws_upgrade_handler};
 use super::peer::PeersDB;
 
 pub fn ws_upgrade_route_filter(
@@ -46,18 +46,18 @@ pub fn get_block_route_filter(
 //         .and_then(post_block_handler)
 // }
 
-// pub fn post_transaction_route_filter(
-//     mempool_lock: Arc<RwLock<Mempool>>,
-//     blockchain_lock: Arc<RwLock<Blockchain>>,
-// ) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
-//     warp::post()
-//         .and(warp::path("sendtransaction"))
-//         .and(warp::path::end())
-//         .and(body::aggregate())
-//         .and(with_mempool(mempool_lock))
-//         .and(with_blockchain(blockchain_lock))
-//         .and_then(post_transaction_handler)
-// }
+pub fn post_transaction_route_filter(
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
+    warp::post()
+        .and(warp::path("sendtransaction"))
+        .and(warp::path::end())
+        .and(body::aggregate())
+        .and(with_mempool(mempool_lock))
+        .and(with_blockchain(blockchain_lock))
+        .and_then(post_transaction_handler)
+}
 
 fn with_peers_filter(
     peers_db_lock: Arc<RwLock<PeersDB>>,

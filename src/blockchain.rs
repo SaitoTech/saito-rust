@@ -486,6 +486,9 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
+        println!("{:?}", new_chain);
+        println!("{:?}", old_chain);
+
         if old_chain.len() > new_chain.len() {
             println!("ERROR 1");
             return false;

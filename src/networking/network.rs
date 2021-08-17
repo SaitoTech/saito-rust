@@ -1,11 +1,12 @@
 use crate::blockchain::Blockchain;
-use crate::crypto::{SaitoHash, hash};
+use crate::crypto::{hash, SaitoHash};
 use crate::mempool::Mempool;
-use crate::networking::filters::{get_block_route_filter, ws_upgrade_route_filter};
+use crate::networking::filters::{get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter};
 use crate::networking::peer::OutboundPeer;
+use crate::util::format_url_string;
 
 use crate::wallet::Wallet;
-use tokio::sync::{RwLock};
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use std::sync::Arc;
@@ -67,7 +68,12 @@ impl Network {
         let host: [u8; 4] = settings.get::<[u8; 4]>("network.host").unwrap();
         let port: u16 = settings.get::<u16>("network.port").unwrap();
 
-        let routes = get_block_route_filter().or(ws_upgrade_route_filter(
+        let routes = get_block_route_filter()
+        .or(post_transaction_route_filter(
+            self.mempool_lock.clone(),
+            self.blockchain_lock.clone()
+        ))
+        .or(ws_upgrade_route_filter(
             self.peers_db_lock.clone(),
             self.wallet_lock.clone(),
             self.mempool_lock.clone(),
@@ -76,30 +82,19 @@ impl Network {
 
         if let Some(peer_settings) = self.peer_settings() {
             for peer in peer_settings {
-                let host_string = peer
-                    .host
-                    .iter()
-                    .map(|int| int.to_string())
-                    .collect::<Vec<String>>()
-                    .join(".");
-                let url_string = format!(
-                    "{}{}{}{}{}",
-                    "ws://",
-                    host_string,
-                    ":",
-                    peer.port.to_string(),
-                    "/wsopen"
-                );
-                println!("{:?}", url_string);
-                
+                let peer_url = format!("ws://{}/wsopen", format_url_string(peer.host, peer.port),);
+                println!("{:?}", peer_url);
+
                 let peer_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
                 let peer = OutboundPeer::new(
-                    &url_string[..], 
+                    &peer_url[..],
                     self.peers_db_lock.clone(),
                     self.wallet_lock.clone(),
                     self.mempool_lock.clone(),
                     self.blockchain_lock.clone(),
-                ).await;
+                )
+                .await;
+                println!("GET PEER IN DB_LOCK");
                 self.peers_db_lock
                     .write()
                     .await
@@ -107,6 +102,7 @@ impl Network {
             }
         }
 
+        println!("INIT WARP");
         warp::serve(routes).run((host, port)).await;
 
         Ok(())
@@ -156,7 +152,13 @@ mod tests {
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
-        let network = Network::new(settings, wallet_lock.clone(), peers_db_lock.clone(), mempool_lock.clone(), blockchain_lock.clone());
+        let network = Network::new(
+            settings,
+            wallet_lock.clone(),
+            peers_db_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        );
 
         let (publickey, privatekey) = generate_keys();
 
