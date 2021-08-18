@@ -1,3 +1,4 @@
+use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::crypto::{hash, sign_blob, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::mempool::{AddTransactionResult, Mempool};
@@ -177,7 +178,7 @@ impl BasePeer {
                 if let Some(bytes) = socket_send_blockchain(&api_message, blockchain_lock).await {
                     let message_data = String::from("OK").as_bytes().try_into().unwrap();
                     self.send_response(message_id, message_data).await;
-                    self.send_command(&String::from("SNDBLKHD"), bytes).await;
+                    self.send_command(&String::from("SNDCHAIN"), bytes).await;
                 } else {
                     let message_data = String::from("ERROR").as_bytes().try_into().unwrap();
                     self.send_error_response(message_id, message_data).await;
@@ -214,8 +215,21 @@ impl BasePeer {
                 }
             }
             "SNDCHAIN" => {
-                println!("GOT SNDCHAIN");
                 let _message_id = api_message.message_id;
+                // break the msg into discrete blocks to fetch
+                let hashes: Vec<&[u8]> = api_message.message_data.chunks(32).collect();
+                for hash in hashes.into_iter() {
+                    self.send_command(&String::from("REQBLOCK"), hash.to_vec()).await;
+                }
+            }
+            "SNDBLOCK" => {
+                // receive the block fetched and add it to the blockchain
+                let mut block = Block::deserialize_for_net(api_message.message_data);
+                block.generate_hashes();
+                {
+                    let mut blockchain = self.blockchain_lock.write().await;
+                    blockchain.add_block(block).await;
+                }
             }
             "SNDBLKHD" => {
                 println!("GOT SNDBLKHD");
@@ -238,7 +252,7 @@ impl BasePeer {
         command_name: [u8; 8],
         response_api_message: &APIMessage,
     ) {
-        match String::from_utf8_lossy(&command_name).to_string().as_ref() {            
+        match String::from_utf8_lossy(&command_name).to_string().as_ref() {
             "SHAKINIT" => {
                 println!("GOT SHAKINIT RESPONSE");
                 // SHAKINIT response
@@ -271,7 +285,9 @@ impl BasePeer {
                     "GOT SHAKCOMP RESPONSE {}",
                     String::from_utf8_lossy(&response_api_message.message_data()).to_string()
                 );
-                // self.send_command(&String::from("REQCHAIN"), vec![]).await;
+                // now that we're connected, we want to request the chain from our new peer and see if we're synced
+
+                self.send_command(&String::from("REQCHAIN"), vec![0; 64]).await;
             }
             "REQBLOCK" => {
                 println!("GOT REQBLOCK RESPONSE");

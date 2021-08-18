@@ -56,7 +56,7 @@ impl Network {
         peers_db_lock: Arc<RwLock<PeersDB>>,
         // mempool_lock: Arc<RwLock<Mempool>>,
         // blockchain_lock: Arc<RwLock<Blockchain>>,
-        
+
         // network_lock: Arc<RwLock<Network>>,
         // _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
         // _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
@@ -91,9 +91,9 @@ impl Network {
                 println!("{:?}", peer_url);
                 let url = url::Url::parse(&peer_url).unwrap();
                 let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
-        
+
                 let (write_sink, mut read_stream) = ws_stream.split();
-        
+
                 let peer_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
 
                 let peer = OutboundPeer::new(
@@ -114,7 +114,7 @@ impl Network {
                     let wallet = self.wallet_lock.read().await;
                     publickey = wallet.get_public_key();
                 }
-        
+
                 let mut message_data = vec![127, 0, 0, 1];
                 message_data.extend(
                     PublicKey::from_slice(&publickey)
@@ -122,7 +122,7 @@ impl Network {
                         .serialize()
                         .to_vec(),
                 );
-                
+
                 tokio::task::spawn(async move {
                     while let Some(result) = read_stream.next().await {
                         let api_message = APIMessage::deserialize(&result.unwrap().into_data());
