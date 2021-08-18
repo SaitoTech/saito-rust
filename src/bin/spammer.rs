@@ -7,7 +7,7 @@ TODO: Fill in these docs
 use saito_rust::networking::peer::PeersDB;
 use saito_rust::{
     blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
-    storage::Storage, transaction::Transaction, util::format_url_string, wallet::Wallet,
+    transaction::Transaction, util::format_url_string, wallet::Wallet,
 };
 
 use clap::{App, Arg};
@@ -20,7 +20,7 @@ use rayon::prelude::*;
 
 #[tokio::main]
 pub async fn main() -> saito_rust::Result<()> {
-    let args: Vec<String> = std::env::args().collect();
+    //let args: Vec<String> = std::env::args().collect();
 
     let matches = App::new("Saito Runtime")
         .about("Runs a Saito Node")
@@ -174,7 +174,7 @@ pub async fn main() -> saito_rust::Result<()> {
         }
     });
 
-    run(mempool_lock, blockchain_lock, miner_lock, network).await?;
+    run(mempool_lock, blockchain_lock, miner_lock, peers_db_lock.clone(), network).await?;
 
     Ok(())
 }
@@ -183,6 +183,7 @@ pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     miner_lock: Arc<RwLock<Miner>>,
+    peers_db_lock: Arc<RwLock<PeersDB>>,
     network: Network,
 ) -> saito_rust::Result<()> {
     let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
@@ -215,7 +216,7 @@ pub async fn run(
                 eprintln!("{:?}", err)
             }
         },
-        res = network.run() => {
+        res = network.run(peers_db_lock.clone()) => {
             if let Err(err) = res {
                 eprintln!("{:?}", err)
             }

@@ -954,7 +954,7 @@ pub async fn run(
         // to broadcast messages.
         //
         //                    SaitoMessage::TestMessage => {
-        //             		println!("Blockchain RECEIVED TEST MESSAGE!");
+        //             		println!("Blockchain GOT TEST MESSAGE!");
         //			let blockchain = blockchain_lock.read().await;
         //
         //			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();

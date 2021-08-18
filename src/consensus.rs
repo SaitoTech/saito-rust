@@ -172,7 +172,7 @@ impl Consensus {
                     eprintln!("{:?}", err)
                 }
             },
-            res = network.run() => {
+            res = network.run(peers_db_lock.clone()) => {
                 if let Err(err) = res {
                     eprintln!("{:?}", err)
                 }
