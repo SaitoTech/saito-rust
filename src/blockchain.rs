@@ -480,6 +480,14 @@ impl Blockchain {
         let block = self.blocks.get_mut(&block_hash).unwrap();
         block
     }
+    pub fn contains_block_hash_at_block_id(
+        &mut self,
+        block_id: u64,
+        block_hash: SaitoHash,
+    ) -> bool {
+        self.blockring
+            .contains_block_hash_at_block_id(block_id, block_hash)
+    }
 
     pub fn is_new_chain_the_longest_chain(
         &mut self,
@@ -1046,9 +1054,20 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
+            let block_copy = block.clone();
             blockchain.add_block(block).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+            let latest_block = blockchain.get_latest_block().unwrap();
+
+            assert_eq!(block_copy.get_id(), latest_block.get_id());
+            assert_eq!(block_copy.get_hash(), latest_block.get_hash());
+            assert_eq!(
+                block_copy.get_previous_block_hash(),
+                latest_block.get_previous_block_hash()
+            );
+            let prev_block = blockchain.get_block_sync(&latest_block.get_previous_block_hash());
+            assert!(prev_block.is_some());
         }
 
         //

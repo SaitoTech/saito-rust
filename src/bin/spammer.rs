@@ -125,10 +125,8 @@ pub async fn main() -> saito_rust::Result<()> {
         let host: [u8; 4] = settings.get::<[u8; 4]>("network.host").unwrap();
         let port: u16 = settings.get::<u16>("network.port").unwrap();
 
-        let server_transaction_url = format!(
-            "http://{}/sendtransaction",
-            format_url_string(host, port),
-        );
+        let server_transaction_url =
+            format!("http://{}/sendtransaction", format_url_string(host, port),);
 
         println!("{:?}", server_transaction_url);
 
@@ -174,7 +172,14 @@ pub async fn main() -> saito_rust::Result<()> {
         }
     });
 
-    run(mempool_lock, blockchain_lock, miner_lock, peers_db_lock.clone(), network).await?;
+    run(
+        mempool_lock,
+        blockchain_lock,
+        miner_lock,
+        peers_db_lock.clone(),
+        network,
+    )
+    .await?;
 
     Ok(())
 }

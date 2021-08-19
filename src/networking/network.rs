@@ -1,8 +1,10 @@
 use crate::blockchain::Blockchain;
-use crate::crypto::{SaitoHash, SaitoPublicKey, hash};
+use crate::crypto::{hash, SaitoHash, SaitoPublicKey};
 use crate::mempool::Mempool;
 use crate::networking::api_message::APIMessage;
-use crate::networking::filters::{get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter};
+use crate::networking::filters::{
+    get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter,
+};
 use crate::networking::peer::OutboundPeer;
 use crate::util::format_url_string;
 
@@ -61,23 +63,25 @@ impl Network {
         // _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
         // _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
     ) -> crate::Result<()> {
-
         let host: [u8; 4] = self.config_settings.get::<[u8; 4]>("network.host").unwrap();
         let port: u16 = self.config_settings.get::<u16>("network.port").unwrap();
 
         let routes = get_block_route_filter()
-        .or(post_transaction_route_filter(
-            self.mempool_lock.clone(),
-            self.blockchain_lock.clone()
-        ))
-        .or(ws_upgrade_route_filter(
-            self.peers_db_lock.clone(),
-            self.wallet_lock.clone(),
-            self.mempool_lock.clone(),
-            self.blockchain_lock.clone(),
-        ));
+            .or(post_transaction_route_filter(
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ))
+            .or(ws_upgrade_route_filter(
+                self.peers_db_lock.clone(),
+                self.wallet_lock.clone(),
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ));
 
-        let peer_settings = match self.config_settings.get::<Vec<PeerSetting>>("network.peers") {
+        let peer_settings = match self
+            .config_settings
+            .get::<Vec<PeerSetting>>("network.peers")
+        {
             Ok(peer_settings) => Some(peer_settings),
             Err(_) => None,
         };
@@ -86,60 +90,60 @@ impl Network {
             // TODO replace let peer with for peer
             // This was a problem because of peers_db_lock move in each loop...
             // for peer in peer_settings {
-                let peer = peer_settings.get(0).unwrap();
-                let peer_url = format!("ws://{}/wsopen", format_url_string(peer.host, peer.port),);
-                println!("{:?}", peer_url);
-                let url = url::Url::parse(&peer_url).unwrap();
-                let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
+            let peer = peer_settings.get(0).unwrap();
+            let peer_url = format!("ws://{}/wsopen", format_url_string(peer.host, peer.port),);
+            println!("{:?}", peer_url);
+            let url = url::Url::parse(&peer_url).unwrap();
+            let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
 
-                let (write_sink, mut read_stream) = ws_stream.split();
+            let (write_sink, mut read_stream) = ws_stream.split();
 
-                let peer_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
+            let peer_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
 
-                let peer = OutboundPeer::new(
-                    write_sink,
-                    self.wallet_lock.clone(),
-                    self.mempool_lock.clone(),
-                    self.blockchain_lock.clone(),
-                )
-                .await;
+            let peer = OutboundPeer::new(
+                write_sink,
+                self.wallet_lock.clone(),
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            )
+            .await;
 
-                self.peers_db_lock
-                    .write()
-                    .await
-                    .insert(peer_id.clone(), peer);
+            self.peers_db_lock
+                .write()
+                .await
+                .insert(peer_id.clone(), peer);
 
-                let publickey: SaitoPublicKey;
-                {
-                    let wallet = self.wallet_lock.read().await;
-                    publickey = wallet.get_public_key();
+            let publickey: SaitoPublicKey;
+            {
+                let wallet = self.wallet_lock.read().await;
+                publickey = wallet.get_public_key();
+            }
+
+            let mut message_data = vec![127, 0, 0, 1];
+            message_data.extend(
+                PublicKey::from_slice(&publickey)
+                    .unwrap()
+                    .serialize()
+                    .to_vec(),
+            );
+
+            tokio::task::spawn(async move {
+                while let Some(result) = read_stream.next().await {
+                    let api_message = APIMessage::deserialize(&result.unwrap().into_data());
+                    let mut peers_db = peers_db_lock.write().await;
+                    let peer = peers_db.get_mut(&peer_id).unwrap();
+                    peer.handle_peer_command(&api_message).await;
                 }
-
-                let mut message_data = vec![127, 0, 0, 1];
-                message_data.extend(
-                    PublicKey::from_slice(&publickey)
-                        .unwrap()
-                        .serialize()
-                        .to_vec(),
-                );
-
-                tokio::task::spawn(async move {
-                    while let Some(result) = read_stream.next().await {
-                        let api_message = APIMessage::deserialize(&result.unwrap().into_data());
-                        let mut peers_db = peers_db_lock.write().await;
-                        let peer = peers_db.get_mut(&peer_id).unwrap();
-                        peer.handle_peer_command(&api_message).await;
-                    }
-                });
-                let mut peers_db = self.peers_db_lock.write().await;
-                let peer = peers_db.get_mut(&peer_id).unwrap();
-                peer.send_command(&String::from("SHAKINIT"), message_data)
-                    .await;
+            });
+            let mut peers_db = self.peers_db_lock.write().await;
+            let peer = peers_db.get_mut(&peer_id).unwrap();
+            peer.send_command(&String::from("SHAKINIT"), message_data)
+                .await;
 
             //}
         }
 
-        println!("INIT WARP");
+        println!("ENGAGE");
         warp::serve(routes).run((host, port)).await;
 
         Ok(())

@@ -5,12 +5,12 @@ use crate::networking::peer::handle_inbound_peer_connection;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
+use base58::ToBase58;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use warp::reject::Reject;
 use warp::reply::Response;
-use warp::{Rejection, Reply, Buf};
-use base58::ToBase58;
+use warp::{Buf, Rejection, Reply};
 
 use super::peer::PeersDB;
 
@@ -67,7 +67,6 @@ pub async fn post_transaction_handler(
         let cnt = body.chunk().len();
         body.advance(cnt);
     }
-
 
     let mut tx = Transaction::deserialize_from_net(buffer);
     let blockchain = blockchain_lock.read().await;

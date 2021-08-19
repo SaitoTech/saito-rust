@@ -4,7 +4,7 @@ use crate::wallet::Wallet;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use warp::{Filter, Reply, body};
+use warp::{body, Filter, Reply};
 
 use super::handlers::{get_block_handler, post_transaction_handler, ws_upgrade_handler};
 use super::peer::PeersDB;

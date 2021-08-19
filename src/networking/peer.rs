@@ -3,6 +3,10 @@ use crate::blockchain::Blockchain;
 use crate::crypto::{hash, sign_blob, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::mempool::{AddTransactionResult, Mempool};
 use crate::networking::message_types::handshake_challenge::HandshakeChallenge;
+use crate::networking::message_types::request_blockchain_message::RequestBlockchainMessage;
+use crate::networking::message_types::send_blockchain_message::{
+    SendBlockchainBlockData, SendBlockchainMessage, SyncType,
+};
 use crate::networking::network::CHALLENGE_SIZE;
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
@@ -48,30 +52,42 @@ pub struct InboundPeer {
     sender: mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>,
 }
 pub struct OutboundPeer {
-    write_sink: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tungstenite::protocol::Message>,
+    write_sink:
+        SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tungstenite::protocol::Message>,
 }
 
 impl BasePeer {
     async fn send(&mut self, command: &String, message_id: u32, message: Vec<u8>) {
-        // println!("SEND {}", command);
+        println!("SEND {}", command);
         let api_message = APIMessage::new(command, message_id, message);
         if self.inbound_peer.is_some() && self.outbound_peer.is_some() {
             panic!("Peer has both inbound and outbound connections, this should never happen");
         }
         if self.outbound_peer.is_some() {
-            let _foo = self.outbound_peer.as_mut().unwrap().write_sink.send(api_message.serialize().into()).await;
+            let _foo = self
+                .outbound_peer
+                .as_mut()
+                .unwrap()
+                .write_sink
+                .send(api_message.serialize().into())
+                .await;
         }
         if self.inbound_peer.is_some() {
-            let _foo = self.inbound_peer.as_mut().unwrap()
+            let _foo = self
+                .inbound_peer
+                .as_mut()
+                .unwrap()
                 .sender
                 .send(Ok(Message::binary(api_message.serialize())));
         }
     }
     pub async fn send_command(&mut self, command: &String, message: Vec<u8>) {
-        self.requests
-            .insert(self.request_count, String::from(command).as_bytes().try_into().unwrap());
+        self.requests.insert(
+            self.request_count,
+            String::from(command).as_bytes().try_into().unwrap(),
+        );
         self.request_count += 1;
-        self.send(command, self.request_count-1, message).await;
+        self.send(command, self.request_count - 1, message).await;
     }
     pub async fn send_response(&mut self, message_id: u32, message: Vec<u8>) {
         self.send(&String::from("RESULT__"), message_id, message)
@@ -112,7 +128,7 @@ impl BasePeer {
                     }
                     None => {
                         println!(
-                            "Peer has sent a {} for a request we don't know about. Request ID: {}",
+                            "Peer has sent an error {} . Request ID: {}",
                             api_message.message_name_as_string(),
                             api_message.message_id
                         );
@@ -133,7 +149,7 @@ impl BasePeer {
                 match socket_handshake_verify(&api_message.message_data()) {
                     Some(deserialize_challenge) => {
                         self.set_has_completed_handshake(true);
-                        self.set_public_key(deserialize_challenge.opponent_pubkey()); 
+                        self.set_public_key(deserialize_challenge.opponent_pubkey());
                         self.send_response(
                             api_message.message_id,
                             String::from("OK").as_bytes().try_into().unwrap(),
@@ -161,9 +177,7 @@ impl BasePeer {
             "REQBLKHD" => {
                 println!("GOT REQBLKHD");
                 let message_id = api_message.message_id;
-                if let Some(bytes) =
-                    socket_send_block_header(&api_message, blockchain_lock).await
-                {
+                if let Some(bytes) = socket_send_block_header(&api_message, blockchain_lock).await {
                     let message_data = String::from("OK").as_bytes().try_into().unwrap();
                     self.send_response(message_id, message_data).await;
                     self.send_command(&String::from("SNDBLKHD"), bytes).await;
@@ -174,14 +188,31 @@ impl BasePeer {
             }
             "REQCHAIN" => {
                 println!("GOT REQCHAIN");
-                let message_id = api_message.message_id;
-                if let Some(bytes) = socket_send_blockchain(&api_message, blockchain_lock).await {
-                    let message_data = String::from("OK").as_bytes().try_into().unwrap();
-                    self.send_response(message_id, message_data).await;
-                    self.send_command(&String::from("SNDCHAIN"), bytes).await;
+                self.send_response(
+                    api_message.message_id,
+                    String::from("OK").as_bytes().try_into().unwrap(),
+                )
+                .await;
+                let deserialized_request_blockchain_message =
+                    RequestBlockchainMessage::deserialize(&api_message.message_data());
+                if let Some(send_blockchain_message) = build_send_blockchain_message(
+                    &deserialized_request_blockchain_message,
+                    blockchain_lock,
+                )
+                .await
+                {
+                    self.send_command(
+                        &String::from("SNDCHAIN"),
+                        send_blockchain_message.serialize(),
+                    )
+                    .await;
                 } else {
-                    let message_data = String::from("ERROR").as_bytes().try_into().unwrap();
-                    self.send_error_response(message_id, message_data).await;
+                    let message_data = String::from("UNKNOWN BLOCK HASH")
+                        .as_bytes()
+                        .try_into()
+                        .unwrap();
+                    self.send_error_response(api_message.message_id, message_data)
+                        .await;
                 }
             }
             "SNDTRANS" => {
@@ -215,14 +246,17 @@ impl BasePeer {
                 }
             }
             "SNDCHAIN" => {
+                println!("GOT SNDCHAIN");
                 let _message_id = api_message.message_id;
                 // break the msg into discrete blocks to fetch
                 let hashes: Vec<&[u8]> = api_message.message_data.chunks(32).collect();
                 for hash in hashes.into_iter() {
-                    self.send_command(&String::from("REQBLOCK"), hash.to_vec()).await;
+                    self.send_command(&String::from("REQBLOCK"), hash.to_vec())
+                        .await;
                 }
             }
             "SNDBLOCK" => {
+                println!("GOT SNDBLOCK  ");
                 // receive the block fetched and add it to the blockchain
                 let mut block = Block::deserialize_for_net(api_message.message_data);
                 block.generate_hashes();
@@ -270,7 +304,7 @@ impl BasePeer {
                 match socket_handshake_verify(&signed_challenge) {
                     Some(deserialize_challenge) => {
                         self.set_has_completed_handshake(true);
-                        self.set_public_key(deserialize_challenge.challenger_pubkey()); 
+                        self.set_public_key(deserialize_challenge.challenger_pubkey());
                         self.send_command(&String::from("SHAKCOMP"), signed_challenge)
                             .await;
                         println!("SHAKECOMPLETE!");
@@ -286,8 +320,15 @@ impl BasePeer {
                     String::from_utf8_lossy(&response_api_message.message_data()).to_string()
                 );
                 // now that we're connected, we want to request the chain from our new peer and see if we're synced
+                // TODO get this data from blockchain.rs or wherever it is...
+                let request_blockchain_message =
+                    RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
 
-                self.send_command(&String::from("REQCHAIN"), vec![0; 64]).await;
+                self.send_command(
+                    &String::from("REQCHAIN"),
+                    request_blockchain_message.serialize(),
+                )
+                .await;
             }
             "REQBLOCK" => {
                 println!("GOT REQBLOCK RESPONSE");
@@ -296,7 +337,10 @@ impl BasePeer {
                 println!("GOT REQBLKHD RESPONSE");
             }
             "REQCHAIN" => {
-                println!("GOT REQCHAIN RESPONSE");
+                println!(
+                    "GOT REQCHAIN RESPONSE {}",
+                    String::from_utf8_lossy(&response_api_message.message_data()).to_string()
+                );
             }
             "SNDTRANS" => {
                 println!("GOT SNDTRANS RESPONSE");
@@ -357,18 +401,18 @@ impl InboundPeer {
             wallet_lock,
             mempool_lock,
             blockchain_lock,
-            inbound_peer: Some(InboundPeer {
-                sender: sender,
-            }),
+            inbound_peer: Some(InboundPeer { sender: sender }),
             outbound_peer: None,
         }
-        
     }
 }
 
 impl OutboundPeer {
     pub async fn new(
-        write_sink: SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tokio_tungstenite::tungstenite::Message>,
+        write_sink: SplitSink<
+            WebSocketStream<MaybeTlsStream<TcpStream>>,
+            tokio_tungstenite::tungstenite::Message,
+        >,
         wallet_lock: Arc<RwLock<Wallet>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -398,7 +442,6 @@ pub async fn handle_inbound_peer_connection(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) {
-
     let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
     let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
     let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
@@ -407,20 +450,16 @@ pub async fn handle_inbound_peer_connection(
             eprintln!("error sending websocket msg: {}", e);
         }
     }));
-    println!("peer channel created");
-    
+
     let peer = InboundPeer::new(
         peer_sender,
         wallet_lock.clone(),
         mempool_lock.clone(),
         blockchain_lock.clone(),
     );
-    
+
     let peer_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-    peers_db_lock
-        .write()
-        .await
-        .insert(peer_id.clone(), peer);
+    peers_db_lock.write().await.insert(peer_id.clone(), peer);
 
     println!("{:?} connected", peer_id);
 
@@ -539,32 +578,55 @@ pub async fn socket_send_block_header(
     }
 }
 
-pub async fn socket_send_blockchain(
-    message: &APIMessage,
+pub async fn build_send_blockchain_message(
+    request_blockchain_message: &RequestBlockchainMessage,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-) -> Option<Vec<u8>> {
-    let block_hash: SaitoHash = message.message_data[0..32].try_into().unwrap();
-    let _fork_id: SaitoHash = message.message_data[32..64].try_into().unwrap();
+) -> Option<SendBlockchainMessage> {
+    let block_zero_hash: SaitoHash = [0; 32];
 
-    let mut hashes: Vec<u8> = vec![];
+    let peers_latest_hash: &SaitoHash;
+    if request_blockchain_message.get_latest_block_id() == 0
+        && request_blockchain_message.get_latest_block_hash() == &block_zero_hash
+    {
+        peers_latest_hash = &block_zero_hash;
+    } else {
+        // TODO contains_block_hash_at_block_id for some reason needs mutable access to block_ring
+        // We should figure out why this is and get rid of this problem, I don't think there's any
+        // reason we should need to get the write lock for this operation...
+        let mut blockchain = blockchain_lock.write().await;
+        if !blockchain.contains_block_hash_at_block_id(
+            request_blockchain_message.get_latest_block_id(),
+            *request_blockchain_message.get_latest_block_hash(),
+        ) {
+            // The latest hash from our peer is not in the longest chain
+            return None;
+        }
+        peers_latest_hash = request_blockchain_message.get_latest_block_hash();
+    }
+
     let blockchain = blockchain_lock.read().await;
 
-    if let Some(target_block) = blockchain.get_latest_block() {
-        let target_block_hash = target_block.get_hash();
-        if target_block_hash != block_hash {
-            hashes.extend_from_slice(&target_block_hash);
-            let mut previous_block_hash = target_block.get_previous_block_hash();
-            while !blockchain.get_block_sync(&previous_block_hash).is_none()
-                && previous_block_hash != block_hash
-            {
-                if let Some(block) = blockchain.get_block_sync(&previous_block_hash) {
-                    hashes.extend_from_slice(&block.get_hash());
-                    previous_block_hash = block.get_previous_block_hash();
-                }
-            }
+    let mut blocks_data: Vec<SendBlockchainBlockData> = vec![];
+    if let Some(latest_block) = blockchain.get_latest_block() {
+        let mut previous_block_hash: SaitoHash = latest_block.get_hash();
+        let mut this_block: &Block; // = blockchain.get_block_sync(&previous_block_hash).unwrap();
+        while &previous_block_hash != peers_latest_hash {
+            println!("GET BLOCK FOR SNDCHAIN {:?}", previous_block_hash);
+            this_block = blockchain.get_block_sync(&previous_block_hash).unwrap();
+            blocks_data.push(SendBlockchainBlockData {
+                block_id: this_block.get_id(),
+                timestamp: this_block.get_timestamp(),
+                pre_hash: [0; 32],
+                number_of_transactions: 0,
+            });
+            previous_block_hash = this_block.get_previous_block_hash();
         }
-        Some(hashes)
+        Some(SendBlockchainMessage::new(
+            SyncType::Full,
+            *peers_latest_hash,
+            blocks_data,
+        ))
     } else {
-        None
+        panic!("Blockchain does not have any blocks");
     }
 }
