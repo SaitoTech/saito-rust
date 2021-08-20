@@ -67,7 +67,7 @@ impl Blockchain {
         self.fork_id
     }
 
-    pub async fn add_block(&mut self, block: Block) {
+    pub async fn add_block(&mut self, block: Block, save_to_disk: bool) {
         println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
@@ -232,7 +232,7 @@ impl Blockchain {
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
             if does_new_chain_validate {
-                self.add_block_success(block_hash).await;
+                self.add_block_success(block_hash, save_to_disk).await;
 
                 //
                 // TODO
@@ -287,7 +287,7 @@ impl Blockchain {
         }
     }
 
-    pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
+    pub async fn add_block_success(&mut self, block_hash: SaitoHash, save_to_disk: bool) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
 
         let block_id;
@@ -299,7 +299,9 @@ impl Blockchain {
         {
             let block = self.get_mut_block(block_hash).await;
             block_id = block.get_id();
-            Storage::write_block_to_disk(block);
+            if save_to_disk {
+                Storage::write_block_to_disk(block);
+            }
 
             //
             // TMP - delete transactions
@@ -480,11 +482,7 @@ impl Blockchain {
         let block = self.blocks.get_mut(&block_hash).unwrap();
         block
     }
-    pub fn contains_block_hash_at_block_id(
-        &mut self,
-        block_id: u64,
-        block_hash: SaitoHash,
-    ) -> bool {
+    pub fn contains_block_hash_at_block_id(&self, block_id: u64, block_hash: SaitoHash) -> bool {
         self.blockring
             .contains_block_hash_at_block_id(block_id, block_hash)
     }
@@ -1055,7 +1053,7 @@ mod tests {
         {
             let mut blockchain = blockchain_lock.write().await;
             let block_copy = block.clone();
-            blockchain.add_block(block).await;
+            blockchain.add_block(block, false).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
             let latest_block = blockchain.get_latest_block().unwrap();
@@ -1088,7 +1086,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
+            blockchain.add_block(block, false).await;
             assert_ne!(latest_block_id, blockchain.get_latest_block_id());
             assert_ne!(latest_block_hash, blockchain.get_latest_block_hash());
             //latest_block_id = blockchain.get_latest_block_id();
@@ -1126,7 +1124,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
+            blockchain.add_block(block, false).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
         }
@@ -1137,6 +1135,7 @@ mod tests {
 
     #[tokio::test]
     async fn produce_four_blocks_test() {
+        // There... are... four blocks!
         let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut miner = Miner::new(wallet_lock.clone());
@@ -1228,7 +1227,7 @@ mod tests {
 
             {
                 let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block).await;
+                blockchain.add_block(block, false).await;
                 assert_eq!(test_block_hash, blockchain.get_latest_block_hash());
                 assert_eq!(test_block_id, blockchain.get_latest_block_id());
             }

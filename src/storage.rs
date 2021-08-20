@@ -104,10 +104,17 @@ impl Storage {
                 if block.get_hash() == [0; 32] {
                     block.generate_hashes();
                 }
-                // println!("loading block with hash: {:?}", block.get_hash());
+                println!(
+                    "loading block with hash: {:?}",
+                    &hex::encode(&block.get_hash())
+                );
+                println!(
+                    "block's previous hash: {:?}",
+                    &hex::encode(&block.get_previous_block_hash())
+                );
 
                 let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block).await;
+                blockchain.add_block(block, false).await;
                 // println!("Loaded block {} of {}", pos, paths.len() - 1);
             }
         }

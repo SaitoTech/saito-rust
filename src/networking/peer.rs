@@ -262,7 +262,7 @@ impl BasePeer {
                 block.generate_hashes();
                 {
                     let mut blockchain = self.blockchain_lock.write().await;
-                    blockchain.add_block(block).await;
+                    blockchain.add_block(block, true).await;
                 }
             }
             "SNDBLKHD" => {
@@ -588,12 +588,13 @@ pub async fn build_send_blockchain_message(
     if request_blockchain_message.get_latest_block_id() == 0
         && request_blockchain_message.get_latest_block_hash() == &block_zero_hash
     {
+        println!("GOT BLOCK ZERO HASH");
         peers_latest_hash = &block_zero_hash;
     } else {
         // TODO contains_block_hash_at_block_id for some reason needs mutable access to block_ring
         // We should figure out why this is and get rid of this problem, I don't think there's any
         // reason we should need to get the write lock for this operation...
-        let mut blockchain = blockchain_lock.write().await;
+        let blockchain = blockchain_lock.read().await;
         if !blockchain.contains_block_hash_at_block_id(
             request_blockchain_message.get_latest_block_id(),
             *request_blockchain_message.get_latest_block_hash(),
@@ -604,6 +605,11 @@ pub async fn build_send_blockchain_message(
         peers_latest_hash = request_blockchain_message.get_latest_block_hash();
     }
 
+    println!(
+        "GET BLOCK FOR SNDCHAIN {:?}",
+        &hex::encode(&peers_latest_hash)
+    );
+
     let blockchain = blockchain_lock.read().await;
 
     let mut blocks_data: Vec<SendBlockchainBlockData> = vec![];
@@ -611,7 +617,10 @@ pub async fn build_send_blockchain_message(
         let mut previous_block_hash: SaitoHash = latest_block.get_hash();
         let mut this_block: &Block; // = blockchain.get_block_sync(&previous_block_hash).unwrap();
         while &previous_block_hash != peers_latest_hash {
-            println!("GET BLOCK FOR SNDCHAIN {:?}", previous_block_hash);
+            println!(
+                "GET BLOCK FOR SNDCHAIN {:?}",
+                &hex::encode(&previous_block_hash)
+            );
             this_block = blockchain.get_block_sync(&previous_block_hash).unwrap();
             blocks_data.push(SendBlockchainBlockData {
                 block_id: this_block.get_id(),

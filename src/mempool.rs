@@ -334,7 +334,7 @@ pub async fn run(
                        let mut blockchain = blockchain_lock.write().await;
                        while let Some(block) = mempool.blocks.pop_front() {
                            mempool.delete_transactions(&block.transactions);
-                           blockchain.add_block(block).await;
+                           blockchain.add_block(block, true).await;
                        }
                        mempool.currently_processing_block = false;
                    },

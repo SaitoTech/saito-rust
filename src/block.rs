@@ -768,18 +768,26 @@ impl Block {
 
         //
         // calculate expected burn-fee
-        //
+
+        let previous_block_hash = self.get_previous_block_hash();
+        println!("previous block hash {:?}", previous_block_hash);
+
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
             let difficulty = previous_block.get_difficulty();
             if !previous_block.get_has_golden_ticket() && cv.gt_num == 0 {
                 if difficulty > 0 {
+                    println!("PREVIOUS BLOCK DIFFICULTY IS GREATER THAN 0");
                     cv.expected_difficulty = previous_block.get_difficulty() - 1;
                 }
             } else if previous_block.get_has_golden_ticket() && cv.gt_num > 0 {
+                println!("WE'RE ADDING ONE TO DIFFICULTY");
                 cv.expected_difficulty = difficulty + 1;
             } else {
+                println!("DIFFICULTY REMAINS THE SAME");
                 cv.expected_difficulty = difficulty;
             }
+        } else {
+            println!("CAN'T FIND PREVIOUSLY BLOCK");
         }
 
         //
@@ -791,6 +799,10 @@ impl Block {
                 .get_longest_chain_block_hash_by_block_id(self.get_id() - 2);
 
             println!("pruned block hash: {:?}", pruned_block_hash);
+            println!(
+                "pruned block hash hex: {:?}",
+                &hex::encode(&pruned_block_hash)
+            );
 
             //
             // generate metadata should have prepared us with a pre-prune block
