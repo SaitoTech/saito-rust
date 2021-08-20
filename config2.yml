@@ -2,7 +2,8 @@
 network:
   host: [127, 0, 0, 1]
   port: 3001
-  peers: 
+  peers:
     - host: [127,0,0,1]
       port: 3000
-      
+storage:
+  load_blocks_from_disk: false

@@ -37,6 +37,7 @@ pub mod slip;
 pub mod storage;
 pub mod time;
 pub mod transaction;
+pub mod util;
 pub mod wallet;
 
 extern crate lazy_static;
