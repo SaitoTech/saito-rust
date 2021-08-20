@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["api_message",""],["client",""],["filters",""],["handlers",""],["message_types",""],["network",""],["peer",""],["socket",""]]});
+initSidebarItems({"mod":[["api_message",""],["filters",""],["handlers",""],["message_types",""],["network",""],["peer",""]]});

@@ -81,33 +81,27 @@
 <span id="79">79</span>
 <span id="80">80</span>
 <span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool::Mempool</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::handlers::post_transaction_handler</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">std::convert::Infallible</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
-<span class="kw">use</span> <span class="ident">warp::body</span>;
-<span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">Filter</span>, <span class="ident">Reply</span>};
+<span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">body</span>, <span class="ident">Filter</span>, <span class="ident">Reply</span>};
 
-<span class="kw">use</span> <span class="kw">super</span><span class="ident">::handlers</span>::{
-    <span class="ident">get_block_handler</span>, <span class="ident">get_block_handler_json</span>, <span class="ident">post_block_handler</span>, <span class="ident">ws_upgrade_handler</span>,
-};
-<span class="kw">use</span> <span class="kw">super</span><span class="ident">::peer::Peers</span>;
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::handlers</span>::{<span class="ident">get_block_handler</span>, <span class="ident">post_transaction_handler</span>, <span class="ident">ws_upgrade_handler</span>};
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::peer::PeersDB</span>;
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ws_upgrade_route_filter</span>(
-    <span class="ident">clients</span>: <span class="kw-2">&amp;</span><span class="ident">Peers</span>,
+    <span class="ident">peers_db_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">Extract</span> <span class="op">=</span> (<span class="kw">impl</span> <span class="ident">Reply</span>,), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">warp::Rejection</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {
     <span class="ident">warp::path</span>(<span class="string">&quot;wsopen&quot;</span>)
         .<span class="ident">and</span>(<span class="ident">warp::ws</span>())
-        .<span class="ident">and</span>(<span class="ident">with_peers_filter</span>(<span class="ident">clients</span>.<span class="ident">clone</span>()))
+        .<span class="ident">and</span>(<span class="ident">with_peers_filter</span>(<span class="ident">peers_db_lock</span>.<span class="ident">clone</span>()))
         .<span class="ident">and</span>(<span class="ident">with_wallet</span>(<span class="ident">wallet_lock</span>))
         .<span class="ident">and</span>(<span class="ident">with_mempool</span>(<span class="ident">mempool_lock</span>))
         .<span class="ident">and</span>(<span class="ident">with_blockchain</span>(<span class="ident">blockchain_lock</span>))
@@ -119,22 +113,22 @@
     <span class="ident">warp::path</span>(<span class="string">&quot;block&quot;</span>).<span class="ident">and</span>(<span class="ident">warp::path::param</span>().<span class="ident">and_then</span>(<span class="ident">get_block_handler</span>))
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_json_block_route_filter</span>(
-) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">Extract</span> <span class="op">=</span> (<span class="kw">impl</span> <span class="ident">Reply</span>,), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">warp::Rejection</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Copy</span> {
-    <span class="ident">warp::path</span>(<span class="string">&quot;block&quot;</span>)
-        .<span class="ident">and</span>(<span class="ident">warp::path</span>(<span class="string">&quot;json&quot;</span>))
-        .<span class="ident">and</span>(<span class="ident">warp::path::param</span>())
-        .<span class="ident">and_then</span>(<span class="ident">get_block_handler_json</span>)
-}
+<span class="comment">// pub fn get_json_block_route_filter(</span>
+<span class="comment">// ) -&gt; impl Filter&lt;Extract = (impl Reply,), Error = warp::Rejection&gt; + Copy {</span>
+<span class="comment">//     warp::path(&quot;block&quot;)</span>
+<span class="comment">//         .and(warp::path(&quot;json&quot;))</span>
+<span class="comment">//         .and(warp::path::param())</span>
+<span class="comment">//         .and_then(get_block_handler_json)</span>
+<span class="comment">// }</span>
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_block_route_filter</span>(
-) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">Extract</span> <span class="op">=</span> (<span class="kw">impl</span> <span class="ident">Reply</span>,), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">warp::Rejection</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {
-    <span class="ident">warp::post</span>()
-        .<span class="ident">and</span>(<span class="ident">warp::path</span>(<span class="string">&quot;sendblockheader&quot;</span>))
-        .<span class="ident">and</span>(<span class="ident">warp::path::end</span>())
-        .<span class="ident">and</span>(<span class="ident">body::aggregate</span>())
-        .<span class="ident">and_then</span>(<span class="ident">post_block_handler</span>)
-}
+<span class="comment">// pub fn post_block_route_filter(</span>
+<span class="comment">// ) -&gt; impl Filter&lt;Extract = (impl Reply,), Error = warp::Rejection&gt; + Clone {</span>
+<span class="comment">//     warp::post()</span>
+<span class="comment">//         .and(warp::path(&quot;sendblockheader&quot;))</span>
+<span class="comment">//         .and(warp::path::end())</span>
+<span class="comment">//         .and(body::aggregate())</span>
+<span class="comment">//         .and_then(post_block_handler)</span>
+<span class="comment">// }</span>
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">post_transaction_route_filter</span>(
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -149,8 +143,10 @@
         .<span class="ident">and_then</span>(<span class="ident">post_transaction_handler</span>)
 }
 
-<span class="kw">fn</span> <span class="ident">with_peers_filter</span>(<span class="ident">peers</span>: <span class="ident">Peers</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">Extract</span> <span class="op">=</span> (<span class="ident">Peers</span>,), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Infallible</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {
-    <span class="ident">warp::any</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">peers</span>.<span class="ident">clone</span>())
+<span class="kw">fn</span> <span class="ident">with_peers_filter</span>(
+    <span class="ident">peers_db_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">Extract</span> <span class="op">=</span> (<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Infallible</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {
+    <span class="ident">warp::any</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">peers_db_lock</span>.<span class="ident">clone</span>())
 }
 <span class="kw">fn</span> <span class="ident">with_wallet</span>(
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,

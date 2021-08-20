@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["RequestBlockchainMessage","block_id(starts with latest)block_hash(starts with latest)fork_idsynctype(optional)"]]});

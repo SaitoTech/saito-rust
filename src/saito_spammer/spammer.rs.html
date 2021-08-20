@@ -147,6 +147,91 @@
 <span id="145">145</span>
 <span id="146">146</span>
 <span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 # Saito Transaction Spammer
@@ -154,10 +239,13 @@
 TODO: Fill in these docs
 
 */</span>
+<span class="kw">use</span> <span class="ident">saito_rust::networking::peer::PeersDB</span>;
 <span class="kw">use</span> <span class="ident">saito_rust</span>::{
     <span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">miner::Miner</span>, <span class="ident">networking::network::Network</span>,
-    <span class="ident">transaction::Transaction</span>, <span class="ident">wallet::Wallet</span>,
+    <span class="ident">transaction::Transaction</span>, <span class="ident">util::format_url_string</span>, <span class="ident">wallet::Wallet</span>,
 };
+
+<span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">App</span>, <span class="ident">Arg</span>};
 
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">RwLock</span>};
@@ -167,26 +255,95 @@ TODO: Fill in these docs
 
 <span class="attribute">#[<span class="ident">tokio::main</span>]</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">saito_rust::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::env::args</span>().<span class="ident">collect</span>();
+    <span class="comment">//let args: Vec&lt;String&gt; = std::env::args().collect();</span>
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">txs_to_generate</span> <span class="op">=</span> <span class="number">10</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes_per_tx</span> <span class="op">=</span> <span class="number">1024</span>;
+    <span class="kw">let</span> <span class="ident">matches</span> <span class="op">=</span> <span class="ident">App::new</span>(<span class="string">&quot;Saito Runtime&quot;</span>)
+        .<span class="ident">about</span>(<span class="string">&quot;Runs a Saito Node&quot;</span>)
+        .<span class="ident">arg</span>(
+            <span class="ident">Arg::with_name</span>(<span class="string">&quot;key_path&quot;</span>)
+                .<span class="ident">short</span>(<span class="string">&quot;k&quot;</span>)
+                .<span class="ident">long</span>(<span class="string">&quot;key_path&quot;</span>)
+                .<span class="ident">default_value</span>(<span class="string">&quot;keyfile&quot;</span>)
+                .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
+                .<span class="ident">help</span>(<span class="string">&quot;Path to encrypted key file&quot;</span>),
+        )
+        .<span class="ident">arg</span>(
+            <span class="ident">Arg::with_name</span>(<span class="string">&quot;password&quot;</span>)
+                .<span class="ident">short</span>(<span class="string">&quot;p&quot;</span>)
+                .<span class="ident">long</span>(<span class="string">&quot;password&quot;</span>)
+                .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
+                .<span class="ident">help</span>(<span class="string">&quot;amount to send&quot;</span>),
+        )
+        .<span class="ident">arg</span>(
+            <span class="ident">Arg::with_name</span>(<span class="string">&quot;config&quot;</span>)
+                .<span class="ident">short</span>(<span class="string">&quot;c&quot;</span>)
+                .<span class="ident">long</span>(<span class="string">&quot;config&quot;</span>)
+                .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
+                .<span class="ident">help</span>(<span class="string">&quot;config file name&quot;</span>),
+        )
+        .<span class="ident">arg</span>(
+            <span class="ident">Arg::with_name</span>(<span class="string">&quot;transactions&quot;</span>)
+                .<span class="ident">short</span>(<span class="string">&quot;txs&quot;</span>)
+                .<span class="ident">long</span>(<span class="string">&quot;transactions&quot;</span>)
+                .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
+                .<span class="ident">help</span>(<span class="string">&quot;Number of transactins per block&quot;</span>),
+        )
+        .<span class="ident">arg</span>(
+            <span class="ident">Arg::with_name</span>(<span class="string">&quot;bytes&quot;</span>)
+                .<span class="ident">short</span>(<span class="string">&quot;b&quot;</span>)
+                .<span class="ident">long</span>(<span class="string">&quot;bytes&quot;</span>)
+                .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
+                .<span class="ident">help</span>(<span class="string">&quot;Size of transation message in bytes&quot;</span>),
+        )
+        .<span class="ident">get_matches</span>();
 
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">args</span>.<span class="ident">is_empty</span>() {
-        <span class="ident">txs_to_generate</span> <span class="op">=</span> <span class="ident">args</span>[<span class="number">1</span>].<span class="ident">parse</span>().<span class="ident">unwrap</span>();
-        <span class="kw">if</span> <span class="ident">args</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span> {
-            <span class="ident">bytes_per_tx</span> <span class="op">=</span> <span class="ident">args</span>[<span class="number">2</span>].<span class="ident">parse</span>().<span class="ident">unwrap</span>();
-        }
-    }
+    <span class="kw">let</span> <span class="ident">config_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;config&quot;</span>) {
+        <span class="prelude-val">Some</span>(<span class="ident">name</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">name</span>,
+        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;config&quot;</span>,
+    };
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();
-    <span class="ident">settings</span>.<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="string">&quot;config&quot;</span>)).<span class="ident">unwrap</span>();
+    <span class="ident">settings</span>
+        .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="ident">config_name</span>))
+        .<span class="ident">unwrap</span>();
+
+    <span class="comment">// let key_path = matches.value_of(&quot;key_path&quot;).unwrap();</span>
+    <span class="comment">// let password = matches.value_of(&quot;password&quot;);</span>
+
+    <span class="kw">let</span> <span class="ident">txs_to_generate</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;transactions&quot;</span>) {
+        <span class="prelude-val">Some</span>(<span class="ident">num</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">num</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">i32</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>(),
+        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">10</span>,
+    };
+
+    <span class="kw">let</span> <span class="ident">bytes_per_tx</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;bytes&quot;</span>) {
+        <span class="prelude-val">Some</span>(<span class="ident">size</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">size</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">i32</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>(),
+        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">1024</span>,
+    };
 
     <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>))));
     <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
+
+    <span class="comment">// Load blocks from disk if configured</span>
+    <span class="comment">// let load_blocks_from_disk = match settings.get::&lt;bool&gt;(&quot;storage.load_blocks_from_disk&quot;) {</span>
+    <span class="comment">//     Ok(can_load) =&gt; can_load,</span>
+    <span class="comment">//     Err(_) =&gt; true,</span>
+    <span class="comment">// };</span>
+
+    <span class="comment">// if load_blocks_from_disk {</span>
+    <span class="comment">//     Storage::load_blocks_from_disk(blockchain_lock.clone()).await;</span>
+    <span class="comment">// }</span>
+
     <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
     <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-    <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">settings</span>);
+    <span class="kw">let</span> <span class="ident">peers_db_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">PeersDB::new</span>()));
+
+    <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(
+        <span class="ident">settings</span>.<span class="ident">clone</span>(),
+        <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">peers_db_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+    );
 
     <span class="kw">let</span> <span class="ident">publickey</span>;
     <span class="kw">let</span> <span class="ident">privatekey</span>;
@@ -199,9 +356,19 @@ TODO: Fill in these docs
 
     <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">reqwest::Client::new</span>();
-        <span class="comment">// sleep(Duration::from_millis(5000));</span>
+
+        <span class="kw">let</span> <span class="ident">host</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> <span class="ident">settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span>(<span class="string">&quot;network.host&quot;</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">port</span>: <span class="ident">u16</span> <span class="op">=</span> <span class="ident">settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>(<span class="string">&quot;network.port&quot;</span>).<span class="ident">unwrap</span>();
+
+        <span class="kw">let</span> <span class="ident">server_transaction_url</span> <span class="op">=</span>
+            <span class="macro">format!</span>(<span class="string">&quot;http://{}/sendtransaction&quot;</span>, <span class="ident">format_url_string</span>(<span class="ident">host</span>, <span class="ident">port</span>),);
+
+        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">server_transaction_url</span>);
+
         <span class="kw">loop</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+
+            <span class="macro">println!</span>(<span class="string">&quot;TXS TO GENERATE: {:?}&quot;</span>, <span class="ident">txs_to_generate</span>);
 
             <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">txs_to_generate</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span>
@@ -231,7 +398,7 @@ TODO: Fill in these docs
             <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">transactions</span> {
                 <span class="kw">let</span> <span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">tx</span>.<span class="ident">serialize_for_net</span>();
                 <span class="kw">let</span> <span class="ident">_res</span> <span class="op">=</span> <span class="ident">client</span>
-                    .<span class="ident">post</span>(<span class="string">&quot;http://localhost:3030/transactions&quot;</span>)
+                    .<span class="ident">post</span>(<span class="kw-2">&amp;</span><span class="ident">server_transaction_url</span>[..])
                     .<span class="ident">body</span>(<span class="ident">bytes</span>)
                     .<span class="ident">send</span>()
                     .<span class="kw">await</span>;
@@ -240,7 +407,14 @@ TODO: Fill in these docs
         }
     });
 
-    <span class="ident">run</span>(<span class="ident">mempool_lock</span>, <span class="ident">blockchain_lock</span>, <span class="ident">miner_lock</span>, <span class="ident">network</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="ident">run</span>(
+        <span class="ident">mempool_lock</span>,
+        <span class="ident">blockchain_lock</span>,
+        <span class="ident">miner_lock</span>,
+        <span class="ident">peers_db_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">network</span>,
+    )
+    .<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -249,6 +423,7 @@ TODO: Fill in these docs
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">miner_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Miner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">peers_db_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">network</span>: <span class="ident">Network</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">saito_rust::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="kw">let</span> (<span class="ident">broadcast_channel_sender</span>, <span class="ident">broadcast_channel_receiver</span>) <span class="op">=</span> <span class="ident">broadcast::channel</span>(<span class="number">32</span>);
@@ -281,12 +456,7 @@ TODO: Fill in these docs
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
             }
         },
-        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>(
-            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
-            <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
-        ) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>(<span class="ident">peers_db_lock</span>.<span class="ident">clone</span>()) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
             }

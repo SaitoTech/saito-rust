@@ -143,8 +143,6 @@
 <span id="141">141</span>
 <span id="142">142</span>
 <span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 
@@ -227,17 +225,17 @@ Serialized Handshake:
 
 ```bytes
     challenger_ip_address   4 bytes(IP as 4 bytes)
-    challengie_ip_address   4 bytes(IP as 4 bytes)
+    opponent_ip_address   4 bytes(IP as 4 bytes)
     challenger_pubkey       33 bytes(SECP256k1 compact form)
-    challengie_pubkey       33 bytes(SECP256k1 compact form)
+    opponent_pubkey       33 bytes(SECP256k1 compact form)
     timestamp               8 bytes(big-endian u64),
     challenger_sig          64 bytes(SECP256k1 signature)
-    challengie_sig          64 bytes(SECP256k1 signature)(optional)
+    opponent_sig          64 bytes(SECP256k1 signature)(optional)
 ```
 
 ### SHAKCOMP
 
-The challengie must sign the handshakeinit payload. I.E. sign the entire blob and append the sig(challengie_sig) to it.
+The opponent must sign the handshakeinit payload. I.E. sign the entire blob and append the sig(opponent_sig) to it.
 
 The wallet CLI can be used to produce a signed challenge.
 
@@ -284,12 +282,10 @@ TODO
 */</span>
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">api_message</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">client</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">filters</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">handlers</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">message_types</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">network</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">peer</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">socket</span>;
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="saito_rust" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>

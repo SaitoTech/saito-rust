@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["get_block_handler",""],["get_block_handler_json",""],["post_block_handler",""],["post_transaction_handler",""],["ws_upgrade_handler",""]]});
+initSidebarItems({"fn":[["get_block_handler",""],["post_transaction_handler",""],["ws_upgrade_handler",""]]});

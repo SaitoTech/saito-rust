@@ -124,105 +124,176 @@
 <span id="122">122</span>
 <span id="123">123</span>
 <span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">sign_blob</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>};
 
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::api_message::APIMessage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::network::CHALLENGE_SIZE</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time::create_timestamp</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
-<span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HandshakeChallenge</span> {
-    <span class="ident">challenger_ip_address</span>: [<span class="ident">u8</span>; <span class="number">4</span>],
-    <span class="ident">challengie_ip_address</span>: [<span class="ident">u8</span>; <span class="number">4</span>],
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 33]&quot;</span>)]</span>
-    <span class="ident">challenger_pubkey</span>: <span class="ident">SaitoPublicKey</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 33]&quot;</span>)]</span>
-    <span class="ident">challengie_pubkey</span>: <span class="ident">SaitoPublicKey</span>,
-    <span class="ident">timestamp</span>: <span class="ident">u64</span>,
+    <span class="kw">pub</span> <span class="ident">challenger_node</span>: <span class="ident">HandshakeNode</span>,
+    <span class="kw">pub</span> <span class="ident">opponent_node</span>: <span class="ident">HandshakeNode</span>,
+    <span class="kw">pub</span> <span class="ident">timestamp</span>: <span class="ident">u64</span>,
 }
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HandshakeNode</span> {
+    <span class="kw">pub</span> <span class="ident">ip_address</span>: [<span class="ident">u8</span>; <span class="number">4</span>],
+    <span class="kw">pub</span> <span class="ident">public_key</span>: <span class="ident">SaitoPublicKey</span>,
+    <span class="kw">pub</span> <span class="ident">sig</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoSignature</span><span class="op">&gt;</span>,
+}
+
 <span class="kw">impl</span> <span class="ident">HandshakeChallenge</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">challenger_ip_address</span>: [<span class="ident">u8</span>; <span class="number">4</span>],
-        <span class="ident">challengie_ip_address</span>: [<span class="ident">u8</span>; <span class="number">4</span>],
-        <span class="ident">challenger_pubkey</span>: <span class="ident">SaitoPublicKey</span>,
-        <span class="ident">challengie_pubkey</span>: <span class="ident">SaitoPublicKey</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HandshakeChallenge</span> {
-        <span class="ident">HandshakeChallenge</span> {
-            <span class="ident">challenger_ip_address</span>: <span class="ident">challenger_ip_address</span>,
-            <span class="ident">challengie_ip_address</span>: <span class="ident">challengie_ip_address</span>,
-            <span class="ident">challenger_pubkey</span>: <span class="ident">challenger_pubkey</span>,
-            <span class="ident">challengie_pubkey</span>: <span class="ident">challengie_pubkey</span>,
+        (<span class="ident">challenger_ip_address</span>, <span class="ident">challenger_public_key</span>): ([<span class="ident">u8</span>; <span class="number">4</span>], <span class="ident">SaitoPublicKey</span>),
+        (<span class="ident">opponent_ip_adress</span>, <span class="ident">opponent_public_key</span>): ([<span class="ident">u8</span>; <span class="number">4</span>], <span class="ident">SaitoPublicKey</span>),
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">challenger_node</span>: <span class="ident">HandshakeNode</span> {
+                <span class="ident">ip_address</span>: <span class="ident">challenger_ip_address</span>,
+                <span class="ident">public_key</span>: <span class="ident">challenger_public_key</span>,
+                <span class="ident">sig</span>: <span class="prelude-val">None</span>,
+            },
+            <span class="ident">opponent_node</span>: <span class="ident">HandshakeNode</span> {
+                <span class="ident">ip_address</span>: <span class="ident">opponent_ip_adress</span>,
+                <span class="ident">public_key</span>: <span class="ident">opponent_public_key</span>,
+                <span class="ident">sig</span>: <span class="prelude-val">None</span>,
+            },
             <span class="ident">timestamp</span>: <span class="ident">create_timestamp</span>(),
         }
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_raw</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HandshakeChallenge</span> {
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HandshakeChallenge</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">challenger_octet</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0</span>; <span class="number">4</span>];
         <span class="ident">challenger_octet</span>[<span class="number">0</span>..<span class="number">4</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>[<span class="number">0</span>..<span class="number">4</span>]);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">challengie_octet</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0</span>; <span class="number">4</span>];
-        <span class="ident">challengie_octet</span>[<span class="number">0</span>..<span class="number">4</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>[<span class="number">4</span>..<span class="number">8</span>]);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opponent_octet</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0</span>; <span class="number">4</span>];
+        <span class="ident">opponent_octet</span>[<span class="number">0</span>..<span class="number">4</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>[<span class="number">4</span>..<span class="number">8</span>]);
 
         <span class="kw">let</span> <span class="ident">challenger_pubkey</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">8</span>..<span class="number">41</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">challengie_pubkey</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">41</span>..<span class="number">74</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">opponent_pubkey</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">41</span>..<span class="number">74</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">timestamp</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">74</span>..<span class="ident">CHALLENGE_SIZE</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
 
-        <span class="ident">HandshakeChallenge</span> {
-            <span class="ident">challenger_ip_address</span>: <span class="ident">challenger_octet</span>,
-            <span class="ident">challengie_ip_address</span>: <span class="ident">challengie_octet</span>,
-            <span class="ident">challenger_pubkey</span>: <span class="ident">challenger_pubkey</span>,
-            <span class="ident">challengie_pubkey</span>: <span class="ident">challengie_pubkey</span>,
-            <span class="ident">timestamp</span>: <span class="ident">timestamp</span>,
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handshake_challenge</span> <span class="op">=</span> <span class="ident">HandshakeChallenge::new</span>(
+            (<span class="ident">challenger_octet</span>, <span class="ident">challenger_pubkey</span>),
+            (<span class="ident">opponent_octet</span>, <span class="ident">opponent_pubkey</span>),
+        );
+
+        <span class="ident">handshake_challenge</span>.<span class="ident">set_timestamp</span>(<span class="ident">timestamp</span>);
+
+        <span class="kw">if</span> <span class="ident">bytes</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">CHALLENGE_SIZE</span> {
+            <span class="ident">handshake_challenge</span>.<span class="ident">set_challenger_sig</span>(<span class="prelude-val">Some</span>(
+                <span class="ident">bytes</span>[<span class="ident">CHALLENGE_SIZE</span>..<span class="ident">CHALLENGE_SIZE</span> <span class="op">+</span> <span class="number">64</span>]
+                    .<span class="ident">try_into</span>()
+                    .<span class="ident">unwrap</span>(),
+            ));
         }
+
+        <span class="kw">if</span> <span class="ident">bytes</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">CHALLENGE_SIZE</span> <span class="op">+</span> <span class="number">64</span> {
+            <span class="ident">handshake_challenge</span>.<span class="ident">set_opponent_sig</span>(<span class="prelude-val">Some</span>(
+                <span class="ident">bytes</span>[<span class="ident">CHALLENGE_SIZE</span> <span class="op">+</span> <span class="number">64</span>..<span class="ident">CHALLENGE_SIZE</span> <span class="op">+</span> <span class="number">128</span>]
+                    .<span class="ident">try_into</span>()
+                    .<span class="ident">unwrap</span>(),
+            ));
+        }
+        <span class="ident">handshake_challenge</span>
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_with_sig</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">HandshakeChallenge</span>, <span class="ident">SaitoSignature</span>) {
-        <span class="kw">let</span> <span class="ident">handshake_challenge</span> <span class="op">=</span> <span class="ident">HandshakeChallenge::deserialize_raw</span>(<span class="ident">bytes</span>);
-        <span class="kw">let</span> <span class="ident">signature</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="ident">CHALLENGE_SIZE</span>..<span class="ident">CHALLENGE_SIZE</span> <span class="op">+</span> <span class="number">64</span>]
-            .<span class="ident">try_into</span>()
-            .<span class="ident">unwrap</span>();
-        (<span class="ident">handshake_challenge</span>, <span class="ident">signature</span>)
-    }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_with_both_sigs</span>(
-        <span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">HandshakeChallenge</span>, <span class="ident">SaitoSignature</span>, <span class="ident">SaitoSignature</span>) {
-        <span class="kw">let</span> <span class="ident">handshake_challenge</span> <span class="op">=</span> <span class="ident">HandshakeChallenge::deserialize_raw</span>(<span class="ident">bytes</span>);
-        <span class="kw">let</span> <span class="ident">signature1</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="ident">CHALLENGE_SIZE</span>..<span class="ident">CHALLENGE_SIZE</span> <span class="op">+</span> <span class="number">64</span>]
-            .<span class="ident">try_into</span>()
-            .<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">signature2</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="ident">CHALLENGE_SIZE</span> <span class="op">+</span> <span class="number">64</span>..<span class="ident">CHALLENGE_SIZE</span> <span class="op">+</span> <span class="number">128</span>]
-            .<span class="ident">try_into</span>()
-            .<span class="ident">unwrap</span>();
-        (<span class="ident">handshake_challenge</span>, <span class="ident">signature1</span>, <span class="ident">signature2</span>)
-    }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">challenger_ip_address</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">challengie_ip_address</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">challenger_pubkey</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">challengie_pubkey</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">ip_address</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">ip_address</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">public_key</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">public_key</span>);
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">timestamp</span>.<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>
     }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_with_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="ident">sign_blob</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">serialize_raw</span>(), <span class="ident">privatekey</span>).<span class="ident">to_owned</span>()
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenger_ip_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="number">4</span>] {
-        <span class="self">self</span>.<span class="ident">challenger_ip_address</span>
+        <span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">ip_address</span>
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challengie_ip_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="number">4</span>] {
-        <span class="self">self</span>.<span class="ident">challengie_ip_address</span>
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">opponent_ip_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="number">4</span>] {
+        <span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">ip_address</span>
     }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenger_pubkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
-        <span class="self">self</span>.<span class="ident">challenger_pubkey</span>
+        <span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">public_key</span>
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challengie_pubkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
-        <span class="self">self</span>.<span class="ident">challengie_pubkey</span>
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">opponent_pubkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
+        <span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">public_key</span>
     }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenger_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoSignature</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">sig</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">opponent_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoSignature</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">sig</span>
+    }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">timestamp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">timestamp</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_timestamp</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">timestamp</span>: <span class="ident">u64</span>) {
+        <span class="self">self</span>.<span class="ident">timestamp</span> <span class="op">=</span> <span class="ident">timestamp</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_challenger_sig</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">sig</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoSignature</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">sig</span> <span class="op">=</span> <span class="ident">sig</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_opponent_sig</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">sig</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoSignature</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">sig</span> <span class="op">=</span> <span class="ident">sig</span>
     }
 }
 
@@ -230,23 +301,36 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">crate</span>::{
         <span class="ident">crypto::generate_keys</span>, <span class="ident">networking::message_types::handshake_challenge::HandshakeChallenge</span>,
-        <span class="ident">time::create_timestamp</span>,
     };
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_challenge_serialize</span>() {
         <span class="kw">let</span> (<span class="ident">publickey</span>, <span class="ident">privatekey</span>) <span class="op">=</span> <span class="ident">generate_keys</span>();
-        <span class="kw">let</span> <span class="ident">challenge</span> <span class="op">=</span> <span class="ident">HandshakeChallenge</span> {
-            <span class="ident">challenger_ip_address</span>: [<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>],
-            <span class="ident">challengie_ip_address</span>: [<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>],
-            <span class="ident">challenger_pubkey</span>: <span class="ident">publickey</span>,
-            <span class="ident">challengie_pubkey</span>: <span class="ident">publickey</span>,
-            <span class="ident">timestamp</span>: <span class="ident">create_timestamp</span>(),
-        };
+        <span class="kw">let</span> <span class="ident">challenge</span> <span class="op">=</span>
+            <span class="ident">HandshakeChallenge::new</span>(([<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>], <span class="ident">publickey</span>), ([<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>], <span class="ident">publickey</span>));
+
         <span class="kw">let</span> <span class="ident">serialized_challenge</span> <span class="op">=</span> <span class="ident">challenge</span>.<span class="ident">serialize_with_sig</span>(<span class="ident">privatekey</span>);
-        <span class="kw">let</span> <span class="ident">deserialized_challenge</span> <span class="op">=</span>
-            <span class="ident">HandshakeChallenge::deserialize_with_sig</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_challenge</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">challenge</span>, <span class="ident">deserialized_challenge</span>.<span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">deserialized_challenge</span> <span class="op">=</span> <span class="ident">HandshakeChallenge::deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_challenge</span>);
+
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">challenge</span>.<span class="ident">challenger_ip_address</span>(),
+            <span class="ident">deserialized_challenge</span>.<span class="ident">challenger_ip_address</span>()
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">challenge</span>.<span class="ident">challenger_ip_address</span>(),
+            <span class="ident">deserialized_challenge</span>.<span class="ident">challenger_ip_address</span>()
+        );
+
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">challenge</span>.<span class="ident">challenger_pubkey</span>(),
+            <span class="ident">deserialized_challenge</span>.<span class="ident">challenger_pubkey</span>()
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">challenge</span>.<span class="ident">opponent_pubkey</span>(),
+            <span class="ident">deserialized_challenge</span>.<span class="ident">opponent_pubkey</span>()
+        );
+
+        <span class="macro">assert_eq!</span>(<span class="ident">challenge</span>.<span class="ident">timestamp</span>, <span class="ident">deserialized_challenge</span>.<span class="ident">timestamp</span>);
     }
 }
 </pre></div>

@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["HandshakeChallenge",""]]});
+initSidebarItems({"struct":[["HandshakeChallenge",""],["HandshakeNode",""]]});

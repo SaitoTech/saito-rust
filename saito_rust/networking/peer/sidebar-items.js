@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Peer",""],["PeerSetting",""]],"type":[["Peers",""]]});
+initSidebarItems({"fn":[["build_send_blockchain_message",""],["handle_inbound_peer_connection",""],["new_handshake_challenge",""],["socket_handshake_verify",""],["socket_receive_transaction",""],["socket_req_block",""],["socket_send_block_header",""]],"struct":[["BasePeer",""],["InboundPeer",""],["OutboundPeer",""],["PeerSetting",""]],"type":[["PeersDB",""]]});
