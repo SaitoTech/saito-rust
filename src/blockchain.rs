@@ -1052,20 +1052,11 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            let block_copy = block.clone();
+            
             blockchain.add_block(block, false).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
-            let latest_block = blockchain.get_latest_block().unwrap();
 
-            assert_eq!(block_copy.get_id(), latest_block.get_id());
-            assert_eq!(block_copy.get_hash(), latest_block.get_hash());
-            assert_eq!(
-                block_copy.get_previous_block_hash(),
-                latest_block.get_previous_block_hash()
-            );
-            let prev_block = blockchain.get_block_sync(&latest_block.get_previous_block_hash());
-            assert!(prev_block.is_some());
         }
 
         //
@@ -1090,7 +1081,7 @@ mod tests {
             assert_ne!(latest_block_id, blockchain.get_latest_block_id());
             assert_ne!(latest_block_hash, blockchain.get_latest_block_hash());
             //latest_block_id = blockchain.get_latest_block_id();
-            latest_block_hash = blockchain.get_latest_block_hash();
+         
         }
 
         //
@@ -1123,10 +1114,32 @@ mod tests {
         latest_block_hash = block.get_hash();
 
         {
+            // let mut blockchain = blockchain_lock.write().await;
+            // blockchain.add_block(block, false).await;
+            // assert_eq!(latest_block_id, blockchain.get_latest_block_id());
+            // assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+
+
             let mut blockchain = blockchain_lock.write().await;
+            let block_copy = block.clone();
             blockchain.add_block(block, false).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+
+            let latest_block = blockchain.get_latest_block().unwrap();
+
+            assert_eq!(block_copy.get_id(), latest_block.get_id());
+            assert_eq!(block_copy.get_hash(), latest_block.get_hash());
+
+            assert_eq!(
+                block_copy.get_previous_block_hash(),
+                latest_block.get_previous_block_hash()
+            );
+            let prev_block = blockchain.get_block_sync(&latest_block.get_previous_block_hash());
+            assert!(prev_block.is_some());
+            //latest_block_id = blockchain.get_latest_block_id();
+            latest_block_hash = blockchain.get_latest_block_hash();
+
         }
     }
 
