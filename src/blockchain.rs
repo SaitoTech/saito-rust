@@ -1064,8 +1064,9 @@ mod tests {
                 block_copy.get_previous_block_hash(),
                 latest_block.get_previous_block_hash()
             );
+	
             let prev_block = blockchain.get_block_sync(&latest_block.get_previous_block_hash());
-            assert!(prev_block.is_some());
+            assert!(prev_block.is_none());
         }
 
         //
