@@ -5,6 +5,7 @@ TODO: Fill in these docs
 
 */
 use saito_rust::networking::peer::PeersDB;
+use saito_rust::time::SystemTimestampGenerator;
 use saito_rust::{
     blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
     transaction::Transaction, util::format_url_string, wallet::Wallet,
@@ -197,7 +198,7 @@ pub async fn run(
             mempool_lock.clone(),
             blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
-            broadcast_channel_receiver
+            broadcast_channel_receiver,
         ) => {
             if let Err(err) = res {
                 eprintln!("{:?}", err)
