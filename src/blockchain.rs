@@ -1,5 +1,5 @@
 // length of 1 genesis period
-pub const GENESIS_PERIOD: u64 = 2;
+pub const GENESIS_PERIOD: u64 = 200;
 // prune blocks from index after N blocks
 pub const PRUNE_AFTER_BLOCKS: u64 = 1;
 
@@ -1045,6 +1045,7 @@ mod tests {
             latest_block_hash,
             wallet_lock.clone(),
             blockchain_lock.clone(),
+            create_timestamp(),
         )
         .await;
 
@@ -1180,6 +1181,7 @@ mod tests {
                     current_block_hash,
                     wallet_lock.clone(),
                     blockchain_lock.clone(),
+                    create_timestamp(),
                 )
                 .await;
 

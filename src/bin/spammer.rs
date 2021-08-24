@@ -5,7 +5,6 @@ TODO: Fill in these docs
 
 */
 use saito_rust::networking::peer::PeersDB;
-use saito_rust::time::SystemTimestampGenerator;
 use saito_rust::{
     blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
     transaction::Transaction, util::format_url_string, wallet::Wallet,

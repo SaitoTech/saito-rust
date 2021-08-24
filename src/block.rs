@@ -778,7 +778,7 @@ impl Block {
                 cv.expected_difficulty = difficulty;
             }
         } else {
-            println!("CAN'T FIND PREVIOUSLY BLOCK");
+            println!("Previous block not found");
         }
 
         //
@@ -1344,8 +1344,8 @@ impl Block {
         previous_block_hash: SaitoHash,
         wallet_lock: Arc<RwLock<Wallet>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
+        current_timestamp: u64,
     ) -> Block {
-        let current_timestamp = create_timestamp();
         return Block::generate_with_timestamp(
             transactions,
             previous_block_hash,

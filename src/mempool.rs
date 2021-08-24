@@ -1,4 +1,14 @@
-use crate::{block::Block, blockchain::Blockchain, burnfee::BurnFee, consensus::SaitoMessage, crypto::{SaitoPrivateKey, SaitoPublicKey}, golden_ticket::GoldenTicket, time::{SystemTimestampGenerator, TimestampGenerator, create_timestamp}, transaction::Transaction, wallet::Wallet};
+use crate::{
+    block::Block,
+    blockchain::Blockchain,
+    burnfee::BurnFee,
+    consensus::SaitoMessage,
+    crypto::{SaitoPrivateKey, SaitoPublicKey},
+    golden_ticket::GoldenTicket,
+    time::{SystemTimestampGenerator, TimestampGenerator},
+    transaction::Transaction,
+    wallet::Wallet,
+};
 use std::{collections::HashMap, collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -202,7 +212,11 @@ impl Mempool {
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
 
-    pub async fn can_bundle_block(&self, blockchain_lock: Arc<RwLock<Blockchain>>, current_timestamp: u64) -> bool {
+    pub async fn can_bundle_block(
+        &self,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+        current_timestamp: u64,
+    ) -> bool {
         if self.currently_processing_block {
             return false;
         }
@@ -215,18 +229,22 @@ impl Mempool {
         if let Some(previous_block) = blockchain.get_latest_block() {
             let work_available = self.calculate_work_available();
             let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
-            let time_elapsed = current_timestamp - previous_block.get_timestamp();
-            println!(
-                "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
-                work_available, work_needed, time_elapsed
-            );
+            let _time_elapsed = current_timestamp - previous_block.get_timestamp();
+            // println!(
+            //     "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
+            //     work_available, work_needed, time_elapsed
+            // );
             work_available >= work_needed
         } else {
             true
         }
     }
 
-    pub async fn generate_block(&mut self, blockchain_lock: Arc<RwLock<Blockchain>>) -> Block {
+    pub async fn generate_block(
+        &mut self,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+        timestamp_generator: &mut impl TimestampGenerator,
+    ) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_hash = blockchain.get_latest_block_hash();
         let block = Block::generate(
@@ -234,6 +252,7 @@ impl Mempool {
             previous_block_hash,
             self.wallet_lock.clone(),
             blockchain_lock.clone(),
+            timestamp_generator.get_timestamp(),
         )
         .await;
 
@@ -251,11 +270,17 @@ pub async fn try_bundle_block(
     let can_bundle;
     {
         let mempool = mempool_lock.read().await;
-        can_bundle = mempool.can_bundle_block(blockchain_lock.clone(), timestamp_generator.get_timestamp()).await;
+        can_bundle = mempool
+            .can_bundle_block(blockchain_lock.clone(), timestamp_generator.get_timestamp())
+            .await;
     }
     if can_bundle {
         let mut mempool = mempool_lock.write().await;
-        Some(mempool.generate_block(blockchain_lock.clone()).await)
+        Some(
+            mempool
+                .generate_block(blockchain_lock.clone(), timestamp_generator)
+                .await,
+        )
     } else {
         None
     }
@@ -387,7 +412,11 @@ pub async fn run(
 mod tests {
 
     use super::*;
-    use crate::{block::Block, burnfee::HEARTBEAT, crypto::SaitoHash, test_utilities::mocks::{MockTimestampGenerator, add_vip_block}, wallet::Wallet};
+    use crate::{
+        block::Block,
+        test_utilities::mocks::{add_vip_block, make_block_with_mempool},
+        wallet::Wallet,
+    };
 
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -411,121 +440,76 @@ mod tests {
         assert_eq!(Some(block), mempool.blocks.pop_front())
     }
 
-
     #[tokio::test]
     async fn blockchain_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let public_key;
+        let prev_block;
         {
             let wallet = wallet_lock.read().await;
             public_key = wallet.get_public_key();
         }
-        add_vip_block(public_key, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;
+        add_vip_block(
+            public_key,
+            [0; 32],
+            blockchain_lock.clone(),
+            wallet_lock.clone(),
+        )
+        .await;
         {
             let blockchain = blockchain_lock.read().await;
-            let latest_block = blockchain.get_latest_block().unwrap();
-            assert_eq!(latest_block.get_id(), 1);
+            prev_block = blockchain.get_latest_block().unwrap().clone();
+            assert_eq!(prev_block.get_id(), 1);
         }
-        
+
         {
             let wallet = wallet_lock.read().await;
             let balance = wallet.get_available_balance();
             assert_eq!(balance, 11000000);
             println!("balance {}", balance);
         }
+        for _i in 0..4 {
+            let block = make_block_with_mempool(
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+                wallet_lock.clone(),
+            )
+            .await;
+            assert_eq!(prev_block.get_hash(), block.get_previous_block_hash());
 
-        let mut mock_timestamp_generator = MockTimestampGenerator::new(HEARTBEAT * 2);
+            let latest_block_id = block.get_id();
+            let latest_block_hash = block.get_hash();
+            let latest_block_prev_hash = block.get_previous_block_hash();
+            {
+                let mut blockchain = blockchain_lock.write().await;
+                let prev_hash_before = block.get_previous_block_hash();
+                blockchain.add_block(block, false).await;
+                let prev_hash_after = blockchain
+                    .get_latest_block()
+                    .unwrap()
+                    .get_previous_block_hash();
+                assert_eq!(prev_hash_before, prev_hash_after);
 
-        let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;
-        {
-            let mut mempool = mempool_lock.write().await;
-            let add_tx_result = mempool.add_transaction(tx).await;
-            assert_eq!(add_tx_result, AddTransactionResult::Accepted);
+                assert_eq!(latest_block_id, blockchain.get_latest_block_id());
+                assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+                assert_eq!(
+                    prev_block.get_hash(),
+                    blockchain
+                        .get_latest_block()
+                        .unwrap()
+                        .get_previous_block_hash()
+                );
+                assert_eq!(
+                    latest_block_prev_hash,
+                    blockchain
+                        .get_latest_block()
+                        .unwrap()
+                        .get_previous_block_hash()
+                );
+                // prev_block = blockchain.get_latest_block().unwrap().clone();
+            }
         }
-        let block_option =  crate::mempool::try_bundle_block(mempool_lock.clone(), blockchain_lock.clone(), &mut mock_timestamp_generator).await;
-        assert!(block_option.is_some());
-        let block= block_option.unwrap();
-        let mut prev_block_hash: SaitoHash = [0; 32];
-        let latest_block_id = block.get_id();
-        let latest_block_hash = block.get_hash();
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, false).await;
-            assert_ne!(latest_block_id, blockchain.get_latest_block_id());
-            assert_ne!(latest_block_hash, blockchain.get_latest_block_hash());
-            //latest_block_id = blockchain.get_latest_block_id();
-            //latest_block_hash = blockchain.get_latest_block_hash();
-            // assert_eq!(
-            //     prev_block_hash,
-            //     blockchain
-            //         .get_latest_block()
-            //         .unwrap()
-            //         .get_previous_block_hash()
-            // );
-            // if test_block_id > 1 {
-            //     assert!(blockchain.get_block_sync(&prev_block_hash).is_some());
-            // }
-            // prev_block_hash = test_block_hash;
-        }
-
-
-            
-
-
-        // let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;
-        // {
-        //     let mut mempool = mempool_lock.write().await;
-        //     let add_tx_result = mempool.add_transaction(tx).await;
-        //     assert_eq!(add_tx_result, AddTransactionResult::Accepted);
-        // }
-        // let block =  crate::mempool::try_bundle_block(mempool_lock.clone(), blockchain_lock.clone(), &mut mock_timestamp_generator).await;
-        // assert!(block.is_some());
-
-        // let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;
-        // {
-        //     let mut mempool = mempool_lock.write().await;
-        //     let add_tx_result = mempool.add_transaction(tx).await;
-        //     assert_eq!(add_tx_result, AddTransactionResult::Accepted);
-        // }
-        // let block =  crate::mempool::try_bundle_block(mempool_lock.clone(), blockchain_lock.clone(), &mut mock_timestamp_generator).await;
-        // assert!(block.is_some());
-
-        // let latest_block = blockchain.get_latest_block().unwrap();
-        // sleep(Duration::from_millis(1000));
-        // assert_eq!(latest_block.get_id(), 2);
-
-
-
-        // match add_tx_result {
-        //     crate::mempool::AddTransactionResult::Accepted => Ok(Message { msg: response }),
-        //     crate::mempool::AddTransactionResult::Exists => {
-        //         Err(warp::reject::custom(AlreadyExists))
-        //     }
-        //     crate::mempool::AddTransactionResult::Invalid => {
-        //         panic!("This appears unused, implement if needed");
-        //     }
-        //     crate::mempool::AddTransactionResult::Rejected => {
-        //         panic!("This appears unused, implement if needed");
-        //     }
-        // }
-
-
-        // let public_key;
-        // {
-        //     let wallet = wallet_lock.read().await;
-        //     public_key = wallet.get_public_key();
-        // }
-        // add_vip_block(public_key, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;
-        // let blockchain = blockchain_lock.read().await;
-        // let latest_block = blockchain.get_latest_block().unwrap();
-        // assert_eq!(1, 1);
-        // {
-        //     let wallet = wallet_lock.read().await;
-        //     let balance = wallet.get_available_balance();
-        //     assert_eq!(balance, 11000000);
-        //     println!("balance {}", balance);
-        // }
     }
 }

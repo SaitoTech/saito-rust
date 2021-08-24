@@ -9,7 +9,7 @@ use std::convert::{TryFrom, TryInto};
 /// timestamp: the timestamp of the block
 /// (future work) pre_hash: the hash which is hashed with the previous block_hash to generate the hash of the current block.
 /// (future work) number of transactions: the number of transactions in the block for the recipient
-pub const BLOCKCHAIN_BLOCK_DATA_SIZE: usize = 52;
+pub const BLOCKCHAIN_BLOCK_DATA_SIZE: usize = 84;
 
 #[derive(Debug, Copy, PartialEq, Clone, TryFromByte)]
 pub enum SyncType {
@@ -19,6 +19,7 @@ pub enum SyncType {
 #[derive(Debug)]
 pub struct SendBlockchainBlockData {
     pub block_id: u64,
+    pub block_hash: SaitoHash,
     pub timestamp: u64,
     pub pre_hash: SaitoHash,
     pub number_of_transactions: u32,
@@ -64,21 +65,25 @@ impl SendBlockchainMessage {
 
             let block_id: u64 =
                 u64::from_be_bytes(bytes[start_of_data..start_of_data + 8].try_into().unwrap());
+            let block_hash: SaitoHash = bytes[start_of_data + 8..start_of_data + 40]
+                .try_into()
+                .unwrap();
             let timestamp: u64 = u64::from_be_bytes(
-                bytes[start_of_data + 8..start_of_data + 16]
+                bytes[start_of_data + 40..start_of_data + 48]
                     .try_into()
                     .unwrap(),
             );
-            let pre_hash: SaitoHash = bytes[start_of_data + 16..start_of_data + 48]
+            let pre_hash: SaitoHash = bytes[start_of_data + 48..start_of_data + 80]
                 .try_into()
                 .unwrap();
             let number_of_transactions: u32 = u32::from_be_bytes(
-                bytes[start_of_data + 48..start_of_data + 52]
+                bytes[start_of_data + 80..start_of_data + 84]
                     .try_into()
                     .unwrap(),
             );
             blocks_data.push(SendBlockchainBlockData {
                 block_id,
+                block_hash,
                 timestamp,
                 pre_hash,
                 number_of_transactions,
@@ -98,6 +103,7 @@ impl SendBlockchainMessage {
         vbytes.extend(&(self.blocks_data.len() as u32).to_be_bytes());
         for blocks_data in &self.blocks_data {
             vbytes.extend(&blocks_data.block_id.to_be_bytes());
+            vbytes.extend(&blocks_data.block_hash);
             vbytes.extend(&blocks_data.timestamp.to_be_bytes());
             vbytes.extend(&blocks_data.pre_hash);
             vbytes.extend(&blocks_data.number_of_transactions.to_be_bytes());
@@ -118,12 +124,14 @@ mod tests {
         let mut blocks_data: Vec<SendBlockchainBlockData> = vec![];
         blocks_data.push(SendBlockchainBlockData {
             block_id: 1,
+            block_hash: [1; 32],
             timestamp: 1,
             pre_hash: [1; 32],
             number_of_transactions: 1,
         });
         blocks_data.push(SendBlockchainBlockData {
             block_id: 2,
+            block_hash: [2; 32],
             timestamp: 2,
             pre_hash: [2; 32],
             number_of_transactions: 2,
