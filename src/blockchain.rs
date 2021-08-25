@@ -141,6 +141,8 @@ impl Blockchain {
         //
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
+        } else {
+            println!("BLOCK IS ALREAYD IN THE BLOCKCHAIN, WHY ARE WE ADDING IT?????");
         }
 
         // println!(" ... start shared ancestor hunt: {:?}", create_timestamp());
@@ -308,7 +310,7 @@ impl Blockchain {
         {
             let block = self.get_mut_block(block_hash).await;
             block_id = block.get_id();
-            if save_to_disk {
+            if save_to_disk || true {
                 Storage::write_block_to_disk(block);
             }
 
@@ -881,7 +883,7 @@ println!("pruning done...");
         //
         {
             let pblock = self.blocks.get(&delete_block_hash).unwrap();
-            let pblock_filename = pblock.get_filename().clone();
+            let pblock_filename = Storage::generate_block_filename(pblock);
 
             //
             // remove slips from wallet
@@ -1118,7 +1120,7 @@ mod tests {
                 block_copy.get_previous_block_hash(),
                 latest_block.get_previous_block_hash()
             );
-	
+
             let prev_block = blockchain.get_block_sync(&latest_block.get_previous_block_hash());
             assert!(prev_block.is_none());
         }
@@ -1199,6 +1201,7 @@ mod tests {
         let mut transactions: Vec<Transaction>;
         let mut last_block_hash: SaitoHash = [0; 32];
         let mut last_block_difficulty: u64 = 0;
+        let mut prev_block_hash: SaitoHash = [0; 32];
         let publickey;
 
         let mut test_block_hash: SaitoHash;
@@ -1285,6 +1288,17 @@ mod tests {
                 blockchain.add_block(block, false).await;
                 assert_eq!(test_block_hash, blockchain.get_latest_block_hash());
                 assert_eq!(test_block_id, blockchain.get_latest_block_id());
+                assert_eq!(
+                    prev_block_hash,
+                    blockchain
+                        .get_latest_block()
+                        .unwrap()
+                        .get_previous_block_hash()
+                );
+                if test_block_id > 1 {
+                    assert!(blockchain.get_block_sync(&prev_block_hash).is_some());
+                }
+                prev_block_hash = test_block_hash;
             }
         }
     }
