@@ -152,6 +152,8 @@
 <span id="150">150</span>
 <span id="151">151</span>
 <span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">fs</span>::{<span class="self">self</span>, <span class="ident">File</span>},
@@ -189,15 +191,17 @@
         <span class="ident">buffer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..]).<span class="ident">unwrap</span>();
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_block_to_disk</span>(<span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Block</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_block_filename</span>(<span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">filename</span> <span class="op">=</span> <span class="ident">String::from</span>(<span class="ident">BLOCKS_DIR_PATH</span>).<span class="ident">clone</span>();
 
         <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="ident">block</span>.<span class="ident">get_timestamp</span>().<span class="ident">to_be_bytes</span>()));
         <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;-&quot;</span>));
         <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_hash</span>()));
         <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="string">&quot;.sai&quot;</span>);
-
-        <span class="ident">block</span>.<span class="ident">set_filename</span>(<span class="ident">filename</span>.<span class="ident">clone</span>());
+        <span class="ident">filename</span>
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_block_to_disk</span>(<span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Block</span>) {
+        <span class="kw">let</span> <span class="ident">filename</span> <span class="op">=</span> <span class="ident">Storage::generate_block_filename</span>(<span class="ident">block</span>);
 
         <span class="comment">//println!(&quot;trying to write to disk: {}&quot;, filename);</span>
 
