@@ -480,7 +480,7 @@ mod tests {
 	let mut current_timestamp = create_timestamp();
 	let mut block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 3, 0, false).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// BLOCK 2
@@ -488,7 +488,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 120000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, false).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// BLOCK 3
@@ -496,7 +496,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 240000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, true).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// BLOCK 4
@@ -504,7 +504,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 360000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, false).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// second staker payment should have happened and staking table reset
@@ -523,7 +523,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 480000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, true).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// BLOCK 6
@@ -531,7 +531,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 600000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, false).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// BLOCK 7
@@ -539,7 +539,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 720000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, true).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// second staker payment should have happened and staking table reset
@@ -558,7 +558,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 840000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, false).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// TEST STAKER PAID
@@ -603,7 +603,7 @@ mod tests {
 	let mut current_timestamp = create_timestamp();
 	let mut block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 10, 0, false).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// BLOCK 2 -- staking deposits
@@ -632,7 +632,7 @@ mod tests {
 	    current_timestamp
         ).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 
 	//
@@ -653,7 +653,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 240000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, true).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 
 	//
@@ -675,7 +675,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 360000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, false).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 
 	//
@@ -684,7 +684,7 @@ mod tests {
 	current_timestamp = create_timestamp() + 480000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, true).await;
         latest_block_hash = block.get_hash();
-	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
 	//
 	// the staking table should have been created when needed for the payout

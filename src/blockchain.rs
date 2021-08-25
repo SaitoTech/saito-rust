@@ -71,6 +71,7 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block, save_to_disk: bool) {
+
         println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
@@ -289,9 +290,9 @@ impl Blockchain {
             }
         }
     }
-    pub async fn add_block_to_blockchain(blockchain_lock : Arc<RwLock<Blockchain>>, block: Block) {
+    pub async fn add_block_to_blockchain(blockchain_lock : Arc<RwLock<Blockchain>>, block: Block, save_to_disk : bool) {
         let mut blockchain = blockchain_lock.write().await;
-        return blockchain.add_block(block).await;
+        return blockchain.add_block(block, save_to_disk).await;
     }
 
 
