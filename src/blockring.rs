@@ -30,7 +30,7 @@ impl RingItem {
         }
     }
 
-    pub fn contains_block_hash(&mut self, hash: SaitoHash) -> bool {
+    pub fn contains_block_hash(&self, hash: SaitoHash) -> bool {
         self.block_hashes.iter().any(|&i| i == hash)
     }
 
@@ -121,11 +121,7 @@ impl BlockRing {
         }
     }
 
-    pub fn contains_block_hash_at_block_id(
-        &mut self,
-        block_id: u64,
-        block_hash: SaitoHash,
-    ) -> bool {
+    pub fn contains_block_hash_at_block_id(&self, block_id: u64, block_hash: SaitoHash) -> bool {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
         let res = self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash);
         return res;

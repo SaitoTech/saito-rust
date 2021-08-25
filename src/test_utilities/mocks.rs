@@ -100,7 +100,7 @@ pub async fn make_mock_blockchain(
         {
             println!("{}", i);
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
+            blockchain.add_block(block, true).await;
         }
     }
 

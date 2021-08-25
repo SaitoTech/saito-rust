@@ -1,19 +1,18 @@
-use super::peer::{Peer, Peers};
 use crate::blockchain::Blockchain;
-use crate::crypto::{hash, SaitoHash};
 use crate::mempool::Mempool;
 use crate::networking::network::Result;
-use crate::networking::socket;
+use crate::networking::peer::handle_inbound_peer_connection;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use base58::ToBase58;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use uuid::Uuid;
 use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
+
+use super::peer::PeersDB;
 
 #[derive(Debug)]
 struct Invalid;
@@ -35,26 +34,21 @@ impl warp::Reply for Message {
 
 pub async fn ws_upgrade_handler(
     ws: warp::ws::Ws,
-    peers: Peers,
+    peers_db_lock: Arc<RwLock<PeersDB>>,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) -> std::result::Result<impl Reply, Rejection> {
-    let id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-    //    let key = hash(&bytes);
+    // let peer = InboundPeer {
+    //     has_handshake: false,
+    //     public_key: None,
+    //     sender: None,
+    // };
 
-    println!("id {:?}", id);
-    let peer = Peer {
-        has_handshake: true,
-        pubkey: None,
-        sender: None,
-    };
     Ok(ws.on_upgrade(move |socket| {
-        socket::peer_connection(
+        handle_inbound_peer_connection(
             socket,
-            id,
-            peers,
-            peer,
+            peers_db_lock,
             wallet_lock,
             mempool_lock,
             blockchain_lock,
@@ -102,19 +96,19 @@ pub async fn post_transaction_handler(
     }
 }
 
-pub async fn post_block_handler(mut body: impl Buf) -> Result<impl Reply> {
-    let mut buffer = vec![];
-    while body.has_remaining() {
-        buffer.append(&mut body.chunk().to_vec());
-        let cnt = body.chunk().len();
-        body.advance(cnt);
-    }
+// pub async fn post_block_handler(mut body: impl Buf) -> Result<impl Reply> {
+//     let mut buffer = vec![];
+//     while body.has_remaining() {
+//         buffer.append(&mut body.chunk().to_vec());
+//         let cnt = body.chunk().len();
+//         body.advance(cnt);
+//     }
 
-    let tx = Transaction::deserialize_from_net(buffer);
-    println!("{:?}", tx.get_signature());
+//     let tx = Transaction::deserialize_from_net(buffer);
+//     println!("{:?}", tx.get_signature());
 
-    Ok(warp::reply())
-}
+//     Ok(warp::reply())
+// }
 
 pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
     println!("GET BLOCK");
@@ -131,17 +125,17 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
     }
 }
 
-pub async fn get_block_handler_json(str_block_hash: String) -> Result<impl Reply> {
-    println!("GET BLOCK");
+// pub async fn get_block_handler_json(str_block_hash: String) -> Result<impl Reply> {
+//     println!("GET BLOCK");
 
-    let mut block_hash = [0u8; 32];
-    hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
+//     let mut block_hash = [0u8; 32];
+//     hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
 
-    match Storage::stream_json_block_from_disk(block_hash).await {
-        Ok(json_data) => Ok(warp::reply::json(&json_data)),
-        Err(_err) => {
-            eprintln!("{:?}", _err);
-            return Err(warp::reject());
-        }
-    }
-}
+//     match Storage::stream_json_block_from_disk(block_hash).await {
+//         Ok(json_data) => Ok(warp::reply::json(&json_data)),
+//         Err(_err) => {
+//             eprintln!("{:?}", _err);
+//             return Err(warp::reject());
+//         }
+//     }
+// }

@@ -19,7 +19,7 @@ impl APIMessage {
     pub fn message_name(&self) -> &[u8; 8] {
         &self.message_name
     }
-    pub fn message_name_as_str(&self) -> String {
+    pub fn message_name_as_string(&self) -> String {
         String::from_utf8_lossy(&self.message_name).to_string()
     }
     pub fn message_id(&self) -> u32 {
