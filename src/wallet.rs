@@ -205,6 +205,9 @@ impl Wallet {
         return available_balance;
     }
 
+    // the nolan_requested is omitted from the slips created - only the change
+    // address is provided as an output. so make sure that any function calling 
+    // this manually creates the output for its desired payment
     pub fn generate_slips(&mut self, nolan_requested: u64) -> (Vec<Slip>, Vec<Slip>) {
         let mut inputs: Vec<Slip> = vec![];
         let mut outputs: Vec<Slip> = vec![];
@@ -239,7 +242,9 @@ impl Wallet {
             nolan_out = nolan_in - nolan_requested;
         }
 
-        // change address
+	//
+        // add change address
+	//
         let mut output = Slip::new();
         output.set_publickey(my_publickey);
         output.set_amount(nolan_out);
@@ -296,6 +301,46 @@ impl Wallet {
         let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
         transaction.set_hash_for_signature(hash_for_signature);
 
+        transaction.sign(self.get_privatekey());
+
+        transaction
+    }
+
+
+    //
+    // creates a transaction that will deposit tokens into the staking system in the 
+    // amount specified, if possible. the transaction will be invalid if there is not
+    // enough UTXO in the wallet to make the payment.
+    //
+    pub async fn create_staking_deposit_transaction(
+        &mut self,
+	total_requested: u64,
+    ) -> Transaction {
+
+        let mut transaction = Transaction::new();
+
+        transaction.set_transaction_type(TransactionType::StakerDeposit);
+
+        let (mut input_slips, mut output_slips) = self.generate_slips(total_requested);
+        let input_len = input_slips.len();
+        let output_len = output_slips.len();
+
+        // add the staking deposit
+        let mut output = Slip::new();
+        output.set_publickey(self.get_publickey());
+        output.set_amount(total_requested);
+        output.set_slip_type(SlipType::StakerDeposit);
+        transaction.add_output(output);
+
+        for _i in 0..input_len {
+            transaction.add_input(input_slips.remove(0));
+        }
+        for _i in 0..output_len {
+            transaction.add_output(output_slips.remove(0));
+        }
+
+        let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
+        transaction.set_hash_for_signature(hash_for_signature);
         transaction.sign(self.get_privatekey());
 
         transaction
@@ -412,4 +457,6 @@ mod tests {
     fn wallet_new_test() {
         assert_eq!(true, true);
     }
+
+
 }

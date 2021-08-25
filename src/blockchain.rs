@@ -367,6 +367,9 @@ impl Blockchain {
                     .all(|tx| tx.generate_metadata_hashes());
             }
         }
+
+println!("pruning done...");
+
     }
 
     pub async fn add_block_failure(&mut self) {}
