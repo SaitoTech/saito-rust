@@ -34,15 +34,17 @@ impl Storage {
         buffer.write_all(&data[..]).unwrap();
     }
 
-    pub fn write_block_to_disk(block: &mut Block) {
+    pub fn generate_block_filename(block: &Block) -> String {
         let mut filename = String::from(BLOCKS_DIR_PATH).clone();
 
         filename.push_str(&hex::encode(block.get_timestamp().to_be_bytes()));
         filename.push_str(&String::from("-"));
         filename.push_str(&hex::encode(&block.get_hash()));
         filename.push_str(&".sai");
-
-        block.set_filename(filename.clone());
+        filename
+    }
+    pub fn write_block_to_disk(block: &mut Block) {
+        let filename = Storage::generate_block_filename(block);
 
         //println!("trying to write to disk: {}", filename);
 

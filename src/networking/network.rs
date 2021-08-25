@@ -380,7 +380,7 @@ mod tests {
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-        let (blockchain_lock, block_hashes) =
+        let (blockchain_lock, _block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;
 
         let mut settings = config::Config::default();
@@ -403,7 +403,7 @@ mod tests {
         //
         // first confirm the whole blockchain is received when sent zeroed block hash
         //
-        let mut request_blockchain_message = RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
+        let request_blockchain_message = RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
 
         let api_message = APIMessage::new("REQCHAIN", 0, request_blockchain_message.serialize());
         let serialized_api_message = api_message.serialize();
@@ -411,7 +411,7 @@ mod tests {
         let _socket_resp = ws_client
             .send(Message::binary(serialized_api_message))
             .await;
-        let resp = ws_client.recv().await.unwrap();
+        let _resp = ws_client.recv().await.unwrap();
         // let command = String::from_utf8_lossy(&resp.as_bytes()[0..8]);
         // let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());
         // let msg = resp.as_bytes()[12..].to_vec();

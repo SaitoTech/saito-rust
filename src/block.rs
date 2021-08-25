@@ -18,7 +18,6 @@ use bigint::uint::U256;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use std::string::String;
 use std::{mem, sync::Arc};
 use tokio::sync::RwLock;
 
@@ -237,8 +236,6 @@ pub struct Block {
     pub total_rebroadcast_nolan: u64,
     // all ATR txs hashed together
     pub rebroadcast_hash: [u8; 32],
-    // name of block on disk
-    pub filename: String,
     // the state of the block w/ pruning etc
     pub block_type: BlockType,
 }
@@ -268,7 +265,7 @@ impl Block {
             total_rebroadcast_nolan: 0,
             // must be initialized zeroed-out for proper hashing
             rebroadcast_hash: [0; 32],
-            filename: String::new(),
+            //filename: String::new(),
             block_type: BlockType::Full,
         }
     }
@@ -339,10 +336,6 @@ impl Block {
         self.difficulty
     }
 
-    pub fn get_filename(&self) -> &String {
-        &self.filename
-    }
-
     pub fn get_has_golden_ticket(&self) -> bool {
         self.has_golden_ticket
     }
@@ -399,10 +392,6 @@ impl Block {
         self.lc = lc;
     }
 
-    pub fn set_filename(&mut self, filename: String) {
-        self.filename = filename;
-    }
-
     pub fn set_timestamp(&mut self, timestamp: u64) {
         self.timestamp = timestamp;
     }
@@ -453,6 +442,7 @@ impl Block {
     // not possible, return false. if it is possible, return true once upgraded.
     //
     pub async fn upgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
+        println!("upgrade_block_to_block_type {:?}", self.block_type);
         if self.block_type == block_type {
             return true;
         }
@@ -462,7 +452,8 @@ impl Block {
         // load the block if it exists on disk.
         //
         if block_type == BlockType::Full {
-            let mut new_block = Storage::load_block_from_disk(self.filename.clone()).await;
+            let mut new_block =
+                Storage::load_block_from_disk(Storage::generate_block_filename(&self)).await;
             let hash_for_signature = hash(&new_block.serialize_for_signature());
             new_block.set_pre_hash(hash_for_signature);
             let hash_for_hash = hash(&new_block.serialize_for_hash());
