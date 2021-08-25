@@ -130,7 +130,7 @@ impl Wallet {
                 self.delete_slip(input);
             }
             for output in tx.get_outputs() {
-                if output.get_amount() > 0 {
+                if output.get_amount() > 0 && output.get_publickey() == self.public_key {
                     self.add_slip(block, tx, output, block.get_lc());
                 }
             }

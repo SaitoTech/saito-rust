@@ -67,3 +67,24 @@ impl TracingAccumulator {
         self.total
     }
 }
+
+
+pub trait Persistable {
+    fn save(&self);
+    fn load(filename: &str) -> Self;
+}
+
+pub trait TimestampGenerator {
+    fn get_timestamp(&mut self) -> u64 {
+        create_timestamp()
+    }
+}
+
+pub struct SystemTimestampGenerator {}
+impl TimestampGenerator for SystemTimestampGenerator {
+
+    // fn get_timestamp(&mut self) -> u64 {
+    //     create_timestamp()
+    // }
+}
+
