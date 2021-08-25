@@ -43,8 +43,8 @@ impl EncryptedWallet {
     }
 }
 impl Wallet {
-    pub fn new(key_path: &str, password: Option<&str>) -> Self {
-        let (publickey, privatekey) = Wallet::load_keys(key_path, password);
+    pub fn new() -> Self {
+        let (publickey, privatekey) = generate_keys();
         println!("Loaded wallet {}", hex::encode(publickey));
         Wallet {
             public_key: publickey,
@@ -52,7 +52,20 @@ impl Wallet {
             slips: vec![],
         }
     }
-
+    pub fn set_keys_from_key_file(&mut self, key_path: &str, password: Option<&str>) {
+        let (publickey, privatekey) = Wallet::load_keys(key_path, password);
+        self.public_key = publickey;
+        self.private_key = privatekey;
+        // we need to reset the slips here also because they are really only relevant to the matching key pair...        
+        // Since this function is now rewriting all of the properties of wallet, wouldn't it make more sense
+        // semantically for it to be a constructor like new_from_key_file(...) -> Self {...}?
+        // Since ultimately "load from disk" also needs to generate_keys() in the case where the persistant keys
+        // haven't yet been generated, the empty new() is basically useless except for during testing. However, 
+        // with a test keyfile and a test password, we gain the ability to pre-generate transactions and blocks
+        // for the test wallet, which may be useful in some cases. Additionally, we have only a single contructor
+        // (or one less setter), which, IMO, is simpler.
+        self.slips = vec![]; 
+    }
     pub fn load_keys(key_path: &str, password: Option<&str>) -> ([u8; 33], [u8; 32]) {
         let mut filename = String::from("data/");
         filename.push_str(key_path);
