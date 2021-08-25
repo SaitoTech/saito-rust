@@ -252,7 +252,7 @@ println!("removing staker with utxoset_key: {:?}", slip.get_utxoset_key());
 	//
 	if block.get_has_fee_transaction() && block.get_has_golden_ticket() {
 
-println!("updating the staking tables in staking OCR");
+//println!("updating the staking tables in staking OCR");
 
 	    let fee_transaction = &block.transactions[block.get_fee_transaction_idx() as usize];
 	    let golden_ticket_transaction = &block.transactions[block.get_golden_ticket_idx() as usize];
@@ -267,21 +267,21 @@ println!("updating the staking tables in staking OCR");
 	    let staker_random_number = hash(&router_random_number1.to_vec());	// staker block2
 	    let _router_random_number2 = hash(&staker_random_number.to_vec());	// router block2
 
-println!("checking lens: {} {}", fee_transaction.outputs.len(), fee_transaction.inputs.len());
-
+println!("checking lens: {} {} and lc {}", fee_transaction.outputs.len(), fee_transaction.inputs.len(), longest_chain);
 	    if fee_transaction.outputs.len() < 3 { return (res_spend, res_unspend, res_delete); }
 	    if fee_transaction.inputs.len() < 1 { return (res_spend, res_unspend, res_delete); }
 
 	    let staker_output = fee_transaction.outputs[2].clone(); // 3rd output is staker
 	    let staker_input = fee_transaction.inputs[0].clone(); // 1st input is staker
 
-println!("ok, ready to roll...");
 
 
 	    //
 	    // roll forward
 	    //
 	    if longest_chain {
+
+println!("ok, ready to roll...");
 
 		//
 		// re-create staker table, if needed
@@ -291,7 +291,7 @@ println!("ok, ready to roll...");
 		// vacillations in on_chain_reorg, such as resetting the table and
 		// then non-longest-chaining the same block
 		//
-println!("Rolling forward and moving into pending!");
+println!("Rolling forward and moving into pending: {}!", self.stakers.len());
 		if self.stakers.len() == 0 {
 		    //self.reset_staker_table(block.get_staking_treasury());
 		    let res = self.reset_staker_table(100_000_000);

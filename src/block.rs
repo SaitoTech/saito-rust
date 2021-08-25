@@ -804,7 +804,7 @@ impl Block {
         // calculate expected burn-fee
 
         let previous_block_hash = self.get_previous_block_hash();
-        println!("previous block hash {:?}", previous_block_hash);
+        //println!("previous block hash {:?}", previous_block_hash);
 
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
             let difficulty = previous_block.get_difficulty();
@@ -973,7 +973,11 @@ impl Block {
 			// the staker treasury gets the amount that would be paid out to the staker
 			// if we were paying them from THIS loop of the blockchain rather than the
 			// average amount.
+println!("------------------------");
+println!("- set staking treasury -");
+println!("------------------------");
 			cv.staking_treasury = previous_staker_payment as i64;
+println!("staking treasury set as: {}", cv.staking_treasury);
 
 			//
 			// next_random_number
@@ -984,13 +988,19 @@ impl Block {
                 	let block_payouts2: RouterPayout = previous_block.find_winning_router(another_random_number);
                 	let previous_winning_router = block_payouts2.publickey;
 
+println!("do we have a staker slip we are paying?");
+
 			if let Some(staker_slip) = staker_slip_option {
+
+println!("do we have a staker slip we are paying YES?");
+
                 	    let mut output3 = Slip::new();
                 	    output3.set_publickey(staker_slip.get_publickey());
                 	    output3.set_amount(staker_slip.get_amount());
 
 			    // remove from staking treasury as we are paying out
 			    cv.staking_treasury -= staker_slip.get_amount() as i64;
+println!("payout removed of: {}", staker_slip.get_amount());
 
                 	    output3.set_slip_type(SlipType::StakerOutput);
                 	    output3.set_slip_ordinal(slip_ordinal_to_apply);
@@ -1288,7 +1298,12 @@ impl Block {
 		} else {
 	            adjusted_staking_treasury = 0;
 		}
-	    }
+	    } else {
+	        let x: u64 = cv.staking_treasury as u64;
+	        adjusted_staking_treasury += x;
+            }
+
+
 	    if self.get_staking_treasury() != adjusted_staking_treasury {
                 println!(
                     "ERROR: staking treasury does not validate: {} expected versus {} found",
@@ -1642,6 +1657,8 @@ impl Block {
         //
         // set staking treasury
         //
+println!("the staking treasury collected this block is: {}", cv.staking_treasury);
+
         if cv.staking_treasury != 0 {
 	    let mut adjusted_staking_treasury = previous_block_staking_treasury;
 	    if cv.staking_treasury < 0 {
@@ -1654,6 +1671,7 @@ impl Block {
 	    } else {
 	        adjusted_staking_treasury += cv.staking_treasury as u64;
 	    }
+println!("adjusted staking treasury written into block {}", adjusted_staking_treasury);
             block.set_staking_treasury(adjusted_staking_treasury);
         }
 

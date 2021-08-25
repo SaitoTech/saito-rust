@@ -97,7 +97,7 @@ mod tests {
         // if their is no difference, the value should be the start value * 10^8
         assert_eq!(
             BurnFee::return_routing_work_needed_to_produce_block_in_nolan(10_0000_0000, 0, 0),
-            10_0000_0000
+            10_000_000_000_000_000_000,
         );
 
         // should return 1 * 10^8 * timestamp_diff
