@@ -232,6 +232,7 @@
 <span id="230">230</span>
 <span id="231">231</span>
 <span id="232">232</span>
+<span id="233">233</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 # Saito Transaction Spammer
@@ -240,6 +241,7 @@ TODO: Fill in these docs
 
 */</span>
 <span class="kw">use</span> <span class="ident">saito_rust::networking::peer::PeersDB</span>;
+<span class="kw">use</span> <span class="ident">saito_rust::time::SystemTimestampGenerator</span>;
 <span class="kw">use</span> <span class="ident">saito_rust</span>::{
     <span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">miner::Miner</span>, <span class="ident">networking::network::Network</span>,
     <span class="ident">transaction::Transaction</span>, <span class="ident">util::format_url_string</span>, <span class="ident">wallet::Wallet</span>,
@@ -432,7 +434,7 @@ TODO: Fill in these docs
             <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
             <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
             <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
-            <span class="ident">broadcast_channel_receiver</span>
+            <span class="ident">broadcast_channel_receiver</span>,
         ) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)

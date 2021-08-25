@@ -186,6 +186,8 @@
 <span id="184">184</span>
 <span id="185">185</span>
 <span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
@@ -193,6 +195,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::network::Network</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::peer::PeersDB</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time::SystemTimestampGenerator</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">transaction::Transaction</span>};
 <span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">App</span>, <span class="ident">Arg</span>};
@@ -306,6 +309,7 @@
         <span class="comment">// broadcast cross-system messages. See SaitoMessage ENUM above</span>
         <span class="comment">// for information on cross-system notifications.</span>
         <span class="comment">//</span>
+        
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>(<span class="ident">key_path</span>, <span class="ident">password</span>)));
         <span class="kw">let</span> <span class="ident">peers_db_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">PeersDB::new</span>()));
 
@@ -337,7 +341,7 @@
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
-                <span class="ident">broadcast_channel_receiver</span>
+                <span class="ident">broadcast_channel_receiver</span>,
             ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
