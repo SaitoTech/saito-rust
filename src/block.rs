@@ -1510,12 +1510,17 @@ println!("payout removed of: {}", staker_slip.get_amount());
         // class. Note that we are passing in a read-only copy of our UTXOSet so
         // as to determine spendability.
         //
-        for i in 0..self.transactions.len() {
-	    let transactions_valid2 = self.transactions[i].validate(utxoset);
-	    if transactions_valid2 == false {
-		println!("TType: {:?}", self.transactions[i].get_transaction_type());
-	    }
-        }
+	// TODO - remove when convenient. when transactions fail to validate using
+	// parallel processing can make it difficult to find out exactly what the 
+	// problem is. ergo this code that tries to do them on the main thread so
+	// debugging output works.
+        //for i in 0..self.transactions.len() {
+	//    let transactions_valid2 = self.transactions[i].validate(utxoset);
+	//    if transactions_valid2 == false {
+	//	println!("TType: {:?}", self.transactions[i].get_transaction_type());
+	//    }
+        //}
+
         let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset));
 
         println!(" ... block.validate: (done all)  {:?}", create_timestamp());
