@@ -1018,11 +1018,6 @@
 <span id="1016">1016</span>
 <span id="1017">1017</span>
 <span id="1018">1018</span>
-<span id="1019">1019</span>
-<span id="1020">1020</span>
-<span id="1021">1021</span>
-<span id="1022">1022</span>
-<span id="1023">1023</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -1176,7 +1171,6 @@
 
         <span class="kw">let</span> <span class="ident">available_balance</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_available_balance</span>();
         <span class="kw">let</span> <span class="ident">total_requested</span> <span class="op">=</span> <span class="ident">with_payment</span> <span class="op">+</span> <span class="ident">with_fee</span>;
-        <span class="macro">println!</span>(<span class="string">&quot;in generate transaction ab: {} and pr: {} and fr: {}&quot;</span>, <span class="ident">available_balance</span>, <span class="ident">with_payment</span>, <span class="ident">with_fee</span>);
 
         <span class="kw">if</span> <span class="ident">available_balance</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">total_requested</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
@@ -1894,7 +1888,6 @@
             }
         }
 
-<span class="macro">println!</span>(<span class="string">&quot;...&quot;</span>);
 
         <span class="comment">//</span>
         <span class="comment">// fee transactions</span>
@@ -1962,10 +1955,7 @@
         <span class="comment">// tokens it will pass this check, which is conducted inside</span>
         <span class="comment">// the slip-level validation logic.</span>
         <span class="comment">//</span>
-<span class="macro">println!</span>(<span class="string">&quot;before validating input!&quot;</span>);
         <span class="kw">let</span> <span class="ident">inputs_validate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">par_iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>));
-
-<span class="macro">println!</span>(<span class="string">&quot;did inputs validate {}&quot;</span>, <span class="ident">inputs_validate</span>);
 
         <span class="ident">inputs_validate</span>
     }

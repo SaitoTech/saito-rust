@@ -1301,10 +1301,6 @@
 <span id="1299">1299</span>
 <span id="1300">1300</span>
 <span id="1301">1301</span>
-<span id="1302">1302</span>
-<span id="1303">1303</span>
-<span id="1304">1304</span>
-<span id="1305">1305</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -1450,7 +1446,7 @@
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>) {
             <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">insert</span>(<span class="ident">block_hash</span>, <span class="ident">block</span>);
         } <span class="kw">else</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;BLOCK IS ALREAYD IN THE BLOCKCHAIN, WHY ARE WE ADDING IT?????&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT?????&quot;</span>);
         }
 
         <span class="comment">// println!(&quot; ... start shared ancestor hunt: {:?}&quot;, create_timestamp());</span>
@@ -1627,20 +1623,19 @@
             <span class="comment">//</span>
             <span class="comment">//block.transactions = vec![];</span>
         }
-        <span class="comment">//storage.write_block_to_disk(self.blocks.get(&amp;block_hash).unwrap());</span>
 
-        <span class="comment">// println!(&quot; ... block save done:            {:?}&quot;, create_timestamp());</span>
+        <span class="macro">println!</span>(<span class="string">&quot; ... block save done:            {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="comment">//</span>
         <span class="comment">// TODO - this is merely for testing, we do not intend</span>
         <span class="comment">// the routing client to process transactions in its</span>
         <span class="comment">// wallet.</span>
         {
-            <span class="comment">// println!(&quot; ... wallet processing start:    {}&quot;, create_timestamp());</span>
+            <span class="macro">println!</span>(<span class="string">&quot; ... wallet processing start:    {}&quot;</span>, <span class="ident">create_timestamp</span>());
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>();
             <span class="ident">wallet</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>);
-            <span class="comment">// println!(&quot; ... wallet processing stop:     {}&quot;, create_timestamp());</span>
+            <span class="macro">println!</span>(<span class="string">&quot; ... wallet processing stop:     {}&quot;</span>, <span class="ident">create_timestamp</span>());
         }
 
         <span class="comment">//</span>
@@ -1652,7 +1647,6 @@
         <span class="comment">// fork id</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">fork_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_fork_id</span>(<span class="ident">block_id</span>);
-        <span class="comment">//println!(&quot;FORK_ID: {:?}&quot;, fork_id);</span>
         <span class="self">self</span>.<span class="ident">set_fork_id</span>(<span class="ident">fork_id</span>);
 
         <span class="comment">//</span>
@@ -1680,9 +1674,6 @@
                     .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">generate_metadata_hashes</span>());
             }
         }
-
-<span class="macro">println!</span>(<span class="string">&quot;pruning done...&quot;</span>);
-
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_failure</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {}
@@ -1814,8 +1805,9 @@
         <span class="ident">new_chain</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>,
         <span class="ident">old_chain</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">new_chain</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">old_chain</span>);
+
+<span class="comment">//        println!(&quot;{:?}&quot;, new_chain);</span>
+<span class="comment">//        println!(&quot;{:?}&quot;, old_chain);</span>
 
         <span class="kw">if</span> <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">new_chain</span>.<span class="ident">len</span>() {
             <span class="macro">println!</span>(<span class="string">&quot;ERROR 1&quot;</span>);
