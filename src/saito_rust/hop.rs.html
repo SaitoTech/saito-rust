@@ -151,9 +151,9 @@
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hop</span> <span class="op">=</span> <span class="ident">Hop::new</span>();
 
-        <span class="ident">hop</span>.<span class="ident">set_from</span>(<span class="ident">wallet</span>.<span class="ident">get_public_key</span>());
+        <span class="ident">hop</span>.<span class="ident">set_from</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
         <span class="ident">hop</span>.<span class="ident">set_to</span>(<span class="ident">to_publickey</span>);
-        <span class="ident">hop</span>.<span class="ident">set_sig</span>(<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash_to_sign</span>, <span class="ident">wallet</span>.<span class="ident">get_private_key</span>()));
+        <span class="ident">hop</span>.<span class="ident">set_sig</span>(<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="ident">hash_to_sign</span>, <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>()));
 
         <span class="ident">hop</span>
     }

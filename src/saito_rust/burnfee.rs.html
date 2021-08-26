@@ -120,6 +120,19 @@
 <span id="118">118</span>
 <span id="119">119</span>
 <span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
 </pre><pre class="rust">
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">HEARTBEAT</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">30_000</span>;
 
@@ -140,6 +153,13 @@
         <span class="ident">current_block_timestamp</span>: <span class="ident">u64</span>,
         <span class="ident">previous_block_timestamp</span>: <span class="ident">u64</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+	<span class="comment">//</span>
+	<span class="comment">// impossible if times misordered</span>
+	<span class="comment">//</span>
+        <span class="kw">if</span> <span class="ident">previous_block_timestamp</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">current_block_timestamp</span> {
+	    <span class="kw">return</span> <span class="number">10_000_000_000_000_000_000</span>;
+	}
+
         <span class="kw">let</span> <span class="ident">elapsed_time</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">current_block_timestamp</span> <span class="op">-</span> <span class="ident">previous_block_timestamp</span> {
             <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">1</span>,
             <span class="ident">diff</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">diff</span>,
@@ -172,6 +192,12 @@
         <span class="ident">current_block_timestamp</span>: <span class="ident">u64</span>,
         <span class="ident">previous_block_timestamp</span>: <span class="ident">u64</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+	<span class="comment">//</span>
+	<span class="comment">// impossible if times misordered</span>
+	<span class="comment">//</span>
+        <span class="kw">if</span> <span class="ident">previous_block_timestamp</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">current_block_timestamp</span> {
+	    <span class="kw">return</span> <span class="number">10_000_000_000_000_000_000</span>;
+	}
         <span class="kw">let</span> <span class="ident">timestamp_difference</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">current_block_timestamp</span> <span class="op">-</span> <span class="ident">previous_block_timestamp</span> {
             <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">1</span>,
             <span class="ident">diff</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">diff</span>,
@@ -207,7 +233,7 @@
         <span class="comment">// if their is no difference, the value should be the start value * 10^8</span>
         <span class="macro">assert_eq!</span>(
             <span class="ident">BurnFee::return_routing_work_needed_to_produce_block_in_nolan</span>(<span class="number">10_0000_0000</span>, <span class="number">0</span>, <span class="number">0</span>),
-            <span class="number">10_0000_0000</span>
+            <span class="number">10_000_000_000_000_000_000</span>,
         );
 
         <span class="comment">// should return 1 * 10^8 * timestamp_diff</span>

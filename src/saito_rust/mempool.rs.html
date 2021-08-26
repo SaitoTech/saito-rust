@@ -627,7 +627,7 @@
         <span class="kw">let</span> <span class="ident">publickey</span>;
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_public_key</span>();
+            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
         }
         <span class="ident">transaction</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
 
@@ -826,8 +826,8 @@
         <span class="ident">mempool</span>.<span class="ident">set_broadcast_channel_sender</span>(<span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>());
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_public_key</span>();
-            <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_private_key</span>();
+            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
+            <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
         }
 
         <span class="ident">mempool</span>.<span class="ident">set_mempool_publickey</span>(<span class="ident">publickey</span>);
@@ -951,12 +951,12 @@
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>))));
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> <span class="ident">public_key</span>;
+        <span class="kw">let</span> <span class="ident">publickey</span>;
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">public_key</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_public_key</span>();
+            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
         }
-        <span class="ident">add_vip_block</span>(<span class="ident">public_key</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+        <span class="ident">add_vip_block</span>(<span class="ident">publickey</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
         {
             <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="kw">let</span> <span class="ident">latest_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>().<span class="ident">unwrap</span>();
@@ -972,7 +972,7 @@
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span> <span class="op">=</span> <span class="ident">MockTimestampGenerator::new</span>(<span class="ident">HEARTBEAT</span> <span class="op">*</span> <span class="number">2</span>);
 
-        <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">public_key</span>, <span class="number">1</span>, <span class="number">1000000</span>).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">1</span>, <span class="number">1000000</span>).<span class="kw">await</span>;
         {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
             <span class="kw">let</span> <span class="ident">add_tx_result</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">add_transaction</span>(<span class="ident">tx</span>).<span class="kw">await</span>;
@@ -1008,7 +1008,7 @@
             
 
 
-        <span class="comment">// let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;</span>
+        <span class="comment">// let tx = Transaction::generate_transaction(wallet_lock.clone(), publickey, 1, 1000000).await;</span>
         <span class="comment">// {</span>
         <span class="comment">//     let mut mempool = mempool_lock.write().await;</span>
         <span class="comment">//     let add_tx_result = mempool.add_transaction(tx).await;</span>
@@ -1017,7 +1017,7 @@
         <span class="comment">// let block =  crate::mempool::try_bundle_block(mempool_lock.clone(), blockchain_lock.clone(), &amp;mut mock_timestamp_generator).await;</span>
         <span class="comment">// assert!(block.is_some());</span>
 
-        <span class="comment">// let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;</span>
+        <span class="comment">// let tx = Transaction::generate_transaction(wallet_lock.clone(), publickey, 1, 1000000).await;</span>
         <span class="comment">// {</span>
         <span class="comment">//     let mut mempool = mempool_lock.write().await;</span>
         <span class="comment">//     let add_tx_result = mempool.add_transaction(tx).await;</span>
@@ -1046,12 +1046,12 @@
         <span class="comment">// }</span>
 
 
-        <span class="comment">// let public_key;</span>
+        <span class="comment">// let publickey;</span>
         <span class="comment">// {</span>
         <span class="comment">//     let wallet = wallet_lock.read().await;</span>
-        <span class="comment">//     public_key = wallet.get_public_key();</span>
+        <span class="comment">//     publickey = wallet.get_publickey();</span>
         <span class="comment">// }</span>
-        <span class="comment">// add_vip_block(public_key, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;</span>
+        <span class="comment">// add_vip_block(publickey, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;</span>
         <span class="comment">// let blockchain = blockchain_lock.read().await;</span>
         <span class="comment">// let latest_block = blockchain.get_latest_block().unwrap();</span>
         <span class="comment">// assert_eq!(1, 1);</span>

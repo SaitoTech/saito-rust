@@ -401,9 +401,69 @@
 <span id="399">399</span>
 <span id="400">400</span>
 <span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::path::Path</span>;
-
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage</span>::{<span class="ident">Persistable</span>, <span class="ident">Storage</span>};
 <span class="kw">use</span> <span class="ident">aes::Aes128</span>;
 <span class="kw">use</span> <span class="ident">block_modes::block_padding::Pkcs7</span>;
@@ -416,7 +476,7 @@
     <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::slip::Slip</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipType</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
@@ -427,16 +487,17 @@
 <span class="doccomment">/// slips that are used to form transactions on the network.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Wallet</span> {
-    <span class="ident">public_key</span>: <span class="ident">SaitoPublicKey</span>,
-    <span class="ident">private_key</span>: <span class="ident">SaitoPrivateKey</span>,
+    <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>,
+    <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>,
     <span class="ident">slips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WalletSlip</span><span class="op">&gt;</span>,
+    <span class="ident">staked_slips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WalletSlip</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Persistable</span>, <span class="ident">Default</span>)]</span>
 <span class="attribute">#[<span class="ident">persist_with_name</span>(<span class="ident">get_file_name</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EncryptedWallet</span> {
-    <span class="ident">encrypted_private_key</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">encrypted_privatekey</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
     <span class="ident">file_path</span>: <span class="ident">String</span>,
 }
@@ -447,13 +508,23 @@
     }
 }
 <span class="kw">impl</span> <span class="ident">Wallet</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> (<span class="ident">publickey</span>, <span class="ident">privatekey</span>) <span class="op">=</span> <span class="ident">generate_keys</span>();
+        <span class="ident">Wallet</span> {
+            <span class="ident">publickey</span>,
+            <span class="ident">privatekey</span>,
+            <span class="ident">slips</span>: <span class="macro">vec!</span>[],
+            <span class="ident">staked_slips</span>: <span class="macro">vec!</span>[],
+        }
+    }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">key_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> (<span class="ident">publickey</span>, <span class="ident">privatekey</span>) <span class="op">=</span> <span class="ident">Wallet::load_keys</span>(<span class="ident">key_path</span>, <span class="ident">password</span>);
         <span class="macro">println!</span>(<span class="string">&quot;Loaded wallet {}&quot;</span>, <span class="ident">hex::encode</span>(<span class="ident">publickey</span>));
         <span class="ident">Wallet</span> {
-            <span class="ident">public_key</span>: <span class="ident">publickey</span>,
-            <span class="ident">private_key</span>: <span class="ident">privatekey</span>,
+            <span class="ident">publickey</span>: <span class="ident">publickey</span>,
+            <span class="ident">privatekey</span>: <span class="ident">privatekey</span>,
             <span class="ident">slips</span>: <span class="macro">vec!</span>[],
+	    <span class="ident">staked_slips</span>: <span class="macro">vec!</span>[],
         }
     }
 
@@ -488,7 +559,7 @@
 
         <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">cipher</span>.<span class="ident">encrypt_vec</span>(<span class="kw-2">&amp;</span><span class="ident">privatekey</span>);
         <span class="kw">let</span> <span class="ident">encrypted_wallet</span> <span class="op">=</span> <span class="ident">EncryptedWallet</span> {
-            <span class="ident">encrypted_private_key</span>: <span class="ident">ciphertext</span>,
+            <span class="ident">encrypted_privatekey</span>: <span class="ident">ciphertext</span>,
             <span class="ident">file_path</span>: <span class="ident">key_file_path</span>.<span class="ident">to_string</span>().<span class="ident">clone</span>(),
         };
         <span class="ident">encrypted_wallet</span>.<span class="ident">save</span>();
@@ -506,7 +577,7 @@
 
         <span class="kw">let</span> <span class="ident">encrypted_wallet</span> <span class="op">=</span> <span class="ident">EncryptedWallet::load</span>(<span class="kw-2">&amp;</span><span class="ident">key_file_path</span>);
 
-        <span class="ident">Wallet::decrypt_key_file</span>(<span class="ident">encrypted_wallet</span>.<span class="ident">encrypted_private_key</span>, <span class="kw-2">&amp;</span><span class="ident">password</span>)
+        <span class="ident">Wallet::decrypt_key_file</span>(<span class="ident">encrypted_wallet</span>.<span class="ident">encrypted_privatekey</span>, <span class="kw-2">&amp;</span><span class="ident">password</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">decrypt_key_file</span>(<span class="ident">ciphertext</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
@@ -534,7 +605,7 @@
                 <span class="self">self</span>.<span class="ident">delete_slip</span>(<span class="ident">input</span>);
             }
             <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_outputs</span>() {
-                <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">output</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">public_key</span> {
+                <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">output</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
                     <span class="self">self</span>.<span class="ident">add_slip</span>(<span class="ident">block</span>, <span class="ident">tx</span>, <span class="ident">output</span>, <span class="ident">block</span>.<span class="ident">get_lc</span>());
                 }
             }
@@ -568,7 +639,11 @@
         <span class="ident">wallet_slip</span>.<span class="ident">set_block_hash</span>(<span class="ident">block</span>.<span class="ident">get_hash</span>());
         <span class="ident">wallet_slip</span>.<span class="ident">set_lc</span>(<span class="ident">lc</span>);
 
-        <span class="self">self</span>.<span class="ident">slips</span>.<span class="ident">push</span>(<span class="ident">wallet_slip</span>);
+	<span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span> <span class="op">|</span><span class="op">|</span> <span class="ident">slip</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+            <span class="self">self</span>.<span class="ident">staked_slips</span>.<span class="ident">push</span>(<span class="ident">wallet_slip</span>);
+	} <span class="kw">else</span> {
+            <span class="self">self</span>.<span class="ident">slips</span>.<span class="ident">push</span>(<span class="ident">wallet_slip</span>);
+	}
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_slip</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="kw-2">&amp;</span><span class="ident">Slip</span>) {
@@ -577,12 +652,12 @@
         });
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_private_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPrivateKey</span> {
-        <span class="self">self</span>.<span class="ident">private_key</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_privatekey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPrivateKey</span> {
+        <span class="self">self</span>.<span class="ident">privatekey</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
-        <span class="self">self</span>.<span class="ident">public_key</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_publickey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
+        <span class="self">self</span>.<span class="ident">publickey</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_available_balance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
@@ -595,12 +670,15 @@
         <span class="kw">return</span> <span class="ident">available_balance</span>;
     }
 
+    <span class="comment">// the nolan_requested is omitted from the slips created - only the change</span>
+    <span class="comment">// address is provided as an output. so make sure that any function calling </span>
+    <span class="comment">// this manually creates the output for its desired payment</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_slips</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">nolan_requested</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_in</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_out</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="ident">my_publickey</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_public_key</span>();
+        <span class="kw">let</span> <span class="ident">my_publickey</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>();
 
         <span class="comment">//</span>
         <span class="comment">// grab inputs</span>
@@ -629,7 +707,9 @@
             <span class="ident">nolan_out</span> <span class="op">=</span> <span class="ident">nolan_in</span> <span class="op">-</span> <span class="ident">nolan_requested</span>;
         }
 
-        <span class="comment">// change address</span>
+	<span class="comment">//</span>
+        <span class="comment">// add change address</span>
+	<span class="comment">//</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
         <span class="ident">output</span>.<span class="ident">set_publickey</span>(<span class="ident">my_publickey</span>);
         <span class="ident">output</span>.<span class="ident">set_amount</span>(<span class="ident">nolan_out</span>);
@@ -657,7 +737,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message_bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoSignature</span> {
-        <span class="ident">sign</span>(<span class="ident">message_bytes</span>, <span class="self">self</span>.<span class="ident">private_key</span>)
+        <span class="ident">sign</span>(<span class="ident">message_bytes</span>, <span class="self">self</span>.<span class="ident">privatekey</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create_golden_ticket_transaction</span>(
@@ -671,12 +751,12 @@
         <span class="ident">transaction</span>.<span class="ident">set_message</span>(<span class="ident">golden_ticket</span>.<span class="ident">serialize_for_transaction</span>());
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
-        <span class="ident">input1</span>.<span class="ident">set_publickey</span>(<span class="self">self</span>.<span class="ident">get_public_key</span>());
+        <span class="ident">input1</span>.<span class="ident">set_publickey</span>(<span class="self">self</span>.<span class="ident">get_publickey</span>());
         <span class="ident">input1</span>.<span class="ident">set_amount</span>(<span class="number">0</span>);
         <span class="ident">input1</span>.<span class="ident">set_uuid</span>([<span class="number">0</span>; <span class="number">32</span>]);
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
-        <span class="ident">output1</span>.<span class="ident">set_publickey</span>(<span class="self">self</span>.<span class="ident">get_public_key</span>());
+        <span class="ident">output1</span>.<span class="ident">set_publickey</span>(<span class="self">self</span>.<span class="ident">get_publickey</span>());
         <span class="ident">output1</span>.<span class="ident">set_amount</span>(<span class="number">0</span>);
         <span class="ident">output1</span>.<span class="ident">set_uuid</span>([<span class="number">0</span>; <span class="number">32</span>]);
 
@@ -686,7 +766,47 @@
         <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">transaction</span>.<span class="ident">serialize_for_signature</span>());
         <span class="ident">transaction</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
 
-        <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="self">self</span>.<span class="ident">get_private_key</span>());
+        <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="self">self</span>.<span class="ident">get_privatekey</span>());
+
+        <span class="ident">transaction</span>
+    }
+
+
+    <span class="comment">//</span>
+    <span class="comment">// creates a transaction that will deposit tokens into the staking system in the </span>
+    <span class="comment">// amount specified, if possible. the transaction will be invalid if there is not</span>
+    <span class="comment">// enough UTXO in the wallet to make the payment.</span>
+    <span class="comment">//</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create_staking_deposit_transaction</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+	<span class="ident">total_requested</span>: <span class="ident">u64</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
+
+        <span class="ident">transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::StakerDeposit</span>);
+
+        <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">input_slips</span>, <span class="kw-2">mut</span> <span class="ident">output_slips</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_slips</span>(<span class="ident">total_requested</span>);
+        <span class="kw">let</span> <span class="ident">input_len</span> <span class="op">=</span> <span class="ident">input_slips</span>.<span class="ident">len</span>();
+        <span class="kw">let</span> <span class="ident">output_len</span> <span class="op">=</span> <span class="ident">output_slips</span>.<span class="ident">len</span>();
+
+        <span class="comment">// add the staking deposit</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+        <span class="ident">output</span>.<span class="ident">set_publickey</span>(<span class="self">self</span>.<span class="ident">get_publickey</span>());
+        <span class="ident">output</span>.<span class="ident">set_amount</span>(<span class="ident">total_requested</span>);
+        <span class="ident">output</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::StakerDeposit</span>);
+        <span class="ident">transaction</span>.<span class="ident">add_output</span>(<span class="ident">output</span>);
+
+        <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">input_len</span> {
+            <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">input_slips</span>.<span class="ident">remove</span>(<span class="number">0</span>));
+        }
+        <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">output_len</span> {
+            <span class="ident">transaction</span>.<span class="ident">add_output</span>(<span class="ident">output_slips</span>.<span class="ident">remove</span>(<span class="number">0</span>));
+        }
+
+        <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">transaction</span>.<span class="ident">serialize_for_signature</span>());
+        <span class="ident">transaction</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
+        <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="self">self</span>.<span class="ident">get_privatekey</span>());
 
         <span class="ident">transaction</span>
     }
@@ -802,6 +922,8 @@
     <span class="kw">fn</span> <span class="ident">wallet_new_test</span>() {
         <span class="macro">assert_eq!</span>(<span class="bool-val">true</span>, <span class="bool-val">true</span>);
     }
+
+
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>

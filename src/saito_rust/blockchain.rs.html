@@ -1251,11 +1251,65 @@
 <span id="1249">1249</span>
 <span id="1250">1250</span>
 <span id="1251">1251</span>
+<span id="1252">1252</span>
+<span id="1253">1253</span>
+<span id="1254">1254</span>
+<span id="1255">1255</span>
+<span id="1256">1256</span>
+<span id="1257">1257</span>
+<span id="1258">1258</span>
+<span id="1259">1259</span>
+<span id="1260">1260</span>
+<span id="1261">1261</span>
+<span id="1262">1262</span>
+<span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
+<span id="1267">1267</span>
+<span id="1268">1268</span>
+<span id="1269">1269</span>
+<span id="1270">1270</span>
+<span id="1271">1271</span>
+<span id="1272">1272</span>
+<span id="1273">1273</span>
+<span id="1274">1274</span>
+<span id="1275">1275</span>
+<span id="1276">1276</span>
+<span id="1277">1277</span>
+<span id="1278">1278</span>
+<span id="1279">1279</span>
+<span id="1280">1280</span>
+<span id="1281">1281</span>
+<span id="1282">1282</span>
+<span id="1283">1283</span>
+<span id="1284">1284</span>
+<span id="1285">1285</span>
+<span id="1286">1286</span>
+<span id="1287">1287</span>
+<span id="1288">1288</span>
+<span id="1289">1289</span>
+<span id="1290">1290</span>
+<span id="1291">1291</span>
+<span id="1292">1292</span>
+<span id="1293">1293</span>
+<span id="1294">1294</span>
+<span id="1295">1295</span>
+<span id="1296">1296</span>
+<span id="1297">1297</span>
+<span id="1298">1298</span>
+<span id="1299">1299</span>
+<span id="1300">1300</span>
+<span id="1301">1301</span>
+<span id="1302">1302</span>
+<span id="1303">1303</span>
+<span id="1304">1304</span>
+<span id="1305">1305</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">2</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
 <span class="comment">// prune blocks from index after N blocks</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PRUNE_AFTER_BLOCKS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PRUNE_AFTER_BLOCKS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block</span>::{<span class="ident">Block</span>, <span class="ident">BlockType</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockring::BlockRing</span>;
@@ -1264,6 +1318,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time::create_timestamp</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::staking::Staking</span>;
 
 <span class="kw">use</span> <span class="ident">async_recursion::async_recursion</span>;
 
@@ -1286,6 +1341,7 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Blockchain</span> {
+    <span class="kw">pub</span> <span class="ident">staking</span>: <span class="ident">Staking</span>,
     <span class="kw">pub</span> <span class="ident">utxoset</span>: <span class="ident">UtxoSet</span>,
     <span class="kw">pub</span> <span class="ident">blockring</span>: <span class="ident">BlockRing</span>,
     <span class="kw">pub</span> <span class="ident">blocks</span>: <span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoHash</span>, <span class="ident">Block</span><span class="op">&gt;</span>,
@@ -1299,6 +1355,7 @@
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::clippy::new_without_default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">Blockchain</span> {
+            <span class="ident">staking</span>: <span class="ident">Staking::new</span>(),
             <span class="ident">utxoset</span>: <span class="ident">AHashMap::new</span>(),
             <span class="ident">blockring</span>: <span class="ident">BlockRing::new</span>(),
             <span class="ident">blocks</span>: <span class="ident">AHashMap::new</span>(),
@@ -1322,6 +1379,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>, <span class="ident">save_to_disk</span>: <span class="ident">bool</span>) {
+
         <span class="macro">println!</span>(
             <span class="string">&quot; ... blockchain.add_block start: {:?} txs: {}&quot;</span>,
             <span class="ident">create_timestamp</span>(),
@@ -1542,6 +1600,11 @@
             }
         }
     }
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span> : <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">block</span>: <span class="ident">Block</span>, <span class="ident">save_to_disk</span> : <span class="ident">bool</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+        <span class="kw">return</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>, <span class="ident">save_to_disk</span>).<span class="kw">await</span>;
+    }
+
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_success</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">save_to_disk</span>: <span class="ident">bool</span>) {
         <span class="macro">println!</span>(<span class="string">&quot; ... blockchain.add_block_succe: {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
@@ -1589,7 +1652,7 @@
         <span class="comment">// fork id</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">fork_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_fork_id</span>(<span class="ident">block_id</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;FORK_ID: {:?}&quot;</span>, <span class="ident">fork_id</span>);
+        <span class="comment">//println!(&quot;FORK_ID: {:?}&quot;, fork_id);</span>
         <span class="self">self</span>.<span class="ident">set_fork_id</span>(<span class="ident">fork_id</span>);
 
         <span class="comment">//</span>
@@ -1617,6 +1680,9 @@
                     .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">generate_metadata_hashes</span>());
             }
         }
+
+<span class="macro">println!</span>(<span class="string">&quot;pruning done...&quot;</span>);
+
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_failure</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {}
@@ -1864,15 +1930,34 @@
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>]).<span class="ident">unwrap</span>();
         <span class="macro">println!</span>(<span class="string">&quot; ... before block.validate:      {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
         <span class="kw">let</span> <span class="ident">does_block_validate</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset</span>).<span class="kw">await</span>;
-        <span class="macro">println!</span>(<span class="string">&quot; ... after block.validate:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... after block.validate:       {:?} {}&quot;</span>, <span class="ident">create_timestamp</span>(), <span class="ident">does_block_validate</span>);
 
         <span class="kw">if</span> <span class="ident">does_block_validate</span> {
-            <span class="comment">// println!(&quot; ... before block ocr            {:?}&quot;, create_timestamp());</span>
+            <span class="macro">println!</span>(<span class="string">&quot; ... before block ocr            {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+
+	    <span class="comment">// utxoset update</span>
             <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>);
-            <span class="comment">// println!(&quot; ... before blockring ocr:       {:?}&quot;, create_timestamp());</span>
+            <span class="macro">println!</span>(<span class="string">&quot; ... before blockring ocr:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+
+	    <span class="comment">// blockring update</span>
             <span class="self">self</span>.<span class="ident">blockring</span>
                 .<span class="ident">on_chain_reorganization</span>(<span class="ident">block</span>.<span class="ident">get_id</span>(), <span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
             <span class="comment">// println!(&quot; ... after on-chain-reorg:       {:?}&quot;, create_timestamp());</span>
+
+	    <span class="comment">// staking tables update</span>
+	    <span class="kw">let</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">staking</span>
+                .<span class="ident">on_chain_reorganization</span>(<span class="ident">block</span>, <span class="bool-val">true</span>);
+
+	    <span class="comment">//</span>
+	    <span class="comment">// we cannot pass the UTXOSet into the staking object to update as that would</span>
+	    <span class="comment">// require multiple mutable borrows of the blockchain object, so we receive </span>
+	    <span class="comment">// return vectors of the slips that need to be inserted, spent or deleted and</span>
+	    <span class="comment">// handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever</span>
+	    <span class="comment">// is in the staking tables.</span>
+	    <span class="comment">//</span>
+	    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">res_spend</span>.<span class="ident">len</span>() { <span class="ident">res_spend</span>[<span class="ident">i</span>].<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>, <span class="number">1</span>); }
+	    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">res_unspend</span>.<span class="ident">len</span>() { <span class="ident">res_spend</span>[<span class="ident">i</span>].<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>, <span class="number">0</span>); }
+	    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">res_delete</span>.<span class="ident">len</span>() { <span class="ident">res_spend</span>[<span class="ident">i</span>].<span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>); }
 
             <span class="comment">//</span>
             <span class="comment">// we have received the first entry in new_blocks() which means we</span>
@@ -1987,9 +2072,28 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">blocks</span>[<span class="kw-2">&amp;</span><span class="ident">old_chain</span>[<span class="ident">current_unwind_index</span>]];
 
+	<span class="comment">// utxoset update</span>
         <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">false</span>);
+
+	<span class="comment">// blockring update</span>
         <span class="self">self</span>.<span class="ident">blockring</span>
             .<span class="ident">on_chain_reorganization</span>(<span class="ident">block</span>.<span class="ident">get_id</span>(), <span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="bool-val">false</span>);
+
+	<span class="comment">// staking tables</span>
+	<span class="kw">let</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">staking</span>
+            .<span class="ident">on_chain_reorganization</span>(<span class="ident">block</span>, <span class="bool-val">true</span>);
+
+	<span class="comment">//</span>
+	<span class="comment">// we cannot pass the UTXOSet into the staking object to update as that would</span>
+	<span class="comment">// require multiple mutable borrows of the blockchain object, so we receive </span>
+	<span class="comment">// return vectors of the slips that need to be inserted, spent or deleted and</span>
+	<span class="comment">// handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever</span>
+	<span class="comment">// is in the staking tables.</span>
+	<span class="comment">//</span>
+	<span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">res_spend</span>.<span class="ident">len</span>() { <span class="ident">res_spend</span>[<span class="ident">i</span>].<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>, <span class="number">1</span>); }
+	<span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">res_unspend</span>.<span class="ident">len</span>() { <span class="ident">res_spend</span>[<span class="ident">i</span>].<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>, <span class="number">0</span>); }
+	<span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">res_delete</span>.<span class="ident">len</span>() { <span class="ident">res_spend</span>[<span class="ident">i</span>].<span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>); }
+
 
         <span class="kw">if</span> <span class="ident">current_unwind_index</span> <span class="op">=</span><span class="op">=</span> <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span> {
             <span class="comment">//</span>
@@ -2021,6 +2125,7 @@
             <span class="kw">return</span> <span class="ident">res</span>;
         }
     }
+
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_genesis_period</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="comment">//</span>
@@ -2121,9 +2226,12 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">downgrade_blockchain_data</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+
         <span class="comment">//</span>
         <span class="comment">// downgrade blocks still on the chain</span>
         <span class="comment">//</span>
+	<span class="kw">if</span> <span class="ident">PRUNE_AFTER_BLOCKS</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>() { <span class="kw">return</span>; }
+
         <span class="kw">let</span> <span class="ident">prune_blocks_at_block_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>() <span class="op">-</span> <span class="ident">PRUNE_AFTER_BLOCKS</span>;
 
         <span class="comment">//println!(&quot;downgrade blocks at block_id: {}&quot;, prune_blocks_at_block_id);</span>
@@ -2284,7 +2392,7 @@
 
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_public_key</span>();
+            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
         }
 
         <span class="comment">//</span>
@@ -2409,7 +2517,7 @@
 
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_public_key</span>();
+            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
         }
 
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">3</span> {
