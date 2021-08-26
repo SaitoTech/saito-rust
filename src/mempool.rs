@@ -417,12 +417,12 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let public_key;
+        let publickey;
         {
             let wallet = wallet_lock.read().await;
-            public_key = wallet.get_public_key();
+            publickey = wallet.get_publickey();
         }
-        add_vip_block(public_key, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;
+        add_vip_block(publickey, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;
         {
             let blockchain = blockchain_lock.read().await;
             let latest_block = blockchain.get_latest_block().unwrap();
@@ -438,7 +438,7 @@ mod tests {
 
         let mut mock_timestamp_generator = MockTimestampGenerator::new(HEARTBEAT * 2);
 
-        let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;
+        let tx = Transaction::generate_transaction(wallet_lock.clone(), publickey, 1, 1000000).await;
         {
             let mut mempool = mempool_lock.write().await;
             let add_tx_result = mempool.add_transaction(tx).await;
@@ -474,7 +474,7 @@ mod tests {
             
 
 
-        // let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;
+        // let tx = Transaction::generate_transaction(wallet_lock.clone(), publickey, 1, 1000000).await;
         // {
         //     let mut mempool = mempool_lock.write().await;
         //     let add_tx_result = mempool.add_transaction(tx).await;
@@ -483,7 +483,7 @@ mod tests {
         // let block =  crate::mempool::try_bundle_block(mempool_lock.clone(), blockchain_lock.clone(), &mut mock_timestamp_generator).await;
         // assert!(block.is_some());
 
-        // let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;
+        // let tx = Transaction::generate_transaction(wallet_lock.clone(), publickey, 1, 1000000).await;
         // {
         //     let mut mempool = mempool_lock.write().await;
         //     let add_tx_result = mempool.add_transaction(tx).await;
@@ -512,12 +512,12 @@ mod tests {
         // }
 
 
-        // let public_key;
+        // let publickey;
         // {
         //     let wallet = wallet_lock.read().await;
-        //     public_key = wallet.get_public_key();
+        //     publickey = wallet.get_publickey();
         // }
-        // add_vip_block(public_key, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;
+        // add_vip_block(publickey, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;
         // let blockchain = blockchain_lock.read().await;
         // let latest_block = blockchain.get_latest_block().unwrap();
         // assert_eq!(1, 1);

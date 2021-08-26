@@ -1,9 +1,8 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
-use crate::burnfee::Burnfee;
+use crate::burnfee::BurnFee;
 use crate::miner::Miner;
 use crate::golden_ticket::GoldenTicket;
-use crate::burnfee::BurnFee;
 use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey, SaitoPrivateKey};
 use crate::slip::{Slip, SlipType};
 use crate::transaction::Transaction;
