@@ -1210,11 +1210,11 @@
 
 	<span class="ident">staking</span>.<span class="ident">reset_staker_table</span>(<span class="number">1_000_000_000</span>); <span class="comment">// 10 Saito</span>
 
-	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">0</span>].<span class="ident">get_amount</span>(), <span class="number">210000000</span>);
-	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">1</span>].<span class="ident">get_amount</span>(), <span class="number">315000000</span>);
-	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">2</span>].<span class="ident">get_amount</span>(), <span class="number">420000000</span>);
-	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">3</span>].<span class="ident">get_amount</span>(), <span class="number">525000000</span>);
-	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">4</span>].<span class="ident">get_amount</span>(), <span class="number">630000000</span>);
+	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">0</span>].<span class="ident">get_amount</span>()<span class="op">+</span><span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">0</span>].<span class="ident">get_payout</span>(), <span class="number">210000000</span>);
+	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">1</span>].<span class="ident">get_amount</span>()<span class="op">+</span><span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">1</span>].<span class="ident">get_payout</span>(), <span class="number">315000000</span>);
+	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">2</span>].<span class="ident">get_amount</span>()<span class="op">+</span><span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">2</span>].<span class="ident">get_payout</span>(), <span class="number">420000000</span>);
+	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">3</span>].<span class="ident">get_amount</span>()<span class="op">+</span><span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">3</span>].<span class="ident">get_payout</span>(), <span class="number">525000000</span>);
+	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">4</span>].<span class="ident">get_amount</span>()<span class="op">+</span><span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">4</span>].<span class="ident">get_payout</span>(), <span class="number">630000000</span>);
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
