@@ -802,10 +802,7 @@ impl Block {
 
         //
         // calculate expected burn-fee
-
-        let previous_block_hash = self.get_previous_block_hash();
-        //println!("previous block hash {:?}", previous_block_hash);
-
+	//
         if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
             let difficulty = previous_block.get_difficulty();
             if !previous_block.get_has_golden_ticket() && cv.gt_num == 0 {

@@ -52,10 +52,6 @@ pub async fn add_vip_block(publickey: SaitoPublicKey, prev_block_hash: SaitoHash
     blockchain.add_block(block, true).await;
 }
 
-pub async fn add_random_block(publickey: SaitoPublicKey, prev_block_hash: SaitoHash, blockchain_lock: Arc<RwLock<Blockchain>>, wallet_lock: Arc<RwLock<Wallet>>,){
-    
-}
-
 pub async fn make_mock_blockchain(
     wallet_lock: Arc<RwLock<Wallet>>,
     chain_length: u64,

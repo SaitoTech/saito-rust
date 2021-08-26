@@ -87,7 +87,6 @@ println!("value is {} at {:?}", *value, &self.utxoset_key);
         } else {
             return true;
         }
-	return true;
     }
 
     pub fn on_chain_reorganization(

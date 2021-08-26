@@ -80,9 +80,9 @@ println!("===========================");
 println!("=== RESET STAKING TABLE ===");
 println!("===========================");
 
-	let mut res_spend: Vec<Slip> = vec![];
-	let mut res_unspend: Vec<Slip> = vec![];
-	let mut res_delete: Vec<Slip> = vec![];
+	let res_spend: Vec<Slip> = vec![];
+	let res_unspend: Vec<Slip> = vec![];
+	let res_delete: Vec<Slip> = vec![];
 
 	//
         // move pending into staking table
@@ -221,9 +221,9 @@ println!("===========================");
         longest_chain: bool,
     ) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
 
-	let mut res_spend: Vec<Slip> = vec![];
-	let mut res_unspend: Vec<Slip> = vec![];
-	let mut res_delete: Vec<Slip> = vec![];
+	let res_spend: Vec<Slip> = vec![];
+	let res_unspend: Vec<Slip> = vec![];
+	let res_delete: Vec<Slip> = vec![];
 
 	//
 	// add/remove deposits
@@ -262,7 +262,7 @@ println!("Resetting staker table...");
 	    //
 	    if self.stakers.len() == 0 {
 	       //self.reset_staker_table(block.get_staking_treasury());
-	       let res = self.reset_staker_table(100_000_000);
+	       let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(100_000_000);
 	    }
         } else {
 	    //
@@ -330,7 +330,7 @@ println!("ok, ready to roll...");
 println!("Rolling forward and moving into pending: {}!", self.stakers.len());
 		if self.stakers.len() == 0 {
 		    //self.reset_staker_table(block.get_staking_treasury());
-		    let res = self.reset_staker_table(100_000_000);
+		    let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(100_000_000);
 		}
 
 		//
@@ -348,7 +348,7 @@ println!("moving from staker into pending: {}", lucky_staker.get_amount());
 		//
 		if self.stakers.len() == 0 {
 		    //self.reset_staker_table(block.get_staking_treasury());
-		    let (res_spend, res_unspend, res_delete) = self.reset_staker_table(100_000_000);
+		    let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(100_000_000);
 		}
 
 
@@ -458,7 +458,7 @@ mod tests {
 	staking.add_deposit(slip4);
 	staking.add_deposit(slip5);
 
-	staking.reset_staker_table(1_000_000_000); // 10 Saito
+	let (_res_spend, _res_unspend, _res_delete) = staking.reset_staker_table(1_000_000_000); // 10 Saito
 
 	assert_eq!(staking.stakers[0].get_amount()+staking.stakers[0].get_payout(), 210000000);
 	assert_eq!(staking.stakers[1].get_amount()+staking.stakers[1].get_payout(), 315000000);
