@@ -1881,9 +1881,6 @@
 <span id="1879">1879</span>
 <span id="1880">1880</span>
 <span id="1881">1881</span>
-<span id="1882">1882</span>
-<span id="1883">1883</span>
-<span id="1884">1884</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>},
@@ -2689,10 +2686,7 @@
 
         <span class="comment">//</span>
         <span class="comment">// calculate expected burn-fee</span>
-
-        <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_previous_block_hash</span>();
-        <span class="comment">//println!(&quot;previous block hash {:?}&quot;, previous_block_hash);</span>
-
+	<span class="comment">//</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">previous_block</span>) <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_previous_block_hash</span>()) {
             <span class="kw">let</span> <span class="ident">difficulty</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_difficulty</span>();
             <span class="kw">if</span> <span class="op">!</span><span class="ident">previous_block</span>.<span class="ident">get_has_golden_ticket</span>() <span class="op">&amp;&amp;</span> <span class="ident">cv</span>.<span class="ident">gt_num</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {

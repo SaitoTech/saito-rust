@@ -830,9 +830,9 @@
 <span class="macro">println!</span>(<span class="string">&quot;=== RESET STAKING TABLE ===&quot;</span>);
 <span class="macro">println!</span>(<span class="string">&quot;===========================&quot;</span>);
 
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res_spend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res_unspend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res_delete</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+	<span class="kw">let</span> <span class="ident">res_spend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+	<span class="kw">let</span> <span class="ident">res_unspend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+	<span class="kw">let</span> <span class="ident">res_delete</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
 	<span class="comment">//</span>
         <span class="comment">// move pending into staking table</span>
@@ -971,9 +971,9 @@
         <span class="ident">longest_chain</span>: <span class="ident">bool</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
 
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res_spend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res_unspend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res_delete</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+	<span class="kw">let</span> <span class="ident">res_spend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+	<span class="kw">let</span> <span class="ident">res_unspend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+	<span class="kw">let</span> <span class="ident">res_delete</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
 	<span class="comment">//</span>
 	<span class="comment">// add/remove deposits</span>
@@ -1012,7 +1012,7 @@
 	    <span class="comment">//</span>
 	    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
 	       <span class="comment">//self.reset_staker_table(block.get_staking_treasury());</span>
-	       <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
+	       <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
 	    }
         } <span class="kw">else</span> {
 	    <span class="comment">//</span>
@@ -1080,7 +1080,7 @@
 <span class="macro">println!</span>(<span class="string">&quot;Rolling forward and moving into pending: {}!&quot;</span>, <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>());
 		<span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
 		    <span class="comment">//self.reset_staker_table(block.get_staking_treasury());</span>
-		    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
+		    <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
 		}
 
 		<span class="comment">//</span>
@@ -1098,7 +1098,7 @@
 		<span class="comment">//</span>
 		<span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
 		    <span class="comment">//self.reset_staker_table(block.get_staking_treasury());</span>
-		    <span class="kw">let</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
+		    <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
 		}
 
 
@@ -1208,7 +1208,7 @@
 	<span class="ident">staking</span>.<span class="ident">add_deposit</span>(<span class="ident">slip4</span>);
 	<span class="ident">staking</span>.<span class="ident">add_deposit</span>(<span class="ident">slip5</span>);
 
-	<span class="ident">staking</span>.<span class="ident">reset_staker_table</span>(<span class="number">1_000_000_000</span>); <span class="comment">// 10 Saito</span>
+	<span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span> <span class="ident">staking</span>.<span class="ident">reset_staker_table</span>(<span class="number">1_000_000_000</span>); <span class="comment">// 10 Saito</span>
 
 	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">0</span>].<span class="ident">get_amount</span>()<span class="op">+</span><span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">0</span>].<span class="ident">get_payout</span>(), <span class="number">210000000</span>);
 	<span class="macro">assert_eq!</span>(<span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">1</span>].<span class="ident">get_amount</span>()<span class="op">+</span><span class="ident">staking</span>.<span class="ident">stakers</span>[<span class="number">1</span>].<span class="ident">get_payout</span>(), <span class="number">315000000</span>);
