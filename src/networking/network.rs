@@ -116,7 +116,7 @@ impl Network {
             let publickey: SaitoPublicKey;
             {
                 let wallet = self.wallet_lock.read().await;
-                publickey = wallet.get_public_key();
+                publickey = wallet.get_publickey();
             }
 
             let mut message_data = vec![127, 0, 0, 1];

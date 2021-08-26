@@ -17,6 +17,13 @@ impl BurnFee {
         current_block_timestamp: u64,
         previous_block_timestamp: u64,
     ) -> u64 {
+	//
+	// impossible if times misordered
+	//
+        if previous_block_timestamp >= current_block_timestamp {
+	    return 10_000_000_000_000_000_000;
+	}
+
         let elapsed_time = match current_block_timestamp - previous_block_timestamp {
             0 => 1,
             diff => diff,
@@ -49,6 +56,12 @@ impl BurnFee {
         current_block_timestamp: u64,
         previous_block_timestamp: u64,
     ) -> u64 {
+	//
+	// impossible if times misordered
+	//
+        if previous_block_timestamp >= current_block_timestamp {
+	    return 10_000_000_000_000_000_000;
+	}
         let timestamp_difference = match current_block_timestamp - previous_block_timestamp {
             0 => 1,
             diff => diff,
@@ -84,7 +97,7 @@ mod tests {
         // if their is no difference, the value should be the start value * 10^8
         assert_eq!(
             BurnFee::return_routing_work_needed_to_produce_block_in_nolan(10_0000_0000, 0, 0),
-            10_0000_0000
+            10_000_000_000_000_000_000,
         );
 
         // should return 1 * 10^8 * timestamp_diff

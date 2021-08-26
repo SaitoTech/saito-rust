@@ -33,6 +33,7 @@ pub enum TransactionType {
     GoldenTicket,
     ATR,
     Vip,
+    StakerDeposit,
     Other,
 }
 
@@ -145,7 +146,7 @@ impl Transaction {
         with_fee: u64,
     ) -> Transaction {
         let mut wallet = wallet_lock.write().await;
-        let wallet_publickey = wallet.get_public_key();
+        let wallet_publickey = wallet.get_publickey();
 
         let available_balance = wallet.get_available_balance();
         let total_requested = with_payment + with_fee;
@@ -667,6 +668,7 @@ impl Transaction {
         longest_chain: bool,
         block_id: u64,
     ) {
+
         let mut input_slip_value = 1;
         let mut output_slip_value = 0;
 
@@ -785,6 +787,7 @@ impl Transaction {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
+
         //
         // User-Sent Transactions
         //
@@ -865,6 +868,8 @@ impl Transaction {
             }
         }
 
+println!("...");
+
         //
         // fee transactions
         //
@@ -931,7 +936,10 @@ impl Transaction {
         // tokens it will pass this check, which is conducted inside
         // the slip-level validation logic.
         //
+println!("before validating input!");
         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
+
+println!("did inputs validate {}", inputs_validate);
 
         inputs_validate
     }
@@ -966,7 +974,7 @@ mod tests {
         let wallet = Wallet::new("test/testwallet", Some("asdf"));
 
         tx.set_outputs(vec![Slip::new()]);
-        tx.sign(wallet.get_private_key());
+        tx.sign(wallet.get_privatekey());
 
         assert_eq!(tx.get_outputs()[0].get_slip_ordinal(), 0);
         assert_ne!(tx.get_signature(), [0; 64]);

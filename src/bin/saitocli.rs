@@ -91,8 +91,8 @@ pub async fn main() -> saito_rust::Result<()> {
     if let Some(ref _matches) = matches.subcommand_matches("print") {
         // TODO add an arg to enable/disable printing the private key
         // TODO add and arg to chande modes between hex and base58
-        println!(" public key : {}", hex::encode(wallet.get_public_key()));
-        println!("private key : {}", hex::encode(wallet.get_private_key()));
+        println!(" public key : {}", hex::encode(wallet.get_publickey()));
+        println!("private key : {}", hex::encode(wallet.get_privatekey()));
     }
     if let Some(ref matches) = matches.subcommand_matches("tx") {
         let filename: String = match matches.value_of("filename") {
@@ -120,7 +120,7 @@ pub async fn main() -> saito_rust::Result<()> {
 
         // TODO: get inputs from the wallet and use the amount specified
         let mut input1 = Slip::new();
-        input1.set_publickey(wallet.get_public_key());
+        input1.set_publickey(wallet.get_publickey());
         input1.set_amount(0);
         input1.set_uuid([0; 32]);
 
@@ -135,7 +135,7 @@ pub async fn main() -> saito_rust::Result<()> {
         let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
         transaction.set_hash_for_signature(hash_for_signature);
 
-        transaction.sign(wallet.get_private_key());
+        transaction.sign(wallet.get_privatekey());
 
         println!("Writing transaction");
         println!("Amount: {}", amount);

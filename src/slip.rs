@@ -1,6 +1,7 @@
 use crate::{
     blockchain::UtxoSet,
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
+    transaction::{TransactionType},
 };
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
@@ -24,8 +25,11 @@ pub enum SlipType {
     MinerOutput,
     RouterInput,
     RouterOutput,
-    StakerInput,
     StakerOutput,
+    StakerDeposit,
+    StakerWithdrawalPending,
+    StakerWithdrawalStaking,
+    Other, // need more than one value for TryFromBytes
 }
 
 #[serde_with::serde_as]
@@ -35,6 +39,7 @@ pub struct Slip {
     publickey: SaitoPublicKey,
     uuid: SaitoHash,
     amount: u64,
+    payout: u64,
     slip_ordinal: u8,
     slip_type: SlipType,
     #[serde_as(as = "[_; 74]")]
@@ -49,6 +54,7 @@ impl Slip {
             publickey: [0; 33],
             uuid: [0; 32],
             amount: 0,
+            payout: 0,
             slip_ordinal: 0,
             slip_type: SlipType::Normal,
             utxoset_key: [0; 74],
@@ -63,13 +69,15 @@ impl Slip {
                     if *value == 1 {
                         return true;
                     } else {
+println!("value is {} at {:?}", *value, &self.utxoset_key);
                         return false;
                     }
                 }
                 None => {
                     println!(
-                        "value is returned false: {:?} ordinal {} and amount {}",
+                        "value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}",
                         self.utxoset_key,
+                        self.get_slip_type(),
                         self.get_slip_ordinal(),
                         self.get_amount()
                     );
@@ -79,6 +87,7 @@ impl Slip {
         } else {
             return true;
         }
+	return true;
     }
 
     pub fn on_chain_reorganization(
@@ -88,6 +97,7 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
+	    // TODO cleanup once ready
             //println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
             //println!("slip_ordinal: {}", self.get_slip_ordinal());
             //println!("slip_amount: {}", self.get_amount());
@@ -104,6 +114,10 @@ impl Slip {
 
     pub fn get_amount(&self) -> u64 {
         self.amount
+    }
+
+    pub fn get_payout(&self) -> u64 {
+        self.payout
     }
 
     pub fn get_uuid(&self) -> SaitoHash {
@@ -124,6 +138,10 @@ impl Slip {
 
     pub fn set_amount(&mut self, amount: u64) {
         self.amount = amount;
+    }
+
+    pub fn set_payout(&mut self, payout: u64) {
+        self.payout = payout;
     }
 
     pub fn set_uuid(&mut self, uuid: SaitoHash) {
@@ -147,6 +165,9 @@ impl Slip {
         utxoset.remove_entry(&self.get_utxoset_key());
         true
     }
+
+
+
 
     //
     // Serialization
@@ -289,7 +310,7 @@ mod tests {
         let mut slip = Slip::new();
         slip.set_amount(100_000);
         slip.set_uuid([1; 32]);
-        slip.set_publickey(wallet.get_public_key());
+        slip.set_publickey(wallet.get_publickey());
         slip.generate_utxoset_key();
 
         // add to utxoset

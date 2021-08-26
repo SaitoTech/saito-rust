@@ -40,9 +40,9 @@ impl Hop {
         let wallet = wallet_lock.read().await;
         let mut hop = Hop::new();
 
-        hop.set_from(wallet.get_public_key());
+        hop.set_from(wallet.get_publickey());
         hop.set_to(to_publickey);
-        hop.set_sig(sign(&hash_to_sign, wallet.get_private_key()));
+        hop.set_sig(sign(&hash_to_sign, wallet.get_privatekey()));
 
         hop
     }

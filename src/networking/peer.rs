@@ -38,7 +38,7 @@ pub struct PeerSetting {
 
 pub struct BasePeer {
     has_completed_handshake: bool,
-    public_key: Option<SaitoPublicKey>,
+    publickey: Option<SaitoPublicKey>,
     requests: HashMap<u32, [u8; 8]>,
     request_count: u32,
     wallet_lock: Arc<RwLock<Wallet>>,
@@ -149,7 +149,7 @@ impl BasePeer {
                 match socket_handshake_verify(&api_message.message_data()) {
                     Some(deserialize_challenge) => {
                         self.set_has_completed_handshake(true);
-                        self.set_public_key(deserialize_challenge.opponent_pubkey());
+                        self.set_publickey(deserialize_challenge.opponent_pubkey());
                         self.send_response(
                             api_message.message_id,
                             String::from("OK").as_bytes().try_into().unwrap(),
@@ -296,7 +296,7 @@ impl BasePeer {
                 let privatekey: SaitoPrivateKey;
                 {
                     let wallet = self.wallet_lock.read().await;
-                    privatekey = wallet.get_private_key();
+                    privatekey = wallet.get_privatekey();
                 }
                 let signed_challenge =
                     sign_blob(&mut response_api_message.message_data.to_vec(), privatekey)
@@ -304,7 +304,7 @@ impl BasePeer {
                 match socket_handshake_verify(&signed_challenge) {
                     Some(deserialize_challenge) => {
                         self.set_has_completed_handshake(true);
-                        self.set_public_key(deserialize_challenge.challenger_pubkey());
+                        self.set_publickey(deserialize_challenge.challenger_pubkey());
                         self.send_command(&String::from("SHAKCOMP"), signed_challenge)
                             .await;
                         println!("SHAKECOMPLETE!");
@@ -379,11 +379,11 @@ impl BasePeer {
     pub fn get_has_completed_handshake(&self) -> bool {
         self.has_completed_handshake
     }
-    pub fn set_public_key(&mut self, public_key: SaitoPublicKey) {
-        self.public_key = Some(public_key)
+    pub fn set_publickey(&mut self, publickey: SaitoPublicKey) {
+        self.publickey = Some(publickey)
     }
-    pub fn get_public_key(&self) -> Option<SaitoPublicKey> {
-        self.public_key
+    pub fn get_publickey(&self) -> Option<SaitoPublicKey> {
+        self.publickey
     }
 }
 impl InboundPeer {
@@ -395,7 +395,7 @@ impl InboundPeer {
     ) -> BasePeer {
         BasePeer {
             has_completed_handshake: false,
-            public_key: None,
+            publickey: None,
             requests: HashMap::new(),
             request_count: 0,
             wallet_lock,
@@ -419,7 +419,7 @@ impl OutboundPeer {
     ) -> BasePeer {
         let peer = BasePeer {
             has_completed_handshake: false,
-            public_key: None,
+            publickey: None,
             requests: HashMap::new(),
             request_count: 0,
             wallet_lock,
@@ -492,8 +492,8 @@ pub async fn new_handshake_challenge(
     wallet_lock: Arc<RwLock<Wallet>>,
 ) -> crate::Result<Vec<u8>> {
     let wallet = wallet_lock.read().await;
-    let my_pubkey = wallet.get_public_key();
-    let my_privkey = wallet.get_private_key();
+    let my_pubkey = wallet.get_publickey();
+    let my_privkey = wallet.get_privatekey();
 
     let mut peer_octets: [u8; 4] = [0; 4];
     peer_octets[0..4].clone_from_slice(&message.message_data[0..4]);
