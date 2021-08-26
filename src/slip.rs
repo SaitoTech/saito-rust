@@ -1,6 +1,7 @@
 use crate::{
     blockchain::UtxoSet,
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
+    transaction::{TransactionType},
 };
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
@@ -63,7 +64,6 @@ impl Slip {
 
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
         if self.get_amount() > 0 {
-//println!("utxoset key: {:?}", &self.utxoset_key);
             match utxoset.get(&self.utxoset_key) {
                 Some(value) => {
                     if *value == 1 {
@@ -75,8 +75,9 @@ println!("value is {} at {:?}", *value, &self.utxoset_key);
                 }
                 None => {
                     println!(
-                        "value is returned false: {:?} ordinal {} and amount {}",
+                        "value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}",
                         self.utxoset_key,
+                        self.get_slip_type(),
                         self.get_slip_ordinal(),
                         self.get_amount()
                     );
@@ -115,6 +116,10 @@ println!("value is {} at {:?}", *value, &self.utxoset_key);
         self.amount
     }
 
+    pub fn get_payout(&self) -> u64 {
+        self.payout
+    }
+
     pub fn get_uuid(&self) -> SaitoHash {
         self.uuid
     }
@@ -133,6 +138,10 @@ println!("value is {} at {:?}", *value, &self.utxoset_key);
 
     pub fn set_amount(&mut self, amount: u64) {
         self.amount = amount;
+    }
+
+    pub fn set_payout(&mut self, payout: u64) {
+        self.payout = payout;
     }
 
     pub fn set_uuid(&mut self, uuid: SaitoHash) {

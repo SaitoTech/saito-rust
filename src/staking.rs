@@ -76,6 +76,10 @@ impl Staking {
     //
     pub fn reset_staker_table(&mut self , staking_treasury: u64) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
 
+println!("===========================");
+println!("=== RESET STAKING TABLE ===");
+println!("===========================");
+
 	let mut res_spend: Vec<Slip> = vec![];
 	let mut res_unspend: Vec<Slip> = vec![];
 	let mut res_delete: Vec<Slip> = vec![];
@@ -102,7 +106,11 @@ impl Staking {
 	//
 	let mut total_staked: u64 = 0;
 	for i in 0..self.stakers.len() {
-	    // anything that was pending needs updating
+	    // TODO - delete when ready
+	    // we do not update the slip type anymore because we need
+	    // the slip to be spendable when it is issued.
+	    // we update the payout rather than the amount so the slip
+	    // can validate as spendable as well.
 	    self.stakers[i].set_slip_type(SlipType::StakerOutput);
 	    total_staked += self.stakers[i].get_amount();
 	}
@@ -144,8 +152,7 @@ impl Staking {
 	    let mut staking_profit: u64 = 0;
 	    if f != true { staking_profit = z.as_u64(); }
 
-	    let my_payout = my_staked_amount + staking_profit;
-	    self.stakers[i].set_amount(my_payout);
+	    self.stakers[i].set_payout(staking_profit);
 
 	}
 
@@ -179,7 +186,6 @@ impl Staking {
 
 
     pub fn remove_staker(&mut self, slip : Slip) -> bool {
-println!("removing staker with utxoset_key: {:?}", slip.get_utxoset_key());
 	for i in 0..self.stakers.len() {
 	    if slip.get_utxoset_key() == self.stakers[i].get_utxoset_key() {
 		let _removed_slip = self.stakers.remove(i);    
@@ -246,13 +252,43 @@ println!("removing staker with utxoset_key: {:?}", slip.get_utxoset_key());
         }
 
 
+        //
+        // reset tables if needed
+        //
+        if longest_chain {
+println!("Resetting staker table...");
+	    //
+	    // reset stakers if necessary
+	    //
+	    if self.stakers.len() == 0 {
+	       //self.reset_staker_table(block.get_staking_treasury());
+	       let res = self.reset_staker_table(100_000_000);
+	    }
+        } else {
+	    //
+	    // reset pending if necessary
+	    //
+	    if self.stakers.len() == 0 {
+   	        for i in 0..self.pending.len() {
+	            self.stakers.push(self.pending[i].clone());
+	        }
+		for i in 0..self.deposits.len() {
+		    self.stakers.push(self.deposits[i].clone());
+		}
+		self.pending = vec![];
+		self.deposits = vec![];
+	    }
+	}
+
+
+
 
 	//
 	// update staking tables
 	//
+println!("block has fee_tx and golden tix?");
 	if block.get_has_fee_transaction() && block.get_has_golden_ticket() {
-
-//println!("updating the staking tables in staking OCR");
+println!("block has fee_tx and golden tix");
 
 	    let fee_transaction = &block.transactions[block.get_fee_transaction_idx() as usize];
 	    let golden_ticket_transaction = &block.transactions[block.get_golden_ticket_idx() as usize];
@@ -692,7 +728,8 @@ mod tests {
         { 
 	    let blockchain = blockchain_lock.write().await;
 	    let blk = blockchain.get_block(latest_block_hash).await;
-	    println!("2 staking deposit transactions made... where are we?");
+	    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	    println!("should be payout already handled... where are we?");
 	    println!("STAKERS: {:?}", blockchain.staking.stakers);
 	    println!("PENDING: {:?}", blockchain.staking.pending);
 	    println!("DEPOSIT: {:?}", blockchain.staking.deposits);

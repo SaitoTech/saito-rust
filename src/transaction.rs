@@ -868,6 +868,8 @@ impl Transaction {
             }
         }
 
+println!("...");
+
         //
         // fee transactions
         //

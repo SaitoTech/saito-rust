@@ -993,10 +993,13 @@ println!("do we have a staker slip we are paying?");
 			if let Some(staker_slip) = staker_slip_option {
 
 println!("do we have a staker slip we are paying YES?");
+println!("we are paying this staking slip: {:?}", staker_slip);
 
                 	    let mut output3 = Slip::new();
                 	    output3.set_publickey(staker_slip.get_publickey());
-                	    output3.set_amount(staker_slip.get_amount());
+			    // the payout is the return on staking, stored separately so that the 
+			    // UTXO for the slip will still validate.
+                	    output3.set_amount(staker_slip.get_amount() + staker_slip.get_payout());
 
 			    // remove from staking treasury as we are paying out
 			    cv.staking_treasury -= staker_slip.get_amount() as i64;
@@ -1507,6 +1510,12 @@ println!("payout removed of: {}", staker_slip.get_amount());
         // class. Note that we are passing in a read-only copy of our UTXOSet so
         // as to determine spendability.
         //
+        for i in 0..self.transactions.len() {
+	    let transactions_valid2 = self.transactions[i].validate(utxoset);
+	    if transactions_valid2 == false {
+		println!("TType: {:?}", self.transactions[i].get_transaction_type());
+	    }
+        }
         let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset));
 
         println!(" ... block.validate: (done all)  {:?}", create_timestamp());
@@ -1514,7 +1523,7 @@ println!("payout removed of: {}", staker_slip.get_amount());
         //
         // and if our transactions are valid, so is the block...
         //
-        //println!(" ... are txs valid: {}", transactions_valid);
+        println!(" ... are txs valid: {}", transactions_valid);
         transactions_valid
     }
 

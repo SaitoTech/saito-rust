@@ -344,7 +344,7 @@ impl Blockchain {
         // fork id
         //
         let fork_id = self.generate_fork_id(block_id);
-        println!("FORK_ID: {:?}", fork_id);
+        //println!("FORK_ID: {:?}", fork_id);
         self.set_fork_id(fork_id);
 
         //
@@ -622,7 +622,7 @@ println!("pruning done...");
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
         println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset).await;
-        println!(" ... after block.validate:       {:?}", create_timestamp());
+        println!(" ... after block.validate:       {:?} {}", create_timestamp(), does_block_validate);
 
         if does_block_validate {
             println!(" ... before block ocr            {:?}", create_timestamp());
