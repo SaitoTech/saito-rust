@@ -807,14 +807,14 @@ impl Block {
             let difficulty = previous_block.get_difficulty();
             if !previous_block.get_has_golden_ticket() && cv.gt_num == 0 {
                 if difficulty > 0 {
-                    println!("PREVIOUS BLOCK DIFFICULTY IS GREATER THAN 0");
+                    //println!("PREVIOUS BLOCK DIFFICULTY IS GREATER THAN 0");
                     cv.expected_difficulty = previous_block.get_difficulty() - 1;
                 }
             } else if previous_block.get_has_golden_ticket() && cv.gt_num > 0 {
-                println!("WE'RE ADDING ONE TO DIFFICULTY");
+                //println!("WE'RE ADDING ONE TO DIFFICULTY");
                 cv.expected_difficulty = difficulty + 1;
             } else {
-                println!("DIFFICULTY REMAINS THE SAME");
+                //println!("DIFFICULTY REMAINS THE SAME");
                 cv.expected_difficulty = difficulty;
             }
         } else {
@@ -970,11 +970,7 @@ impl Block {
 			// the staker treasury gets the amount that would be paid out to the staker
 			// if we were paying them from THIS loop of the blockchain rather than the
 			// average amount.
-println!("------------------------");
-println!("- set staking treasury -");
-println!("------------------------");
 			cv.staking_treasury = previous_staker_payment as i64;
-println!("staking treasury set as: {}", cv.staking_treasury);
 
 			//
 			// next_random_number
@@ -985,12 +981,7 @@ println!("staking treasury set as: {}", cv.staking_treasury);
                 	let block_payouts2: RouterPayout = previous_block.find_winning_router(another_random_number);
                 	let previous_winning_router = block_payouts2.publickey;
 
-println!("do we have a staker slip we are paying?");
-
 			if let Some(staker_slip) = staker_slip_option {
-
-println!("do we have a staker slip we are paying YES?");
-println!("we are paying this staking slip: {:?}", staker_slip);
 
                 	    let mut output3 = Slip::new();
                 	    output3.set_publickey(staker_slip.get_publickey());
@@ -1000,13 +991,11 @@ println!("we are paying this staking slip: {:?}", staker_slip);
 
 			    // remove from staking treasury as we are paying out
 			    cv.staking_treasury -= staker_slip.get_amount() as i64;
-println!("payout removed of: {}", staker_slip.get_amount());
 
                 	    output3.set_slip_type(SlipType::StakerOutput);
                 	    output3.set_slip_ordinal(slip_ordinal_to_apply);
 			    slip_ordinal_to_apply += 1;
                 	    transaction.add_output(output3);
-
 
 			    //
 			    // add staker input as tx input so it is spent

@@ -69,7 +69,7 @@ impl Slip {
                     if *value == 1 {
                         return true;
                     } else {
-println!("value is {} at {:?}", *value, &self.utxoset_key);
+			println!("value is {} at {:?}", *value, &self.utxoset_key);
                         return false;
                     }
                 }

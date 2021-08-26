@@ -142,7 +142,7 @@ impl Blockchain {
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
         } else {
-            println!("BLOCK IS ALREAYD IN THE BLOCKCHAIN, WHY ARE WE ADDING IT?????");
+            println!("BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT?????");
         }
 
         // println!(" ... start shared ancestor hunt: {:?}", create_timestamp());
@@ -319,20 +319,19 @@ impl Blockchain {
             //
             //block.transactions = vec![];
         }
-        //storage.write_block_to_disk(self.blocks.get(&block_hash).unwrap());
 
-        // println!(" ... block save done:            {:?}", create_timestamp());
+        println!(" ... block save done:            {:?}", create_timestamp());
 
         //
         // TODO - this is merely for testing, we do not intend
         // the routing client to process transactions in its
         // wallet.
         {
-            // println!(" ... wallet processing start:    {}", create_timestamp());
+            println!(" ... wallet processing start:    {}", create_timestamp());
             let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
             wallet.add_block(&block);
-            // println!(" ... wallet processing stop:     {}", create_timestamp());
+            println!(" ... wallet processing stop:     {}", create_timestamp());
         }
 
         //
@@ -344,7 +343,6 @@ impl Blockchain {
         // fork id
         //
         let fork_id = self.generate_fork_id(block_id);
-        //println!("FORK_ID: {:?}", fork_id);
         self.set_fork_id(fork_id);
 
         //
@@ -372,9 +370,6 @@ impl Blockchain {
                     .all(|tx| tx.generate_metadata_hashes());
             }
         }
-
-println!("pruning done...");
-
     }
 
     pub async fn add_block_failure(&mut self) {}
@@ -506,8 +501,9 @@ println!("pruning done...");
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
-        println!("{:?}", new_chain);
-        println!("{:?}", old_chain);
+
+//        println!("{:?}", new_chain);
+//        println!("{:?}", old_chain);
 
         if old_chain.len() > new_chain.len() {
             println!("ERROR 1");

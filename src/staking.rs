@@ -256,7 +256,6 @@ println!("===========================");
         // reset tables if needed
         //
         if longest_chain {
-println!("Resetting staker table...");
 	    //
 	    // reset stakers if necessary
 	    //
@@ -268,15 +267,18 @@ println!("Resetting staker table...");
 	    //
 	    // reset pending if necessary
 	    //
-	    if self.stakers.len() == 0 {
-   	        for i in 0..self.pending.len() {
-	            self.stakers.push(self.pending[i].clone());
-	        }
-		for i in 0..self.deposits.len() {
-		    self.stakers.push(self.deposits[i].clone());
-		}
+	    if self.pending.len() == 0 {
 		self.pending = vec![];
 		self.deposits = vec![];
+   	        for i in 0..self.stakers.len() {
+		    if self.stakers[i].get_slip_type() == SlipType::StakerOutput {
+	                self.pending.push(self.stakers[i].clone());
+		    }
+		    if self.stakers[i].get_slip_type() == SlipType::StakerDeposit {
+	                self.deposits.push(self.stakers[i].clone());
+		    }
+	        }
+		self.stakers = vec![];
 	    }
 	}
 
@@ -286,11 +288,10 @@ println!("Resetting staker table...");
 	//
 	// update staking tables
 	//
-println!("block has fee_tx and golden tix?");
 	if block.get_has_fee_transaction() && block.get_has_golden_ticket() {
-println!("block has fee_tx and golden tix");
 
 	    let fee_transaction = &block.transactions[block.get_fee_transaction_idx() as usize];
+
 	    let golden_ticket_transaction = &block.transactions[block.get_golden_ticket_idx() as usize];
 
 	    //
@@ -303,12 +304,14 @@ println!("block has fee_tx and golden tix");
 	    let staker_random_number = hash(&router_random_number1.to_vec());	// staker block2
 	    let _router_random_number2 = hash(&staker_random_number.to_vec());	// router block2
 
-println!("checking lens: {} {} and lc {}", fee_transaction.outputs.len(), fee_transaction.inputs.len(), longest_chain);
 	    if fee_transaction.outputs.len() < 3 { return (res_spend, res_unspend, res_delete); }
 	    if fee_transaction.inputs.len() < 1 { return (res_spend, res_unspend, res_delete); }
 
 	    let staker_output = fee_transaction.outputs[2].clone(); // 3rd output is staker
 	    let staker_input = fee_transaction.inputs[0].clone(); // 1st input is staker
+println!("Block {} has payout: ", &block.get_id());
+//println!("staker input:  {:?}", staker_input);
+//println!("staker output: {:?}", staker_output);
 
 
 
@@ -317,7 +320,7 @@ println!("checking lens: {} {} and lc {}", fee_transaction.outputs.len(), fee_tr
 	    //
 	    if longest_chain {
 
-println!("ok, ready to roll...");
+//println!("ok, ready to roll...");
 
 		//
 		// re-create staker table, if needed
@@ -336,11 +339,15 @@ println!("Rolling forward and moving into pending: {}!", self.stakers.len());
 		//
 		// move staker to pending
 		//
+//println!("staker table is: {:?}", self.stakers);
+
+
 		let lucky_staker_option = self.find_winning_staker(staker_random_number);
 		if let Some(lucky_staker) = lucky_staker_option {
+println!("the lucky staker is: {:?}", lucky_staker);
 println!("moving from staker into pending: {}", lucky_staker.get_amount());
 		    self.remove_staker(lucky_staker.clone());
-		    self.add_pending(lucky_staker.clone());
+		    self.add_pending(staker_output.clone());
 		}
 
 		//
@@ -357,32 +364,36 @@ println!("moving from staker into pending: {}", lucky_staker.get_amount());
 	    //
 	    } else {
 
+		println!("roll backward...");
+
 		//
 		// reset pending if necessary
 		//
-		if self.stakers.len() == 0 {
-		    for i in 0..self.pending.len() {
-		        self.stakers.push(self.pending[i].clone());
-		    }
-		    for i in 0..self.deposits.len() {
-		        self.stakers.push(self.deposits[i].clone());
-		    }
+	        if self.pending.len() == 0 {
 		    self.pending = vec![];
 		    self.deposits = vec![];
-		}
+   	            for i in 0..self.stakers.len() {
+		        if self.stakers[i].get_slip_type() == SlipType::StakerOutput {
+	                    self.pending.push(self.stakers[i].clone());
+		        }
+		        if self.stakers[i].get_slip_type() == SlipType::StakerDeposit {
+	                    self.deposits.push(self.stakers[i].clone());
+		        }
+	            }
+		    self.stakers = vec![];
+	        }
+
 
 		//
-		//
+		// remove from pending to staker (awaiting payout)
 		//
 	  	self.remove_pending(staker_output.clone());
-		for _z in 0..fee_transaction.inputs.len() {
-		    let slip_type = staker_input.get_slip_type();
-		    if slip_type == SlipType::StakerDeposit {
-		        self.add_deposit(staker_input.clone());
-		    }
-		    if slip_type == SlipType::StakerOutput {
-		        self.add_pending(staker_input.clone());
-		    }
+		let slip_type = staker_input.get_slip_type();
+		if slip_type == SlipType::StakerDeposit {
+		    self.add_deposit(staker_input.clone());
+		}
+		if slip_type == SlipType::StakerOutput {
+		    self.add_staker(staker_input.clone());
 		}
 
 
@@ -390,18 +401,19 @@ println!("moving from staker into pending: {}", lucky_staker.get_amount());
 		//
 		// reset pending if necessary
 		//
-		if self.pending.len() == 0 {
-		    for i in 0..self.pending.len() {
-		        self.stakers.push(self.pending[i].clone());
-		    }
-		    for i in 0..self.deposits.len() {
-		        self.stakers.push(self.deposits[i].clone());
-		    }
-		    self.pending = vec![];
+	        if self.pending.len() == 0 {
+	    	    self.pending = vec![];
 		    self.deposits = vec![];
-		}
-
-		println!("roll backward...");
+   	            for i in 0..self.stakers.len() {
+		        if self.stakers[i].get_slip_type() == SlipType::StakerOutput {
+	                    self.pending.push(self.stakers[i].clone());
+		        }
+		        if self.stakers[i].get_slip_type() == SlipType::StakerDeposit {
+	                    self.deposits.push(self.stakers[i].clone());
+		        }
+	            }
+		    self.stakers = vec![];
+	        }
 
 	    }
 	}
@@ -726,14 +738,36 @@ mod tests {
 	// the staking table should have been created when needed for the payout
 	//
         { 
-	    let blockchain = blockchain_lock.write().await;
+	    let mut blockchain = blockchain_lock.write().await;
 	    let blk = blockchain.get_block(latest_block_hash).await;
 	    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-	    println!("should be payout already handled... where are we?");
 	    println!("STAKERS: {:?}", blockchain.staking.stakers);
 	    println!("PENDING: {:?}", blockchain.staking.pending);
 	    println!("DEPOSIT: {:?}", blockchain.staking.deposits);
+	    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	    println!("!!! AND NOW REWINDING SHOULD RESTORE STAKING !!!");
+	    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+	    let blk2 = blk.clone();
+	    blockchain.staking.on_chain_reorganization(&blk2, false);
+	    println!("STAKERS: {:?}", blockchain.staking.stakers);
+	    println!("PENDING: {:?}", blockchain.staking.pending);
+	    println!("DEPOSIT: {:?}", blockchain.staking.deposits);
+
+	    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	    println!("!!! AND NOW MOVING FORWARD AGAIN !!!");
+	    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+	    let blk3 = blk2.clone();
+	    blockchain.staking.on_chain_reorganization(&blk3, true);
+	    println!("STAKERS: {:?}", blockchain.staking.stakers);
+	    println!("PENDING: {:?}", blockchain.staking.pending);
+	    println!("DEPOSIT: {:?}", blockchain.staking.deposits);
+
+
+
 	}
+
 
 
 	assert_eq!(0, 1);

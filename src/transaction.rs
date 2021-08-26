@@ -150,7 +150,6 @@ impl Transaction {
 
         let available_balance = wallet.get_available_balance();
         let total_requested = with_payment + with_fee;
-        println!("in generate transaction ab: {} and pr: {} and fr: {}", available_balance, with_payment, with_fee);
 
         if available_balance >= total_requested {
             let mut transaction = Transaction::new();
@@ -868,7 +867,6 @@ impl Transaction {
             }
         }
 
-println!("...");
 
         //
         // fee transactions
@@ -936,10 +934,7 @@ println!("...");
         // tokens it will pass this check, which is conducted inside
         // the slip-level validation logic.
         //
-println!("before validating input!");
         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
-
-println!("did inputs validate {}", inputs_validate);
 
         inputs_validate
     }
