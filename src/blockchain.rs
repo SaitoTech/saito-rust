@@ -1212,7 +1212,7 @@ mod tests {
             publickey = wallet.get_publickey();
         }
 
-        for i in 0..4 {
+        for i in 0..3 {
             transactions = vec![];
             let block: Block;
 

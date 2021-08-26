@@ -1,21 +1,10 @@
-use crate::{
-    block::Block,
-    blockchain::Blockchain,
-    burnfee::BurnFee,
-    consensus::SaitoMessage,
-    crypto::{SaitoPrivateKey, SaitoPublicKey},
-    golden_ticket::GoldenTicket,
-    time::create_timestamp,
-    transaction::Transaction,
-    wallet::Wallet,
-};
+use crate::{block::Block, blockchain::Blockchain, burnfee::BurnFee, consensus::SaitoMessage, crypto::{SaitoPrivateKey, SaitoPublicKey}, golden_ticket::GoldenTicket, time::{SystemTimestampGenerator, TimestampGenerator, create_timestamp}, transaction::Transaction, wallet::Wallet};
 use std::{collections::HashMap, collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
 #[derive(Clone, Debug)]
 pub enum MempoolMessage {
     TryBundleBlock,
-    GenerateBlock,
     // GenerateTransaction,
     ProcessBlocks,
 }
@@ -25,7 +14,7 @@ pub enum AddBlockResult {
     Accepted,
     Exists,
 }
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AddTransactionResult {
     Accepted,
     Rejected,
@@ -195,10 +184,10 @@ impl Mempool {
     //
     // Return work needed in Nolan
     //
-    pub fn calculate_work_needed(&self, previous_block: &Block) -> u64 {
+    pub fn calculate_work_needed(&self, previous_block: &Block, current_timestamp: u64) -> u64 {
         let previous_block_timestamp = previous_block.get_timestamp();
         let previous_block_burnfee = previous_block.get_burnfee();
-        let current_timestamp = create_timestamp();
+        // let current_timestamp = create_timestamp();
 
         let work_needed: u64 = BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
             previous_block_burnfee,
@@ -213,7 +202,7 @@ impl Mempool {
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
 
-    pub async fn can_bundle_block(&self, blockchain_lock: Arc<RwLock<Blockchain>>) -> bool {
+    pub async fn can_bundle_block(&self, blockchain_lock: Arc<RwLock<Blockchain>>, current_timestamp: u64) -> bool {
         if self.currently_processing_block {
             return false;
         }
@@ -225,8 +214,8 @@ impl Mempool {
 
         if let Some(previous_block) = blockchain.get_latest_block() {
             let work_available = self.calculate_work_available();
-            let work_needed = self.calculate_work_needed(previous_block);
-            let time_elapsed = create_timestamp() - previous_block.get_timestamp();
+            let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
+            let time_elapsed = current_timestamp - previous_block.get_timestamp();
             println!(
                 "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
                 work_available, work_needed, time_elapsed
@@ -254,6 +243,37 @@ impl Mempool {
     }
 }
 
+pub async fn try_bundle_block(
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+    timestamp_generator: &mut impl TimestampGenerator,
+) -> Option<Block> {
+    let can_bundle;
+    {
+        let mempool = mempool_lock.read().await;
+        can_bundle = mempool.can_bundle_block(blockchain_lock.clone(), timestamp_generator.get_timestamp()).await;
+    }
+    if can_bundle {
+        let mut mempool = mempool_lock.write().await;
+        Some(mempool.generate_block(blockchain_lock.clone()).await)
+    } else {
+        None
+    }
+}
+
+pub async fn process_blocks(
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) {
+    let mut mempool = mempool_lock.write().await;
+    mempool.currently_processing_block = true;
+    let mut blockchain = blockchain_lock.write().await;
+    while let Some(block) = mempool.blocks.pop_front() {
+        mempool.delete_transactions(&block.transactions);
+        blockchain.add_block(block, true).await;
+    }
+    mempool.currently_processing_block = false;
+}
 // This function is called on initialization to setup the sending
 // and receiving channels for asynchronous loops or message checks
 pub async fn run(
@@ -301,43 +321,36 @@ pub async fn run(
                    // TryBundleBlock makes periodic attempts to produce blocks and does so
                    // if the mempool can bundle blocks....
                    MempoolMessage::TryBundleBlock => {
-                        let can_bundle;
-                        {
-                            let mempool = mempool_lock.read().await;
-                            can_bundle = mempool.can_bundle_block(blockchain_lock.clone()).await;
-                        }
-                        if can_bundle {
+                        if let Some(block) = try_bundle_block(
+                            mempool_lock.clone(),
+                            blockchain_lock.clone(),
+                            &mut SystemTimestampGenerator{},
+                        ).await {
                             let mut mempool = mempool_lock.write().await;
-                            let block = mempool.generate_block(blockchain_lock.clone()).await;
                             if AddBlockResult::Accepted == mempool.add_block(block) {
                                 mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
+                            } else {
+                                panic!("Tried to make a block that already exists");
                             }
                         }
+
                     },
 
+                    // This appears to be unused and does the same thing that TryBundleBlock does.....
                     // GenerateBlock makes periodic attempts to analyse the state of
                     // the mempool and produce blocks if possible.
-                    MempoolMessage::GenerateBlock => {
-                        let mut mempool = mempool_lock.write().await;
-                        let block = mempool.generate_block(blockchain_lock.clone()).await;
-                        if AddBlockResult::Accepted == mempool.add_block(block) {
-                            mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
-                        }
+                    // MempoolMessage::GenerateBlock => {
+                    //     let mut mempool = mempool_lock.write().await;
+                    //     let block = mempool.generate_block(blockchain_lock.clone()).await;
+                    //     if AddBlockResult::Accepted == mempool.add_block(block) {
+                    //         mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
+                    //     }
+                    // },
+
+                    // ProcessBlocks will add blocks FIFO from the queue into blockchain
+                    MempoolMessage::ProcessBlocks => {
+                        process_blocks(mempool_lock.clone(), blockchain_lock.clone()).await;
                     },
-
-
-                   // ProcessBlocks will add blocks FIFO from the queue into blockchain
-                   MempoolMessage::ProcessBlocks => {
-
-                       let mut mempool = mempool_lock.write().await;
-                       mempool.currently_processing_block = true;
-                       let mut blockchain = blockchain_lock.write().await;
-                       while let Some(block) = mempool.blocks.pop_front() {
-                           mempool.delete_transactions(&block.transactions);
-                           blockchain.add_block(block, true).await;
-                       }
-                       mempool.currently_processing_block = false;
-                   },
                }
             }
 
@@ -374,7 +387,7 @@ pub async fn run(
 mod tests {
 
     use super::*;
-    use crate::{block::Block, wallet::Wallet};
+    use crate::{block::Block, burnfee::HEARTBEAT, crypto::SaitoHash, test_utilities::mocks::{MockTimestampGenerator, add_vip_block}, wallet::Wallet};
 
     use std::sync::Arc;
     use tokio::sync::RwLock;
@@ -396,5 +409,123 @@ mod tests {
         mempool.add_block(block.clone());
 
         assert_eq!(Some(block), mempool.blocks.pop_front())
+    }
+
+
+    #[tokio::test]
+    async fn blockchain_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let public_key;
+        {
+            let wallet = wallet_lock.read().await;
+            public_key = wallet.get_public_key();
+        }
+        add_vip_block(public_key, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;
+        {
+            let blockchain = blockchain_lock.read().await;
+            let latest_block = blockchain.get_latest_block().unwrap();
+            assert_eq!(latest_block.get_id(), 1);
+        }
+        
+        {
+            let wallet = wallet_lock.read().await;
+            let balance = wallet.get_available_balance();
+            assert_eq!(balance, 11000000);
+            println!("balance {}", balance);
+        }
+
+        let mut mock_timestamp_generator = MockTimestampGenerator::new(HEARTBEAT * 2);
+
+        let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;
+        {
+            let mut mempool = mempool_lock.write().await;
+            let add_tx_result = mempool.add_transaction(tx).await;
+            assert_eq!(add_tx_result, AddTransactionResult::Accepted);
+        }
+        let block_option =  crate::mempool::try_bundle_block(mempool_lock.clone(), blockchain_lock.clone(), &mut mock_timestamp_generator).await;
+        assert!(block_option.is_some());
+        let block= block_option.unwrap();
+        let mut prev_block_hash: SaitoHash = [0; 32];
+        let latest_block_id = block.get_id();
+        let latest_block_hash = block.get_hash();
+        {
+            let mut blockchain = blockchain_lock.write().await;
+            blockchain.add_block(block, false).await;
+            assert_ne!(latest_block_id, blockchain.get_latest_block_id());
+            assert_ne!(latest_block_hash, blockchain.get_latest_block_hash());
+            //latest_block_id = blockchain.get_latest_block_id();
+            //latest_block_hash = blockchain.get_latest_block_hash();
+            // assert_eq!(
+            //     prev_block_hash,
+            //     blockchain
+            //         .get_latest_block()
+            //         .unwrap()
+            //         .get_previous_block_hash()
+            // );
+            // if test_block_id > 1 {
+            //     assert!(blockchain.get_block_sync(&prev_block_hash).is_some());
+            // }
+            // prev_block_hash = test_block_hash;
+        }
+
+
+            
+
+
+        // let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;
+        // {
+        //     let mut mempool = mempool_lock.write().await;
+        //     let add_tx_result = mempool.add_transaction(tx).await;
+        //     assert_eq!(add_tx_result, AddTransactionResult::Accepted);
+        // }
+        // let block =  crate::mempool::try_bundle_block(mempool_lock.clone(), blockchain_lock.clone(), &mut mock_timestamp_generator).await;
+        // assert!(block.is_some());
+
+        // let tx = Transaction::generate_transaction(wallet_lock.clone(), public_key, 1, 1000000).await;
+        // {
+        //     let mut mempool = mempool_lock.write().await;
+        //     let add_tx_result = mempool.add_transaction(tx).await;
+        //     assert_eq!(add_tx_result, AddTransactionResult::Accepted);
+        // }
+        // let block =  crate::mempool::try_bundle_block(mempool_lock.clone(), blockchain_lock.clone(), &mut mock_timestamp_generator).await;
+        // assert!(block.is_some());
+
+        // let latest_block = blockchain.get_latest_block().unwrap();
+        // sleep(Duration::from_millis(1000));
+        // assert_eq!(latest_block.get_id(), 2);
+
+
+
+        // match add_tx_result {
+        //     crate::mempool::AddTransactionResult::Accepted => Ok(Message { msg: response }),
+        //     crate::mempool::AddTransactionResult::Exists => {
+        //         Err(warp::reject::custom(AlreadyExists))
+        //     }
+        //     crate::mempool::AddTransactionResult::Invalid => {
+        //         panic!("This appears unused, implement if needed");
+        //     }
+        //     crate::mempool::AddTransactionResult::Rejected => {
+        //         panic!("This appears unused, implement if needed");
+        //     }
+        // }
+
+
+        // let public_key;
+        // {
+        //     let wallet = wallet_lock.read().await;
+        //     public_key = wallet.get_public_key();
+        // }
+        // add_vip_block(public_key, [0; 32], blockchain_lock.clone(), wallet_lock.clone()).await;
+        // let blockchain = blockchain_lock.read().await;
+        // let latest_block = blockchain.get_latest_block().unwrap();
+        // assert_eq!(1, 1);
+        // {
+        //     let wallet = wallet_lock.read().await;
+        //     let balance = wallet.get_available_balance();
+        //     assert_eq!(balance, 11000000);
+        //     println!("balance {}", balance);
+        // }
     }
 }

@@ -1,16 +1,61 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
+use crate::burnfee::Burnfee;
 use crate::miner::Miner;
 use crate::golden_ticket::GoldenTicket;
 use crate::burnfee::BurnFee;
 use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey, SaitoPrivateKey};
 use crate::slip::{Slip, SlipType};
 use crate::transaction::Transaction;
-use crate::time::{create_timestamp};
+use crate::time::{TimestampGenerator, create_timestamp};
 use crate::wallet::Wallet;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
+
+pub struct MockTimestampGenerator {
+    timestamp: u64,
+    time_difference: u64,
+}
+
+impl MockTimestampGenerator {
+    pub fn new(time_difference: u64) -> MockTimestampGenerator {
+        MockTimestampGenerator {
+            timestamp: create_timestamp(),
+            time_difference: time_difference,
+        }
+    }
+}
+impl TimestampGenerator for MockTimestampGenerator {
+    fn get_timestamp(&mut self) -> u64 {
+        self.timestamp += self.time_difference;
+        self.timestamp
+    }
+}
+
+pub async fn add_vip_block(publickey: SaitoPublicKey, prev_block_hash: SaitoHash, blockchain_lock: Arc<RwLock<Blockchain>>, wallet_lock: Arc<RwLock<Wallet>>,) {
+    //let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+    let mut transactions = vec![];
+    let mut tx =
+    Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000)
+        .await;
+    tx.generate_metadata(publickey);
+    transactions.push(tx);
+
+    let block = Block::generate(
+        &mut transactions,
+        prev_block_hash,
+        wallet_lock.clone(),
+        blockchain_lock.clone(),
+    )
+    .await;
+    let mut blockchain = blockchain_lock.write().await;
+    blockchain.add_block(block, true).await;
+}
+
+pub async fn add_random_block(publickey: SaitoPublicKey, prev_block_hash: SaitoHash, blockchain_lock: Arc<RwLock<Blockchain>>, wallet_lock: Arc<RwLock<Wallet>>,){
+    
+}
 
 pub async fn make_mock_blockchain(
     wallet_lock: Arc<RwLock<Wallet>>,
@@ -92,11 +137,7 @@ pub async fn make_mock_blockchain(
             .await;
         }
 
-        // test_block_hash = block.get_hash();
-        // test_block_id = block.get_id();
-
         block_hashes.push(block.get_hash());
-
         {
             println!("{}", i);
             let mut blockchain = blockchain_lock.write().await;
