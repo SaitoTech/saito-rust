@@ -460,11 +460,11 @@ mod tests {
 
 	staking.reset_staker_table(1_000_000_000); // 10 Saito
 
-	assert_eq!(staking.stakers[0].get_amount(), 210000000);
-	assert_eq!(staking.stakers[1].get_amount(), 315000000);
-	assert_eq!(staking.stakers[2].get_amount(), 420000000);
-	assert_eq!(staking.stakers[3].get_amount(), 525000000);
-	assert_eq!(staking.stakers[4].get_amount(), 630000000);
+	assert_eq!(staking.stakers[0].get_amount()+staking.stakers[0].get_payout(), 210000000);
+	assert_eq!(staking.stakers[1].get_amount()+staking.stakers[1].get_payout(), 315000000);
+	assert_eq!(staking.stakers[2].get_amount()+staking.stakers[2].get_payout(), 420000000);
+	assert_eq!(staking.stakers[3].get_amount()+staking.stakers[3].get_payout(), 525000000);
+	assert_eq!(staking.stakers[4].get_amount()+staking.stakers[4].get_payout(), 630000000);
     }
 
     #[tokio::test]
