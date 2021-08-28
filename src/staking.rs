@@ -1,3 +1,8 @@
+//
+// TODO
+// - array is not the best data structure
+// - insert needs to place into a specified position, probabaly ordered by publickey and then UUID
+//
 use crate::{
     block::Block,
     blockchain::{GENESIS_PERIOD},
@@ -750,7 +755,7 @@ mod tests {
 	}
 
 	//
-	// BLOCK 3
+	// BLOCK 3 - payout
 	//
 	current_timestamp = create_timestamp() + 240000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, true).await;
@@ -780,7 +785,7 @@ mod tests {
 
 
 	//
-	// BLOCK 5
+	// BLOCK 5 - payout
 	//
 	current_timestamp = create_timestamp() + 480000;
 	block = make_mock_block_with_info(blockchain_lock.clone(), wallet_lock.clone(), publickey, latest_block_hash, current_timestamp, 0, 1, true).await;
@@ -829,7 +834,8 @@ mod tests {
         let mut wstx1: Transaction;
         {
             let mut wallet = wallet_lock.write().await;
-            wstx1 = wallet.create_staking_withdrawal_transaction().await;
+	    let mut blockchain = blockchain_lock.write().await;
+            wstx1 = wallet.create_staking_withdrawal_transaction(&blockchain.staking).await;
 	    wstx1.generate_metadata(publickey);
         }
 	let mut transactions: Vec<Transaction> = vec![];
@@ -844,7 +850,6 @@ mod tests {
         ).await;
         latest_block_hash = block.get_hash();
 	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
-
 
 	//
 	// the staking table should have been created when needed for the payout

@@ -12,6 +12,7 @@ use crate::crypto::{
 };
 use crate::golden_ticket::GoldenTicket;
 use crate::slip::{Slip, SlipType};
+use crate::staking::Staking;
 use crate::transaction::{Transaction, TransactionType};
 use serde::{Deserialize, Serialize};
 
@@ -131,13 +132,22 @@ impl Wallet {
     }
 
     pub fn add_block(&mut self, block: &Block) {
+	//
         // TODO
+	//
         // There are multiple bugs in this implementation.
+	//
         // If a block is added in a fork all the inputs will be deleted and won't be recovered.
         // Also, outputs added will still be in the wallet even if they are not replayed on the longest chain(and are therefore unspendable)
         for tx in &block.transactions {
             for input in tx.get_inputs() {
-                self.delete_slip(input);
+		if input.get_slip_type() == SlipType::StakerDeposit || input.get_slip_type() == SlipType::StakerOutput || input.get_slip_type() == SlipType::StakerWithdrawalStaking || input.get_slip_type() == SlipType::StakerWithdrawalPending {
+println!("deleting staker input  with slip uuid: {:?}", input.get_uuid());
+                    self.delete_staked_slip(input);
+		} else {
+println!("deleting normal input  with slip uuid: {:?}", input.get_uuid());
+                    self.delete_slip(input);
+		}
             }
             for output in tx.get_outputs() {
                 if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
@@ -179,6 +189,12 @@ impl Wallet {
 	} else {
             self.slips.push(wallet_slip);
 	}
+    }
+
+    pub fn delete_staked_slip(&mut self, slip: &Slip) {
+        self.staked_slips.retain(|x| {
+            x.get_uuid() != slip.get_uuid() || x.get_slip_ordinal() != slip.get_slip_ordinal()
+        });
     }
 
     pub fn delete_slip(&mut self, slip: &Slip) {
@@ -354,7 +370,7 @@ impl Wallet {
     // staking slip.
     //
     pub async fn create_staking_withdrawal_transaction(
-        &mut self,
+        &mut self, staking : &Staking
     ) -> Transaction {
 
         let mut transaction = Transaction::new();
@@ -369,6 +385,19 @@ impl Wallet {
         input.set_amount(slip.get_amount());
         input.set_uuid(slip.get_uuid());
         input.set_slip_ordinal(slip.get_slip_ordinal());
+	input.set_slip_type(SlipType::StakerWithdrawalStaking);
+
+println!("SLIP TO VALIDATE: ");
+println!("{:?}", input);
+
+	if staking.validate_slip_in_stakers(input.clone()) {
+println!("creating staking withdrawal transaction with slip in Staking");
+	    input.set_slip_type(SlipType::StakerWithdrawalStaking);
+	}
+	if staking.validate_slip_in_pending(input.clone()) {
+println!("creating staking withdrawal transaction with slip in Pending");
+	    input.set_slip_type(SlipType::StakerWithdrawalPending);
+	}
 
 	let mut output = input.clone();
 	output.set_slip_type(SlipType::Normal);
