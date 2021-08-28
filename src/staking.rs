@@ -250,11 +250,13 @@ println!("===========================");
 	let res_spend: Vec<Slip> = vec![];
 	let res_unspend: Vec<Slip> = vec![];
 	let res_delete: Vec<Slip> = vec![];
-/****
+
 	//
 	// add/remove deposits
 	//
         for tx in &block.transactions {
+
+
             if tx.get_transaction_type() == TransactionType::StakerWithdrawal {
 	        //
 		// someone has successfully withdrawn so we need to remove this slip
@@ -264,19 +266,26 @@ println!("===========================");
 		// roll forward
 		//
 		if longest_chain {
-		    self.remove_pending(tx.inputs[0].clone());
-		    self.remove_staker(tx.inputs[0].clone());
+		    if tx.inputs[0].get_slip_type == SlipType::StakerWithdrawalPending {
+		        self.remove_pending(tx.inputs[0].clone());
+		    }
+		    if tx.inputs[0].get_slip_type == SlipType::StakerWithdrawalStaking {
+		        self.remove_staker(tx.inputs[0].clone());
+		    }
 		//
 		// roll backward
 		//
 		} else {
-		    if tx.inputs[0].get_slip_type == 
-
-clone());
-		    self.remove_staker(tx.inputs[0].clone());
-		    self.remove_deposit(tx.outputs[i].clone());
+		    if tx.inputs[0].get_slip_type == SlipType::StakerWithdrawalPending {
+		        self.add_pending(tx.inputs[0].clone());
+		    }
+		    if tx.inputs[0].get_slip_type == SlipType::StakerWithdrawalStaking {
+		        self.add_staker(tx.inputs[0].clone());
+		    }
 		}
             }
+
+
 	    if tx.get_transaction_type() == TransactionType::StakerDeposit {
 		for i in 0..tx.outputs.len() {
 		    if tx.outputs[i].get_slip_type() == SlipType::StakerDeposit {
