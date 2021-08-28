@@ -266,20 +266,20 @@ println!("===========================");
 		// roll forward
 		//
 		if longest_chain {
-		    if tx.inputs[0].get_slip_type == SlipType::StakerWithdrawalPending {
+		    if tx.inputs[0].get_slip_type() == SlipType::StakerWithdrawalPending {
 		        self.remove_pending(tx.inputs[0].clone());
 		    }
-		    if tx.inputs[0].get_slip_type == SlipType::StakerWithdrawalStaking {
+		    if tx.inputs[0].get_slip_type() == SlipType::StakerWithdrawalStaking {
 		        self.remove_staker(tx.inputs[0].clone());
 		    }
 		//
 		// roll backward
 		//
 		} else {
-		    if tx.inputs[0].get_slip_type == SlipType::StakerWithdrawalPending {
+		    if tx.inputs[0].get_slip_type() == SlipType::StakerWithdrawalPending {
 		        self.add_pending(tx.inputs[0].clone());
 		    }
-		    if tx.inputs[0].get_slip_type == SlipType::StakerWithdrawalStaking {
+		    if tx.inputs[0].get_slip_type() == SlipType::StakerWithdrawalStaking {
 		        self.add_staker(tx.inputs[0].clone());
 		    }
 		}
@@ -475,8 +475,6 @@ println!("moving from staker into pending: {}", lucky_staker.get_amount());
 	    }
 	}
 
-
-***/
         return (res_spend, res_unspend, res_delete);
 
     }
