@@ -8,6 +8,7 @@ use crate::{
     hop::HOP_SIZE,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
+    staking::Staking,
     storage::Storage,
     time::create_timestamp,
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
@@ -1227,6 +1228,7 @@ impl Block {
         &self,
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
+        staking: &Staking,
     ) -> bool {
         //
         // no transactions? no thank you
@@ -1507,7 +1509,7 @@ impl Block {
 	//    }
         //}
 
-        let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset));
+        let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset, staking));
 
         println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 

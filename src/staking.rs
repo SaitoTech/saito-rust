@@ -159,7 +159,33 @@ println!("===========================");
         return (res_spend, res_unspend, res_delete);
     }
 
+    pub fn validate_slip_in_deposits(&self, slip : Slip) -> bool {
+	for i in 0..self.deposits.len() {
+	    if slip.get_utxoset_key() == self.deposits[i].get_utxoset_key() {
+		return true;
+	    }
+        }
+	return false;
+    }
 
+    pub fn validate_slip_in_stakers(&self, slip : Slip) -> bool {
+	for i in 0..self.stakers.len() {
+	    if slip.get_utxoset_key() == self.stakers[i].get_utxoset_key() {
+		return true;
+	    }
+        }
+	return false;
+      
+    }
+
+    pub fn validate_slip_in_pending(&self, slip : Slip) -> bool {
+	for i in 0..self.pending.len() {
+	    if slip.get_utxoset_key() == self.pending[i].get_utxoset_key() {
+		return true;
+	    }
+        }
+	return false;
+    }
 
     pub fn add_deposit(&mut self, slip : Slip) {
 	self.deposits.push(slip);
@@ -224,12 +250,34 @@ println!("===========================");
 	let res_spend: Vec<Slip> = vec![];
 	let res_unspend: Vec<Slip> = vec![];
 	let res_delete: Vec<Slip> = vec![];
-
+/****
 	//
 	// add/remove deposits
 	//
         for tx in &block.transactions {
-            if tx.get_transaction_type() == TransactionType::StakerDeposit {
+            if tx.get_transaction_type() == TransactionType::StakerWithdrawal {
+	        //
+		// someone has successfully withdrawn so we need to remove this slip
+		// from the necessary table if moving forward, or add it back if 
+		// moving backwards.
+		//
+		// roll forward
+		//
+		if longest_chain {
+		    self.remove_pending(tx.inputs[0].clone());
+		    self.remove_staker(tx.inputs[0].clone());
+		//
+		// roll backward
+		//
+		} else {
+		    if tx.inputs[0].get_slip_type == 
+
+clone());
+		    self.remove_staker(tx.inputs[0].clone());
+		    self.remove_deposit(tx.outputs[i].clone());
+		}
+            }
+	    if tx.get_transaction_type() == TransactionType::StakerDeposit {
 		for i in 0..tx.outputs.len() {
 		    if tx.outputs[i].get_slip_type() == SlipType::StakerDeposit {
 
@@ -418,6 +466,8 @@ println!("moving from staker into pending: {}", lucky_staker.get_amount());
 	    }
 	}
 
+
+***/
         return (res_spend, res_unspend, res_delete);
 
     }
@@ -658,7 +708,6 @@ mod tests {
 	//
         let mut stx1: Transaction;
         let mut stx2: Transaction;
-	
         {
             let mut wallet = wallet_lock.write().await;
             stx1 = wallet.create_staking_deposit_transaction(100000).await;
@@ -666,11 +715,9 @@ mod tests {
 	    stx1.generate_metadata(publickey);
 	    stx2.generate_metadata(publickey);
         }
-
 	let mut transactions: Vec<Transaction> = vec![];
 	transactions.push(stx1);
 	transactions.push(stx2);
-
 	current_timestamp = create_timestamp() + 120000;
         block = Block::generate_with_timestamp(
             &mut transactions,
@@ -715,7 +762,6 @@ mod tests {
 	    println!("PENDING: {:?}", blockchain.staking.pending);
 	    println!("DEPOSIT: {:?}", blockchain.staking.deposits);
 	}
-
 
 	//
 	// BLOCK 4
@@ -766,6 +812,43 @@ mod tests {
 
 
 
+	}
+
+
+
+	//
+	// BLOCK 6 -- withdraw a staking deposit
+	//
+        let mut wstx1: Transaction;
+        {
+            let mut wallet = wallet_lock.write().await;
+            wstx1 = wallet.create_staking_withdrawal_transaction().await;
+	    wstx1.generate_metadata(publickey);
+        }
+	let mut transactions: Vec<Transaction> = vec![];
+	transactions.push(wstx1);
+	current_timestamp = create_timestamp() + 600000;
+        block = Block::generate_with_timestamp(
+            &mut transactions,
+            latest_block_hash,
+            wallet_lock.clone(),
+            blockchain_lock.clone(),
+	    current_timestamp
+        ).await;
+        latest_block_hash = block.get_hash();
+	Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
+
+
+	//
+	// the staking table should have been created when needed for the payout
+	//
+        { 
+	    let blockchain = blockchain_lock.write().await;
+	    let blk = blockchain.get_block(latest_block_hash).await;
+	    println!("after the withdrawal of a staking transaction...");
+	    println!("STAKERS: {:?}", blockchain.staking.stakers);
+	    println!("PENDING: {:?}", blockchain.staking.pending);
+	    println!("DEPOSIT: {:?}", blockchain.staking.deposits);
 	}
 
 

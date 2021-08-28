@@ -587,6 +587,7 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
+
         println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
 
         //
@@ -610,14 +611,13 @@ impl Blockchain {
         // happen first.
         //
         {
-            //let block = self.blocks.get_mut(&new_chain[current_wind_index]).unwrap();
             let block = self.get_mut_block(new_chain[current_wind_index]).await;
             block.generate_metadata();
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
         println!(" ... before block.validate:      {:?}", create_timestamp());
-        let does_block_validate = block.validate(&self, &self.utxoset).await;
+        let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
         println!(" ... after block.validate:       {:?} {}", create_timestamp(), does_block_validate);
 
         if does_block_validate {

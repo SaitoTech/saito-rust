@@ -8,6 +8,7 @@ use crate::{
     },
     hop::{Hop, HOP_SIZE},
     slip::{Slip, SlipType, SLIP_SIZE},
+    staking::Staking,
     wallet::Wallet,
 };
 use ahash::AHashMap;
@@ -34,6 +35,7 @@ pub enum TransactionType {
     ATR,
     Vip,
     StakerDeposit,
+    StakerWithdrawal,
     Other,
 }
 
@@ -785,7 +787,7 @@ impl Transaction {
         true
     }
 
-    pub fn validate(&self, utxoset: &UtxoSet) -> bool {
+    pub fn validate(&self, utxoset: &UtxoSet, staking: &Staking) -> bool {
 
         //
         // User-Sent Transactions
@@ -806,6 +808,8 @@ impl Transaction {
         // transaction types.
         //
         let transaction_type = self.get_transaction_type();
+
+
         if transaction_type != TransactionType::Fee
             && transaction_type != TransactionType::ATR
             && transaction_type != TransactionType::Vip
@@ -897,6 +901,26 @@ impl Transaction {
         //
         if transaction_type == TransactionType::GoldenTicket {
             //println!("Golden Ticket Transaction");
+        }
+
+        //
+        // Staking Withdrawal Transactions
+        //
+        if transaction_type == TransactionType::StakerWithdrawal {
+	    for i in 0..self.inputs.len() {
+		if self.inputs[i].get_slip_type() == SlipType::StakerWithdrawalPending {
+	            if !staking.validate_slip_in_pending(self.inputs[i].clone()) {
+            	        println!("Staking Withdrawal Pending input slip is not in Pending thus transaction invalid!");
+		        return false;
+	            }
+		}
+		if self.inputs[i].get_slip_type() == SlipType::StakerWithdrawalStaking {
+	            if !staking.validate_slip_in_stakers(self.inputs[i].clone()) {
+            	        println!("Staking Withdrawal Staker input slip is not in Staker thus transaction invalid!");
+		        return false;
+	            }
+		}
+	    }
         }
 
         //

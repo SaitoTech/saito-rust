@@ -345,6 +345,48 @@ impl Wallet {
 
         transaction
     }
+
+
+    //
+    // creates a staking withdrawal transaction if possible that removes a slip from 
+    // the staking table. this function is primarily used for testing and as a reference
+    // for how these transactions should be formatted, so we will just withdraw the first
+    // staking slip.
+    //
+    pub async fn create_staking_withdrawal_transaction(
+        &mut self,
+    ) -> Transaction {
+
+        let mut transaction = Transaction::new();
+        transaction.set_transaction_type(TransactionType::StakerWithdrawal);
+
+	if self.staked_slips.len() == 0 { return transaction; }
+
+	let mut slip = self.staked_slips[0].clone();
+
+        let mut input = Slip::new();
+        input.set_publickey(self.get_publickey());
+        input.set_amount(slip.get_amount());
+        input.set_uuid(slip.get_uuid());
+        input.set_slip_ordinal(slip.get_slip_ordinal());
+
+	let mut output = input.clone();
+	output.set_slip_type(SlipType::Normal);
+
+	// just convert to a normal transaction
+        transaction.add_input(input);
+        transaction.add_output(output);
+
+        let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
+        transaction.set_hash_for_signature(hash_for_signature);
+        transaction.sign(self.get_privatekey());
+
+	// and remember it is spent!
+        self.staked_slips[0].set_spent(true);
+
+        transaction
+    }
+
 }
 
 /// The `WalletSlip` stores the essential information needed to track which
