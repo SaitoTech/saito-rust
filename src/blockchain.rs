@@ -7,10 +7,10 @@ use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
+use crate::staking::Staking;
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
-use crate::staking::Staking;
 
 use async_recursion::async_recursion;
 
@@ -71,7 +71,6 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block, save_to_disk: bool) {
-
         println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
@@ -292,11 +291,14 @@ impl Blockchain {
             }
         }
     }
-    pub async fn add_block_to_blockchain(blockchain_lock : Arc<RwLock<Blockchain>>, block: Block, save_to_disk : bool) {
+    pub async fn add_block_to_blockchain(
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+        block: Block,
+        save_to_disk: bool,
+    ) {
         let mut blockchain = blockchain_lock.write().await;
         return blockchain.add_block(block, save_to_disk).await;
     }
-
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash, save_to_disk: bool) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
@@ -373,8 +375,6 @@ impl Blockchain {
     }
 
     pub async fn add_block_failure(&mut self) {}
-
-
 
     pub fn generate_fork_id(&self, block_id: u64) -> SaitoHash {
         let mut fork_id = [0; 32];
@@ -468,15 +468,17 @@ impl Blockchain {
         fork_id
     }
 
-    pub fn generate_last_shared_ancestor(&self, peer_latest_block_id: u64, fork_id: SaitoHash) -> u64 {
-
+    pub fn generate_last_shared_ancestor(
+        &self,
+        peer_latest_block_id: u64,
+        fork_id: SaitoHash,
+    ) -> u64 {
         let mut my_latest_block_id = self.get_latest_block_id();
 
-	let mut pbid = peer_latest_block_id;
-	let mut mbid = my_latest_block_id;
+        let mut pbid = peer_latest_block_id;
+        let mut mbid = my_latest_block_id;
 
-	if peer_latest_block_id >= my_latest_block_id {
-
+        if peer_latest_block_id >= my_latest_block_id {
             //
             // roll back to last even 10 blocks
             //
@@ -487,172 +489,167 @@ impl Blockchain {
                 }
             }
 
-	    //
-	    // their fork id
-	    //
+            //
+            // their fork id
+            //
             for i in 0..16 {
                 if i == 0 {
                     pbid -= 0;
                 }
-            if i == 1 {
-                pbid -= 10;
-            }
-            if i == 2 {
-                pbid -= 10;
-            }
-            if i == 3 {
-                pbid -= 10;
-            }
-            if i == 4 {
-                pbid -= 10;
-            }
-            if i == 5 {
-                pbid -= 10;
-            }
-            if i == 6 {
-                pbid -= 25;
-            }
-            if i == 7 {
-                pbid -= 25;
-            }
-            if i == 8 {
-                pbid -= 100;
-            }
-            if i == 9 {
-                pbid -= 300;
-            }
-            if i == 10 {
-                pbid -= 500;
-            }
-            if i == 11 {
-                pbid -= 4000;
-            }
-            if i == 12 {
-                pbid -= 10000;
-            }
-            if i == 13 {
-                pbid -= 20000;
-            }
-            if i == 14 {
-                pbid -= 50000;
-            }
-            if i == 15 {
-                pbid -= 100000;
-            }
+                if i == 1 {
+                    pbid -= 10;
+                }
+                if i == 2 {
+                    pbid -= 10;
+                }
+                if i == 3 {
+                    pbid -= 10;
+                }
+                if i == 4 {
+                    pbid -= 10;
+                }
+                if i == 5 {
+                    pbid -= 10;
+                }
+                if i == 6 {
+                    pbid -= 25;
+                }
+                if i == 7 {
+                    pbid -= 25;
+                }
+                if i == 8 {
+                    pbid -= 100;
+                }
+                if i == 9 {
+                    pbid -= 300;
+                }
+                if i == 10 {
+                    pbid -= 500;
+                }
+                if i == 11 {
+                    pbid -= 4000;
+                }
+                if i == 12 {
+                    pbid -= 10000;
+                }
+                if i == 13 {
+                    pbid -= 20000;
+                }
+                if i == 14 {
+                    pbid -= 50000;
+                }
+                if i == 15 {
+                    pbid -= 100000;
+                }
 
-            //
-            // do not loop around if block id < 0
-            //
-            if pbid > peer_latest_block_id || pbid == 0 {
-                return 0;
+                //
+                // do not loop around if block id < 0
+                //
+                if pbid > peer_latest_block_id || pbid == 0 {
+                    return 0;
+                }
+
+                //
+                // index in fork_id hash
+                //
+                let idx = 2 * i;
+
+                //
+                // compare input hash to my hash
+                //
+                if pbid <= mbid {
+                    let block_hash = self
+                        .blockring
+                        .get_longest_chain_block_hash_by_block_id(pbid);
+                    if fork_id[idx] == block_hash[idx] && fork_id[idx + 1] == block_hash[idx + 1] {
+                        return pbid;
+                    }
+                }
             }
-
+        } else {
             //
-            // index in fork_id hash
+            // their fork id
             //
-            let idx = 2 * i;
-
-            //
-            // compare input hash to my hash
-            //
-	    if pbid <= mbid {
-                let block_hash = self
-                    .blockring
-                    .get_longest_chain_block_hash_by_block_id(pbid);
-	        if fork_id[idx] == block_hash[idx] && fork_id[idx+1] == block_hash[idx+1] {
-	            return pbid;
-	        }
-	    }
-
-	    }
-
-	} else {
-
-	    //
-	    // their fork id
-	    //
             for i in 0..16 {
                 if i == 0 {
                     mbid -= 0;
                 }
-            if i == 1 {
-                mbid -= 10;
-            }
-            if i == 2 {
-                mbid -= 10;
-            }
-            if i == 3 {
-                mbid -= 10;
-            }
-            if i == 4 {
-                mbid -= 10;
-            }
-            if i == 5 {
-                mbid -= 10;
-            }
-            if i == 6 {
-                mbid -= 25;
-            }
-            if i == 7 {
-                mbid -= 25;
-            }
-            if i == 8 {
-                mbid -= 100;
-            }
-            if i == 9 {
-                mbid -= 300;
-            }
-            if i == 10 {
-                mbid -= 500;
-            }
-            if i == 11 {
-                mbid -= 4000;
-            }
-            if i == 12 {
-                mbid -= 10000;
-            }
-            if i == 13 {
-                mbid -= 20000;
-            }
-            if i == 14 {
-                mbid -= 50000;
-            }
-            if i == 15 {
-                mbid -= 100000;
-            }
+                if i == 1 {
+                    mbid -= 10;
+                }
+                if i == 2 {
+                    mbid -= 10;
+                }
+                if i == 3 {
+                    mbid -= 10;
+                }
+                if i == 4 {
+                    mbid -= 10;
+                }
+                if i == 5 {
+                    mbid -= 10;
+                }
+                if i == 6 {
+                    mbid -= 25;
+                }
+                if i == 7 {
+                    mbid -= 25;
+                }
+                if i == 8 {
+                    mbid -= 100;
+                }
+                if i == 9 {
+                    mbid -= 300;
+                }
+                if i == 10 {
+                    mbid -= 500;
+                }
+                if i == 11 {
+                    mbid -= 4000;
+                }
+                if i == 12 {
+                    mbid -= 10000;
+                }
+                if i == 13 {
+                    mbid -= 20000;
+                }
+                if i == 14 {
+                    mbid -= 50000;
+                }
+                if i == 15 {
+                    mbid -= 100000;
+                }
 
-            //
-            // do not loop around if block id < 0
-            //
-            if mbid > my_latest_block_id || mbid == 0 {
-                return 0;
+                //
+                // do not loop around if block id < 0
+                //
+                if mbid > my_latest_block_id || mbid == 0 {
+                    return 0;
+                }
+
+                //
+                // index in fork_id hash
+                //
+                let idx = 2 * i;
+
+                //
+                // compare input hash to my hash
+                //
+                if pbid <= mbid {
+                    let block_hash = self
+                        .blockring
+                        .get_longest_chain_block_hash_by_block_id(pbid);
+                    if fork_id[idx] == block_hash[idx] && fork_id[idx + 1] == block_hash[idx + 1] {
+                        return pbid;
+                    }
+                }
             }
+        }
 
-            //
-            // index in fork_id hash
-            //
-            let idx = 2 * i;
-
-            //
-            // compare input hash to my hash
-            //
-	    if pbid <= mbid {
-                let block_hash = self
-                    .blockring
-                    .get_longest_chain_block_hash_by_block_id(pbid);
-	        if fork_id[idx] == block_hash[idx] && fork_id[idx+1] == block_hash[idx+1] {
-	            return pbid;
-	        }
-	    }
-
-	    }
-	}
-
-	//
-	// no match? return 0 -- no shared ancestor
-	//
+        //
+        // no match? return 0 -- no shared ancestor
+        //
         return 0;
-
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
@@ -690,9 +687,8 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
-
-//        println!("{:?}", new_chain);
-//        println!("{:?}", old_chain);
+        //        println!("{:?}", new_chain);
+        //        println!("{:?}", old_chain);
 
         if old_chain.len() > new_chain.len() {
             println!("ERROR 1");
@@ -776,7 +772,6 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-
         println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
 
         //
@@ -807,34 +802,44 @@ impl Blockchain {
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
         println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
-        println!(" ... after block.validate:       {:?} {}", create_timestamp(), does_block_validate);
+        println!(
+            " ... after block.validate:       {:?} {}",
+            create_timestamp(),
+            does_block_validate
+        );
 
         if does_block_validate {
             println!(" ... before block ocr            {:?}", create_timestamp());
 
-	    // utxoset update
+            // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
             println!(" ... before blockring ocr:       {:?}", create_timestamp());
 
-	    // blockring update
+            // blockring update
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
             // println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
-	    // staking tables update
-	    let (res_spend, res_unspend, res_delete) = self.staking
-                .on_chain_reorganization(block, true);
+            // staking tables update
+            let (res_spend, res_unspend, res_delete) =
+                self.staking.on_chain_reorganization(block, true);
 
-	    //
-	    // we cannot pass the UTXOSet into the staking object to update as that would
-	    // require multiple mutable borrows of the blockchain object, so we receive 
-	    // return vectors of the slips that need to be inserted, spent or deleted and
-	    // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
-	    // is in the staking tables.
-	    //
-	    for i in 0..res_spend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1); }
-	    for i in 0..res_unspend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0); }
-	    for i in 0..res_delete.len() { res_spend[i].delete(&mut self.utxoset); }
+            //
+            // we cannot pass the UTXOSet into the staking object to update as that would
+            // require multiple mutable borrows of the blockchain object, so we receive
+            // return vectors of the slips that need to be inserted, spent or deleted and
+            // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
+            // is in the staking tables.
+            //
+            for i in 0..res_spend.len() {
+                res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1);
+            }
+            for i in 0..res_unspend.len() {
+                res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0);
+            }
+            for i in 0..res_delete.len() {
+                res_spend[i].delete(&mut self.utxoset);
+            }
 
             //
             // we have received the first entry in new_blocks() which means we
@@ -949,28 +954,33 @@ impl Blockchain {
     ) -> bool {
         let block = &self.blocks[&old_chain[current_unwind_index]];
 
-	// utxoset update
+        // utxoset update
         block.on_chain_reorganization(&mut self.utxoset, false);
 
-	// blockring update
+        // blockring update
         self.blockring
             .on_chain_reorganization(block.get_id(), block.get_hash(), false);
 
-	// staking tables
-	let (res_spend, res_unspend, res_delete) = self.staking
-            .on_chain_reorganization(block, true);
+        // staking tables
+        let (res_spend, res_unspend, res_delete) =
+            self.staking.on_chain_reorganization(block, true);
 
-	//
-	// we cannot pass the UTXOSet into the staking object to update as that would
-	// require multiple mutable borrows of the blockchain object, so we receive 
-	// return vectors of the slips that need to be inserted, spent or deleted and
-	// handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
-	// is in the staking tables.
-	//
-	for i in 0..res_spend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1); }
-	for i in 0..res_unspend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0); }
-	for i in 0..res_delete.len() { res_spend[i].delete(&mut self.utxoset); }
-
+        //
+        // we cannot pass the UTXOSet into the staking object to update as that would
+        // require multiple mutable borrows of the blockchain object, so we receive
+        // return vectors of the slips that need to be inserted, spent or deleted and
+        // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
+        // is in the staking tables.
+        //
+        for i in 0..res_spend.len() {
+            res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1);
+        }
+        for i in 0..res_unspend.len() {
+            res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0);
+        }
+        for i in 0..res_delete.len() {
+            res_spend[i].delete(&mut self.utxoset);
+        }
 
         if current_unwind_index == old_chain.len() - 1 {
             //
@@ -1002,7 +1012,6 @@ impl Blockchain {
             return res;
         }
     }
-
 
     pub async fn update_genesis_period(&mut self) {
         //
@@ -1103,11 +1112,12 @@ impl Blockchain {
     }
 
     pub async fn downgrade_blockchain_data(&mut self) {
-
         //
         // downgrade blocks still on the chain
         //
-	if PRUNE_AFTER_BLOCKS > self.get_latest_block_id() { return; }
+        if PRUNE_AFTER_BLOCKS > self.get_latest_block_id() {
+            return;
+        }
 
         let prune_blocks_at_block_id = self.get_latest_block_id() - PRUNE_AFTER_BLOCKS;
 
