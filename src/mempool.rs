@@ -1,6 +1,7 @@
 use crate::{block::Block, blockchain::Blockchain, burnfee::BurnFee, consensus::SaitoMessage, crypto::{SaitoPrivateKey, SaitoPublicKey}, golden_ticket::GoldenTicket, time::{SystemTimestampGenerator, TimestampGenerator, create_timestamp}, transaction::Transaction, wallet::Wallet};
 use std::{collections::HashMap, collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
+use tracing::{span, event, Level};
 
 #[derive(Clone, Debug)]
 pub enum MempoolMessage {
@@ -100,8 +101,6 @@ impl Mempool {
         let routing_work_available_for_me =
             transaction.get_routing_work_for_publickey(self.mempool_publickey);
 
-        //        println!("adding tx with routing work for me: {}", routing_work_available_for_me);
-
         if self
             .transactions
             .iter()
@@ -165,7 +164,7 @@ impl Mempool {
         {
             return AddTransactionResult::Exists;
         } else {
-            println!("adding golden ticket to mempool...");
+            event!(Level::TRACE, "adding golden ticket to mempool...");
             self.transactions.push(transaction);
             return AddTransactionResult::Accepted;
         }
@@ -216,7 +215,8 @@ impl Mempool {
             let work_available = self.calculate_work_available();
             let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
             let time_elapsed = current_timestamp - previous_block.get_timestamp();
-            println!(
+            event!(
+                Level::INFO,
                 "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
                 work_available, work_needed, time_elapsed
             );
@@ -428,12 +428,11 @@ mod tests {
             let latest_block = blockchain.get_latest_block().unwrap();
             assert_eq!(latest_block.get_id(), 1);
         }
-        
+
         {
             let wallet = wallet_lock.read().await;
             let balance = wallet.get_available_balance();
             assert_eq!(balance, 11000000);
-            println!("balance {}", balance);
         }
 
         let mut mock_timestamp_generator = MockTimestampGenerator::new(HEARTBEAT * 2);
@@ -469,9 +468,6 @@ mod tests {
             // }
             // prev_block_hash = test_block_hash;
         }
-
-
-            
 
 
         // let tx = Transaction::generate_transaction(wallet_lock.clone(), publickey, 1, 1000000).await;
@@ -525,7 +521,6 @@ mod tests {
         //     let wallet = wallet_lock.read().await;
         //     let balance = wallet.get_available_balance();
         //     assert_eq!(balance, 11000000);
-        //     println!("balance {}", balance);
         // }
     }
 }

@@ -4,7 +4,6 @@ use crate::miner::Miner;
 use crate::networking::network::Network;
 use crate::networking::peer::PeersDB;
 use crate::storage::Storage;
-use crate::time::SystemTimestampGenerator;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use clap::{App, Arg};
@@ -118,7 +117,7 @@ impl Consensus {
         // broadcast cross-system messages. See SaitoMessage ENUM above
         // for information on cross-system notifications.
         //
-        
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
         let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
 

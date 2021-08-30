@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use macros::TryFromByte;
 use std::convert::{TryFrom, TryInto};
 
+use tracing::{span, event, Level};
+
 /// The size of a serilized slip in bytes.
 pub const SLIP_SIZE: usize = 75;
 
@@ -65,16 +67,10 @@ impl Slip {
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
         if self.get_amount() > 0 {
             match utxoset.get(&self.utxoset_key) {
-                Some(value) => {
-                    if *value == 1 {
-                        return true;
-                    } else {
-			println!("value is {} at {:?}", *value, &self.utxoset_key);
-                        return false;
-                    }
-                }
+                Some(value) => *value == 1,
                 None => {
-                    println!(
+                    event!(
+                        Level::ERROR,
                         "value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}",
                         self.utxoset_key,
                         self.get_slip_type(),
@@ -96,10 +92,7 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
-	    // TODO cleanup once ready
-            //println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
-            //println!("slip_ordinal: {}", self.get_slip_ordinal());
-            //println!("slip_amount: {}", self.get_amount());
+            // TODO cleanup once ready
             utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
@@ -158,7 +151,7 @@ impl Slip {
     // runs when block is purged for good
     pub fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_utxoset_key() == [0; 74] {
-            println!("ERROR 572034: asked to remove a slip without its utxoset_key properly set!");
+            event!(Level::ERROR, "ERROR 572034: asked to remove a slip without its utxoset_key properly set!");
             false;
         }
         utxoset.remove_entry(&self.get_utxoset_key());

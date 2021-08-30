@@ -5,6 +5,8 @@ use crate::crypto::SaitoHash;
 pub const EPOCH_LENGTH: u64 = GENESIS_PERIOD;
 pub const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
 
+use tracing::{span, event, Level};
+
 //
 // This is an index with shorthand information on the block_ids and hashes of the blocks
 // in the longest-chain.
@@ -112,7 +114,8 @@ impl BlockRing {
     pub fn print_lc(&self) {
         for i in 0..EPOCH_LENGTH {
             if !self.block_ring[(i as usize)].block_hashes.is_empty() {
-                println!(
+                event!(
+                    Level::TRACE,
                     "Block {:?}: {:?}",
                     i,
                     self.get_longest_chain_block_hash_by_block_id(i)
@@ -237,8 +240,6 @@ mod test {
     #[test]
     fn blockring_reorganization_test() {
         let mut blockring = BlockRing::new();
-
-        println!("This is a quick test!");
 
         //
         // Good Blocks
