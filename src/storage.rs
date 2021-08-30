@@ -11,16 +11,9 @@ use crate::{block::Block, blockchain::Blockchain, crypto::SaitoHash};
 pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
 
 pub struct Storage {
-    // blocks_dir_path: String,
 }
 
 impl Storage {
-    // pub fn new() -> Self {
-    //     Storage {
-    //         blocks_dir_path: String::from("./data/blocks/"),
-    //     }
-    // }
-
     /// read from a path to a Vec<u8>
     pub fn read(path: &str) -> io::Result<Vec<u8>> {
         let mut f = std::fs::File::open(path)?;
@@ -94,7 +87,6 @@ impl Storage {
                 && path.path().to_str().unwrap()
                     != String::from(BLOCKS_DIR_PATH).clone() + ".gitignore"
             {
-                println!("PATH: {:?}", path);
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
@@ -106,18 +98,9 @@ impl Storage {
                 if block.get_hash() == [0; 32] {
                     block.generate_hashes();
                 }
-                println!(
-                    "loading block with hash: {:?}",
-                    &hex::encode(&block.get_hash())
-                );
-                println!(
-                    "block's previous hash: {:?}",
-                    &hex::encode(&block.get_previous_block_hash())
-                );
 
                 let mut blockchain = blockchain_lock.write().await;
                 blockchain.add_block(block, false).await;
-                // println!("Loaded block {} of {}", pos, paths.len() - 1);
             }
         }
     }
@@ -136,13 +119,11 @@ impl Storage {
         if block.get_hash() == [0; 32] {
             block.generate_hashes();
         }
-        println!("loaded block: {}", filename);
 
         return block;
     }
 
     pub async fn delete_block_from_disk(filename: String) -> bool {
-        println!("deleting {}", filename);
         let _res = std::fs::remove_file(filename);
         true
     }

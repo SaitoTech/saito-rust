@@ -229,11 +229,7 @@ impl Mempool {
         if let Some(previous_block) = blockchain.get_latest_block() {
             let work_available = self.calculate_work_available();
             let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
-            let _time_elapsed = current_timestamp - previous_block.get_timestamp();
-            // println!(
-            //     "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
-            //     work_available, work_needed, time_elapsed
-            // );
+            
             work_available >= work_needed
         } else {
             true

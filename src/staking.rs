@@ -480,6 +480,7 @@ mod tests {
 
     use super::*;
     use crate::test_utilities::mocks::make_mock_block_with_info;
+    use crate::transaction::Transaction;
     use crate::{
         blockchain::Blockchain,
         slip::{Slip, SlipType},

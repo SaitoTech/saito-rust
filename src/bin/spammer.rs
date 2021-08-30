@@ -4,7 +4,6 @@
 TODO: Fill in these docs
 
 */
-use saito_rust::networking::peer::PeersDB;
 use saito_rust::{
     blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
     transaction::Transaction, util::format_url_string, wallet::Wallet,
@@ -100,12 +99,10 @@ pub async fn main() -> saito_rust::Result<()> {
 
     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
     let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-    let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
-
+    
     let network = Network::new(
         settings.clone(),
         wallet_lock.clone(),
-        peers_db_lock.clone(),
         mempool_lock.clone(),
         blockchain_lock.clone(),
     );
@@ -176,7 +173,6 @@ pub async fn main() -> saito_rust::Result<()> {
         mempool_lock,
         blockchain_lock,
         miner_lock,
-        peers_db_lock.clone(),
         network,
     )
     .await?;
@@ -188,7 +184,6 @@ pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     miner_lock: Arc<RwLock<Miner>>,
-    peers_db_lock: Arc<RwLock<PeersDB>>,
     network: Network,
 ) -> saito_rust::Result<()> {
     let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
@@ -221,12 +216,12 @@ pub async fn run(
                 eprintln!("{:?}", err)
             }
         },
-        res = network.run(peers_db_lock.clone()) => {
+        res = network.run() => {
             if let Err(err) = res {
                 eprintln!("{:?}", err)
             }
         }
     }
-
+    println!("exiting..?");
     Ok(())
 }

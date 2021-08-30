@@ -1,7 +1,4 @@
-use crate::{
-    blockchain::{Blockchain, GENESIS_PERIOD},
-    burnfee::BurnFee,
-    crypto::{
+use crate::{blockchain::{Blockchain, GENESIS_PERIOD}, burnfee::BurnFee, crypto::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
     },
     golden_ticket::GoldenTicket,

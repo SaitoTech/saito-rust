@@ -21,15 +21,25 @@ use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
-
 use super::api_message::APIMessage;
 use super::network::CHALLENGE_EXPIRATION_TIME;
 
 use futures::{FutureExt, SinkExt, StreamExt};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, tungstenite};
 
 pub type PeersDB = HashMap<SaitoHash, BasePeer>;
+pub type OutboundPeersDB = HashMap<SaitoHash, OutboundPeer>;
+pub type InboundPeersDB = HashMap<SaitoHash, InboundPeer>;
+
+
+lazy_static::lazy_static! {
+    // We use Arc for thread-safe reference counting and Mutex for thread-safe mutabilitity
+    pub static ref PEERS_DB_GLOBAL: Arc<RwLock<PeersDB>> = Arc::new(RwLock::new(PeersDB::new()));
+    pub static ref INBOUND_PEER_CONNECTIONS_GLOBAL: Arc<RwLock<InboundPeersDB>> = Arc::new(RwLock::new(InboundPeersDB::new()));
+    pub static ref OUTBOUND_PEER_CONNECTIONS_GLOBAL: Arc<RwLock<OutboundPeersDB>> = Arc::new(RwLock::new(OutboundPeersDB::new()));
+}
+
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerSetting {
@@ -37,48 +47,132 @@ pub struct PeerSetting {
     pub port: u16,
 }
 
-pub struct BasePeer {
+pub struct PeerFlags {
+    is_connected_or_connecting: bool,
     has_completed_handshake: bool,
+    is_from_peer_list: bool,
+}
+
+pub struct BasePeer {
+    peer_flags: PeerFlags,
+    connection_id: SaitoHash,
     publickey: Option<SaitoPublicKey>,
+    host: Option<[u8; 4]>,
+    port: Option<u16>,
     requests: HashMap<u32, [u8; 8]>,
     request_count: u32,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    inbound_peer: Option<InboundPeer>,
-    outbound_peer: Option<OutboundPeer>,
 }
 
+pub trait PeerSocket {
+    fn send(&self, api_message: APIMessage);
+    fn get_next_message();
+}
 pub struct InboundPeer {
-    sender: mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>,
+    pub sender: mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>,
 }
 pub struct OutboundPeer {
-    write_sink:
+    pub write_sink:
         SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tungstenite::protocol::Message>,
 }
 
 impl BasePeer {
-    // async fn make_api_message
-    //command: &String, message_id: u32, message: Vec<u8>
+    pub fn new(
+        connection_id: SaitoHash,
+        host: Option<[u8; 4]>,
+        port: Option<u16>,
+        is_connected_or_connecting: bool,
+        has_completed_handshake: bool,
+        is_from_peer_list: bool,
+        wallet_lock: Arc<RwLock<Wallet>>,
+        mempool_lock: Arc<RwLock<Mempool>>,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+    ) -> BasePeer {
+        BasePeer {
+            peer_flags: PeerFlags {
+                is_connected_or_connecting,
+                has_completed_handshake,
+                is_from_peer_list,
+            },
+            connection_id: connection_id,
+            host: host,
+            port: port,
+            publickey: None,
+            requests: HashMap::new(),
+            request_count: 0,
+            wallet_lock,
+            mempool_lock,
+            blockchain_lock,
+        }
+    }
+    pub fn get_is_from_peer_list(&self) -> bool {
+        self.peer_flags.is_from_peer_list
+    }
+    pub fn set_has_completed_handshake(&mut self, has_completed_handshake: bool) {
+        self.peer_flags.has_completed_handshake = has_completed_handshake;
+    }
+    pub fn get_has_completed_handshake(&self) -> bool {
+        self.peer_flags.has_completed_handshake
+    }
+    pub fn set_publickey(&mut self, publickey: SaitoPublicKey) {
+        self.publickey = Some(publickey)
+    }
+    pub fn get_publickey(&self) -> Option<SaitoPublicKey> {
+        self.publickey
+    } 
+    pub async fn set_is_connected_or_connecting(&mut self, is_connected_or_connecting: bool) {
+        // we need to clean out the connections from the connection DBs if we disconnected
+        if !is_connected_or_connecting {
+            let outbound_peer_connection_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+            let mut outbound_peer_connection_db = outbound_peer_connection_db_global.write().await;
+            outbound_peer_connection_db.remove(&self.connection_id);
+            let inbound_peer_connection_db_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+            let mut inbound_peer_connection_db = inbound_peer_connection_db_global.write().await;
+            inbound_peer_connection_db.remove(&self.connection_id);
+            // If we lose connection, we must also re-shake hands. Otherwise we risk IP-based handshake theft. This may be
+            // a problem anyway with something like a CSFR, but we should at least make it as difficult as possible.
+            self.peer_flags.has_completed_handshake = false;
+        }
+        // and set the flag
+        self.peer_flags.is_connected_or_connecting = is_connected_or_connecting;
+    }
+    pub fn get_is_connected_or_connecting(&self) -> bool {
+        self.peer_flags.is_connected_or_connecting
+    } 
+    pub fn get_host(&self) -> Option<[u8; 4]> {
+        self.host
+    } 
+    pub fn get_port(&self) -> Option<u16> {
+        self.port
+    } 
+    pub fn get_connection_id(&self) -> SaitoHash {
+        self.connection_id
+    } 
+    
     async fn send(&mut self, api_message: APIMessage) {
         println!("SEND {}", api_message.message_name_as_string());
-        //let api_message = APIMessage::new(command, message_id, message);
-        if self.inbound_peer.is_some() && self.outbound_peer.is_some() {
+        let outbound_peer_connection_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+        let mut outbound_peer_connection_db = outbound_peer_connection_db_global.write().await;
+        let inbound_peer_connection_db_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+        let mut inbound_peer_connection_db = inbound_peer_connection_db_global.write().await;
+        
+        let outbound_peer_connection = outbound_peer_connection_db.get_mut(&self.connection_id);
+        let inbound_peer_connection = inbound_peer_connection_db.get_mut(&self.connection_id);
+        
+        if inbound_peer_connection.is_some() && outbound_peer_connection.is_some() {
             panic!("Peer has both inbound and outbound connections, this should never happen");
         }
-        if self.outbound_peer.is_some() {
-            let _foo = self
-                .outbound_peer
-                .as_mut()
+        if outbound_peer_connection.is_some() {
+            let _foo = outbound_peer_connection
                 .unwrap()
                 .write_sink
                 .send(api_message.serialize().into())
                 .await;
         }
-        if self.inbound_peer.is_some() {
-            let _foo = self
-                .inbound_peer
-                .as_mut()
+        if inbound_peer_connection.is_some() {
+            let _foo = inbound_peer_connection
                 .unwrap()
                 .sender
                 .send(Ok(Message::binary(api_message.serialize())));
@@ -252,51 +346,20 @@ impl BasePeer {
                 println!("GOT SNDCHAIN");
                 let _message_id = api_message.message_id;
 
-                // pub struct SendBlockchainBlockData {
-                //     pub block_id: u64,
-                //     pub timestamp: u64,
-                //     pub pre_hash: SaitoHash,
-                //     pub number_of_transactions: u32,
-                // }
-                // #[derive(Debug)]
-                // pub struct SendBlockchainMessage {
-                //     sync_type: SyncType,
-                //     starting_hash: SaitoHash,
-                //     blocks_data: Vec<SendBlockchainBlockData>,
-                // }
                 let send_blockchain_message =
                     SendBlockchainMessage::deserialize(api_message.message_data());
                 for send_blockchain_block_data in
                     send_blockchain_message.get_blocks_data().into_iter()
                 {
                     let request_block_message = RequestBlockMessage::new(
-                        Some(send_blockchain_block_data.block_id),
                         None,
+                        Some(send_blockchain_block_data.block_hash),
                         None,
                     );
                     self.send_command(&String::from("REQBLOCK"), request_block_message.serialize())
                         .await;
                 }
-                // send_blockchain_message.get_blocks_data().iter().for_each(|send_blockchain_block_data| {
-
-                // })
-                // let hashes: Vec<&[u8]> = api_message.message_data.chunks(32).collect();
-
-                // for hash in hashes.into_iter() {
-                //     self.send_command(&String::from("REQBLOCK"), hash.to_vec())
-                //         .await;
-                // }
             }
-            // "SNDBLOCK" => {
-            //     println!("GOT SNDBLOCK  ");
-            //     // receive the block fetched and add it to the blockchain
-            //     let mut block = Block::deserialize_for_net(api_message.message_data);
-            //     block.generate_hashes();
-            //     {
-            //         let mut blockchain = self.blockchain_lock.write().await;
-            //         blockchain.add_block(block, true).await;
-            //     }
-            // }
             "SNDBLKHD" => {
                 println!("GOT SNDBLKHD");
                 let _message_id = api_message.message_id;
@@ -308,7 +371,7 @@ impl BasePeer {
             _ => {
                 println!(
                     "Unhandled command received by client... {}",
-                    &api_message.message_name_as_string().as_str()
+                    &api_message.message_name_as_string()
                 );
             }
         }
@@ -392,11 +455,12 @@ impl BasePeer {
     fn handle_peer_response_error(
         &mut self,
         command_name: [u8; 8],
-        _response_api_message: &APIMessage,
+        response_api_message: &APIMessage,
     ) {
         println!(
-            "Error response for command {}",
-            String::from_utf8_lossy(&command_name).to_string()
+            "{} ERROR: {}",
+            String::from_utf8_lossy(&command_name).to_string(),
+            response_api_message.message_data_as_str(),
         );
         match String::from_utf8_lossy(&command_name).to_string().as_ref() {
             "SHAKCOMP" => {
@@ -405,71 +469,12 @@ impl BasePeer {
             _ => {}
         }
     }
-    pub fn set_has_completed_handshake(&mut self, has_completed_handshake: bool) {
-        self.has_completed_handshake = has_completed_handshake;
-    }
-    pub fn get_has_completed_handshake(&self) -> bool {
-        self.has_completed_handshake
-    }
-    pub fn set_publickey(&mut self, publickey: SaitoPublicKey) {
-        self.publickey = Some(publickey)
-    }
-    pub fn get_publickey(&self) -> Option<SaitoPublicKey> {
-        self.publickey
-    }
-}
-impl InboundPeer {
-    pub fn new(
-        sender: mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>,
-        wallet_lock: Arc<RwLock<Wallet>>,
-        mempool_lock: Arc<RwLock<Mempool>>,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-    ) -> BasePeer {
-        BasePeer {
-            has_completed_handshake: false,
-            publickey: None,
-            requests: HashMap::new(),
-            request_count: 0,
-            wallet_lock,
-            mempool_lock,
-            blockchain_lock,
-            inbound_peer: Some(InboundPeer { sender: sender }),
-            outbound_peer: None,
-        }
-    }
-}
-
-impl OutboundPeer {
-    pub async fn new(
-        write_sink: SplitSink<
-            WebSocketStream<MaybeTlsStream<TcpStream>>,
-            tokio_tungstenite::tungstenite::Message,
-        >,
-        wallet_lock: Arc<RwLock<Wallet>>,
-        mempool_lock: Arc<RwLock<Mempool>>,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-    ) -> BasePeer {
-        let peer = BasePeer {
-            has_completed_handshake: false,
-            publickey: None,
-            requests: HashMap::new(),
-            request_count: 0,
-            wallet_lock,
-            mempool_lock,
-            blockchain_lock,
-            inbound_peer: None,
-            outbound_peer: Some(OutboundPeer {
-                write_sink: write_sink,
-            }),
-        };
-
-        peer
-    }
+    
 }
 
 pub async fn handle_inbound_peer_connection(
     ws: WebSocket,
-    peers_db_lock: Arc<RwLock<PeersDB>>,
+    peer_db_lock: Arc<RwLock<PeersDB>>,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -477,23 +482,35 @@ pub async fn handle_inbound_peer_connection(
     let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
     let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
     let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
-    tokio::task::spawn(peer_rcv.forward(peer_ws_sender).map(|result| {
-        if let Err(e) = result {
-            eprintln!("error sending websocket msg: {}", e);
-        }
-    }));
+    tokio::task::spawn(
+        peer_rcv.forward(peer_ws_sender).map(|result| {
+            if let Err(e) = result {
+                eprintln!("error sending websocket msg: {}", e);
+            }
+        })
+    );
 
-    let peer = InboundPeer::new(
-        peer_sender,
+    let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
+    let peer = BasePeer::new(
+        connection_id,
+        None,
+        None,
+        true,
+        false,
+        false,
         wallet_lock.clone(),
         mempool_lock.clone(),
         blockchain_lock.clone(),
     );
+    
+    peer_db_lock.write().await.insert(connection_id.clone(), peer);
 
-    let peer_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-    peers_db_lock.write().await.insert(peer_id.clone(), peer);
+    let inbound_peer_db_lock_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+    inbound_peer_db_lock_global.write().await.insert(connection_id.clone(), InboundPeer{
+        sender: peer_sender
+    });
 
-    println!("{:?} connected", peer_id);
+    println!("{:?} connected", connection_id);
 
     tokio::task::spawn(async move {
         while let Some(result) = peer_ws_rcv.next().await {
@@ -501,21 +518,35 @@ pub async fn handle_inbound_peer_connection(
                 Ok(msg) => msg,
                 Err(e) => {
                     eprintln!(
-                        "error receiving ws message for id: {:?}): {}",
-                        peer_id.clone(),
+                        "error receiving ws message for peer: {}",
                         e
                     );
                     break;
                 }
             };
-            println!("RECEIVING MESSAGE IN PEER CONNECTION");
-            let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());
-            let mut peers_db = peers_db_lock.write().await;
-            let peer = peers_db.get_mut(&peer_id).unwrap();
-            peer.handle_peer_command(&api_message).await;
+            if msg.as_bytes().len() > 0 {
+                let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());
+                let mut peer_db = peer_db_lock.write().await;
+                let peer = peer_db.get_mut(&connection_id).unwrap();
+                peer.handle_peer_command(&api_message).await;
+            } else {
+                println!("Message of length 0... why?");
+                println!("This seems to occur if we aren't holding a reference to the sender/stream on the");
+                println!("other end of the connection. I suspect that when the stream goes out of scope,");
+                println!("it's deconstructor is being called and sends a 0 length message to indicate");
+                println!("that the stream has ended... I'm leaving this println here for now because");
+                println!("it would be very helpful to see this if starts to occur again. We may want to");
+                println!("treat this as a disconnect.");
+            }
+            
         }
-        peers_db_lock.write().await.remove(&peer_id);
-        println!("{:?} disconnected", peer_id);
+        // We had some error. Remove all references to this peer.
+        {
+            let mut peer_db = peer_db_lock.write().await;
+            let peer = peer_db.get_mut(&connection_id).unwrap();
+            peer.set_is_connected_or_connecting(false).await;
+            peer_db.remove(&connection_id);
+        }
     });
 }
 
@@ -588,9 +619,10 @@ pub async fn build_request_block_response(
     let request_block_message = RequestBlockMessage::deserialize(api_message.message_data());
     let blockchain = blockchain_lock.read().await;
     if request_block_message.get_block_id().is_some() {
-        APIMessage::new_from_string("ERROR___", api_message.message_id, "Unsupported: fetching blocks by id is not yet supported, please fetch the block by ID.")
+        APIMessage::new_from_string("ERROR___", api_message.message_id, "Unsupported: fetching blocks by id is not yet supported, please fetch the block by hash.")
     } else if request_block_message.get_block_hash().is_some() {
         let block_hash: SaitoHash = api_message.message_data[0..32].try_into().unwrap();
+        println!("REQBLOCK {:?}", &block_hash);
         match blockchain.get_block_sync(&block_hash) {
             Some(target_block) => APIMessage::new(
                 "RESULT__",

@@ -39,6 +39,9 @@ impl APIMessage {
     pub fn message_data(&self) -> &Vec<u8> {
         &self.message_data
     }
+    pub fn message_data_as_str(&self) -> String {
+        String::from_utf8_lossy(&self.message_data).to_string()
+    }
     pub fn deserialize(bytes: &Vec<u8>) -> APIMessage {
         let message_name: [u8; 8] = bytes[0..8].try_into().unwrap();
         let message_id: u32 = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
