@@ -863,9 +863,7 @@ mod tests {
 	    println!("DEPOSIT: {:?}", blockchain.staking.deposits);
 	}
 
-
-
-	assert_eq!(0, 1);
+	//assert_eq!(0, 1);
 
     }
 

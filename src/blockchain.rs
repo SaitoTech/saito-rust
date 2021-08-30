@@ -544,7 +544,7 @@ impl Blockchain {
             // do not loop around if block id < 0
             //
             if pbid > peer_latest_block_id || pbid == 0 {
-                break;
+                return 0;
             }
 
             //
@@ -562,6 +562,8 @@ impl Blockchain {
 	        if fork_id[idx] == block_hash[idx] && fork_id[idx+1] == block_hash[idx+1] {
 	            return pbid;
 	        }
+	    }
+
 	    }
 
 	} else {
@@ -623,7 +625,7 @@ impl Blockchain {
             // do not loop around if block id < 0
             //
             if mbid > my_latest_block_id || mbid == 0 {
-                break;
+                return 0;
             }
 
             //
@@ -643,6 +645,7 @@ impl Blockchain {
 	        }
 	    }
 
+	    }
 	}
 
 	//
