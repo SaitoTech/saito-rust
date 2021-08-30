@@ -374,6 +374,8 @@ impl Blockchain {
 
     pub async fn add_block_failure(&mut self) {}
 
+
+
     pub fn generate_fork_id(&self, block_id: u64) -> SaitoHash {
         let mut fork_id = [0; 32];
         let mut current_block_id = block_id;
@@ -464,6 +466,190 @@ impl Blockchain {
         }
 
         fork_id
+    }
+
+    pub fn generate_last_shared_ancestor(&self, peer_latest_block_id: u64, fork_id: SaitoHash) -> u64 {
+
+        let mut my_latest_block_id = self.get_latest_block_id();
+
+	let mut pbid = peer_latest_block_id;
+	let mut mbid = my_latest_block_id;
+
+	if peer_latest_block_id >= my_latest_block_id {
+
+            //
+            // roll back to last even 10 blocks
+            //
+            for i in 0..10 {
+                if (pbid - i) % 10 == 0 {
+                    pbid = pbid - i;
+                    break;
+                }
+            }
+
+	    //
+	    // their fork id
+	    //
+            for i in 0..16 {
+                if i == 0 {
+                    pbid -= 0;
+                }
+            if i == 1 {
+                pbid -= 10;
+            }
+            if i == 2 {
+                pbid -= 10;
+            }
+            if i == 3 {
+                pbid -= 10;
+            }
+            if i == 4 {
+                pbid -= 10;
+            }
+            if i == 5 {
+                pbid -= 10;
+            }
+            if i == 6 {
+                pbid -= 25;
+            }
+            if i == 7 {
+                pbid -= 25;
+            }
+            if i == 8 {
+                pbid -= 100;
+            }
+            if i == 9 {
+                pbid -= 300;
+            }
+            if i == 10 {
+                pbid -= 500;
+            }
+            if i == 11 {
+                pbid -= 4000;
+            }
+            if i == 12 {
+                pbid -= 10000;
+            }
+            if i == 13 {
+                pbid -= 20000;
+            }
+            if i == 14 {
+                pbid -= 50000;
+            }
+            if i == 15 {
+                pbid -= 100000;
+            }
+
+            //
+            // do not loop around if block id < 0
+            //
+            if pbid > peer_latest_block_id || pbid == 0 {
+                break;
+            }
+
+            //
+            // index in fork_id hash
+            //
+            let idx = 2 * i;
+
+            //
+            // compare input hash to my hash
+            //
+	    if pbid <= mbid {
+                let block_hash = self
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(pbid);
+	        if fork_id[idx] == block_hash[idx] && fork_id[idx+1] == block_hash[idx+1] {
+	            return pbid;
+	        }
+	    }
+
+	} else {
+
+	    //
+	    // their fork id
+	    //
+            for i in 0..16 {
+                if i == 0 {
+                    mbid -= 0;
+                }
+            if i == 1 {
+                mbid -= 10;
+            }
+            if i == 2 {
+                mbid -= 10;
+            }
+            if i == 3 {
+                mbid -= 10;
+            }
+            if i == 4 {
+                mbid -= 10;
+            }
+            if i == 5 {
+                mbid -= 10;
+            }
+            if i == 6 {
+                mbid -= 25;
+            }
+            if i == 7 {
+                mbid -= 25;
+            }
+            if i == 8 {
+                mbid -= 100;
+            }
+            if i == 9 {
+                mbid -= 300;
+            }
+            if i == 10 {
+                mbid -= 500;
+            }
+            if i == 11 {
+                mbid -= 4000;
+            }
+            if i == 12 {
+                mbid -= 10000;
+            }
+            if i == 13 {
+                mbid -= 20000;
+            }
+            if i == 14 {
+                mbid -= 50000;
+            }
+            if i == 15 {
+                mbid -= 100000;
+            }
+
+            //
+            // do not loop around if block id < 0
+            //
+            if mbid > my_latest_block_id || mbid == 0 {
+                break;
+            }
+
+            //
+            // index in fork_id hash
+            //
+            let idx = 2 * i;
+
+            //
+            // compare input hash to my hash
+            //
+	    if pbid <= mbid {
+                let block_hash = self
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(pbid);
+	        if fork_id[idx] == block_hash[idx] && fork_id[idx+1] == block_hash[idx+1] {
+	            return pbid;
+	        }
+	    }
+
+	}
+
+	//
+	// no match? return 0 -- no shared ancestor
+	//
+        return 0;
+
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
