@@ -1294,6 +1294,7 @@ mod tests {
             latest_block_hash,
             wallet_lock.clone(),
             blockchain_lock.clone(),
+            create_timestamp(),
         )
         .await;
 
@@ -1429,6 +1430,7 @@ mod tests {
                     current_block_hash,
                     wallet_lock.clone(),
                     blockchain_lock.clone(),
+                    create_timestamp(),
                 )
                 .await;
 

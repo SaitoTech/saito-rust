@@ -1,8 +1,9 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
-use crate::burnfee::BurnFee;
+use crate::burnfee::{BurnFee, HEARTBEAT};
 use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::golden_ticket::GoldenTicket;
+use crate::mempool::{AddTransactionResult, Mempool};
 use crate::miner::Miner;
 use crate::slip::{Slip, SlipType};
 use crate::time::{create_timestamp, TimestampGenerator};
@@ -14,20 +15,20 @@ use tokio::sync::RwLock;
 
 pub struct MockTimestampGenerator {
     timestamp: u64,
-    time_difference: u64,
 }
 
 impl MockTimestampGenerator {
-    pub fn new(time_difference: u64) -> MockTimestampGenerator {
+    pub fn new() -> MockTimestampGenerator {
         MockTimestampGenerator {
             timestamp: create_timestamp(),
-            time_difference: time_difference,
         }
+    }
+    pub fn advance(&mut self, time_difference: u64) {
+        self.timestamp += time_difference;
     }
 }
 impl TimestampGenerator for MockTimestampGenerator {
     fn get_timestamp(&mut self) -> u64 {
-        self.timestamp += self.time_difference;
         self.timestamp
     }
 }
@@ -50,10 +51,58 @@ pub async fn add_vip_block(
         prev_block_hash,
         wallet_lock.clone(),
         blockchain_lock.clone(),
+        create_timestamp(),
     )
     .await;
     let mut blockchain = blockchain_lock.write().await;
     blockchain.add_block(block, true).await;
+}
+
+pub async fn generate_signed_tx(
+    public_key: SaitoPublicKey,
+    amount: u64,
+    fee: u64,
+    wallet_lock: Arc<RwLock<Wallet>>,
+) -> Transaction {
+    let mut transaction =
+        Transaction::generate_transaction(wallet_lock.clone(), public_key, amount, fee).await;
+    let private_key;
+    {
+        let wallet = wallet_lock.read().await;
+        private_key = wallet.get_privatekey();
+    }
+    transaction.sign(private_key);
+
+    transaction
+}
+
+pub async fn make_block_with_mempool(
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+    wallet_lock: Arc<RwLock<Wallet>>,
+) -> Block {
+    let public_key;
+    {
+        let wallet = wallet_lock.read().await;
+        public_key = wallet.get_publickey();
+    }
+    let transaction = generate_signed_tx(public_key, 1, 100000, wallet_lock.clone()).await;
+    {
+        let mut mempool = mempool_lock.write().await;
+        let add_tx_result = mempool.add_transaction(transaction).await;
+        assert_eq!(add_tx_result, AddTransactionResult::Accepted);
+    }
+
+    let mut mock_timestamp_generator = MockTimestampGenerator::new();
+    mock_timestamp_generator.advance(HEARTBEAT * 2);
+    let block_option = crate::mempool::try_bundle_block(
+        mempool_lock.clone(),
+        blockchain_lock.clone(),
+        &mut mock_timestamp_generator,
+    )
+    .await;
+    assert!(block_option.is_some());
+    block_option.unwrap()
 }
 
 pub async fn make_mock_blockchain(
@@ -95,6 +144,7 @@ pub async fn make_mock_blockchain(
                 current_block_hash,
                 wallet_lock.clone(),
                 blockchain_lock.clone(),
+                create_timestamp(),
             )
             .await;
 

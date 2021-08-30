@@ -16,6 +16,17 @@ impl APIMessage {
             message_data: message_data,
         }
     }
+    pub fn new_from_string(
+        message_name: &str,
+        message_id: u32,
+        message_string: &str,
+    ) -> APIMessage {
+        APIMessage::new(
+            message_name,
+            message_id,
+            message_string.as_bytes().try_into().unwrap(),
+        )
+    }
     pub fn message_name(&self) -> &[u8; 8] {
         &self.message_name
     }

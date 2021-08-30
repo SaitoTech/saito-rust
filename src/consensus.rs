@@ -4,7 +4,6 @@ use crate::miner::Miner;
 use crate::networking::network::Network;
 use crate::networking::peer::PeersDB;
 use crate::storage::Storage;
-use crate::time::SystemTimestampGenerator;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use clap::{App, Arg};
