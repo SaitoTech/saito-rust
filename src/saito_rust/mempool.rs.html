@@ -531,8 +531,44 @@
 <span id="529">529</span>
 <span id="530">530</span>
 <span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
 </pre><pre class="rust">
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">block::Block</span>, <span class="ident">blockchain::Blockchain</span>, <span class="ident">burnfee::BurnFee</span>, <span class="ident">consensus::SaitoMessage</span>, <span class="ident">crypto</span>::{<span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>}, <span class="ident">golden_ticket::GoldenTicket</span>, <span class="ident">time</span>::{<span class="ident">SystemTimestampGenerator</span>, <span class="ident">TimestampGenerator</span>, <span class="ident">create_timestamp</span>}, <span class="ident">transaction::Transaction</span>, <span class="ident">wallet::Wallet</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">block::Block</span>,
+    <span class="ident">blockchain::Blockchain</span>,
+    <span class="ident">burnfee::BurnFee</span>,
+    <span class="ident">consensus::SaitoMessage</span>,
+    <span class="ident">crypto</span>::{<span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>},
+    <span class="ident">golden_ticket::GoldenTicket</span>,
+    <span class="ident">time</span>::{<span class="ident">create_timestamp</span>, <span class="ident">SystemTimestampGenerator</span>, <span class="ident">TimestampGenerator</span>},
+    <span class="ident">transaction::Transaction</span>,
+    <span class="ident">wallet::Wallet</span>,
+};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">collections::VecDeque</span>, <span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 
@@ -736,7 +772,11 @@
     <span class="doccomment">/// Check to see if the `Mempool` has enough work to bundle a block</span>
     <span class="doccomment">///</span>
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">can_bundle_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">current_timestamp</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">can_bundle_block</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">current_timestamp</span>: <span class="ident">u64</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">currently_processing_block</span> {
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
@@ -785,7 +825,9 @@
     <span class="kw">let</span> <span class="ident">can_bundle</span>;
     {
         <span class="kw">let</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-        <span class="ident">can_bundle</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">can_bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">timestamp_generator</span>.<span class="ident">get_timestamp</span>()).<span class="kw">await</span>;
+        <span class="ident">can_bundle</span> <span class="op">=</span> <span class="ident">mempool</span>
+            .<span class="ident">can_bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">timestamp_generator</span>.<span class="ident">get_timestamp</span>())
+            .<span class="kw">await</span>;
     }
     <span class="kw">if</span> <span class="ident">can_bundle</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
@@ -921,7 +963,13 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">block::Block</span>, <span class="ident">burnfee::HEARTBEAT</span>, <span class="ident">crypto::SaitoHash</span>, <span class="ident">test_utilities::mocks</span>::{<span class="ident">MockTimestampGenerator</span>, <span class="ident">add_vip_block</span>}, <span class="ident">wallet::Wallet</span>};
+    <span class="kw">use</span> <span class="kw">crate</span>::{
+        <span class="ident">block::Block</span>,
+        <span class="ident">burnfee::HEARTBEAT</span>,
+        <span class="ident">crypto::SaitoHash</span>,
+        <span class="ident">test_utilities::mocks</span>::{<span class="ident">add_vip_block</span>, <span class="ident">MockTimestampGenerator</span>},
+        <span class="ident">wallet::Wallet</span>,
+    };
 
     <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
     <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
@@ -945,7 +993,6 @@
         <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(<span class="ident">block</span>), <span class="ident">mempool</span>.<span class="ident">blocks</span>.<span class="ident">pop_front</span>())
     }
 
-
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>))));
@@ -956,13 +1003,19 @@
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
         }
-        <span class="ident">add_vip_block</span>(<span class="ident">publickey</span>, [<span class="number">0</span>; <span class="number">32</span>], <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+        <span class="ident">add_vip_block</span>(
+            <span class="ident">publickey</span>,
+            [<span class="number">0</span>; <span class="number">32</span>],
+            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+        )
+        .<span class="kw">await</span>;
         {
             <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="kw">let</span> <span class="ident">latest_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>().<span class="ident">unwrap</span>();
             <span class="macro">assert_eq!</span>(<span class="ident">latest_block</span>.<span class="ident">get_id</span>(), <span class="number">1</span>);
         }
-        
+
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="kw">let</span> <span class="ident">balance</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_available_balance</span>();
@@ -972,15 +1025,21 @@
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span> <span class="op">=</span> <span class="ident">MockTimestampGenerator::new</span>(<span class="ident">HEARTBEAT</span> <span class="op">*</span> <span class="number">2</span>);
 
-        <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">1</span>, <span class="number">1000000</span>).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">tx</span> <span class="op">=</span>
+            <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">1</span>, <span class="number">1000000</span>).<span class="kw">await</span>;
         {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
             <span class="kw">let</span> <span class="ident">add_tx_result</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">add_transaction</span>(<span class="ident">tx</span>).<span class="kw">await</span>;
             <span class="macro">assert_eq!</span>(<span class="ident">add_tx_result</span>, <span class="ident">AddTransactionResult::Accepted</span>);
         }
-        <span class="kw">let</span> <span class="ident">block_option</span> <span class="op">=</span>  <span class="kw">crate</span><span class="ident">::mempool::try_bundle_block</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span>).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">block_option</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::mempool::try_bundle_block</span>(
+            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span>,
+        )
+        .<span class="kw">await</span>;
         <span class="macro">assert!</span>(<span class="ident">block_option</span>.<span class="ident">is_some</span>());
-        <span class="kw">let</span> <span class="ident">block</span><span class="op">=</span> <span class="ident">block_option</span>.<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">block_option</span>.<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">prev_block_hash</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>];
         <span class="kw">let</span> <span class="ident">latest_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
         <span class="kw">let</span> <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
@@ -1004,10 +1063,6 @@
             <span class="comment">// prev_block_hash = test_block_hash;</span>
         }
 
-
-            
-
-
         <span class="comment">// let tx = Transaction::generate_transaction(wallet_lock.clone(), publickey, 1, 1000000).await;</span>
         <span class="comment">// {</span>
         <span class="comment">//     let mut mempool = mempool_lock.write().await;</span>
@@ -1030,8 +1085,6 @@
         <span class="comment">// sleep(Duration::from_millis(1000));</span>
         <span class="comment">// assert_eq!(latest_block.get_id(), 2);</span>
 
-
-
         <span class="comment">// match add_tx_result {</span>
         <span class="comment">//     crate::mempool::AddTransactionResult::Accepted =&gt; Ok(Message { msg: response }),</span>
         <span class="comment">//     crate::mempool::AddTransactionResult::Exists =&gt; {</span>
@@ -1044,7 +1097,6 @@
         <span class="comment">//         panic!(&quot;This appears unused, implement if needed&quot;);</span>
         <span class="comment">//     }</span>
         <span class="comment">// }</span>
-
 
         <span class="comment">// let publickey;</span>
         <span class="comment">// {</span>

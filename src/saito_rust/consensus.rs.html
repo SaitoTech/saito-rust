@@ -309,7 +309,7 @@
         <span class="comment">// broadcast cross-system messages. See SaitoMessage ENUM above</span>
         <span class="comment">// for information on cross-system notifications.</span>
         <span class="comment">//</span>
-        
+
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>(<span class="ident">key_path</span>, <span class="ident">password</span>)));
         <span class="kw">let</span> <span class="ident">peers_db_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">PeersDB::new</span>()));
 

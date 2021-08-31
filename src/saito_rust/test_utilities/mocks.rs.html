@@ -287,16 +287,22 @@
 <span id="285">285</span>
 <span id="286">286</span>
 <span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::burnfee::BurnFee</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">generate_random_bytes</span>, <span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">generate_random_bytes</span>, <span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoPrivateKey</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipType</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time</span>::{<span class="ident">create_timestamp</span>, <span class="ident">TimestampGenerator</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction::Transaction</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time</span>::{<span class="ident">TimestampGenerator</span>, <span class="ident">create_timestamp</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -322,12 +328,16 @@
     }
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_vip_block</span>(<span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>, <span class="ident">prev_block_hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,) {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_vip_block</span>(
+    <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>,
+    <span class="ident">prev_block_hash</span>: <span class="ident">SaitoHash</span>,
+    <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+) {
     <span class="comment">//let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span> <span class="op">=</span> <span class="macro">vec!</span>[];
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span>
-    <span class="ident">Transaction::generate_vip_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">10_000_000</span>)
-        .<span class="kw">await</span>;
+        <span class="ident">Transaction::generate_vip_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">10_000_000</span>).<span class="kw">await</span>;
     <span class="ident">tx</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
     <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">tx</span>);
 
@@ -488,7 +498,6 @@
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">make_mock_tx</span>(<span class="ident">wallet_mutex</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
-
     <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_mutex</span>.<span class="ident">read</span>().<span class="kw">await</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
     <span class="ident">transaction</span>.<span class="ident">set_message</span>((<span class="number">0</span>..<span class="number">1024</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">rand::random</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>()).<span class="ident">collect</span>());
@@ -512,68 +521,71 @@
     <span class="ident">transaction</span>
 }
 
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">make_mock_block_with_info</span>(
+    <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>,
+    <span class="ident">last_block_hash</span>: <span class="ident">SaitoHash</span>,
+    <span class="ident">timestamp</span>: <span class="ident">u64</span>,
+    <span class="ident">vip_transactions</span>: <span class="ident">usize</span>,
+    <span class="ident">normal_transactions</span>: <span class="ident">usize</span>,
+    <span class="ident">golden_ticket</span>: <span class="ident">bool</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">miner</span> <span class="op">=</span> <span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
+    <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+    <span class="kw">let</span> <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>;
 
+    {
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+        <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
+    }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">make_mock_block_with_info</span>(<span class="ident">blockchain_lock</span> : <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">wallet_lock</span> : <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">publickey</span> : <span class="ident">SaitoPublicKey</span>, <span class="ident">last_block_hash</span> : <span class="ident">SaitoHash</span>, <span class="ident">timestamp</span>: <span class="ident">u64</span> , <span class="ident">vip_transactions</span> : <span class="ident">usize</span> , <span class="ident">normal_transactions</span> : <span class="ident">usize</span> , <span class="ident">golden_ticket</span> : <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+    <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">vip_transactions</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span>
+            <span class="ident">Transaction::generate_vip_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">10_000_000</span>).<span class="kw">await</span>;
+        <span class="ident">tx</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
+        <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">tx</span>);
+    }
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">miner</span> <span class="op">=</span> <span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
-	<span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-	<span class="kw">let</span> <span class="ident">privatekey</span> : <span class="ident">SaitoPrivateKey</span>;
+    <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">normal_transactions</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span>
+            <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">5000</span>, <span class="number">5000</span>).<span class="kw">await</span>;
 
-	{
-	    <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-	    <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
-	}
+        <span class="comment">// sign ...</span>
+        <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">privatekey</span>);
+        <span class="ident">transaction</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
+        <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
+    }
 
-	<span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">vip_transactions</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::generate_vip_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">10_000_000</span>).<span class="kw">await</span>;
-            <span class="ident">tx</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
-	    <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">tx</span>);
-	}
-
-	<span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">normal_transactions</span> {
-
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">5000</span>, <span class="number">5000</span>).<span class="kw">await</span>;
-
-            <span class="comment">// sign ...</span>
-            <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">privatekey</span>);
-	    <span class="ident">transaction</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
-            <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
-
-	}
-
-	<span class="kw">if</span> <span class="ident">golden_ticket</span> {
-	    <span class="kw">let</span> <span class="ident">blk</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="ident">last_block_hash</span>).<span class="kw">await</span>;
-            <span class="kw">let</span> <span class="ident">last_block_difficulty</span> <span class="op">=</span> <span class="ident">blk</span>.<span class="ident">get_difficulty</span>();
-            <span class="kw">let</span> <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span> <span class="op">=</span> <span class="ident">miner</span>
-                .<span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="ident">last_block_hash</span>, <span class="ident">last_block_difficulty</span>)
-                .<span class="kw">await</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx2</span>: <span class="ident">Transaction</span>;
-            {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                <span class="ident">tx2</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">create_golden_ticket_transaction</span>(<span class="ident">golden_ticket</span>).<span class="kw">await</span>;
-            }
-            <span class="ident">tx2</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
-            <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">tx2</span>);	
+    <span class="kw">if</span> <span class="ident">golden_ticket</span> {
+        <span class="kw">let</span> <span class="ident">blk</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="ident">last_block_hash</span>).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">last_block_difficulty</span> <span class="op">=</span> <span class="ident">blk</span>.<span class="ident">get_difficulty</span>();
+        <span class="kw">let</span> <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span> <span class="op">=</span> <span class="ident">miner</span>
+            .<span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="ident">last_block_hash</span>, <span class="ident">last_block_difficulty</span>)
+            .<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx2</span>: <span class="ident">Transaction</span>;
+        {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+            <span class="ident">tx2</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">create_golden_ticket_transaction</span>(<span class="ident">golden_ticket</span>).<span class="kw">await</span>;
         }
+        <span class="ident">tx2</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
+        <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">tx2</span>);
+    }
 
+    <span class="comment">//</span>
+    <span class="comment">// create block</span>
+    <span class="comment">//</span>
+    <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate_with_timestamp</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
+        <span class="ident">last_block_hash</span>,
+        <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">timestamp</span>,
+    )
+    .<span class="kw">await</span>;
 
-        <span class="comment">//</span>
-        <span class="comment">// create block</span>
-        <span class="comment">//</span>
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate_with_timestamp</span>(
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
-            <span class="ident">last_block_hash</span>,
-            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">timestamp</span>,
-        )
-        .<span class="kw">await</span>;
-
-	<span class="kw">return</span> <span class="ident">block</span>;
-
+    <span class="kw">return</span> <span class="ident">block</span>;
 }
-
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="saito_rust" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script></body></html>

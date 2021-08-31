@@ -327,14 +327,11 @@
 <span id="325">325</span>
 <span id="326">326</span>
 <span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::UtxoSet</span>,
     <span class="ident">crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoUTXOSetKey</span>},
-    <span class="ident">transaction</span>::{<span class="ident">TransactionType</span>},
+    <span class="ident">transaction::TransactionType</span>,
 };
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -402,7 +399,7 @@
                     <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">value</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
                         <span class="kw">return</span> <span class="bool-val">true</span>;
                     } <span class="kw">else</span> {
-			<span class="macro">println!</span>(<span class="string">&quot;value is {} at {:?}&quot;</span>, <span class="kw-2">*</span><span class="ident">value</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset_key</span>);
+                        <span class="macro">println!</span>(<span class="string">&quot;value is {} at {:?}&quot;</span>, <span class="kw-2">*</span><span class="ident">value</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset_key</span>);
                         <span class="kw">return</span> <span class="bool-val">false</span>;
                     }
                 }
@@ -429,7 +426,7 @@
         <span class="ident">slip_value</span>: <span class="ident">u64</span>,
     ) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> {
-	    <span class="comment">// TODO cleanup once ready</span>
+            <span class="comment">// TODO cleanup once ready</span>
             <span class="comment">//println!(&quot;inserting into utxoset: {:?} value {}&quot;, self.utxoset_key, slip_value);</span>
             <span class="comment">//println!(&quot;slip_ordinal: {}&quot;, self.get_slip_ordinal());</span>
             <span class="comment">//println!(&quot;slip_amount: {}&quot;, self.get_amount());</span>
@@ -497,9 +494,6 @@
         <span class="ident">utxoset</span>.<span class="ident">remove_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_utxoset_key</span>());
         <span class="bool-val">true</span>
     }
-
-
-
 
     <span class="comment">//</span>
     <span class="comment">// Serialization</span>
