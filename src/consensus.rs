@@ -118,7 +118,7 @@ impl Consensus {
         // broadcast cross-system messages. See SaitoMessage ENUM above
         // for information on cross-system notifications.
         //
-        
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
         let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
 

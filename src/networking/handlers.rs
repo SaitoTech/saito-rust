@@ -71,7 +71,7 @@ pub async fn post_transaction_handler(
     let mut tx = Transaction::deserialize_from_net(buffer);
     let blockchain = blockchain_lock.read().await;
     tx.generate_metadata(tx.inputs[0].get_publickey());
-    if tx.validate(&blockchain.utxoset) {
+    if tx.validate(&blockchain.utxoset, &blockchain.staking) {
         let response = std::str::from_utf8(&tx.get_signature().to_base58().as_bytes())
             .unwrap()
             .to_string();

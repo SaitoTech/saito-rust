@@ -1,9 +1,9 @@
-use std::path::Path;
 use crate::storage::{Persistable, Storage};
 use aes::Aes128;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use macros::Persistable;
+use std::path::Path;
 
 use crate::block::Block;
 use crate::crypto::{
@@ -12,6 +12,7 @@ use crate::crypto::{
 };
 use crate::golden_ticket::GoldenTicket;
 use crate::slip::{Slip, SlipType};
+use crate::staking::Staking;
 use crate::transaction::{Transaction, TransactionType};
 use serde::{Deserialize, Serialize};
 
@@ -59,7 +60,7 @@ impl Wallet {
             publickey: publickey,
             privatekey: privatekey,
             slips: vec![],
-	    staked_slips: vec![],
+            staked_slips: vec![],
         }
     }
 
@@ -131,13 +132,32 @@ impl Wallet {
     }
 
     pub fn add_block(&mut self, block: &Block) {
+        //
         // TODO
+        //
         // There are multiple bugs in this implementation.
+        //
         // If a block is added in a fork all the inputs will be deleted and won't be recovered.
         // Also, outputs added will still be in the wallet even if they are not replayed on the longest chain(and are therefore unspendable)
         for tx in &block.transactions {
             for input in tx.get_inputs() {
-                self.delete_slip(input);
+                if input.get_slip_type() == SlipType::StakerDeposit
+                    || input.get_slip_type() == SlipType::StakerOutput
+                    || input.get_slip_type() == SlipType::StakerWithdrawalStaking
+                    || input.get_slip_type() == SlipType::StakerWithdrawalPending
+                {
+                    println!(
+                        "deleting staker input  with slip uuid: {:?}",
+                        input.get_uuid()
+                    );
+                    self.delete_staked_slip(input);
+                } else {
+                    println!(
+                        "deleting normal input  with slip uuid: {:?}",
+                        input.get_uuid()
+                    );
+                    self.delete_slip(input);
+                }
             }
             for output in tx.get_outputs() {
                 if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
@@ -174,11 +194,19 @@ impl Wallet {
         wallet_slip.set_block_hash(block.get_hash());
         wallet_slip.set_lc(lc);
 
-	if slip.get_slip_type() == SlipType::StakerDeposit || slip.get_slip_type() == SlipType::StakerOutput {
+        if slip.get_slip_type() == SlipType::StakerDeposit
+            || slip.get_slip_type() == SlipType::StakerOutput
+        {
             self.staked_slips.push(wallet_slip);
-	} else {
+        } else {
             self.slips.push(wallet_slip);
-	}
+        }
+    }
+
+    pub fn delete_staked_slip(&mut self, slip: &Slip) {
+        self.staked_slips.retain(|x| {
+            x.get_uuid() != slip.get_uuid() || x.get_slip_ordinal() != slip.get_slip_ordinal()
+        });
     }
 
     pub fn delete_slip(&mut self, slip: &Slip) {
@@ -206,7 +234,7 @@ impl Wallet {
     }
 
     // the nolan_requested is omitted from the slips created - only the change
-    // address is provided as an output. so make sure that any function calling 
+    // address is provided as an output. so make sure that any function calling
     // this manually creates the output for its desired payment
     pub fn generate_slips(&mut self, nolan_requested: u64) -> (Vec<Slip>, Vec<Slip>) {
         let mut inputs: Vec<Slip> = vec![];
@@ -242,9 +270,9 @@ impl Wallet {
             nolan_out = nolan_in - nolan_requested;
         }
 
-	//
+        //
         // add change address
-	//
+        //
         let mut output = Slip::new();
         output.set_publickey(my_publickey);
         output.set_amount(nolan_out);
@@ -306,17 +334,15 @@ impl Wallet {
         transaction
     }
 
-
     //
-    // creates a transaction that will deposit tokens into the staking system in the 
+    // creates a transaction that will deposit tokens into the staking system in the
     // amount specified, if possible. the transaction will be invalid if there is not
     // enough UTXO in the wallet to make the payment.
     //
     pub async fn create_staking_deposit_transaction(
         &mut self,
-	total_requested: u64,
+        total_requested: u64,
     ) -> Transaction {
-
         let mut transaction = Transaction::new();
 
         transaction.set_transaction_type(TransactionType::StakerDeposit);
@@ -342,6 +368,61 @@ impl Wallet {
         let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
         transaction.set_hash_for_signature(hash_for_signature);
         transaction.sign(self.get_privatekey());
+
+        transaction
+    }
+
+    //
+    // creates a staking withdrawal transaction if possible that removes a slip from
+    // the staking table. this function is primarily used for testing and as a reference
+    // for how these transactions should be formatted, so we will just withdraw the first
+    // staking slip.
+    //
+    pub async fn create_staking_withdrawal_transaction(
+        &mut self,
+        staking: &Staking,
+    ) -> Transaction {
+        let mut transaction = Transaction::new();
+        transaction.set_transaction_type(TransactionType::StakerWithdrawal);
+
+        if self.staked_slips.len() == 0 {
+            return transaction;
+        }
+
+        let mut slip = self.staked_slips[0].clone();
+
+        let mut input = Slip::new();
+        input.set_publickey(self.get_publickey());
+        input.set_amount(slip.get_amount());
+        input.set_uuid(slip.get_uuid());
+        input.set_slip_ordinal(slip.get_slip_ordinal());
+        input.set_slip_type(SlipType::StakerWithdrawalStaking);
+
+        println!("SLIP TO VALIDATE: ");
+        println!("{:?}", input);
+
+        if staking.validate_slip_in_stakers(input.clone()) {
+            println!("creating staking withdrawal transaction with slip in Staking");
+            input.set_slip_type(SlipType::StakerWithdrawalStaking);
+        }
+        if staking.validate_slip_in_pending(input.clone()) {
+            println!("creating staking withdrawal transaction with slip in Pending");
+            input.set_slip_type(SlipType::StakerWithdrawalPending);
+        }
+
+        let mut output = input.clone();
+        output.set_slip_type(SlipType::Normal);
+
+        // just convert to a normal transaction
+        transaction.add_input(input);
+        transaction.add_output(output);
+
+        let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
+        transaction.set_hash_for_signature(hash_for_signature);
+        transaction.sign(self.get_privatekey());
+
+        // and remember it is spent!
+        self.staked_slips[0].set_spent(true);
 
         transaction
     }
@@ -457,6 +538,4 @@ mod tests {
     fn wallet_new_test() {
         assert_eq!(true, true);
     }
-
-
 }

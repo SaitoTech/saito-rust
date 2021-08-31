@@ -1,7 +1,7 @@
 use crate::{
     blockchain::UtxoSet,
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
-    transaction::{TransactionType},
+    transaction::TransactionType,
 };
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
@@ -69,7 +69,7 @@ impl Slip {
                     if *value == 1 {
                         return true;
                     } else {
-			println!("value is {} at {:?}", *value, &self.utxoset_key);
+                        println!("value is {} at {:?}", *value, &self.utxoset_key);
                         return false;
                     }
                 }
@@ -96,7 +96,7 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
-	    // TODO cleanup once ready
+            // TODO cleanup once ready
             //println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
             //println!("slip_ordinal: {}", self.get_slip_ordinal());
             //println!("slip_amount: {}", self.get_amount());
@@ -164,9 +164,6 @@ impl Slip {
         utxoset.remove_entry(&self.get_utxoset_key());
         true
     }
-
-
-
 
     //
     // Serialization
