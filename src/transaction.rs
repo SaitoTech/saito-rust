@@ -20,6 +20,8 @@ use rayon::prelude::*;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+use tracing::{event, Level};
+
 pub const TRANSACTION_SIZE: usize = 89;
 
 /// TransactionType is a human-readable indicator of the type of
@@ -169,8 +171,6 @@ impl Transaction {
             output.set_publickey(to_publickey);
             output.set_amount(with_payment);
             transaction.add_output(output);
-
-            //println!("inputs are: {}", transaction.get_inputs().len());
 
             return transaction;
         } else {
@@ -422,16 +422,8 @@ impl Transaction {
         //
         if self.path.len() == 0 {
             if self.inputs.len() > 0 {
-                println!(
-                    "we have inputs! we are transaction type: {:?}",
-                    self.get_transaction_type()
-                );
                 return self.inputs[0].get_publickey();
             } else {
-                println!(
-                    "we have no inputs! we are transaction type: {:?}",
-                    self.get_transaction_type()
-                );
                 return [0; 33];
             }
         }
@@ -444,10 +436,6 @@ impl Transaction {
         // burn these fees for the sake of safety.
         //
         if self.get_total_fees() == 0 {
-            println!(
-                "we have no inputs! we are transaction type: {:?}",
-                self.get_transaction_type()
-            );
             return [0; 33];
         }
 
@@ -468,8 +456,6 @@ impl Transaction {
             work_by_hop.push(aggregate_routing_work);
         }
 
-        //println!("work by hop: {:?}", work_by_hop);
-
         //
         // find winning routing node
         //
@@ -477,8 +463,6 @@ impl Transaction {
         let z = U256::from_big_endian(&aggregate_routing_work.to_be_bytes());
         let (zy, _bolres) = x.overflowing_rem(z);
         let winning_routing_work_in_nolan = zy.low_u64();
-
-        //println!("wrwin: {}", winning_routing_work_in_nolan);
 
         for i in 0..work_by_hop.len() {
             if winning_routing_work_in_nolan <= work_by_hop[i] {
@@ -667,7 +651,6 @@ impl Transaction {
         longest_chain: bool,
         block_id: u64,
     ) {
-
         let mut input_slip_value = 1;
         let mut output_slip_value = 0;
 
@@ -786,7 +769,6 @@ impl Transaction {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
-
         //
         // User-Sent Transactions
         //
@@ -817,7 +799,7 @@ impl Transaction {
                 let sig: SaitoSignature = self.get_signature();
                 let publickey: SaitoPublicKey = self.get_inputs()[0].get_publickey();
                 if !verify(&hash_for_signature, sig, publickey) {
-                    println!("message verifies not");
+                    event!(Level::ERROR, "message verifies not");
                     return false;
                 }
             } else {
@@ -827,7 +809,7 @@ impl Transaction {
                 // it here, we choose to throw an error to raise visibility of
                 // unexpected behavior.
                 //
-                println!("ERROR 757293: there is no hash for signature in a transaction");
+                event!(Level::ERROR, "ERROR 757293: there is no hash for signature in a transaction");
                 return false;
             }
 
@@ -835,7 +817,7 @@ impl Transaction {
             // validate sender exists
             //
             if self.get_inputs().is_empty() {
-                println!("ERROR 582039: less than 1 input in transaction");
+                event!(Level::ERROR, "ERROR 582039: less than 1 input in transaction");
                 return false;
             }
 
@@ -847,7 +829,7 @@ impl Transaction {
             // routing path is fraudulent.
             //
             if !self.validate_routing_path() {
-                println!("ERROR 482033: routing paths do not validate, transaction invalid");
+                event!(Level::ERROR, "ERROR 482033: routing paths do not validate, transaction invalid");
                 return false;
             }
 
@@ -858,46 +840,34 @@ impl Transaction {
                 && self.get_transaction_type() != TransactionType::Fee
                 && self.get_transaction_type() != TransactionType::Vip
             {
-                println!("{} in and {} out", self.total_in, self.total_out);
+                event!(Level::TRACE, "{} in and {} out", self.total_in, self.total_out);
                 for z in self.get_outputs() {
-                    println!("{:?} --- ", z.get_amount());
+                    event!(Level::TRACE, "{:?} --- ", z.get_amount());
                 }
-                println!("ERROR 672941: transaction spends more than it has available");
+                event!(Level::TRACE, "ERROR 672941: transaction spends more than it has available");
                 return false;
             }
         }
 
-
         //
         // fee transactions
         //
-        if transaction_type == TransactionType::Fee {
-            //println!("Fee Transaction");
-            // signed by block creator ?
-        }
+        if transaction_type == TransactionType::Fee {}
 
         //
         // atr transactions
         //
-        if transaction_type == TransactionType::ATR {
-            //println!("ATR Transaction");
-
-            // signed by block creator ?
-        }
+        if transaction_type == TransactionType::ATR {}
 
         //
         // normal transactions
         //
-        if transaction_type == TransactionType::Normal {
-            //println!("Normal Transaction");
-        }
+        if transaction_type == TransactionType::Normal {}
 
         //
         // golden ticket transactions
         //
-        if transaction_type == TransactionType::GoldenTicket {
-            //println!("Golden Ticket Transaction");
-        }
+        if transaction_type == TransactionType::GoldenTicket {}
 
         //
         // vip transactions
@@ -908,8 +878,6 @@ impl Transaction {
         // for the faith and support.
         //
         if transaction_type == TransactionType::Vip {
-            //println!("VIP Transaction");
-
             // we should validate that VIP transactions are signed by the
             // publickey associated with the Saito project.
         }
@@ -924,7 +892,7 @@ impl Transaction {
         // all transactions must have outputs
         //
         if self.get_outputs().is_empty() {
-            println!("ERROR 582039: less than 1 output in transaction");
+            event!(Level::ERROR, "ERROR 582039: less than 1 output in transaction");
             return false;
         }
 

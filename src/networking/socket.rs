@@ -7,6 +7,7 @@ use std::convert::TryInto;
 use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
+use tracing::{Level, event};
 
 use crate::{
     blockchain::Blockchain,
@@ -70,7 +71,6 @@ async fn peer_msg(
                     );
                     let mut peers = peers.write().await;
                     let mut peer = peers.get_mut(&id).unwrap();
-                    println!("handshake complete!");
                     peer.has_handshake = true;
                     peer.pubkey = Some(challenge.challengie_pubkey());
                     let _foo = peer
@@ -222,7 +222,6 @@ pub async fn peer_connection(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) {
-    println!("peer_connection");
     let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
     let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
     let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
@@ -232,12 +231,10 @@ pub async fn peer_connection(
         }
     }));
 
-    println!("peer channel created");
     peer.sender = Some(peer_sender);
-    println!("peer sender set");
     peers.write().await.insert(id.clone(), peer);
 
-    println!("{:?} connected", id);
+    event!(Level::TRACE, "{:?} connected", id);
 
     while let Some(result) = peer_ws_rcv.next().await {
         let msg = match result {
@@ -263,7 +260,7 @@ pub async fn peer_connection(
     }
 
     peers.write().await.remove(&id);
-    println!("{:?} disconnected", id);
+    event!(Level::TRACE, "{:?} disconnected", id);
 }
 /*
     The serialized handshake init message shoudl fit this format
@@ -304,7 +301,7 @@ pub fn socket_handshake_complete(
     let (challenge, my_sig, their_sig) =
         HandshakeChallenge::deserialize_with_both_sigs(&message.message_data());
     if challenge.timestamp() < create_timestamp() - CHALLENGE_EXPIRATION_TIME {
-        println!("Error validating timestamp for handshake complete");
+        event!(Level::ERROR, "Error validating timestamp for handshake complete");
         return None;
     }
     if !verify(
@@ -314,7 +311,7 @@ pub fn socket_handshake_complete(
     ) {
         // TODO figure out how to return more meaningful errors from Warp and replace all the warp::reject
         // return Err("ERROR WITH SIG VALIDATION");
-        println!("Error with validating challengie sig");
+        event!(Level::ERROR, "Error with validating challengie sig");
         return None;
     }
     if !verify(
@@ -323,7 +320,7 @@ pub fn socket_handshake_complete(
         challenge.challenger_pubkey(),
     ) {
         // TODO figure out how to return more meaningful errors from Warp and replace all the warp::reject
-        println!("Error with validating challenger sig");
+        event!(Level::ERROR, "Error with validating challenger sig");
         return None;
     }
 

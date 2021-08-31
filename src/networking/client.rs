@@ -10,6 +10,8 @@ use tokio::net::TcpStream;
 use tokio::sync::RwLock;
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 
+use tracing::{event, Level};
+
 use crate::{
     crypto::{hash, sign_blob, verify, SaitoPrivateKey, SaitoPublicKey},
     networking::{
@@ -88,7 +90,8 @@ impl SaitoClient {
                         // If anything other than RESULT__ or ERROR___ is sent here, there is a problem.
                         // The "client" side of the connection sends APIMessage and the "network/server" side responds.
                         // We should not handle anything other than RESULT__ and ERROR___ here.
-                        println!(
+                        event!(
+                            Level::ERROR,
                             "Unhandled command received by client... {}",
                             String::from_utf8_lossy(&command_name).to_string()
                         );
@@ -96,7 +99,8 @@ impl SaitoClient {
                 }
             }
             None => {
-                println!(
+                event!(
+                    Level::ERROR,
                     "Peer has sent a {} for a request we don't know about. Request ID: {}",
                     api_message.message_name_as_str(),
                     api_message.message_id
@@ -107,7 +111,6 @@ impl SaitoClient {
     async fn handle_response(&mut self, command_name: [u8; 8], response_api_message: &APIMessage) {
         match String::from_utf8_lossy(&command_name).to_string().as_ref() {
             "SHAKINIT" => {
-                println!("GOT SHAKINIT RESPONSE");
                 let (deserialize_challenge, signature) =
                     HandshakeChallenge::deserialize_with_sig(&response_api_message.message_data);
                 let raw_challenge: [u8; CHALLENGE_SIZE] = response_api_message.message_data
@@ -115,7 +118,6 @@ impl SaitoClient {
                     .try_into()
                     .unwrap();
 
-                println!("{:?}", deserialize_challenge);
                 // TODO verify that this pubkey is actually the peer we are hoping to reach...
                 let sig_is_valid = verify(
                     &hash(&raw_challenge.to_vec()),
@@ -123,7 +125,7 @@ impl SaitoClient {
                     deserialize_challenge.challengie_pubkey(),
                 );
                 if !sig_is_valid {
-                    println!("Invalid signature sent in SHAKINIT");
+                    event!(Level::ERROR, "Invalid signature sent in SHAKINIT");
                 } else {
                     let privatekey: SaitoPrivateKey;
                     {
@@ -138,8 +140,8 @@ impl SaitoClient {
                 }
             }
             "SHAKCOMP" => {
-                println!("GOT SHAKCOMP RESPONSE");
-                println!(
+                event!(
+                    Level::TRACE,
                     "{}",
                     String::from_utf8_lossy(&response_api_message.message_data()).to_string()
                 );
@@ -148,7 +150,8 @@ impl SaitoClient {
         }
     }
     fn handle_error_response(&mut self, command_name: [u8; 8], _response_api_message: &APIMessage) {
-        println!(
+        event!(
+            Level::ERROR,
             "Error response for command {}",
             String::from_utf8_lossy(&command_name).to_string()
         );

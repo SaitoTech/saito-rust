@@ -92,7 +92,6 @@ impl Network {
             // for peer in peer_settings {
             let peer = peer_settings.get(0).unwrap();
             let peer_url = format!("ws://{}/wsopen", format_url_string(peer.host, peer.port),);
-            println!("{:?}", peer_url);
             let url = url::Url::parse(&peer_url).unwrap();
             let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
 
@@ -140,10 +139,8 @@ impl Network {
             peer.send_command(&String::from("SHAKINIT"), message_data)
                 .await;
 
-            //}
         }
 
-        println!("ENGAGE");
         warp::serve(routes).run((host, port)).await;
 
         Ok(())

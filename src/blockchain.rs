@@ -7,11 +7,11 @@ use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
+use crate::staking::Staking;
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
-use crate::staking::Staking;
-use tracing::{span, event, Level};
+use tracing::{event, span, Level};
 
 use async_recursion::async_recursion;
 
@@ -92,7 +92,11 @@ impl Blockchain {
         // sanity checks
         //
         if self.blocks.contains_key(&block_hash) {
-            event!(Level::ERROR, "ERROR: block exists in blockchain {:?}", block.get_hash());
+            event!(
+                Level::ERROR,
+                "ERROR: block exists in blockchain {:?}",
+                block.get_hash()
+            );
             return;
         }
 
@@ -143,7 +147,11 @@ impl Blockchain {
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
         } else {
-            event!(Level::ERROR, "BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT????? {:?}", block.get_hash());
+            event!(
+                Level::ERROR,
+                "BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT????? {:?}",
+                block.get_hash()
+            );
         }
 
         //
@@ -209,7 +217,10 @@ impl Blockchain {
             // TODO more elegant handling of the first block and other non-longest-chain
             // blocks.
             //
-            event!(Level::ERROR, "We have added a block without a parent block... ");
+            event!(
+                Level::ERROR,
+                "We have added a block without a parent block... "
+            );
         }
 
         //
@@ -291,14 +302,21 @@ impl Blockchain {
             }
         }
     }
-    pub async fn add_block_to_blockchain(blockchain_lock : Arc<RwLock<Blockchain>>, block: Block, save_to_disk : bool) {
+    pub async fn add_block_to_blockchain(
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+        block: Block,
+        save_to_disk: bool,
+    ) {
         let mut blockchain = blockchain_lock.write().await;
         return blockchain.add_block(block, save_to_disk).await;
     }
 
-
     pub async fn add_block_success(&mut self, block_hash: SaitoHash, save_to_disk: bool) {
-        event!(Level::TRACE, " ... blockchain.add_block_success: {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... blockchain.add_block_success: {:?}",
+            create_timestamp()
+        );
 
         let block_id;
 
@@ -319,18 +337,30 @@ impl Blockchain {
             //block.transactions = vec![];
         }
 
-        event!(Level::TRACE, " ... block save done:            {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... block save done:            {:?}",
+            create_timestamp()
+        );
 
         //
         // TODO - this is merely for testing, we do not intend
         // the routing client to process transactions in its
         // wallet.
         {
-            event!(Level::TRACE, " ... wallet processing start:    {}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... wallet processing start:    {}",
+                create_timestamp()
+            );
             let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
             wallet.add_block(&block);
-            event!(Level::TRACE, " ... wallet processing stop:     {}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... wallet processing stop:     {}",
+                create_timestamp()
+            );
         }
 
         //
@@ -500,9 +530,11 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
-
         if old_chain.len() > new_chain.len() {
-            event!(Level::ERROR, "ERROR: old chain length is greater than new chain length");
+            event!(
+                Level::ERROR,
+                "ERROR: old chain length is greater than new chain length"
+            );
             return false;
         }
 
@@ -583,7 +615,11 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-        event!(Level::TRACE, " ... blockchain.wind_chain strt: {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... blockchain.wind_chain strt: {:?}",
+            create_timestamp()
+        );
 
         //
         // if we are winding a non-existent chain with a wind_failure it
@@ -612,36 +648,58 @@ impl Blockchain {
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        println!(" ... before block.validate:      {:?}", create_timestamp());
-        event!(Level::TRACE, " ... before block.validate:      {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... before block.validate:      {:?}",
+            create_timestamp()
+        );
         let does_block_validate = block.validate(&self, &self.utxoset).await;
-        event!(Level::TRACE, " ... after block.validate:       {:?} {}", create_timestamp(), does_block_validate);
+        event!(
+            Level::TRACE,
+            " ... after block.validate:       {:?} {}",
+            create_timestamp(),
+            does_block_validate
+        );
 
         if does_block_validate {
-            event!(Level::TRACE, " ... before block ocr            {:?}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... before block ocr            {:?}",
+                create_timestamp()
+            );
 
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
-            event!(Level::TRACE, " ... before blockring ocr:       {:?}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... before blockring ocr:       {:?}",
+                create_timestamp()
+            );
 
             // blockring update
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
 
             // staking tables update
-            let (res_spend, res_unspend, res_delete) = self.staking
-                .on_chain_reorganization(block, true);
+            let (res_spend, res_unspend, res_delete) =
+                self.staking.on_chain_reorganization(block, true);
 
-	    //
-	    // we cannot pass the UTXOSet into the staking object to update as that would
-	    // require multiple mutable borrows of the blockchain object, so we receive 
-	    // return vectors of the slips that need to be inserted, spent or deleted and
-	    // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
-	    // is in the staking tables.
-	    //
-	    for i in 0..res_spend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1); }
-	    for i in 0..res_unspend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0); }
-	    for i in 0..res_delete.len() { res_spend[i].delete(&mut self.utxoset); }
+            //
+            // we cannot pass the UTXOSet into the staking object to update as that would
+            // require multiple mutable borrows of the blockchain object, so we receive
+            // return vectors of the slips that need to be inserted, spent or deleted and
+            // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
+            // is in the staking tables.
+            //
+            for i in 0..res_spend.len() {
+                res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1);
+            }
+            for i in 0..res_unspend.len() {
+                res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0);
+            }
+            for i in 0..res_delete.len() {
+                res_spend[i].delete(&mut self.utxoset);
+            }
 
             //
             // we have received the first entry in new_blocks() which means we
@@ -756,28 +814,33 @@ impl Blockchain {
     ) -> bool {
         let block = &self.blocks[&old_chain[current_unwind_index]];
 
-	// utxoset update
+        // utxoset update
         block.on_chain_reorganization(&mut self.utxoset, false);
 
-	// blockring update
+        // blockring update
         self.blockring
             .on_chain_reorganization(block.get_id(), block.get_hash(), false);
 
-	// staking tables
-	let (res_spend, res_unspend, res_delete) = self.staking
-            .on_chain_reorganization(block, true);
+        // staking tables
+        let (res_spend, res_unspend, res_delete) =
+            self.staking.on_chain_reorganization(block, true);
 
-	//
-	// we cannot pass the UTXOSet into the staking object to update as that would
-	// require multiple mutable borrows of the blockchain object, so we receive 
-	// return vectors of the slips that need to be inserted, spent or deleted and
-	// handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
-	// is in the staking tables.
-	//
-	for i in 0..res_spend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1); }
-	for i in 0..res_unspend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0); }
-	for i in 0..res_delete.len() { res_spend[i].delete(&mut self.utxoset); }
-
+        //
+        // we cannot pass the UTXOSet into the staking object to update as that would
+        // require multiple mutable borrows of the blockchain object, so we receive
+        // return vectors of the slips that need to be inserted, spent or deleted and
+        // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
+        // is in the staking tables.
+        //
+        for i in 0..res_spend.len() {
+            res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1);
+        }
+        for i in 0..res_unspend.len() {
+            res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0);
+        }
+        for i in 0..res_delete.len() {
+            res_spend[i].delete(&mut self.utxoset);
+        }
 
         if current_unwind_index == old_chain.len() - 1 {
             //
@@ -809,7 +872,6 @@ impl Blockchain {
             return res;
         }
     }
-
 
     pub async fn update_genesis_period(&mut self) {
         //
@@ -845,7 +907,11 @@ impl Blockchain {
     // deletes all blocks at a single block_id
     //
     pub async fn delete_blocks(&mut self, delete_block_id: u64) {
-        event!(Level::TRACE, "removing data including from disk at id {}", delete_block_id);
+        event!(
+            Level::TRACE,
+            "removing data including from disk at id {}",
+            delete_block_id
+        );
 
         let mut block_hashes_copy: Vec<SaitoHash> = vec![];
 
@@ -856,7 +922,11 @@ impl Blockchain {
             }
         }
 
-        event!(Level::TRACE, "number of hashes to remove {}", block_hashes_copy.len());
+        event!(
+            Level::TRACE,
+            "number of hashes to remove {}",
+            block_hashes_copy.len()
+        );
 
         for hash in block_hashes_copy {
             self.delete_block(delete_block_id, hash).await;
@@ -906,11 +976,12 @@ impl Blockchain {
     }
 
     pub async fn downgrade_blockchain_data(&mut self) {
-
         //
         // downgrade blocks still on the chain
         //
-	if PRUNE_AFTER_BLOCKS > self.get_latest_block_id() { return; }
+        if PRUNE_AFTER_BLOCKS > self.get_latest_block_id() {
+            return;
+        }
         let prune_blocks_at_block_id = self.get_latest_block_id() - PRUNE_AFTER_BLOCKS;
 
         let mut block_hashes_copy: Vec<SaitoHash> = vec![];

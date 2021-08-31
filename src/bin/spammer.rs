@@ -5,7 +5,7 @@ TODO: Fill in these docs
 
 */
 use saito_rust::networking::peer::PeersDB;
-use saito_rust::time::SystemTimestampGenerator;
+// use saito_rust::time::SystemTimestampGenerator;
 use saito_rust::{
     blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
     transaction::Transaction, util::format_url_string, wallet::Wallet,
@@ -18,6 +18,8 @@ use tokio::sync::{broadcast, RwLock};
 
 use rayon::iter::IntoParallelIterator;
 use rayon::prelude::*;
+
+use tracing::{event, Level};
 
 #[tokio::main]
 pub async fn main() -> saito_rust::Result<()> {
@@ -129,12 +131,12 @@ pub async fn main() -> saito_rust::Result<()> {
         let server_transaction_url =
             format!("http://{}/sendtransaction", format_url_string(host, port),);
 
-        println!("{:?}", server_transaction_url);
+        event!(Level::INFO, "{:?}", server_transaction_url);
 
         loop {
             let mut transactions: Vec<Transaction> = vec![];
 
-            println!("TXS TO GENERATE: {:?}", txs_to_generate);
+            event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
 
             for _i in 0..txs_to_generate {
                 let mut transaction =

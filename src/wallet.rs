@@ -1,9 +1,9 @@
-use std::path::Path;
 use crate::storage::{Persistable, Storage};
 use aes::Aes128;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use macros::Persistable;
+use std::path::Path;
 
 use crate::block::Block;
 use crate::crypto::{
@@ -14,6 +14,7 @@ use crate::golden_ticket::GoldenTicket;
 use crate::slip::{Slip, SlipType};
 use crate::transaction::{Transaction, TransactionType};
 use serde::{Deserialize, Serialize};
+use tracing::{event, span, Level};
 
 // create an alias for convenience
 type Aes128Cbc = Cbc<Aes128, Pkcs7>;
@@ -38,7 +39,7 @@ pub struct EncryptedWallet {
 }
 impl EncryptedWallet {
     pub fn get_file_name(&self) -> String {
-        println!("get_file_name {}", self.file_path);
+        event!(Level::INFO, "get_file_name {}", self.file_path);
         self.file_path.clone()
     }
 }
@@ -54,12 +55,12 @@ impl Wallet {
     }
     pub fn new(key_path: &str, password: Option<&str>) -> Self {
         let (publickey, privatekey) = Wallet::load_keys(key_path, password);
-        println!("Loaded wallet {}", hex::encode(publickey));
+        event!(Level::INFO, "Loaded wallet {}", hex::encode(publickey));
         Wallet {
             publickey: publickey,
             privatekey: privatekey,
             slips: vec![],
-	    staked_slips: vec![],
+            staked_slips: vec![],
         }
     }
 
@@ -70,10 +71,10 @@ impl Wallet {
 
         let decrypted_buffer: Vec<u8>;
         if !path.exists() {
-            println!("Creating key file {}", key_path);
+            event!(Level::INFO, "Creating key file {}", key_path);
             decrypted_buffer = Wallet::create_key_file(&key_path, &password);
         } else {
-            println!("Reading key file {}", key_path);
+            event!(Level::INFO, "Reading key file {}", key_path);
             decrypted_buffer = Wallet::read_key_file(&key_path, &password);
         }
 
@@ -174,11 +175,13 @@ impl Wallet {
         wallet_slip.set_block_hash(block.get_hash());
         wallet_slip.set_lc(lc);
 
-	if slip.get_slip_type() == SlipType::StakerDeposit || slip.get_slip_type() == SlipType::StakerOutput {
+        if slip.get_slip_type() == SlipType::StakerDeposit
+            || slip.get_slip_type() == SlipType::StakerOutput
+        {
             self.staked_slips.push(wallet_slip);
-	} else {
+        } else {
             self.slips.push(wallet_slip);
-	}
+        }
     }
 
     pub fn delete_slip(&mut self, slip: &Slip) {
@@ -206,7 +209,7 @@ impl Wallet {
     }
 
     // the nolan_requested is omitted from the slips created - only the change
-    // address is provided as an output. so make sure that any function calling 
+    // address is provided as an output. so make sure that any function calling
     // this manually creates the output for its desired payment
     pub fn generate_slips(&mut self, nolan_requested: u64) -> (Vec<Slip>, Vec<Slip>) {
         let mut inputs: Vec<Slip> = vec![];
@@ -242,9 +245,9 @@ impl Wallet {
             nolan_out = nolan_in - nolan_requested;
         }
 
-	//
+        //
         // add change address
-	//
+        //
         let mut output = Slip::new();
         output.set_publickey(my_publickey);
         output.set_amount(nolan_out);
@@ -306,17 +309,15 @@ impl Wallet {
         transaction
     }
 
-
     //
-    // creates a transaction that will deposit tokens into the staking system in the 
+    // creates a transaction that will deposit tokens into the staking system in the
     // amount specified, if possible. the transaction will be invalid if there is not
     // enough UTXO in the wallet to make the payment.
     //
     pub async fn create_staking_deposit_transaction(
         &mut self,
-	total_requested: u64,
+        total_requested: u64,
     ) -> Transaction {
-
         let mut transaction = Transaction::new();
 
         transaction.set_transaction_type(TransactionType::StakerDeposit);
@@ -457,6 +458,4 @@ mod tests {
     fn wallet_new_test() {
         assert_eq!(true, true);
     }
-
-
 }

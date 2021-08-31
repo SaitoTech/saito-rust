@@ -52,6 +52,8 @@ use saito_rust::{
 use secp256k1::PublicKey;
 use std::{fs::File, io::Write};
 
+use tracing::{event, Level};
+
 // TODO Combine this into the main binary?
 #[tokio::main]
 pub async fn main() -> saito_rust::Result<()> {
@@ -91,8 +93,8 @@ pub async fn main() -> saito_rust::Result<()> {
     if let Some(ref _matches) = matches.subcommand_matches("print") {
         // TODO add an arg to enable/disable printing the private key
         // TODO add and arg to chande modes between hex and base58
-        println!(" public key : {}", hex::encode(wallet.get_publickey()));
-        println!("private key : {}", hex::encode(wallet.get_privatekey()));
+        event!(Level::INFO, "public key : {}", hex::encode(wallet.get_publickey()));
+        event!(Level::INFO, "private key : {}", hex::encode(wallet.get_privatekey()));
     }
     if let Some(ref matches) = matches.subcommand_matches("tx") {
         let filename: String = match matches.value_of("filename") {
@@ -104,14 +106,14 @@ pub async fn main() -> saito_rust::Result<()> {
             .unwrap()
             .parse()
             .unwrap_or_else(|_error| {
-                println!("amount must be a float");
-                println!("got {}", matches.value_of("amount").unwrap());
+                event!(Level::ERROR, "amount must be a float");
+                event!(Level::ERROR, "got {}", matches.value_of("amount").unwrap());
                 std::process::exit(1);
             });
         let to_pubkey =
             PublicKey::from_slice(&matches.value_of("to").unwrap().from_base58().unwrap())
                 .unwrap_or_else(|_error| {
-                    println!("Invalid pubkey in to field. Should be based58 encoded.");
+                    event!(Level::ERROR, "Invalid pubkey in to field. Should be based58 encoded.");
                     std::process::exit(1);
                 });
 
@@ -137,10 +139,10 @@ pub async fn main() -> saito_rust::Result<()> {
 
         transaction.sign(wallet.get_privatekey());
 
-        println!("Writing transaction");
-        println!("Amount: {}", amount);
-        println!("To: {}", to_pubkey);
-        println!("====> {}", filename);
+        event!(Level::INFO, "Writing transaction");
+        event!(Level::INFO, "Amount: {}", amount);
+        event!(Level::INFO, "To: {}", to_pubkey);
+        event!(Level::INFO, "====> {}", filename);
 
         let output = transaction.serialize_for_net();
         let mut buffer = File::create(filename).unwrap();
