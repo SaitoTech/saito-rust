@@ -1,12 +1,12 @@
 use crate::block::Block;
 use crate::blockchain::Blockchain;
 use crate::burnfee::BurnFee;
-use crate::miner::Miner;
+use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::golden_ticket::GoldenTicket;
-use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPublicKey, SaitoPrivateKey};
+use crate::miner::Miner;
 use crate::slip::{Slip, SlipType};
+use crate::time::{create_timestamp, TimestampGenerator};
 use crate::transaction::Transaction;
-use crate::time::{TimestampGenerator, create_timestamp};
 use crate::wallet::Wallet;
 
 use std::sync::Arc;
@@ -32,12 +32,16 @@ impl TimestampGenerator for MockTimestampGenerator {
     }
 }
 
-pub async fn add_vip_block(publickey: SaitoPublicKey, prev_block_hash: SaitoHash, blockchain_lock: Arc<RwLock<Blockchain>>, wallet_lock: Arc<RwLock<Wallet>>,) {
+pub async fn add_vip_block(
+    publickey: SaitoPublicKey,
+    prev_block_hash: SaitoHash,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+    wallet_lock: Arc<RwLock<Wallet>>,
+) {
     //let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
     let mut transactions = vec![];
     let mut tx =
-    Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000)
-        .await;
+        Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
     tx.generate_metadata(publickey);
     transactions.push(tx);
 
@@ -49,7 +53,7 @@ pub async fn add_vip_block(publickey: SaitoPublicKey, prev_block_hash: SaitoHash
     )
     .await;
     let mut blockchain = blockchain_lock.write().await;
-    blockchain.add_block(block, true).await;
+    blockchain.add_block(block).await;
 }
 
 pub async fn make_mock_blockchain(
@@ -136,7 +140,7 @@ pub async fn make_mock_blockchain(
         {
             println!("{}", i);
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, true).await;
+            blockchain.add_block(block).await;
         }
     }
 
@@ -198,7 +202,6 @@ pub fn make_mock_block(
 }
 
 pub async fn make_mock_tx(wallet_mutex: Arc<RwLock<Wallet>>) -> Transaction {
-
     let wallet = wallet_mutex.read().await;
     let mut transaction = Transaction::new();
     transaction.set_message((0..1024).map(|_| rand::random::<u8>()).collect());
@@ -222,66 +225,69 @@ pub async fn make_mock_tx(wallet_mutex: Arc<RwLock<Wallet>>) -> Transaction {
     transaction
 }
 
+pub async fn make_mock_block_with_info(
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+    wallet_lock: Arc<RwLock<Wallet>>,
+    publickey: SaitoPublicKey,
+    last_block_hash: SaitoHash,
+    timestamp: u64,
+    vip_transactions: usize,
+    normal_transactions: usize,
+    golden_ticket: bool,
+) -> Block {
+    let mut transactions: Vec<Transaction> = vec![];
+    let mut miner = Miner::new(wallet_lock.clone());
+    let blockchain = blockchain_lock.read().await;
+    let privatekey: SaitoPrivateKey;
 
+    {
+        let wallet = wallet_lock.read().await;
+        privatekey = wallet.get_privatekey();
+    }
 
-pub async fn make_mock_block_with_info(blockchain_lock : Arc<RwLock<Blockchain>>, wallet_lock : Arc<RwLock<Wallet>>, publickey : SaitoPublicKey, last_block_hash : SaitoHash, timestamp: u64 , vip_transactions : usize , normal_transactions : usize , golden_ticket : bool) -> Block {
+    for _i in 0..vip_transactions {
+        let mut tx =
+            Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
+        tx.generate_metadata(publickey);
+        transactions.push(tx);
+    }
 
-        let mut transactions: Vec<Transaction> = vec![];
-        let mut miner = Miner::new(wallet_lock.clone());
-	let blockchain = blockchain_lock.read().await;
-	let privatekey : SaitoPrivateKey;
+    for _i in 0..normal_transactions {
+        let mut transaction =
+            Transaction::generate_transaction(wallet_lock.clone(), publickey, 5000, 5000).await;
 
-	{
-	    let wallet = wallet_lock.read().await;
-	    privatekey = wallet.get_privatekey();
-	}
+        // sign ...
+        transaction.sign(privatekey);
+        transaction.generate_metadata(publickey);
+        transactions.push(transaction);
+    }
 
-	for _i in 0..vip_transactions {
-            let mut tx = Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
-            tx.generate_metadata(publickey);
-	    transactions.push(tx);
-	}
-
-	for _i in 0..normal_transactions {
-
-            let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), publickey, 5000, 5000).await;
-
-            // sign ...
-            transaction.sign(privatekey);
-	    transaction.generate_metadata(publickey);
-            transactions.push(transaction);
-
-	}
-
-	if golden_ticket {
-	    let blk = blockchain.get_block(last_block_hash).await;
-            let last_block_difficulty = blk.get_difficulty();
-            let golden_ticket: GoldenTicket = miner
-                .mine_on_block_until_golden_ticket_found(last_block_hash, last_block_difficulty)
-                .await;
-            let mut tx2: Transaction;
-            {
-                let mut wallet = wallet_lock.write().await;
-                tx2 = wallet.create_golden_ticket_transaction(golden_ticket).await;
-            }
-            tx2.generate_metadata(publickey);
-            transactions.push(tx2);	
+    if golden_ticket {
+        let blk = blockchain.get_block(last_block_hash).await;
+        let last_block_difficulty = blk.get_difficulty();
+        let golden_ticket: GoldenTicket = miner
+            .mine_on_block_until_golden_ticket_found(last_block_hash, last_block_difficulty)
+            .await;
+        let mut tx2: Transaction;
+        {
+            let mut wallet = wallet_lock.write().await;
+            tx2 = wallet.create_golden_ticket_transaction(golden_ticket).await;
         }
+        tx2.generate_metadata(publickey);
+        transactions.push(tx2);
+    }
 
+    //
+    // create block
+    //
+    let block = Block::generate_with_timestamp(
+        &mut transactions,
+        last_block_hash,
+        wallet_lock.clone(),
+        blockchain_lock.clone(),
+        timestamp,
+    )
+    .await;
 
-        //
-        // create block
-        //
-        let block = Block::generate_with_timestamp(
-            &mut transactions,
-            last_block_hash,
-            wallet_lock.clone(),
-            blockchain_lock.clone(),
-            timestamp,
-        )
-        .await;
-
-	return block;
-
+    return block;
 }
-

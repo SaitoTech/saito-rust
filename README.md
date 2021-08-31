@@ -6,7 +6,7 @@ This project will serve as the reference implementation for other code-bases. It
 
 ## Contributing
 
-We're happy for any contribution.  
+We're happy for any contribution.
 Please have a look at our [contributing guidelines](CONTRIBUTING.md) before you start.
 
 ## Roadmap
@@ -84,19 +84,19 @@ If no arguments are provided, it defaults to 10 transactions the size of 1024 by
 
 GH Actions are located here: [.github/workflows](.github/workflows)
 
-- cargo docs  
+- cargo docs
   Is creating and deploying the docs to GH pages
 
-- [rustfmt](https://github.com/rust-lang/rustfmt#checking-style-on-a-ci-server) (**required**)  
+- [rustfmt](https://github.com/rust-lang/rustfmt#checking-style-on-a-ci-server) (**required**)
   Is checking if the code is formatted according to rust style guidelines
 
-- cargo build & test  
+- cargo build & test
   Tries to build the code and run all tests
 
-- [Convco](https://convco.github.io/check/) commit format check (**required**)  
+- [Convco](https://convco.github.io/check/) commit format check (**required**)
   Check all commits or range for errors against [the convention](CONTRIBUTING.md#commit-format)
 
-- [Clippy](https://github.com/rust-lang/rust-clippy) code linting  
+- [Clippy](https://github.com/rust-lang/rust-clippy) code linting
   A collection of lints to catch common mistakes and improve your Rust code
 
 ### VSCode

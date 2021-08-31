@@ -262,7 +262,7 @@ impl BasePeer {
                 block.generate_hashes();
                 {
                     let mut blockchain = self.blockchain_lock.write().await;
-                    blockchain.add_block(block, true).await;
+                    blockchain.add_block(block).await;
                 }
             }
             "SNDBLKHD" => {

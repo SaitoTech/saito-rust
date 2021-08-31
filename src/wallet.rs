@@ -1,9 +1,9 @@
-use std::path::Path;
 use crate::storage::{Persistable, Storage};
 use aes::Aes128;
 use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use macros::Persistable;
+use std::path::Path;
 
 use crate::block::Block;
 use crate::crypto::{
@@ -59,7 +59,7 @@ impl Wallet {
             publickey: publickey,
             privatekey: privatekey,
             slips: vec![],
-	    staked_slips: vec![],
+            staked_slips: vec![],
         }
     }
 
@@ -174,11 +174,13 @@ impl Wallet {
         wallet_slip.set_block_hash(block.get_hash());
         wallet_slip.set_lc(lc);
 
-	if slip.get_slip_type() == SlipType::StakerDeposit || slip.get_slip_type() == SlipType::StakerOutput {
+        if slip.get_slip_type() == SlipType::StakerDeposit
+            || slip.get_slip_type() == SlipType::StakerOutput
+        {
             self.staked_slips.push(wallet_slip);
-	} else {
+        } else {
             self.slips.push(wallet_slip);
-	}
+        }
     }
 
     pub fn delete_slip(&mut self, slip: &Slip) {
@@ -206,7 +208,7 @@ impl Wallet {
     }
 
     // the nolan_requested is omitted from the slips created - only the change
-    // address is provided as an output. so make sure that any function calling 
+    // address is provided as an output. so make sure that any function calling
     // this manually creates the output for its desired payment
     pub fn generate_slips(&mut self, nolan_requested: u64) -> (Vec<Slip>, Vec<Slip>) {
         let mut inputs: Vec<Slip> = vec![];
@@ -242,9 +244,9 @@ impl Wallet {
             nolan_out = nolan_in - nolan_requested;
         }
 
-	//
+        //
         // add change address
-	//
+        //
         let mut output = Slip::new();
         output.set_publickey(my_publickey);
         output.set_amount(nolan_out);
@@ -306,17 +308,15 @@ impl Wallet {
         transaction
     }
 
-
     //
-    // creates a transaction that will deposit tokens into the staking system in the 
+    // creates a transaction that will deposit tokens into the staking system in the
     // amount specified, if possible. the transaction will be invalid if there is not
     // enough UTXO in the wallet to make the payment.
     //
     pub async fn create_staking_deposit_transaction(
         &mut self,
-	total_requested: u64,
+        total_requested: u64,
     ) -> Transaction {
-
         let mut transaction = Transaction::new();
 
         transaction.set_transaction_type(TransactionType::StakerDeposit);
@@ -457,6 +457,4 @@ mod tests {
     fn wallet_new_test() {
         assert_eq!(true, true);
     }
-
-
 }

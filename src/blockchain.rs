@@ -7,10 +7,10 @@ use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
+use crate::staking::Staking;
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
-use crate::staking::Staking;
 
 use async_recursion::async_recursion;
 
@@ -70,8 +70,7 @@ impl Blockchain {
         self.fork_id
     }
 
-    pub async fn add_block(&mut self, block: Block, save_to_disk: bool) {
-
+    pub async fn add_block(&mut self, block: Block) {
         println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
@@ -238,7 +237,7 @@ impl Blockchain {
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
             if does_new_chain_validate {
-                self.add_block_success(block_hash, save_to_disk).await;
+                self.add_block_success(block_hash).await;
 
                 //
                 // TODO
@@ -292,13 +291,12 @@ impl Blockchain {
             }
         }
     }
-    pub async fn add_block_to_blockchain(blockchain_lock : Arc<RwLock<Blockchain>>, block: Block, save_to_disk : bool) {
+    pub async fn add_block_to_blockchain(blockchain_lock: Arc<RwLock<Blockchain>>, block: Block) {
         let mut blockchain = blockchain_lock.write().await;
-        return blockchain.add_block(block, save_to_disk).await;
+        return blockchain.add_block(block).await;
     }
 
-
-    pub async fn add_block_success(&mut self, block_hash: SaitoHash, save_to_disk: bool) {
+    pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
 
         let block_id;
@@ -310,9 +308,7 @@ impl Blockchain {
         {
             let block = self.get_mut_block(block_hash).await;
             block_id = block.get_id();
-            if save_to_disk || true {
-                Storage::write_block_to_disk(block);
-            }
+            Storage::write_block_to_disk(block);
 
             //
             // TMP - delete transactions
@@ -501,9 +497,8 @@ impl Blockchain {
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
-
-//        println!("{:?}", new_chain);
-//        println!("{:?}", old_chain);
+        //        println!("{:?}", new_chain);
+        //        println!("{:?}", old_chain);
 
         if old_chain.len() > new_chain.len() {
             println!("ERROR 1");
@@ -618,34 +613,44 @@ impl Blockchain {
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
         println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset).await;
-        println!(" ... after block.validate:       {:?} {}", create_timestamp(), does_block_validate);
+        println!(
+            " ... after block.validate:       {:?} {}",
+            create_timestamp(),
+            does_block_validate
+        );
 
         if does_block_validate {
             println!(" ... before block ocr            {:?}", create_timestamp());
 
-	    // utxoset update
+            // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
             println!(" ... before blockring ocr:       {:?}", create_timestamp());
 
-	    // blockring update
+            // blockring update
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
             // println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
-	    // staking tables update
-	    let (res_spend, res_unspend, res_delete) = self.staking
-                .on_chain_reorganization(block, true);
+            // staking tables update
+            let (res_spend, res_unspend, res_delete) =
+                self.staking.on_chain_reorganization(block, true);
 
-	    //
-	    // we cannot pass the UTXOSet into the staking object to update as that would
-	    // require multiple mutable borrows of the blockchain object, so we receive 
-	    // return vectors of the slips that need to be inserted, spent or deleted and
-	    // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
-	    // is in the staking tables.
-	    //
-	    for i in 0..res_spend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1); }
-	    for i in 0..res_unspend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0); }
-	    for i in 0..res_delete.len() { res_spend[i].delete(&mut self.utxoset); }
+            //
+            // we cannot pass the UTXOSet into the staking object to update as that would
+            // require multiple mutable borrows of the blockchain object, so we receive
+            // return vectors of the slips that need to be inserted, spent or deleted and
+            // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
+            // is in the staking tables.
+            //
+            for i in 0..res_spend.len() {
+                res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1);
+            }
+            for i in 0..res_unspend.len() {
+                res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0);
+            }
+            for i in 0..res_delete.len() {
+                res_spend[i].delete(&mut self.utxoset);
+            }
 
             //
             // we have received the first entry in new_blocks() which means we
@@ -760,28 +765,33 @@ impl Blockchain {
     ) -> bool {
         let block = &self.blocks[&old_chain[current_unwind_index]];
 
-	// utxoset update
+        // utxoset update
         block.on_chain_reorganization(&mut self.utxoset, false);
 
-	// blockring update
+        // blockring update
         self.blockring
             .on_chain_reorganization(block.get_id(), block.get_hash(), false);
 
-	// staking tables
-	let (res_spend, res_unspend, res_delete) = self.staking
-            .on_chain_reorganization(block, true);
+        // staking tables
+        let (res_spend, res_unspend, res_delete) =
+            self.staking.on_chain_reorganization(block, true);
 
-	//
-	// we cannot pass the UTXOSet into the staking object to update as that would
-	// require multiple mutable borrows of the blockchain object, so we receive 
-	// return vectors of the slips that need to be inserted, spent or deleted and
-	// handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
-	// is in the staking tables.
-	//
-	for i in 0..res_spend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1); }
-	for i in 0..res_unspend.len() { res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0); }
-	for i in 0..res_delete.len() { res_spend[i].delete(&mut self.utxoset); }
-
+        //
+        // we cannot pass the UTXOSet into the staking object to update as that would
+        // require multiple mutable borrows of the blockchain object, so we receive
+        // return vectors of the slips that need to be inserted, spent or deleted and
+        // handle this after-the-fact. this keeps the UTXOSet up-to-date with whatever
+        // is in the staking tables.
+        //
+        for i in 0..res_spend.len() {
+            res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 1);
+        }
+        for i in 0..res_unspend.len() {
+            res_spend[i].on_chain_reorganization(&mut self.utxoset, true, 0);
+        }
+        for i in 0..res_delete.len() {
+            res_spend[i].delete(&mut self.utxoset);
+        }
 
         if current_unwind_index == old_chain.len() - 1 {
             //
@@ -813,7 +823,6 @@ impl Blockchain {
             return res;
         }
     }
-
 
     pub async fn update_genesis_period(&mut self) {
         //
@@ -914,11 +923,12 @@ impl Blockchain {
     }
 
     pub async fn downgrade_blockchain_data(&mut self) {
-
         //
         // downgrade blocks still on the chain
         //
-	if PRUNE_AFTER_BLOCKS > self.get_latest_block_id() { return; }
+        if PRUNE_AFTER_BLOCKS > self.get_latest_block_id() {
+            return;
+        }
 
         let prune_blocks_at_block_id = self.get_latest_block_id() - PRUNE_AFTER_BLOCKS;
 
@@ -1105,7 +1115,7 @@ mod tests {
         {
             let mut blockchain = blockchain_lock.write().await;
             let block_copy = block.clone();
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
             let latest_block = blockchain.get_latest_block().unwrap();
@@ -1139,7 +1149,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_ne!(latest_block_id, blockchain.get_latest_block_id());
             assert_ne!(latest_block_hash, blockchain.get_latest_block_hash());
             //latest_block_id = blockchain.get_latest_block_id();
@@ -1177,7 +1187,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
         }
@@ -1281,7 +1291,7 @@ mod tests {
 
             {
                 let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block, false).await;
+                blockchain.add_block(block).await;
                 assert_eq!(test_block_hash, blockchain.get_latest_block_hash());
                 assert_eq!(test_block_id, blockchain.get_latest_block_id());
                 assert_eq!(

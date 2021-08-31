@@ -667,7 +667,6 @@ impl Transaction {
         longest_chain: bool,
         block_id: u64,
     ) {
-
         let mut input_slip_value = 1;
         let mut output_slip_value = 0;
 
@@ -786,7 +785,6 @@ impl Transaction {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
-
         //
         // User-Sent Transactions
         //
@@ -866,7 +864,6 @@ impl Transaction {
                 return false;
             }
         }
-
 
         //
         // fee transactions
