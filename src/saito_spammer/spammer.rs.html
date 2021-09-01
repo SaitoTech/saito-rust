@@ -221,18 +221,6 @@
 <span id="219">219</span>
 <span id="220">220</span>
 <span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 # Saito Transaction Spammer
@@ -240,8 +228,6 @@
 TODO: Fill in these docs
 
 */</span>
-<span class="kw">use</span> <span class="ident">saito_rust::networking::peer::PeersDB</span>;
-<span class="kw">use</span> <span class="ident">saito_rust::time::SystemTimestampGenerator</span>;
 <span class="kw">use</span> <span class="ident">saito_rust</span>::{
     <span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">miner::Miner</span>, <span class="ident">networking::network::Network</span>,
     <span class="ident">transaction::Transaction</span>, <span class="ident">util::format_url_string</span>, <span class="ident">wallet::Wallet</span>,
@@ -337,12 +323,10 @@ TODO: Fill in these docs
 
     <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
     <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-    <span class="kw">let</span> <span class="ident">peers_db_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">PeersDB::new</span>()));
 
     <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(
         <span class="ident">settings</span>.<span class="ident">clone</span>(),
         <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-        <span class="ident">peers_db_lock</span>.<span class="ident">clone</span>(),
         <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
         <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
     );
@@ -409,14 +393,7 @@ TODO: Fill in these docs
         }
     });
 
-    <span class="ident">run</span>(
-        <span class="ident">mempool_lock</span>,
-        <span class="ident">blockchain_lock</span>,
-        <span class="ident">miner_lock</span>,
-        <span class="ident">peers_db_lock</span>.<span class="ident">clone</span>(),
-        <span class="ident">network</span>,
-    )
-    .<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="ident">run</span>(<span class="ident">mempool_lock</span>, <span class="ident">blockchain_lock</span>, <span class="ident">miner_lock</span>, <span class="ident">network</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }
@@ -425,7 +402,6 @@ TODO: Fill in these docs
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">miner_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Miner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">peers_db_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">network</span>: <span class="ident">Network</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">saito_rust::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="kw">let</span> (<span class="ident">broadcast_channel_sender</span>, <span class="ident">broadcast_channel_receiver</span>) <span class="op">=</span> <span class="ident">broadcast::channel</span>(<span class="number">32</span>);
@@ -458,13 +434,13 @@ TODO: Fill in these docs
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
             }
         },
-        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>(<span class="ident">peers_db_lock</span>.<span class="ident">clone</span>()) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>() <span class="op">=</span><span class="op">&gt;</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
             }
         }
     }
-
+    <span class="macro">println!</span>(<span class="string">&quot;exiting..?&quot;</span>);
     <span class="prelude-val">Ok</span>(())
 }
 </pre></div>

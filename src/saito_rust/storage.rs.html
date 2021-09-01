@@ -134,26 +134,6 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
-<span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
-<span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">fs</span>::{<span class="self">self</span>, <span class="ident">File</span>},
@@ -167,17 +147,9 @@
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCKS_DIR_PATH</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;./data/blocks/&quot;</span>;
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Storage</span> {
-    <span class="comment">// blocks_dir_path: String,</span>
-}
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Storage</span> {}
 
 <span class="kw">impl</span> <span class="ident">Storage</span> {
-    <span class="comment">// pub fn new() -&gt; Self {</span>
-    <span class="comment">//     Storage {</span>
-    <span class="comment">//         blocks_dir_path: String::from(&quot;./data/blocks/&quot;),</span>
-    <span class="comment">//     }</span>
-    <span class="comment">// }</span>
-
     <span class="doccomment">/// read from a path to a Vec&lt;u8&gt;</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">std::fs::File::open</span>(<span class="ident">path</span>)<span class="question-mark">?</span>;
@@ -251,7 +223,6 @@
                 <span class="op">&amp;&amp;</span> <span class="ident">path</span>.<span class="ident">path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>()
                     <span class="op">!</span><span class="op">=</span> <span class="ident">String::from</span>(<span class="ident">BLOCKS_DIR_PATH</span>).<span class="ident">clone</span>() <span class="op">+</span> <span class="string">&quot;.gitignore&quot;</span>
             {
-                <span class="macro">println!</span>(<span class="string">&quot;PATH: {:?}&quot;</span>, <span class="ident">path</span>);
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">File::open</span>(<span class="ident">path</span>.<span class="ident">path</span>()).<span class="ident">unwrap</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="ident">::new</span>();
                 <span class="ident">f</span>.<span class="ident">read_to_end</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">encoded</span>).<span class="ident">unwrap</span>();
@@ -263,18 +234,9 @@
                 <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_hash</span>() <span class="op">=</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>] {
                     <span class="ident">block</span>.<span class="ident">generate_hashes</span>();
                 }
-                <span class="macro">println!</span>(
-                    <span class="string">&quot;loading block with hash: {:?}&quot;</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_hash</span>())
-                );
-                <span class="macro">println!</span>(
-                    <span class="string">&quot;block&#39;s previous hash: {:?}&quot;</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>())
-                );
 
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                 <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>, <span class="bool-val">false</span>).<span class="kw">await</span>;
-                <span class="comment">// println!(&quot;Loaded block {} of {}&quot;, pos, paths.len() - 1);</span>
             }
         }
     }
@@ -293,13 +255,11 @@
         <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_hash</span>() <span class="op">=</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>] {
             <span class="ident">block</span>.<span class="ident">generate_hashes</span>();
         }
-        <span class="macro">println!</span>(<span class="string">&quot;loaded block: {}&quot;</span>, <span class="ident">filename</span>);
 
         <span class="kw">return</span> <span class="ident">block</span>;
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete_block_from_disk</span>(<span class="ident">filename</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="macro">println!</span>(<span class="string">&quot;deleting {}&quot;</span>, <span class="ident">filename</span>);
         <span class="kw">let</span> <span class="ident">_res</span> <span class="op">=</span> <span class="ident">std::fs::remove_file</span>(<span class="ident">filename</span>);
         <span class="bool-val">true</span>
     }

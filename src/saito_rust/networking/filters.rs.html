@@ -80,7 +80,6 @@
 <span id="78">78</span>
 <span id="79">79</span>
 <span id="80">80</span>
-<span id="81">81</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool::Mempool</span>;
@@ -91,17 +90,16 @@
 <span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">body</span>, <span class="ident">Filter</span>, <span class="ident">Reply</span>};
 
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::handlers</span>::{<span class="ident">get_block_handler</span>, <span class="ident">post_transaction_handler</span>, <span class="ident">ws_upgrade_handler</span>};
-<span class="kw">use</span> <span class="kw">super</span><span class="ident">::peer::PeersDB</span>;
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::peer</span>::{<span class="ident">PeersDB</span>, <span class="ident">PEERS_DB_GLOBAL</span>};
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ws_upgrade_route_filter</span>(
-    <span class="ident">peers_db_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">Extract</span> <span class="op">=</span> (<span class="kw">impl</span> <span class="ident">Reply</span>,), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">warp::Rejection</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {
     <span class="ident">warp::path</span>(<span class="string">&quot;wsopen&quot;</span>)
         .<span class="ident">and</span>(<span class="ident">warp::ws</span>())
-        .<span class="ident">and</span>(<span class="ident">with_peers_filter</span>(<span class="ident">peers_db_lock</span>.<span class="ident">clone</span>()))
+        .<span class="ident">and</span>(<span class="ident">with_peers_filter</span>())
         .<span class="ident">and</span>(<span class="ident">with_wallet</span>(<span class="ident">wallet_lock</span>))
         .<span class="ident">and</span>(<span class="ident">with_mempool</span>(<span class="ident">mempool_lock</span>))
         .<span class="ident">and</span>(<span class="ident">with_blockchain</span>(<span class="ident">blockchain_lock</span>))
@@ -143,11 +141,11 @@
         .<span class="ident">and_then</span>(<span class="ident">post_transaction_handler</span>)
 }
 
-<span class="kw">fn</span> <span class="ident">with_peers_filter</span>(
-    <span class="ident">peers_db_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">Extract</span> <span class="op">=</span> (<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Infallible</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {
-    <span class="ident">warp::any</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">peers_db_lock</span>.<span class="ident">clone</span>())
+<span class="kw">fn</span> <span class="ident">with_peers_filter</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">Extract</span> <span class="op">=</span> (<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Infallible</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span>
+{
+    <span class="ident">warp::any</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>())
 }
+
 <span class="kw">fn</span> <span class="ident">with_wallet</span>(
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">Extract</span> <span class="op">=</span> (<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">Infallible</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {

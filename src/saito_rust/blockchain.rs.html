@@ -1500,6 +1500,8 @@
 <span id="1498">1498</span>
 <span id="1499">1499</span>
 <span id="1500">1500</span>
+<span id="1501">1501</span>
+<span id="1502">1502</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -1976,7 +1978,7 @@
         <span class="ident">peer_latest_block_id</span>: <span class="ident">u64</span>,
         <span class="ident">fork_id</span>: <span class="ident">SaitoHash</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">my_latest_block_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>();
+        <span class="kw">let</span> <span class="ident">my_latest_block_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pbid</span> <span class="op">=</span> <span class="ident">peer_latest_block_id</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mbid</span> <span class="op">=</span> <span class="ident">my_latest_block_id</span>;
@@ -2797,6 +2799,7 @@
             <span class="ident">latest_block_hash</span>,
             <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
             <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">create_timestamp</span>(),
         )
         .<span class="kw">await</span>;
 
@@ -2932,6 +2935,7 @@
                     <span class="ident">current_block_hash</span>,
                     <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
                     <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+                    <span class="ident">create_timestamp</span>(),
                 )
                 .<span class="kw">await</span>;
 

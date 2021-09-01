@@ -2698,7 +2698,7 @@
                 <span class="ident">cv</span>.<span class="ident">expected_difficulty</span> <span class="op">=</span> <span class="ident">difficulty</span>;
             }
         } <span class="kw">else</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;CAN&#39;T FIND PREVIOUSLY BLOCK&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;Previous block not found&quot;</span>);
         }
 
         <span class="comment">//</span>
@@ -3404,8 +3404,8 @@
         <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>,
         <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">current_timestamp</span>: <span class="ident">u64</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
-        <span class="kw">let</span> <span class="ident">current_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
         <span class="kw">return</span> <span class="ident">Block::generate_with_timestamp</span>(
             <span class="ident">transactions</span>,
             <span class="ident">previous_block_hash</span>,

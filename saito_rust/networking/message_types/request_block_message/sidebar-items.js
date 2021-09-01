@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["BLOCK_HASH_MASK",""],["BLOCK_ID_MASK",""],["SYNC_TYPE_MASK",""]],"struct":[["RequestBlockMessage","block_id(starts with latest)block_hash(starts with latest)fork_idsynctype(optional)"]],"type":[["RequestBlockMessageOptionsMask",""]]});

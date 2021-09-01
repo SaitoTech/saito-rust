@@ -178,7 +178,7 @@
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">ws_upgrade_handler</span>(
     <span class="ident">ws</span>: <span class="ident">warp::ws::Ws</span>,
-    <span class="ident">peers_db_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">peer_db_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -192,7 +192,7 @@
     <span class="prelude-val">Ok</span>(<span class="ident">ws</span>.<span class="ident">on_upgrade</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">socket</span><span class="op">|</span> {
         <span class="ident">handle_inbound_peer_connection</span>(
             <span class="ident">socket</span>,
-            <span class="ident">peers_db_lock</span>,
+            <span class="ident">peer_db_lock</span>,
             <span class="ident">wallet_lock</span>,
             <span class="ident">mempool_lock</span>,
             <span class="ident">blockchain_lock</span>,

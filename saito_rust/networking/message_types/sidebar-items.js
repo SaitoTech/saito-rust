@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["handshake_challenge",""],["request_blockchain_message",""],["send_blockchain_message",""]]});
+initSidebarItems({"mod":[["handshake_challenge",""],["request_block_message",""],["request_blockchain_message",""],["send_blockchain_message",""]]});

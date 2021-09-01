@@ -186,20 +186,17 @@
 <span id="184">184</span>
 <span id="185">185</span>
 <span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::network::Network</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::peer::PeersDB</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time::SystemTimestampGenerator</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">transaction::Transaction</span>};
 <span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">App</span>, <span class="ident">Arg</span>};
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">future::Future</span>, <span class="ident">sync::Arc</span>};
+<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+<span class="kw">use</span> <span class="ident">tokio::signal</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>};
 <span class="doccomment">/// The consensus state which exposes a run method</span>
@@ -226,7 +223,7 @@
 }
 
 <span class="doccomment">/// Run the Saito consensus runtime</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="ident">shutdown</span>: <span class="kw">impl</span> <span class="ident">Future</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="comment">//</span>
     <span class="comment">// handle shutdown messages using broadcast channel</span>
     <span class="comment">//</span>
@@ -244,7 +241,7 @@
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>);
             }
         },
-        <span class="kw">_</span> <span class="op">=</span> <span class="ident">shutdown</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="kw">_</span> <span class="op">=</span> <span class="ident">signal::ctrl_c</span>() <span class="op">=</span><span class="op">&gt;</span> {
             <span class="macro">println!</span>(<span class="string">&quot;Shutting down!&quot;</span>)
         }
     }
@@ -309,12 +306,9 @@
         <span class="comment">// broadcast cross-system messages. See SaitoMessage ENUM above</span>
         <span class="comment">// for information on cross-system notifications.</span>
         <span class="comment">//</span>
-
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>(<span class="ident">key_path</span>, <span class="ident">password</span>)));
-        <span class="kw">let</span> <span class="ident">peers_db_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">PeersDB::new</span>()));
 
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-
         <span class="comment">// Load blocks from disk if configured</span>
         <span class="kw">let</span> <span class="ident">load_blocks_from_disk</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>(<span class="string">&quot;storage.load_blocks_from_disk&quot;</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">can_load</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">can_load</span>,
@@ -325,17 +319,14 @@
         <span class="kw">if</span> <span class="ident">load_blocks_from_disk</span> {
             <span class="ident">Storage::load_blocks_from_disk</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
         }
-
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(
             <span class="ident">settings</span>,
             <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">peers_db_lock</span>.<span class="ident">clone</span>(),
             <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
             <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
         );
-
         <span class="macro">tokio::select!</span> {
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::mempool::run</span>(
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
@@ -344,7 +335,7 @@
                 <span class="ident">broadcast_channel_receiver</span>,
             ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;mempool err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
             },
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::blockchain::run</span>(
@@ -353,7 +344,7 @@
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;blockchain err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
             },
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::miner::run</span>(
@@ -362,14 +353,19 @@
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;miner err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
             },
-            <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>(<span class="ident">peers_db_lock</span>.<span class="ident">clone</span>()) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;network err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
-            }
+            },
+            <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run_server</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
+                    <span class="macro">eprintln!</span>(<span class="string">&quot;run_server err {:?}&quot;</span>, <span class="ident">err</span>)
+                }
+            },
             <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">_shutdown_complete_tx</span>.<span class="ident">closed</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="macro">println!</span>(<span class="string">&quot;Shutdown message complete&quot;</span>)
             }
