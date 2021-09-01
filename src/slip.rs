@@ -1,7 +1,6 @@
 use crate::{
     blockchain::UtxoSet,
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
-    transaction::TransactionType,
 };
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};

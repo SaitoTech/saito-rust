@@ -473,7 +473,7 @@ impl Blockchain {
         peer_latest_block_id: u64,
         fork_id: SaitoHash,
     ) -> u64 {
-        let mut my_latest_block_id = self.get_latest_block_id();
+        let my_latest_block_id = self.get_latest_block_id();
 
         let mut pbid = peer_latest_block_id;
         let mut mbid = my_latest_block_id;
@@ -1294,6 +1294,7 @@ mod tests {
             latest_block_hash,
             wallet_lock.clone(),
             blockchain_lock.clone(),
+            create_timestamp(),
         )
         .await;
 
@@ -1429,6 +1430,7 @@ mod tests {
                     current_block_hash,
                     wallet_lock.clone(),
                     blockchain_lock.clone(),
+                    create_timestamp(),
                 )
                 .await;
 
