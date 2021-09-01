@@ -229,7 +229,7 @@ impl Mempool {
         if let Some(previous_block) = blockchain.get_latest_block() {
             let work_available = self.calculate_work_available();
             let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
-            
+
             work_available >= work_needed
         } else {
             true
@@ -408,7 +408,11 @@ pub async fn run(
 mod tests {
 
     use super::*;
-    use crate::{block::Block, test_utilities::mocks::{add_vip_block, make_block_with_mempool}, wallet::Wallet};
+    use crate::{
+        block::Block,
+        test_utilities::mocks::{add_vip_block, make_block_with_mempool},
+        wallet::Wallet,
+    };
 
     use std::sync::Arc;
     use tokio::sync::RwLock;

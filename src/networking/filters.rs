@@ -58,8 +58,8 @@ pub fn post_transaction_route_filter(
         .and_then(post_transaction_handler)
 }
 
-fn with_peers_filter(
-) -> impl Filter<Extract = (Arc<RwLock<PeersDB>>,), Error = Infallible> + Clone {
+fn with_peers_filter() -> impl Filter<Extract = (Arc<RwLock<PeersDB>>,), Error = Infallible> + Clone
+{
     warp::any().map(move || PEERS_DB_GLOBAL.clone())
 }
 

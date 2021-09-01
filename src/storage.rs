@@ -10,8 +10,7 @@ use crate::{block::Block, blockchain::Blockchain, crypto::SaitoHash};
 
 pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
 
-pub struct Storage {
-}
+pub struct Storage {}
 
 impl Storage {
     /// read from a path to a Vec<u8>

@@ -492,7 +492,7 @@ mod tests {
     #[test]
     fn staking_table_test() {
         let mut staking = Staking::new();
-        
+
         let mut slip1 = Slip::new();
         slip1.set_amount(200_000_000);
         slip1.set_slip_type(SlipType::StakerDeposit);
@@ -752,7 +752,7 @@ mod tests {
         //
         {
             let blockchain = blockchain_lock.write().await;
-            
+
             //
             // second staker payment should have happened and staking table reset
             //

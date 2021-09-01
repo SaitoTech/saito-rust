@@ -99,7 +99,7 @@ pub async fn main() -> saito_rust::Result<()> {
 
     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
     let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-    
+
     let network = Network::new(
         settings.clone(),
         wallet_lock.clone(),
@@ -169,13 +169,7 @@ pub async fn main() -> saito_rust::Result<()> {
         }
     });
 
-    run(
-        mempool_lock,
-        blockchain_lock,
-        miner_lock,
-        network,
-    )
-    .await?;
+    run(mempool_lock, blockchain_lock, miner_lock, network).await?;
 
     Ok(())
 }

@@ -12,7 +12,7 @@ use crate::wallet::Wallet;
 use futures::StreamExt;
 use secp256k1::PublicKey;
 use tokio::sync::RwLock;
-use tokio_tungstenite::{connect_async};
+use tokio_tungstenite::connect_async;
 use uuid::Uuid;
 
 use std::sync::Arc;
@@ -20,7 +20,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use warp::{Filter, Rejection};
 
-use super::peer::{OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL, PeerSetting};
+use super::peer::{PeerSetting, OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL};
 
 use config::Config;
 
@@ -50,16 +50,17 @@ impl Network {
             blockchain_lock,
         }
     }
-    pub async fn connect_to_peer(
-        connection_id: SaitoHash,
-        wallet_lock: Arc<RwLock<Wallet>>,
-    ) {
+    pub async fn connect_to_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let peer_url;
         {
             let mut peer_db = peers_db_global.write().await;
             let peer = peer_db.get_mut(&connection_id).unwrap();
-            peer_url = url::Url::parse(&format!("ws://{}/wsopen", format_url_string(peer.get_host().unwrap(), peer.get_port().unwrap()),)).unwrap();
+            peer_url = url::Url::parse(&format!(
+                "ws://{}/wsopen",
+                format_url_string(peer.get_host().unwrap(), peer.get_port().unwrap()),
+            ))
+            .unwrap();
             peer.set_is_connected_or_connecting(true).await;
         }
 
@@ -69,9 +70,10 @@ impl Network {
             Ok((ws_stream, _)) => {
                 let (write_sink, mut read_stream) = ws_stream.split();
                 let outbound_peer_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
-                outbound_peer_db_global.write().await.insert(connection_id, OutboundPeer {
-                    write_sink,
-                });
+                outbound_peer_db_global
+                    .write()
+                    .await
+                    .insert(connection_id, OutboundPeer { write_sink });
 
                 let publickey: SaitoPublicKey;
                 {
@@ -118,7 +120,7 @@ impl Network {
                                     println!("Error reading from peer socket {}", error);
                                     let peers_db_global = PEERS_DB_GLOBAL.clone();
                                     let mut peer_db = peers_db_global.write().await;
-                                    let peer = peer_db.get_mut(&connection_id).unwrap();   
+                                    let peer = peer_db.get_mut(&connection_id).unwrap();
                                     peer.set_is_connected_or_connecting(false).await;
                                 }
                             }
@@ -127,12 +129,10 @@ impl Network {
                 }).await;
             }
             Err(error) => {
-                {
-                    println!("Error connecting to peer {}", error);
-                    let mut peer_db = peers_db_global.write().await;
-                    let peer = peer_db.get_mut(&connection_id).unwrap();
-                    peer.set_is_connected_or_connecting(false).await;
-                }
+                println!("Error connecting to peer {}", error);
+                let mut peer_db = peers_db_global.write().await;
+                let peer = peer_db.get_mut(&connection_id).unwrap();
+                peer.set_is_connected_or_connecting(false).await;
             }
         }
     }
@@ -175,62 +175,64 @@ impl Network {
     pub async fn spawn_reconnect_to_configured_peers_task(
         &self,
         wallet_lock: Arc<RwLock<Wallet>>,
-    ) -> crate::Result<()> { 
+    ) -> crate::Result<()> {
         let _foo = tokio::spawn(async move {
             loop {
                 let peer_states: Vec<(SaitoHash, bool)>;
                 {
                     let peers_db_global = PEERS_DB_GLOBAL.clone();
-                    let peers_db = peers_db_global
-                        .read()
-                        .await;
+                    let peers_db = peers_db_global.read().await;
                     println!("try reconnect... peer count: {}", peers_db.keys().len());
-                    peer_states = peers_db.keys().map(|connection_id| {
-                        let peer = peers_db.get(connection_id).unwrap();
-                        println!("get_is_from_peer_list {}, get_is_connected_or_connecting {}", peer.get_is_from_peer_list(), peer.get_is_connected_or_connecting());
-                        let should_try_reconnect = peer.get_is_from_peer_list() && !peer.get_is_connected_or_connecting();
-                        (*connection_id, should_try_reconnect)
-                    }).collect::<Vec<(SaitoHash, bool)>>();
+                    peer_states = peers_db
+                        .keys()
+                        .map(|connection_id| {
+                            let peer = peers_db.get(connection_id).unwrap();
+                            println!(
+                                "get_is_from_peer_list {}, get_is_connected_or_connecting {}",
+                                peer.get_is_from_peer_list(),
+                                peer.get_is_connected_or_connecting()
+                            );
+                            let should_try_reconnect = peer.get_is_from_peer_list()
+                                && !peer.get_is_connected_or_connecting();
+                            (*connection_id, should_try_reconnect)
+                        })
+                        .collect::<Vec<(SaitoHash, bool)>>();
                 }
                 for (connection_id, should_try_reconnect) in peer_states {
                     if should_try_reconnect {
                         println!("found disconnected peer...");
-                        Network::connect_to_peer(
-                            connection_id,
-                            wallet_lock.clone(),
-                        ).await;
+                        Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
                     }
                 }
                 sleep(Duration::from_millis(1000));
             }
-            
-        }).await.expect("error: spawn_reconnect_to_configured_peers_task failed");
+        })
+        .await
+        .expect("error: spawn_reconnect_to_configured_peers_task failed");
         Ok(())
     }
-    pub async fn run_server(
-        &self,
-    ) -> crate::Result<()> {
+    pub async fn run_server(&self) -> crate::Result<()> {
         let host: [u8; 4] = self.config_settings.get::<[u8; 4]>("network.host").unwrap();
         let port: u16 = self.config_settings.get::<u16>("network.port").unwrap();
 
         let routes = get_block_route_filter()
-        .or(post_transaction_route_filter(
-            self.mempool_lock.clone(),
-            self.blockchain_lock.clone(),
-        ))
-        .or(ws_upgrade_route_filter(
-            self.wallet_lock.clone(),
-            self.mempool_lock.clone(),
-            self.blockchain_lock.clone(),
-        ));
+            .or(post_transaction_route_filter(
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ))
+            .or(ws_upgrade_route_filter(
+                self.wallet_lock.clone(),
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ));
         warp::serve(routes).run((host, port)).await;
         Ok(())
     }
-    pub async fn run(
-        &self,
-    ) -> crate::Result<()> {
+    pub async fn run(&self) -> crate::Result<()> {
         self.connect_to_configured_peers().await;
-        let _foo = self.spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone()).await;
+        let _foo = self
+            .spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
+            .await;
         Ok(())
     }
 }
@@ -240,11 +242,20 @@ mod tests {
     use std::convert::TryInto;
 
     use super::*;
-    use crate::{crypto::{generate_keys, hash, sign_blob, verify, SaitoSignature}, mempool::Mempool, networking::{api_message::APIMessage, filters::ws_upgrade_route_filter, message_types::{
+    use crate::{
+        crypto::{generate_keys, hash, sign_blob, verify, SaitoSignature},
+        mempool::Mempool,
+        networking::{
+            api_message::APIMessage,
+            filters::ws_upgrade_route_filter,
+            message_types::{
                 handshake_challenge::HandshakeChallenge,
                 request_blockchain_message::RequestBlockchainMessage,
-            }
-        }, test_utilities::mocks::make_mock_blockchain, transaction::Transaction};
+            },
+        },
+        test_utilities::mocks::make_mock_blockchain,
+        transaction::Transaction,
+    };
     use secp256k1::PublicKey;
     use warp::ws::Message;
 
@@ -256,7 +267,7 @@ mod tests {
             message_data: String::from("SOMEDATA").as_bytes().try_into().unwrap(),
         };
         let serialized_api_message = api_message.serialize();
-    
+
         let deserialized_api_message = APIMessage::deserialize(&serialized_api_message);
         assert_eq!(api_message, deserialized_api_message);
     }
@@ -352,7 +363,7 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        
+
         let (publickey, _privatekey) = generate_keys();
 
         let socket_filter = ws_upgrade_route_filter(
@@ -402,7 +413,7 @@ mod tests {
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
-        
+
         let socket_filter = ws_upgrade_route_filter(
             wallet_lock.clone(),
             mempool_lock.clone(),

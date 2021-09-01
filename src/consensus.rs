@@ -6,8 +6,8 @@ use crate::storage::Storage;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use clap::{App, Arg};
+use std::sync::Arc;
 use tokio::signal;
-use std::{sync::Arc};
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
 /// The consensus state which exposes a run method
@@ -118,7 +118,7 @@ impl Consensus {
         // for information on cross-system notifications.
         //
         let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
-        
+
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         // Load blocks from disk if configured
         let load_blocks_from_disk = match settings.get::<bool>("storage.load_blocks_from_disk") {

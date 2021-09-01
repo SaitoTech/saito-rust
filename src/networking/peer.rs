@@ -1,3 +1,5 @@
+use super::api_message::APIMessage;
+use super::network::CHALLENGE_EXPIRATION_TIME;
 use crate::block::Block;
 use crate::blockchain::{Blockchain, GENESIS_PERIOD};
 use crate::crypto::{hash, sign_blob, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
@@ -21,17 +23,14 @@ use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
-use super::api_message::APIMessage;
-use super::network::CHALLENGE_EXPIRATION_TIME;
 
 use futures::{FutureExt, SinkExt, StreamExt};
 use tokio::net::TcpStream;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, tungstenite};
+use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
 
 pub type PeersDB = HashMap<SaitoHash, BasePeer>;
 pub type OutboundPeersDB = HashMap<SaitoHash, OutboundPeer>;
 pub type InboundPeersDB = HashMap<SaitoHash, InboundPeer>;
-
 
 lazy_static::lazy_static! {
     // We use Arc for thread-safe reference counting and Mutex for thread-safe mutabilitity
@@ -39,7 +38,6 @@ lazy_static::lazy_static! {
     pub static ref INBOUND_PEER_CONNECTIONS_GLOBAL: Arc<RwLock<InboundPeersDB>> = Arc::new(RwLock::new(InboundPeersDB::new()));
     pub static ref OUTBOUND_PEER_CONNECTIONS_GLOBAL: Arc<RwLock<OutboundPeersDB>> = Arc::new(RwLock::new(OutboundPeersDB::new()));
 }
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerSetting {
@@ -121,7 +119,7 @@ impl BasePeer {
     }
     pub fn get_publickey(&self) -> Option<SaitoPublicKey> {
         self.publickey
-    } 
+    }
     pub async fn set_is_connected_or_connecting(&mut self, is_connected_or_connecting: bool) {
         // we need to clean out the connections from the connection DBs if we disconnected
         if !is_connected_or_connecting {
@@ -140,27 +138,27 @@ impl BasePeer {
     }
     pub fn get_is_connected_or_connecting(&self) -> bool {
         self.peer_flags.is_connected_or_connecting
-    } 
+    }
     pub fn get_host(&self) -> Option<[u8; 4]> {
         self.host
-    } 
+    }
     pub fn get_port(&self) -> Option<u16> {
         self.port
-    } 
+    }
     pub fn get_connection_id(&self) -> SaitoHash {
         self.connection_id
-    } 
-    
+    }
+
     async fn send(&mut self, api_message: APIMessage) {
         println!("SEND {}", api_message.message_name_as_string());
         let outbound_peer_connection_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
         let mut outbound_peer_connection_db = outbound_peer_connection_db_global.write().await;
         let inbound_peer_connection_db_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
         let mut inbound_peer_connection_db = inbound_peer_connection_db_global.write().await;
-        
+
         let outbound_peer_connection = outbound_peer_connection_db.get_mut(&self.connection_id);
         let inbound_peer_connection = inbound_peer_connection_db.get_mut(&self.connection_id);
-        
+
         if inbound_peer_connection.is_some() && outbound_peer_connection.is_some() {
             panic!("Peer has both inbound and outbound connections, this should never happen");
         }
@@ -469,7 +467,6 @@ impl BasePeer {
             _ => {}
         }
     }
-    
 }
 
 pub async fn handle_inbound_peer_connection(
@@ -482,13 +479,11 @@ pub async fn handle_inbound_peer_connection(
     let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
     let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
     let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
-    tokio::task::spawn(
-        peer_rcv.forward(peer_ws_sender).map(|result| {
-            if let Err(e) = result {
-                eprintln!("error sending websocket msg: {}", e);
-            }
-        })
-    );
+    tokio::task::spawn(peer_rcv.forward(peer_ws_sender).map(|result| {
+        if let Err(e) = result {
+            eprintln!("error sending websocket msg: {}", e);
+        }
+    }));
 
     let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
     let peer = BasePeer::new(
@@ -502,13 +497,19 @@ pub async fn handle_inbound_peer_connection(
         mempool_lock.clone(),
         blockchain_lock.clone(),
     );
-    
-    peer_db_lock.write().await.insert(connection_id.clone(), peer);
+
+    peer_db_lock
+        .write()
+        .await
+        .insert(connection_id.clone(), peer);
 
     let inbound_peer_db_lock_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
-    inbound_peer_db_lock_global.write().await.insert(connection_id.clone(), InboundPeer{
-        sender: peer_sender
-    });
+    inbound_peer_db_lock_global.write().await.insert(
+        connection_id.clone(),
+        InboundPeer {
+            sender: peer_sender,
+        },
+    );
 
     println!("{:?} connected", connection_id);
 
@@ -517,10 +518,7 @@ pub async fn handle_inbound_peer_connection(
             let msg = match result {
                 Ok(msg) => msg,
                 Err(e) => {
-                    eprintln!(
-                        "error receiving ws message for peer: {}",
-                        e
-                    );
+                    eprintln!("error receiving ws message for peer: {}", e);
                     break;
                 }
             };
@@ -533,12 +531,17 @@ pub async fn handle_inbound_peer_connection(
                 println!("Message of length 0... why?");
                 println!("This seems to occur if we aren't holding a reference to the sender/stream on the");
                 println!("other end of the connection. I suspect that when the stream goes out of scope,");
-                println!("it's deconstructor is being called and sends a 0 length message to indicate");
-                println!("that the stream has ended... I'm leaving this println here for now because");
-                println!("it would be very helpful to see this if starts to occur again. We may want to");
+                println!(
+                    "it's deconstructor is being called and sends a 0 length message to indicate"
+                );
+                println!(
+                    "that the stream has ended... I'm leaving this println here for now because"
+                );
+                println!(
+                    "it would be very helpful to see this if starts to occur again. We may want to"
+                );
                 println!("treat this as a disconnect.");
             }
-            
         }
         // We had some error. Remove all references to this peer.
         {

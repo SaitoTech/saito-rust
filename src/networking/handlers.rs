@@ -12,7 +12,7 @@ use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
 
-use super::peer::{PeersDB};
+use super::peer::PeersDB;
 
 #[derive(Debug)]
 struct Invalid;
