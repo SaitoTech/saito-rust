@@ -480,6 +480,7 @@ mod tests {
 
     use super::*;
     use crate::test_utilities::mocks::make_mock_block_with_info;
+    use crate::test_utilities::test_manager::TestManager;
     use crate::{
         blockchain::Blockchain,
         slip::{Slip, SlipType},
@@ -819,7 +820,7 @@ mod tests {
         transactions.push(stx1);
         transactions.push(stx2);
         current_timestamp = create_timestamp() + 120000;
-        block = Block::generate_with_timestamp(
+        block = Block::generate(
             &mut transactions,
             latest_block_hash,
             wallet_lock.clone(),
@@ -954,7 +955,7 @@ mod tests {
         let mut transactions: Vec<Transaction> = vec![];
         transactions.push(wstx1);
         current_timestamp = create_timestamp() + 600000;
-        block = Block::generate_with_timestamp(
+        block = Block::generate(
             &mut transactions,
             latest_block_hash,
             wallet_lock.clone(),
@@ -979,4 +980,108 @@ mod tests {
 
         //assert_eq!(0, 1);
     }
+
+
+
+    #[tokio::test]
+    async fn blockchain_roll_forward_staking_table_test_new() {
+
+        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+	let test_manager = TestManager::new(blockchain_lock, wallet_lock);
+
+        let publickey;
+        let mut latest_block_hash = [0; 32];
+        let mut current_timestamp = create_timestamp();
+
+        {
+            let wallet = wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+        }
+
+        //
+        // initialize blockchain staking table
+        //
+        {
+            let mut blockchain = blockchain_lock.write().await;
+
+            let mut slip1 = Slip::new();
+            slip1.set_amount(200_000_000);
+            slip1.set_slip_type(SlipType::StakerDeposit);
+
+            let mut slip2 = Slip::new();
+            slip2.set_amount(300_000_000);
+            slip2.set_slip_type(SlipType::StakerDeposit);
+
+            slip1.set_publickey(publickey);
+            slip2.set_publickey(publickey);
+
+            slip1.generate_utxoset_key();
+            slip2.generate_utxoset_key();
+
+            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 0);
+            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 0);
+
+            blockchain.staking.add_deposit(slip1);
+            blockchain.staking.add_deposit(slip2);
+
+            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
+        }
+
+        //
+        // BLOCK 1
+        //
+        test_manager.add_block(
+            current_timestamp,
+            3,
+            0,
+            false,
+	    vec![],
+        )
+        .await;
+
+        //
+        // BLOCK 2
+        //
+        test_manager.add_block(
+            current_timestamp + 120000,
+            0,
+            1,
+            false,
+        )
+        .await;
+
+        //
+        // BLOCK 3
+        //
+        test_manager.add_block(
+            current_timestamp + 240000,
+            0,
+            1,
+            true,
+        )
+        .await;
+
+        //
+        // BLOCK 4
+        //
+        test_manager.add_block(
+            current_timestamp + 360000,
+            0,
+            1,
+            true,
+        )
+        .await;
+
+
+        {
+            let blockchain = blockchain_lock.write().await;
+            let blk = blockchain.get_block(latest_block_hash).await;
+            println!("STAKERS: {:?}", blockchain.staking.stakers);
+            println!("PENDING: {:?}", blockchain.staking.pending);
+            println!("DEPOSIT: {:?}", blockchain.staking.deposits);
+        }
+
+    }
+
 }

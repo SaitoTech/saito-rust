@@ -248,6 +248,7 @@ impl Mempool {
             previous_block_hash,
             self.wallet_lock.clone(),
             blockchain_lock.clone(),
+	    create_timestamp(),
         )
         .await;
 

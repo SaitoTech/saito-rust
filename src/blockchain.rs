@@ -1294,6 +1294,7 @@ mod tests {
             latest_block_hash,
             wallet_lock.clone(),
             blockchain_lock.clone(),
+	    create_timestamp(),
         )
         .await;
 
@@ -1324,7 +1325,7 @@ mod tests {
         // Add second BAD block (no transactions)
         //
         let future_timestamp = create_timestamp() + 120000;
-        let block = Block::generate_with_timestamp(
+        let block = Block::generate(
             &mut transactions,
             latest_block_hash,
             wallet_lock.clone(),
@@ -1362,7 +1363,7 @@ mod tests {
         transactions.push(tx2);
 
         let future_timestamp2 = create_timestamp() + 120000;
-        let block = Block::generate_with_timestamp(
+        let block = Block::generate(
             &mut transactions,
             latest_block_hash,
             wallet_lock.clone(),
@@ -1429,6 +1430,7 @@ mod tests {
                     current_block_hash,
                     wallet_lock.clone(),
                     blockchain_lock.clone(),
+		    create_timestamp(),
                 )
                 .await;
 
@@ -1465,7 +1467,7 @@ mod tests {
 
                 let future_timestamp = create_timestamp() + (i * 120000);
 
-                block = Block::generate_with_timestamp(
+                block = Block::generate(
                     &mut transactions,
                     last_block_hash,
                     wallet_lock.clone(),

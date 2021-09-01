@@ -1524,23 +1524,6 @@ impl Block {
         previous_block_hash: SaitoHash,
         wallet_lock: Arc<RwLock<Wallet>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
-    ) -> Block {
-        let current_timestamp = create_timestamp();
-        return Block::generate_with_timestamp(
-            transactions,
-            previous_block_hash,
-            wallet_lock,
-            blockchain_lock,
-            current_timestamp,
-        )
-        .await;
-    }
-
-    pub async fn generate_with_timestamp(
-        transactions: &mut Vec<Transaction>,
-        previous_block_hash: SaitoHash,
-        wallet_lock: Arc<RwLock<Wallet>>,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
         current_timestamp: u64,
     ) -> Block {
         let blockchain = blockchain_lock.read().await;
