@@ -3,8 +3,7 @@ use crate::blockchain::GENESIS_PERIOD;
 use crate::crypto::SaitoHash;
 use crate::time::{create_timestamp};
 
-pub const EPOCH_LENGTH: u64 = GENESIS_PERIOD;
-pub const RING_BUFFER_LENGTH: u64 = 2 * EPOCH_LENGTH;
+pub const RING_BUFFER_LENGTH: u64 = 2 * GENESIS_PERIOD;
 
 //
 // This is an index with shorthand information on the block_ids and hashes of the blocks
@@ -111,7 +110,7 @@ impl BlockRing {
     }
 
     pub fn print_lc(&self) {
-        for i in 0..EPOCH_LENGTH {
+        for i in 0..GENESIS_PERIOD {
             if !self.block_ring[(i as usize)].block_hashes.is_empty() {
                 println!(
                     "Block {:?}: {:?}",
@@ -229,6 +228,7 @@ mod test {
     use crate::block::Block;
     use crate::blockchain::Blockchain;
     use crate::test_utilities::mocks::make_mock_block;
+    use crate::time::create_timestamp;
     use crate::transaction::Transaction;
     use crate::wallet::Wallet;
     use std::sync::Arc;
@@ -397,7 +397,7 @@ mod test {
             latest_block_hash,
             wallet_lock.clone(),
             blockchain_lock.clone(),
-	    create_timestamp(),
+            create_timestamp(),
         )
         .await;
 

@@ -10,11 +10,11 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TestManager {
-    blockchain_lock: Arc<RwLock<Blockchain>>,
-    wallet_lock: Arc<RwLock<Wallet>>,
-    latest_block_hash: SaitoHash,
+    pub blockchain_lock: Arc<RwLock<Blockchain>>,
+    pub wallet_lock: Arc<RwLock<Wallet>>,
+    pub latest_block_hash: SaitoHash,
 }
 
 impl TestManager {
@@ -81,7 +81,7 @@ impl TestManager {
         }
 
         for i in 0..additional_transactions.len() {
-            transactions.push(additional_transactions[i]);
+            transactions.push(additional_transactions[i].clone());
         }
 
         if golden_ticket {

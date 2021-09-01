@@ -389,7 +389,7 @@ impl Wallet {
             return transaction;
         }
 
-        let mut slip = self.staked_slips[0].clone();
+        let slip = self.staked_slips[0].clone();
 
         let mut input = Slip::new();
         input.set_publickey(self.get_publickey());

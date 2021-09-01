@@ -6,12 +6,11 @@
 use crate::{
     block::Block,
     blockchain::GENESIS_PERIOD,
-    crypto::{hash, SaitoHash, SaitoUTXOSetKey},
+    crypto::{hash, SaitoHash},
     golden_ticket::GoldenTicket,
     slip::{Slip, SlipType},
-    transaction::{Transaction, TransactionType},
+    transaction::TransactionType,
 };
-use ahash::AHashMap;
 use bigint::uint::U256;
 
 #[derive(Debug, Clone)]
@@ -481,6 +480,7 @@ mod tests {
     use super::*;
     use crate::test_utilities::mocks::make_mock_block_with_info;
     use crate::test_utilities::test_manager::TestManager;
+    use crate::transaction::Transaction;
     use crate::{
         blockchain::Blockchain,
         slip::{Slip, SlipType},
@@ -492,9 +492,7 @@ mod tests {
 
     #[test]
     fn staking_table_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
         let mut staking = Staking::new();
-        let mut blockchain = Blockchain::new(wallet_lock.clone());
 
         let mut slip1 = Slip::new();
         slip1.set_amount(200_000_000);
@@ -664,7 +662,6 @@ mod tests {
         //
         {
             let blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(latest_block_hash).await;
             println!("STAKERS: {:?}", blockchain.staking.stakers);
             println!("PENDING: {:?}", blockchain.staking.pending);
             println!("DEPOSIT: {:?}", blockchain.staking.deposits);
@@ -729,7 +726,6 @@ mod tests {
         //
         {
             let blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(latest_block_hash).await;
             println!("STAKERS 2: {:?}", blockchain.staking.stakers);
             println!("PENDING 2: {:?}", blockchain.staking.pending);
             println!("DEPOSIT 2: {:?}", blockchain.staking.deposits);
@@ -750,7 +746,6 @@ mod tests {
             false,
         )
         .await;
-        latest_block_hash = block.get_hash();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
         //
@@ -758,7 +753,6 @@ mod tests {
         //
         {
             let blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(latest_block_hash).await;
 
             //
             // second staker payment should have happened and staking table reset
@@ -836,7 +830,6 @@ mod tests {
         //
         {
             let blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(latest_block_hash).await;
             println!("2 staking deposit transactions made, deposits should have TWO");
             println!("STAKERS: {:?}", blockchain.staking.stakers);
             println!("PENDING: {:?}", blockchain.staking.pending);
@@ -866,7 +859,6 @@ mod tests {
         //
         {
             let blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(latest_block_hash).await;
             println!("2 staking deposit transactions made... where are we?");
             println!("STAKERS: {:?}", blockchain.staking.stakers);
             println!("PENDING: {:?}", blockchain.staking.pending);
@@ -946,7 +938,7 @@ mod tests {
         let mut wstx1: Transaction;
         {
             let mut wallet = wallet_lock.write().await;
-            let mut blockchain = blockchain_lock.write().await;
+            let blockchain = blockchain_lock.write().await;
             wstx1 = wallet
                 .create_staking_withdrawal_transaction(&blockchain.staking)
                 .await;
@@ -963,7 +955,6 @@ mod tests {
             current_timestamp,
         )
         .await;
-        latest_block_hash = block.get_hash();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block, true).await;
 
         //
@@ -971,14 +962,11 @@ mod tests {
         //
         {
             let blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(latest_block_hash).await;
             println!("after the withdrawal of a staking transaction...");
             println!("STAKERS: {:?}", blockchain.staking.stakers);
             println!("PENDING: {:?}", blockchain.staking.pending);
             println!("DEPOSIT: {:?}", blockchain.staking.deposits);
         }
-
-        //assert_eq!(0, 1);
     }
 
 
@@ -988,7 +976,7 @@ mod tests {
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-	let test_manager = TestManager::new(blockchain_lock, wallet_lock);
+	let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 
         let publickey;
         let mut latest_block_hash = [0; 32];
@@ -1048,6 +1036,7 @@ mod tests {
             0,
             1,
             false,
+	    vec![],
         )
         .await;
 
@@ -1059,6 +1048,7 @@ mod tests {
             0,
             1,
             true,
+	    vec![],
         )
         .await;
 
@@ -1070,6 +1060,7 @@ mod tests {
             0,
             1,
             true,
+	    vec![],
         )
         .await;
 

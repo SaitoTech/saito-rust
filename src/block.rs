@@ -818,7 +818,7 @@ impl Block {
                 cv.expected_difficulty = difficulty;
             }
         } else {
-            println!("CAN'T FIND PREVIOUSLY BLOCK");
+            println!("Previous block not found");
         }
 
         //
