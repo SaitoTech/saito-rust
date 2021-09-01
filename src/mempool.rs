@@ -5,7 +5,7 @@ use crate::{
     consensus::SaitoMessage,
     crypto::{SaitoPrivateKey, SaitoPublicKey},
     golden_ticket::GoldenTicket,
-    time::{create_timestamp, SystemTimestampGenerator, TimestampGenerator},
+    time::{SystemTimestampGenerator, TimestampGenerator},
     transaction::Transaction,
     wallet::Wallet,
 };
@@ -408,7 +408,7 @@ pub async fn run(
 mod tests {
 
     use super::*;
-    use crate::{block::Block, burnfee::HEARTBEAT, crypto::SaitoHash, test_utilities::mocks::{MockTimestampGenerator, add_vip_block, make_block_with_mempool}, wallet::Wallet};
+    use crate::{block::Block, test_utilities::mocks::{add_vip_block, make_block_with_mempool}, wallet::Wallet};
 
     use std::sync::Arc;
     use tokio::sync::RwLock;

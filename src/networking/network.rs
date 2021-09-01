@@ -11,9 +11,8 @@ use crate::util::format_url_string;
 use crate::wallet::Wallet;
 use futures::StreamExt;
 use secp256k1::PublicKey;
-use tokio::signal;
 use tokio::sync::RwLock;
-use tokio_tungstenite::{WebSocketStream, connect_async};
+use tokio_tungstenite::{connect_async};
 use uuid::Uuid;
 
 use std::sync::Arc;
@@ -21,7 +20,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use warp::{Filter, Rejection};
 
-use super::peer::{OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL, PeerSetting, PeersDB};
+use super::peer::{OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL, PeerSetting};
 
 use config::Config;
 

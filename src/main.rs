@@ -24,7 +24,6 @@ cargo run -- --password=asdf --key_path=test/testwallet
 */
 
 use saito_rust::consensus;
-use tokio::signal;
 
 #[tokio::main]
 pub async fn main() -> saito_rust::Result<()> {

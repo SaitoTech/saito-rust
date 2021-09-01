@@ -7,7 +7,7 @@ use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use clap::{App, Arg};
 use tokio::signal;
-use std::{future::Future, sync::Arc};
+use std::{sync::Arc};
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
 /// The consensus state which exposes a run method
