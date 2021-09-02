@@ -146,16 +146,16 @@ impl Wallet {
                     || input.get_slip_type() == SlipType::StakerWithdrawalStaking
                     || input.get_slip_type() == SlipType::StakerWithdrawalPending
                 {
-                    println!(
-                        "deleting staker input  with slip uuid: {:?}",
-                        input.get_uuid()
-                    );
+                    //println!(
+                    //    "deleting staker input  with slip uuid: {:?}",
+                    //    input.get_uuid()
+                    //);
                     self.delete_staked_slip(input);
                 } else {
-                    println!(
-                        "deleting normal input  with slip uuid: {:?}",
-                        input.get_uuid()
-                    );
+                    //println!(
+                    //    "deleting normal input  with slip uuid: {:?}",
+                    //    input.get_uuid()
+                    //);
                     self.delete_slip(input);
                 }
             }

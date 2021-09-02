@@ -80,6 +80,7 @@ impl Staking {
         &mut self,
         staking_treasury: u64,
     ) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
+
         println!("===========================");
         println!("=== RESET STAKING TABLE ===");
         println!("===========================");
@@ -119,7 +120,7 @@ impl Staking {
             // the slip to be spendable when it is issued.
             // we update the payout rather than the amount so the slip
             // can validate as spendable as well.
-            self.stakers[i].set_slip_type(SlipType::StakerOutput);
+            //self.stakers[i].set_slip_type(SlipType::StakerOutput);
             total_staked += self.stakers[i].get_amount();
         }
         let average_staked = total_staked / self.stakers.len() as u64;
@@ -163,6 +164,8 @@ impl Staking {
 
             self.stakers[i].set_payout(staking_profit);
         }
+
+println!("stakers: {:?}", self.stakers);
 
         return (res_spend, res_unspend, res_delete);
     }
@@ -544,6 +547,7 @@ mod tests {
         );
     }
 
+
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
@@ -576,8 +580,8 @@ mod tests {
             slip1.generate_utxoset_key();
             slip2.generate_utxoset_key();
 
-            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 0);
-            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 0);
+            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
 
             blockchain.staking.add_deposit(slip1);
             blockchain.staking.add_deposit(slip2);
@@ -766,6 +770,7 @@ mod tests {
             //println!("{:?}", blk.transactions[2].get_outputs());
             //assert_eq!(blk.transactions[2].get_outputs()[2].get_slip_type(), SlipType::StakerOutput);
         }
+
     }
 
     #[tokio::test]
@@ -970,9 +975,8 @@ mod tests {
     }
 
 
-
     #[tokio::test]
-    async fn blockchain_roll_forward_staking_table_test_new() {
+    async fn blockchain_roll_forward_staking_table_test_with_test_manager() {
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
@@ -1007,8 +1011,8 @@ mod tests {
             slip1.generate_utxoset_key();
             slip2.generate_utxoset_key();
 
-            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 0);
-            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 0);
+            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
 
             blockchain.staking.add_deposit(slip1);
             blockchain.staking.add_deposit(slip2);
@@ -1064,14 +1068,6 @@ mod tests {
         )
         .await;
 
-
-        {
-            let blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(latest_block_hash).await;
-            println!("STAKERS: {:?}", blockchain.staking.stakers);
-            println!("PENDING: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT: {:?}", blockchain.staking.deposits);
-        }
 
     }
 

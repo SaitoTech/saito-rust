@@ -71,7 +71,8 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block, save_to_disk: bool) {
-        println!(
+println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);  
+       println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
             block.transactions.len()
