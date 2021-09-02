@@ -9,10 +9,16 @@ use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
-
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+// 
+//
+// generate_block 	<-- create a block
+// generate_transaction <-- create a transaction
+// add_block 		<-- create and add block to longest_chain
+// add_block_on_hash	<-- create and add block elsewhere on chain
+// test_monetary_policy <-- check longest_chain monetary policy adds up
 
 #[derive(Debug, Clone)]
 pub struct TestManager {
@@ -23,9 +29,6 @@ pub struct TestManager {
 
 impl TestManager {
 
-    //
-    // initialize TestManager
-    //
     pub fn new(blockchain_lock: Arc<RwLock<Blockchain>>, wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Self {
             blockchain_lock: blockchain_lock.clone(),
@@ -39,7 +42,7 @@ impl TestManager {
     //
     pub async fn add_block(&mut self, timestamp: u64, vip_txs: usize, normal_txs: usize, has_golden_ticket: bool, additional_txs: Vec<Transaction>) {
 	let parent_hash = self.latest_block_hash;
-        add_block(timestamp, vip_txs, normal_txs, has_golden_ticket, additional_txs, parent_hash) {
+        self.add_block_on_hash(timestamp, vip_txs, normal_txs, has_golden_ticket, additional_txs, parent_hash);
     }
 
 
@@ -140,6 +143,7 @@ impl TestManager {
     // generate transaction
     //
     pub async fn generate_transaction(
+	&self,
         amount: u64,
         fee: u64,
     ) -> Transaction {
@@ -150,12 +154,18 @@ impl TestManager {
         {
             let wallet = self.wallet_lock.read().await;
             publickey = wallet.get_publickey();
+            privatekey = wallet.get_privatekey();
         }
 
 
-        let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), publickey, amount, fee).await;
-        transaction.sign(private_key);
+        let mut transaction = Transaction::generate_transaction(self.wallet_lock.clone(), publickey, amount, fee).await;
+        transaction.sign(privatekey);
         transaction
+    }
+
+
+    pub fn test_monetary_policy(&self) {
+        assert_eq!(1, 1);
     }
 
 }

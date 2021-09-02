@@ -1068,6 +1068,7 @@ mod tests {
         )
         .await;
 
+	test_manager.test_monetary_policy();
 
     }
 
