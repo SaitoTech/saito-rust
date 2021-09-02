@@ -1,17 +1,6 @@
 //
 // TestManager provides a set of functions to simplify testing. It's goal is to 
-// help make tests more succinct.
-//
-// new(blockchain_lock, wallet_lock)
-//
-// --- create block at end of longest chain ---
-// add_block(timestamp, #vip_txs, #normal_txs, has_golden_ticket, other_txs);
-// 
-// --- create block atop parent has ---
-// add_block_with_parent_hash(timestamp, vip_txs, normal_txs, has_golden_ticket, other_txs, parent_hash);
-// 
-// -- generate and return block --- 
-// async generate_block(parent_hash, timestamp, vip_txs, normal_txs, has_golden_ticket, other_txs);
+// help make tests more succinct. 
 //
 use crate::block::Block;
 use crate::blockchain::Blockchain;
@@ -34,6 +23,9 @@ pub struct TestManager {
 
 impl TestManager {
 
+    //
+    // initialize TestManager
+    //
     pub fn new(blockchain_lock: Arc<RwLock<Blockchain>>, wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Self {
             blockchain_lock: blockchain_lock.clone(),
@@ -42,11 +34,18 @@ impl TestManager {
         }
     }
 
-
+    //
+    // add block at end of longest chain
+    //
     pub async fn add_block(&mut self, timestamp: u64, vip_txs: usize, normal_txs: usize, has_golden_ticket: bool, additional_txs: Vec<Transaction>) {
 	let parent_hash = self.latest_block_hash;
         add_block(timestamp, vip_txs, normal_txs, has_golden_ticket, additional_txs, parent_hash) {
     }
+
+
+    //
+    // add block on parent hash
+    //
     pub async fn add_block_on_hash(&mut self, timestamp: u64, vip_txs: usize, normal_txs: usize, has_golden_ticket: bool, additional_txs: Vec<Transaction>, parent_hash: SaitoHash) {
 
         let mut block = self.generate_block(
@@ -63,6 +62,9 @@ impl TestManager {
     }
 
 
+    //
+    // generate block
+    //
     pub async fn generate_block(
 	&self,
 	parent_hash: SaitoHash,
@@ -133,6 +135,28 @@ impl TestManager {
         return block;
     }
 
+
+    //
+    // generate transaction
+    //
+    pub async fn generate_transaction(
+        amount: u64,
+        fee: u64,
+    ) -> Transaction {
+
+        let publickey: SaitoPublicKey;
+        let privatekey: SaitoPrivateKey;
+
+        {
+            let wallet = self.wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+        }
+
+
+        let mut transaction = Transaction::generate_transaction(wallet_lock.clone(), publickey, amount, fee).await;
+        transaction.sign(private_key);
+        transaction
+    }
 
 }
 
