@@ -995,6 +995,7 @@ mod tests {
         // initialize blockchain staking table
         //
         {
+/*
             let mut blockchain = blockchain_lock.write().await;
 
             let mut slip1 = Slip::new();
@@ -1018,6 +1019,7 @@ mod tests {
             blockchain.staking.add_deposit(slip2);
 
             blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
+*/
         }
 
         //
@@ -1068,7 +1070,8 @@ mod tests {
         )
         .await;
 
-	test_manager.test_monetary_policy();
+	test_manager.test_utxoset_consistency().await;
+//	test_manager.test_monetary_policy();
 
     }
 

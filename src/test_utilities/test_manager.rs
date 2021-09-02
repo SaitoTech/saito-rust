@@ -4,13 +4,14 @@
 //
 use crate::block::Block;
 use crate::blockchain::Blockchain;
-use crate::crypto::{SaitoHash, SaitoPublicKey, SaitoPrivateKey};
+use crate::crypto::{SaitoHash, SaitoPublicKey, SaitoPrivateKey, SaitoUTXOSetKey};
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use ahash::AHashMap;
 
 // 
 //
@@ -18,7 +19,9 @@ use tokio::sync::RwLock;
 // generate_transaction <-- create a transaction
 // add_block 		<-- create and add block to longest_chain
 // add_block_on_hash	<-- create and add block elsewhere on chain
-// test_monetary_policy <-- check longest_chain monetary policy adds up
+// on_chain_reorganization <-- test monetary policy
+// 
+//
 
 #[derive(Debug, Clone)]
 pub struct TestManager {
@@ -42,7 +45,9 @@ impl TestManager {
     //
     pub async fn add_block(&mut self, timestamp: u64, vip_txs: usize, normal_txs: usize, has_golden_ticket: bool, additional_txs: Vec<Transaction>) {
 	let parent_hash = self.latest_block_hash;
-        self.add_block_on_hash(timestamp, vip_txs, normal_txs, has_golden_ticket, additional_txs, parent_hash);
+println!("ADDING BLOCK 2! {:?}", parent_hash);
+        let block = self.add_block_on_hash(timestamp, vip_txs, normal_txs, has_golden_ticket, additional_txs, parent_hash).await;
+	return block;
     }
 
 
@@ -59,6 +64,9 @@ impl TestManager {
             has_golden_ticket,
 	    additional_txs,
         ).await;
+
+println!("ADDING BLOCK! {}", block.get_id());
+
         self.latest_block_hash = block.get_hash();
         Blockchain::add_block_to_blockchain(self.blockchain_lock.clone(), block, true).await;
 
@@ -126,7 +134,7 @@ impl TestManager {
         //
         // create block
         //
-        let block = Block::generate(
+        let mut block = Block::generate(
             &mut transactions,
             parent_hash,
             self.wallet_lock.clone(),
@@ -134,6 +142,8 @@ impl TestManager {
             timestamp,
         )
         .await;
+
+        block.sign(publickey, privatekey);
 
         return block;
     }
@@ -164,11 +174,175 @@ impl TestManager {
     }
 
 
-    pub fn test_monetary_policy(&self) {
+    pub async fn test_utxoset_consistency(&self) {
+
+	let blockchain = self.blockchain_lock.read().await;
+	let mut utxoset : AHashMap<SaitoUTXOSetKey, u64> = AHashMap::new();
+	let latest_block_id = blockchain.get_latest_block_id();
+
+	for i in 1..=latest_block_id {
+	    let block_hash = blockchain.blockring.get_longest_chain_block_hash_by_block_id(i as u64);
+    	    let block = blockchain.get_block(block_hash).await;
+	    for i in 0..block.transactions.len() {
+	        block.transactions[i].on_chain_reorganization(&mut utxoset, true, i as u64);
+	    }
+	}
+
+	//
+	// check main utxoset matches longest-chain
+	//
+        for (key, value) in &blockchain.utxoset {
+            println!("{:?} / {}", key, value);
+	    match utxoset.get(key) {
+                Some(value2) => {
+		    //
+		    // everything spendable in blockchain.utxoset should be spendable on longest-chain
+		    //
+		    if *value == 1 {
+		        println!("comparing {} and {}", value, value2);
+                        assert_eq!(value, value2);
+		    } else {
+			//
+			// everything spent in blockchain.utxoset should be spent on longest-chain
+			//
+		        if *value > 1 {
+		            println!("comparing {} and {}", value, value2);
+                            assert_eq!(value, value2);
+			} else {
+			    //
+			    // unspendable (0) does not need to exist
+			    //
+			}
+		    }
+                }
+                None => {
+		    println!("comparing {:?} with expected value {}", key, value);
+		    println!("Value does not exist in actual blockchain!");
+		    assert_eq!(1, 2);
+                }
+            }
+        }
+
+
+	//
+	// check longest-chain matches utxoset
+	//
+        for (key, value) in &utxoset {
+            println!("{:?} / {}", key, value);
+	    match blockchain.utxoset.get(key) {
+                Some(value2) => {
+		    //
+		    // everything spendable in longest-chain should be spendable on blockchain.utxoset
+		    //
+		    if *value == 1 {
+		        println!("comparing {} and {}", value, value2);
+                        assert_eq!(value, value2);
+		    } else {
+			//
+			// everything spent in longest-chain should be spendable on blockchain.utxoset
+			//
+		        if *value > 1 {
+		            println!("comparing {} and {}", value, value2);
+                            assert_eq!(value, value2);
+			} else {
+			    //
+			    // unspendable (0) does not need to exist
+			    //
+			}
+		    }
+                }
+                None => {
+		    println!("comparing {:?} with expected value {}", key, value);
+		    println!("Value does not exist in actual blockchain!");
+		    assert_eq!(1, 2);
+                }
+            }
+        }
+
+	assert_eq!(0, 1);
+
+    }
+
+
+    pub async fn test_monetary_policy(&self, block_id : u64) {
+
+	let mut token_supply	: u64 = 0;
+	let mut current_supply	: u64 = 0;
+	let mut block_fees	: u64 = 0;
+	let mut block_inputs	: u64 = 0;
+	let mut block_outputs	: u64 = 0;
+	let mut block_treasury	: u64 = 0;
+	let mut block_staking	: u64 = 0;
+
+	let blockchain = self.blockchain_lock.read().await;
+
+	for i in 1..=block_id {
+
+	    let block_hash = blockchain.blockring.get_longest_chain_block_hash_by_block_id(i as u64);
+    	    let block = blockchain.get_block(block_hash).await;
+
+	    //
+	    //
+	    //
+	    for i in 0..block.transactions.len() {
+	        for z in 0..block.transactions[i].inputs.len() {
+		    block_inputs += block.transactions[i].inputs[z].get_amount();
+	        }
+	        for z in 0..block.transactions[i].outputs.len() {
+		    block_outputs += block.transactions[i].outputs[z].get_amount();
+	        }
+	    }
+
+	    //
+	    // token supply set in block #1
+	    //
+	    if i == 1 {
+	        token_supply = block_outputs;
+		current_supply = token_supply;
+	    } else {
+		current_supply += block_outputs;
+		current_supply -= block_inputs;
+	    }
+
+	}
+
+    }
+
+    pub fn on_chain_reorganization(&self, block : Block, longest_chain : bool) {
+
+	let mut token_supply = 0;
+	let mut block_fees = 0;
+	let mut block_inputs = 0;
+	let mut block_outputs = 0;
+	let mut block_treasury = 0;
+	let mut block_staking = 0;
+
+	//
+	// 
+	//
+	block_staking = block.get_staking_treasury();
+	block_treasury = block.get_treasury();
+
+	//
+	//
+	//
+	for i in 0..block.transactions.len() {
+	    for z in 0..block.transactions[i].inputs.len() {
+		block_inputs += block.transactions[i].inputs[z].get_amount();
+	    }
+	    for z in 0..block.transactions[i].outputs.len() {
+		block_outputs += block.transactions[i].outputs[z].get_amount();
+	    }
+	}
+
+	
+	
         assert_eq!(1, 1);
+
     }
 
 }
 
 #[cfg(test)]
 mod tests {}
+
