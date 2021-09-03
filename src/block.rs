@@ -1000,6 +1000,7 @@ impl Block {
                             //
                             // add staker input as tx input so it is spent
                             //
+println!("the staker slip is: {:?}", staker_slip);
                             transaction.add_input(staker_slip);
                         }
 
@@ -1498,45 +1499,29 @@ impl Block {
         // parallel processing can make it difficult to find out exactly what the
         // problem is. ergo this code that tries to do them on the main thread so
         // debugging output works.
-        //for i in 0..self.transactions.len() {
-        //    let transactions_valid2 = self.transactions[i].validate(utxoset);
-        //    if transactions_valid2 == false {
-        //	println!("TType: {:?}", self.transactions[i].get_transaction_type());
-        //    }
-        //}
+        for i in 0..self.transactions.len() {
+            let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
+            if transactions_valid2 == false {
+        	println!("TType: {:?}", self.transactions[i].get_transaction_type());
+            }
+        }
+return true;
 
-        let transactions_valid = self
-            .transactions
-            .par_iter()
-            .all(|tx| tx.validate(utxoset, staking));
+//        let transactions_valid = self
+//            .transactions
+//            .par_iter()
+//            .all(|tx| tx.validate(utxoset, staking));
 
-        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
+//        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         //
         // and if our transactions are valid, so is the block...
         //
-        println!(" ... are txs valid: {}", transactions_valid);
-        transactions_valid
+//        println!(" ... are txs valid: {}", transactions_valid);
+//        transactions_valid
     }
 
     pub async fn generate(
-        transactions: &mut Vec<Transaction>,
-        previous_block_hash: SaitoHash,
-        wallet_lock: Arc<RwLock<Wallet>>,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-        current_timestamp: u64,
-    ) -> Block {
-        return Block::generate_with_timestamp(
-            transactions,
-            previous_block_hash,
-            wallet_lock,
-            blockchain_lock,
-            current_timestamp,
-        )
-        .await;
-    }
-
-    pub async fn generate_with_timestamp(
         transactions: &mut Vec<Transaction>,
         previous_block_hash: SaitoHash,
         wallet_lock: Arc<RwLock<Wallet>>,

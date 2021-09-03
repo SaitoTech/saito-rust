@@ -71,7 +71,8 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block, save_to_disk: bool) {
-        println!(
+println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);  
+       println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
             block.transactions.len()
@@ -1325,7 +1326,7 @@ mod tests {
         // Add second BAD block (no transactions)
         //
         let future_timestamp = create_timestamp() + 120000;
-        let block = Block::generate_with_timestamp(
+        let block = Block::generate(
             &mut transactions,
             latest_block_hash,
             wallet_lock.clone(),
@@ -1363,7 +1364,7 @@ mod tests {
         transactions.push(tx2);
 
         let future_timestamp2 = create_timestamp() + 120000;
-        let block = Block::generate_with_timestamp(
+        let block = Block::generate(
             &mut transactions,
             latest_block_hash,
             wallet_lock.clone(),
@@ -1467,7 +1468,7 @@ mod tests {
 
                 let future_timestamp = create_timestamp() + (i * 120000);
 
-                block = Block::generate_with_timestamp(
+                block = Block::generate(
                     &mut transactions,
                     last_block_hash,
                     wallet_lock.clone(),

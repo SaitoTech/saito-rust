@@ -144,7 +144,7 @@ pub async fn make_mock_blockchain(
                 current_block_hash,
                 wallet_lock.clone(),
                 blockchain_lock.clone(),
-                create_timestamp(),
+	        create_timestamp(),
             )
             .await;
 
@@ -176,7 +176,7 @@ pub async fn make_mock_blockchain(
 
             let future_timestamp = create_timestamp() + (i * 120000);
 
-            block = Block::generate_with_timestamp(
+            block = Block::generate(
                 &mut transactions,
                 last_block_hash,
                 wallet_lock.clone(),
@@ -330,7 +330,7 @@ pub async fn make_mock_block_with_info(
     //
     // create block
     //
-    let block = Block::generate_with_timestamp(
+    let block = Block::generate(
         &mut transactions,
         last_block_hash,
         wallet_lock.clone(),

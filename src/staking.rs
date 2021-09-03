@@ -80,6 +80,7 @@ impl Staking {
         &mut self,
         staking_treasury: u64,
     ) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
+
         println!("===========================");
         println!("=== RESET STAKING TABLE ===");
         println!("===========================");
@@ -119,7 +120,7 @@ impl Staking {
             // the slip to be spendable when it is issued.
             // we update the payout rather than the amount so the slip
             // can validate as spendable as well.
-            self.stakers[i].set_slip_type(SlipType::StakerOutput);
+            //self.stakers[i].set_slip_type(SlipType::StakerOutput);
             total_staked += self.stakers[i].get_amount();
         }
         let average_staked = total_staked / self.stakers.len() as u64;
@@ -163,6 +164,8 @@ impl Staking {
 
             self.stakers[i].set_payout(staking_profit);
         }
+
+println!("stakers: {:?}", self.stakers);
 
         return (res_spend, res_unspend, res_delete);
     }
@@ -479,6 +482,7 @@ mod tests {
 
     use super::*;
     use crate::test_utilities::mocks::make_mock_block_with_info;
+    use crate::test_utilities::test_manager::TestManager;
     use crate::transaction::Transaction;
     use crate::{
         blockchain::Blockchain,
@@ -543,6 +547,7 @@ mod tests {
         );
     }
 
+
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
@@ -575,8 +580,8 @@ mod tests {
             slip1.generate_utxoset_key();
             slip2.generate_utxoset_key();
 
-            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 0);
-            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 0);
+            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
 
             blockchain.staking.add_deposit(slip1);
             blockchain.staking.add_deposit(slip2);
@@ -765,6 +770,7 @@ mod tests {
             //println!("{:?}", blk.transactions[2].get_outputs());
             //assert_eq!(blk.transactions[2].get_outputs()[2].get_slip_type(), SlipType::StakerOutput);
         }
+
     }
 
     #[tokio::test]
@@ -813,7 +819,7 @@ mod tests {
         transactions.push(stx1);
         transactions.push(stx2);
         current_timestamp = create_timestamp() + 120000;
-        block = Block::generate_with_timestamp(
+        block = Block::generate(
             &mut transactions,
             latest_block_hash,
             wallet_lock.clone(),
@@ -946,7 +952,7 @@ mod tests {
         let mut transactions: Vec<Transaction> = vec![];
         transactions.push(wstx1);
         current_timestamp = create_timestamp() + 600000;
-        block = Block::generate_with_timestamp(
+        block = Block::generate(
             &mut transactions,
             latest_block_hash,
             wallet_lock.clone(),
@@ -967,4 +973,106 @@ mod tests {
             println!("DEPOSIT: {:?}", blockchain.staking.deposits);
         }
     }
+
+
+    #[tokio::test]
+    async fn blockchain_roll_forward_staking_table_test_with_test_manager() {
+
+        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+	let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+        let publickey;
+        let mut latest_block_hash = [0; 32];
+        let mut current_timestamp = create_timestamp();
+
+        {
+            let wallet = wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+        }
+
+        //
+        // initialize blockchain staking table
+        //
+        {
+/*
+            let mut blockchain = blockchain_lock.write().await;
+
+            let mut slip1 = Slip::new();
+            slip1.set_amount(200_000_000);
+            slip1.set_slip_type(SlipType::StakerDeposit);
+
+            let mut slip2 = Slip::new();
+            slip2.set_amount(300_000_000);
+            slip2.set_slip_type(SlipType::StakerDeposit);
+
+            slip1.set_publickey(publickey);
+            slip2.set_publickey(publickey);
+
+            slip1.generate_utxoset_key();
+            slip2.generate_utxoset_key();
+
+            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+
+            blockchain.staking.add_deposit(slip1);
+            blockchain.staking.add_deposit(slip2);
+
+            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
+*/
+        }
+
+        //
+        // BLOCK 1
+        //
+        test_manager.add_block(
+            current_timestamp,
+            3,
+            0,
+            false,
+	    vec![],
+        )
+        .await;
+
+        //
+        // BLOCK 2
+        //
+        test_manager.add_block(
+            current_timestamp + 120000,
+            0,
+            1,
+            false,
+	    vec![],
+        )
+        .await;
+
+        //
+        // BLOCK 3
+        //
+        test_manager.add_block(
+            current_timestamp + 240000,
+            0,
+            1,
+            true,
+	    vec![],
+        )
+        .await;
+
+        //
+        // BLOCK 4
+        //
+        test_manager.add_block(
+            current_timestamp + 360000,
+            0,
+            1,
+            true,
+	    vec![],
+        )
+        .await;
+
+	test_manager.test_utxoset_consistency().await;
+//	test_manager.test_monetary_policy();
+
+    }
+
 }
