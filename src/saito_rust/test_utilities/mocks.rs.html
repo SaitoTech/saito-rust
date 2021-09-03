@@ -490,7 +490,7 @@
                 <span class="ident">current_block_hash</span>,
                 <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">create_timestamp</span>(),
+	        <span class="ident">create_timestamp</span>(),
             )
             .<span class="kw">await</span>;
 
@@ -522,7 +522,7 @@
 
             <span class="kw">let</span> <span class="ident">future_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>() <span class="op">+</span> (<span class="ident">i</span> <span class="op">*</span> <span class="number">120000</span>);
 
-            <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate_with_timestamp</span>(
+            <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
                 <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
                 <span class="ident">last_block_hash</span>,
                 <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
@@ -676,7 +676,7 @@
     <span class="comment">//</span>
     <span class="comment">// create block</span>
     <span class="comment">//</span>
-    <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate_with_timestamp</span>(
+    <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
         <span class="ident">last_block_hash</span>,
         <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),

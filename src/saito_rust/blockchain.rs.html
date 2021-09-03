@@ -1502,6 +1502,7 @@
 <span id="1500">1500</span>
 <span id="1501">1501</span>
 <span id="1502">1502</span>
+<span id="1503">1503</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -1576,7 +1577,8 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>, <span class="ident">save_to_disk</span>: <span class="ident">bool</span>) {
-        <span class="macro">println!</span>(
+<span class="macro">println!</span>(<span class="string">&quot;ADD BLK HASH: {:?} {}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="ident">save_to_disk</span>);  
+       <span class="macro">println!</span>(
             <span class="string">&quot; ... blockchain.add_block start: {:?} txs: {}&quot;</span>,
             <span class="ident">create_timestamp</span>(),
             <span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>()
@@ -2830,7 +2832,7 @@
         <span class="comment">// Add second BAD block (no transactions)</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">future_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>() <span class="op">+</span> <span class="number">120000</span>;
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate_with_timestamp</span>(
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
             <span class="ident">latest_block_hash</span>,
             <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
@@ -2868,7 +2870,7 @@
         <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">tx2</span>);
 
         <span class="kw">let</span> <span class="ident">future_timestamp2</span> <span class="op">=</span> <span class="ident">create_timestamp</span>() <span class="op">+</span> <span class="number">120000</span>;
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate_with_timestamp</span>(
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
             <span class="ident">latest_block_hash</span>,
             <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
@@ -2972,7 +2974,7 @@
 
                 <span class="kw">let</span> <span class="ident">future_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>() <span class="op">+</span> (<span class="ident">i</span> <span class="op">*</span> <span class="number">120000</span>);
 
-                <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate_with_timestamp</span>(
+                <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
                     <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
                     <span class="ident">last_block_hash</span>,
                     <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),

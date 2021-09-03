@@ -1862,21 +1862,6 @@
 <span id="1860">1860</span>
 <span id="1861">1861</span>
 <span id="1862">1862</span>
-<span id="1863">1863</span>
-<span id="1864">1864</span>
-<span id="1865">1865</span>
-<span id="1866">1866</span>
-<span id="1867">1867</span>
-<span id="1868">1868</span>
-<span id="1869">1869</span>
-<span id="1870">1870</span>
-<span id="1871">1871</span>
-<span id="1872">1872</span>
-<span id="1873">1873</span>
-<span id="1874">1874</span>
-<span id="1875">1875</span>
-<span id="1876">1876</span>
-<span id="1877">1877</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>},
@@ -2880,6 +2865,7 @@
                             <span class="comment">//</span>
                             <span class="comment">// add staker input as tx input so it is spent</span>
                             <span class="comment">//</span>
+<span class="macro">println!</span>(<span class="string">&quot;the staker slip is: {:?}&quot;</span>, <span class="ident">staker_slip</span>);
                             <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">staker_slip</span>);
                         }
 
@@ -3378,45 +3364,29 @@
         <span class="comment">// parallel processing can make it difficult to find out exactly what the</span>
         <span class="comment">// problem is. ergo this code that tries to do them on the main thread so</span>
         <span class="comment">// debugging output works.</span>
-        <span class="comment">//for i in 0..self.transactions.len() {</span>
-        <span class="comment">//    let transactions_valid2 = self.transactions[i].validate(utxoset);</span>
-        <span class="comment">//    if transactions_valid2 == false {</span>
-        <span class="comment">//	println!(&quot;TType: {:?}&quot;, self.transactions[i].get_transaction_type());</span>
-        <span class="comment">//    }</span>
-        <span class="comment">//}</span>
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">len</span>() {
+            <span class="kw">let</span> <span class="ident">transactions_valid2</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">i</span>].<span class="ident">validate</span>(<span class="ident">utxoset</span>, <span class="ident">staking</span>);
+            <span class="kw">if</span> <span class="ident">transactions_valid2</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span> {
+        	<span class="macro">println!</span>(<span class="string">&quot;TType: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">i</span>].<span class="ident">get_transaction_type</span>());
+            }
+        }
+<span class="kw">return</span> <span class="bool-val">true</span>;
 
-        <span class="kw">let</span> <span class="ident">transactions_valid</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">transactions</span>
-            .<span class="ident">par_iter</span>()
-            .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>, <span class="ident">staking</span>));
+<span class="comment">//        let transactions_valid = self</span>
+<span class="comment">//            .transactions</span>
+<span class="comment">//            .par_iter()</span>
+<span class="comment">//            .all(|tx| tx.validate(utxoset, staking));</span>
 
-        <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (done all)  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+<span class="comment">//        println!(&quot; ... block.validate: (done all)  {:?}&quot;, create_timestamp());</span>
 
         <span class="comment">//</span>
         <span class="comment">// and if our transactions are valid, so is the block...</span>
         <span class="comment">//</span>
-        <span class="macro">println!</span>(<span class="string">&quot; ... are txs valid: {}&quot;</span>, <span class="ident">transactions_valid</span>);
-        <span class="ident">transactions_valid</span>
+<span class="comment">//        println!(&quot; ... are txs valid: {}&quot;, transactions_valid);</span>
+<span class="comment">//        transactions_valid</span>
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">generate</span>(
-        <span class="ident">transactions</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
-        <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>,
-        <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">current_timestamp</span>: <span class="ident">u64</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
-        <span class="kw">return</span> <span class="ident">Block::generate_with_timestamp</span>(
-            <span class="ident">transactions</span>,
-            <span class="ident">previous_block_hash</span>,
-            <span class="ident">wallet_lock</span>,
-            <span class="ident">blockchain_lock</span>,
-            <span class="ident">current_timestamp</span>,
-        )
-        .<span class="kw">await</span>;
-    }
-
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">generate_with_timestamp</span>(
         <span class="ident">transactions</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
         <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>,
         <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,

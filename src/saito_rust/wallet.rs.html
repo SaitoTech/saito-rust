@@ -690,16 +690,16 @@
                     <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalStaking</span>
                     <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalPending</span>
                 {
-                    <span class="macro">println!</span>(
-                        <span class="string">&quot;deleting staker input  with slip uuid: {:?}&quot;</span>,
-                        <span class="ident">input</span>.<span class="ident">get_uuid</span>()
-                    );
+                    <span class="comment">//println!(</span>
+                    <span class="comment">//    &quot;deleting staker input  with slip uuid: {:?}&quot;,</span>
+                    <span class="comment">//    input.get_uuid()</span>
+                    <span class="comment">//);</span>
                     <span class="self">self</span>.<span class="ident">delete_staked_slip</span>(<span class="ident">input</span>);
                 } <span class="kw">else</span> {
-                    <span class="macro">println!</span>(
-                        <span class="string">&quot;deleting normal input  with slip uuid: {:?}&quot;</span>,
-                        <span class="ident">input</span>.<span class="ident">get_uuid</span>()
-                    );
+                    <span class="comment">//println!(</span>
+                    <span class="comment">//    &quot;deleting normal input  with slip uuid: {:?}&quot;,</span>
+                    <span class="comment">//    input.get_uuid()</span>
+                    <span class="comment">//);</span>
                     <span class="self">self</span>.<span class="ident">delete_slip</span>(<span class="ident">input</span>);
                 }
             }
