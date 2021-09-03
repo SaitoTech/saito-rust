@@ -632,7 +632,7 @@ impl Block {
     /// [burnfee - 8 bytes - u64]
     /// [difficulty - 8 bytes - u64]
     /// [transaction][transaction][transaction]...
-    pub fn deserialize_for_net(bytes: Vec<u8>) -> Block {
+    pub fn deserialize_for_net(bytes: &Vec<u8>) -> Block {
         let transactions_len: u32 = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
         let id: u64 = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
         let timestamp: u64 = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
@@ -1820,7 +1820,7 @@ mod tests {
         block.set_transactions(&mut vec![mock_tx, mock_tx2]);
 
         let serialized_block = block.serialize_for_net();
-        let deserialized_block = Block::deserialize_for_net(serialized_block);
+        let deserialized_block = Block::deserialize_for_net(&serialized_block);
         assert_eq!(block, deserialized_block);
         assert_eq!(deserialized_block.get_id(), 1);
         assert_eq!(deserialized_block.get_timestamp(), timestamp);

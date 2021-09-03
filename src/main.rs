@@ -26,7 +26,7 @@ cargo run -- --password=asdf --key_path=test/testwallet
 use saito_rust::consensus;
 
 #[tokio::main]
-pub async fn main() -> saito_rust::Result<()> {
+pub async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing_subscriber::fmt::init();
     consensus::run().await
 }

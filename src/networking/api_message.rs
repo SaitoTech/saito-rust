@@ -39,6 +39,9 @@ impl APIMessage {
     pub fn message_data(&self) -> &Vec<u8> {
         &self.message_data
     }
+    pub fn into_message_data(self) -> Vec<u8> {
+        self.message_data
+    }
     pub fn message_data_as_str(&self) -> String {
         String::from_utf8_lossy(&self.message_data).to_string()
     }
