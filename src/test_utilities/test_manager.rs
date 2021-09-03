@@ -174,6 +174,10 @@ println!("ADDING BLOCK! {}", block.get_id());
     }
 
 
+    //
+    // check that everything spendable in the main UTXOSET is spendable on the longest
+    // chain and vice-versa.
+    //
     pub async fn test_utxoset_consistency(&self) {
 
 	let blockchain = self.blockchain_lock.read().await;
@@ -258,9 +262,6 @@ println!("ADDING BLOCK! {}", block.get_id());
                 }
             }
         }
-
-	assert_eq!(0, 1);
-
     }
 
 
@@ -334,11 +335,6 @@ println!("ADDING BLOCK! {}", block.get_id());
 		block_outputs += block.transactions[i].outputs[z].get_amount();
 	    }
 	}
-
-	
-	
-        assert_eq!(1, 1);
-
     }
 
 }
