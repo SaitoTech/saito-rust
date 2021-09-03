@@ -89,7 +89,7 @@ impl Storage {
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
-                let mut block = Block::deserialize_for_net(encoded);
+                let mut block = Block::deserialize_for_net(&encoded);
 
                 //
                 // the hash needs calculation separately after loading
@@ -110,7 +110,7 @@ impl Storage {
         let mut f = File::open(file_to_load).unwrap();
         let mut encoded = Vec::<u8>::new();
         f.read_to_end(&mut encoded).unwrap();
-        let mut block = Block::deserialize_for_net(encoded);
+        let mut block = Block::deserialize_for_net(&encoded);
 
         //
         // the hash needs calculation separately after loading
