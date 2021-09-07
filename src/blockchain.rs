@@ -678,6 +678,14 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         let block = self.blocks.get_mut(&block_hash).unwrap();
         block
     }
+
+    pub fn is_block_indexed(&self, block_hash: SaitoHash) -> bool {
+        if self.blocks.contains_key(&block_hash) {
+	    return true;
+        }
+        return false;
+    }
+
     pub fn contains_block_hash_at_block_id(&self, block_id: u64, block_hash: SaitoHash) -> bool {
         self.blockring
             .contains_block_hash_at_block_id(block_id, block_hash)
@@ -798,6 +806,39 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         {
             let block = self.get_mut_block(new_chain[current_wind_index]).await;
             block.generate_metadata();
+
+	    //
+	    // ensure previous blocks that may be needed to calculate the staking
+	    // tables have access to their transaction data so that routing and 
+	    // staking nodes.
+	    //
+	    // this means ensuring they are loaded into memory.
+	    //
+	    if block.get_has_golden_ticket() {
+
+		let mut cont = 1;
+	        let mut previous_block_hash = block.get_previous_block_hash();
+
+		while cont == 1 && previous_block_hash != [0; 32] {
+
+		    //
+		    // we should never wind an unindexed chain, but 
+		    // we will still perform a sanity check so as not
+		    // to imply get_block_sync can be run on unindexed
+		    // blocks
+		    //
+	            if self.is_block_indexed(previous_block_hash) {
+	                let previous_block = self.get_block_sync(previous_block_hash);
+		        if previous_block.get_has_golden_ticket() {
+		            cont = 0;  
+		        } else {
+			    // this also generates metadata if non-existing
+			    previous_block.upgrade_block_to_block_type(BlockType::Full).await;
+		 	    previous_block_hash = previous_block.get_previous_block_hash();
+		        }
+		    }
+		}
+	    }
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();

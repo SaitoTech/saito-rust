@@ -778,7 +778,9 @@ impl Block {
     // generate hashes and payouts and fee calculations
     //
     pub async fn generate_consensus_values(&self, blockchain: &Blockchain) -> ConsensusValues {
+
         let mut cv = ConsensusValues::new();
+
 
         //
         // calculate total fees
@@ -1136,6 +1138,7 @@ println!("the staker slip is: {:?}", staker_slip);
     // cumulative block fees they contain.
     //
     pub fn generate_metadata(&mut self) -> bool {
+
         println!(" ... block.prevalid - pre hash:  {:?}", create_timestamp());
 
         //

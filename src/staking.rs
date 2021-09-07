@@ -1070,8 +1070,8 @@ mod tests {
         )
         .await;
 
-	test_manager.test_utxoset_consistency().await;
-//	test_manager.test_monetary_policy();
+	test_manager.check_utxoset().await;
+	test_manager.check_token_supply().await;
 
     }
 
