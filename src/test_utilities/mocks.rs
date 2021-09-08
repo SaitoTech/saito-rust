@@ -55,7 +55,7 @@ pub async fn add_vip_block(
     )
     .await;
     let mut blockchain = blockchain_lock.write().await;
-    blockchain.add_block(block, true).await;
+    blockchain.add_block(block).await;
 }
 
 pub async fn generate_signed_tx(
@@ -190,7 +190,7 @@ pub async fn make_mock_blockchain(
         {
             println!("{}", i);
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, true).await;
+            blockchain.add_block(block).await;
         }
     }
 

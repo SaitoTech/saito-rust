@@ -73,8 +73,8 @@ impl Blockchain {
         self.fork_id
     }
 
-    pub async fn add_block(&mut self, block: Block, save_to_disk: bool) {
-println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);  
+    pub async fn add_block(&mut self, block: Block) {
+println!("ADD BLK HASH: {:?} {}", block.get_hash());  
        println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
@@ -241,7 +241,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
             if does_new_chain_validate {
-                self.add_block_success(block_hash, save_to_disk).await;
+                self.add_block_success(block_hash).await;
 
                 //
                 // TODO
@@ -298,13 +298,12 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
     pub async fn add_block_to_blockchain(
         blockchain_lock: Arc<RwLock<Blockchain>>,
         block: Block,
-        save_to_disk: bool,
     ) {
         let mut blockchain = blockchain_lock.write().await;
-        return blockchain.add_block(block, save_to_disk).await;
+        return blockchain.add_block(block).await;
     }
 
-    pub async fn add_block_success(&mut self, block_hash: SaitoHash, save_to_disk: bool) {
+    pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
 
         let block_id;
@@ -316,9 +315,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         {
             let block = self.get_mut_block(block_hash).await;
             block_id = block.get_id();
-            if save_to_disk || true {
-                Storage::write_block_to_disk(block);
-            }
+            Storage::write_block_to_disk(block);
 
             //
             // TMP - delete transactions
@@ -1351,7 +1348,7 @@ mod tests {
         {
             let mut blockchain = blockchain_lock.write().await;
             let block_copy = block.clone();
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
             let latest_block = blockchain.get_latest_block().unwrap();
@@ -1385,7 +1382,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_ne!(latest_block_id, blockchain.get_latest_block_id());
             assert_ne!(latest_block_hash, blockchain.get_latest_block_hash());
             //latest_block_id = blockchain.get_latest_block_id();
@@ -1423,7 +1420,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
         }
@@ -1528,7 +1525,7 @@ mod tests {
 
             {
                 let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block, false).await;
+                blockchain.add_block(block).await;
                 assert_eq!(test_block_hash, blockchain.get_latest_block_hash());
                 assert_eq!(test_block_id, blockchain.get_latest_block_id());
                 assert_eq!(

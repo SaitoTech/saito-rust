@@ -291,7 +291,7 @@ pub async fn process_blocks(
     let mut blockchain = blockchain_lock.write().await;
     while let Some(block) = mempool.blocks.pop_front() {
         mempool.delete_transactions(&block.transactions);
-        blockchain.add_block(block, true).await;
+        blockchain.add_block(block).await;
     }
     mempool.currently_processing_block = false;
 }
@@ -481,7 +481,7 @@ mod tests {
             {
                 let mut blockchain = blockchain_lock.write().await;
                 let prev_hash_before = block.get_previous_block_hash();
-                blockchain.add_block(block, false).await;
+                blockchain.add_block(block).await;
                 let prev_hash_after = blockchain
                     .get_latest_block()
                     .unwrap()
