@@ -1,5 +1,4 @@
 use super::api_message::APIMessage;
-use async_recursion::async_recursion;
 use super::network::CHALLENGE_EXPIRATION_TIME;
 use crate::block::Block;
 use crate::blockchain::{Blockchain, GENESIS_PERIOD};
@@ -15,6 +14,7 @@ use crate::networking::network::CHALLENGE_SIZE;
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
+use async_recursion::async_recursion;
 use futures::stream::SplitSink;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -23,7 +23,7 @@ use std::error::Error;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::{mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
@@ -90,11 +90,7 @@ pub struct PeerRequest {
 }
 
 impl PeerRequest {
-    pub async fn new(
-        command: &str,
-        message: Vec<u8>,
-        peer: &mut SaitoPeer,
-    ) -> Self {
+    pub async fn new(command: &str, message: Vec<u8>, peer: &mut SaitoPeer) -> Self {
         peer.request_count += 1;
         let api_message = APIMessage::new(command, peer.request_count - 1, message);
         send_message_to_socket(api_message, &peer.connection_id).await;
@@ -110,7 +106,7 @@ impl Future for PeerRequest {
     type Output = Result<APIMessage, Box<dyn Error>>;
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
-        let mut request_responses = request_responses_lock.write().unwrap();                
+        let mut request_responses = request_responses_lock.write().unwrap();
         match request_responses.remove(&(self.connection_id, self.request_id)) {
             Some(response) => {
                 // Return from the Future with an important message!
@@ -227,15 +223,18 @@ impl SaitoPeer {
     pub fn get_connection_id(&self) -> SaitoHash {
         self.connection_id
     }
- 
+
     #[async_recursion]
     pub async fn send_command(&mut self, command: &str, message: Vec<u8>) {
         let peer_request = PeerRequest::new(command, message, self).await;
-        let response_message = peer_request.await.expect(&format!("Error returned from {}", command));
+        let response_message = peer_request
+            .await
+            .expect(&format!("Error returned from {}", command));
         match response_message.message_name_as_string().as_str() {
             "RESULT__" => {
                 println!("SEND COMMAND GOT RESULT__ {}", command);
-                self.handle_peer_response_command(command, &response_message).await;
+                self.handle_peer_response_command(command, &response_message)
+                    .await;
             }
             "ERROR___" => {
                 self.handle_peer_response_error(command, &response_message);
@@ -246,39 +245,47 @@ impl SaitoPeer {
         }
     }
     pub async fn send_response_from_str(&mut self, message_id: u32, message_str: &str) {
-        send_message_to_socket(APIMessage::new_from_string(
-            "RESULT__",
-            message_id,
-            message_str,
-        ), &self.connection_id)
+        send_message_to_socket(
+            APIMessage::new_from_string("RESULT__", message_id, message_str),
+            &self.connection_id,
+        )
         .await;
     }
     pub async fn send_response(&mut self, message_id: u32, message: Vec<u8>) {
-        send_message_to_socket(APIMessage::new("RESULT__", message_id, message), &self.connection_id)
-            .await;
+        send_message_to_socket(
+            APIMessage::new("RESULT__", message_id, message),
+            &self.connection_id,
+        )
+        .await;
     }
     pub async fn send_error_response_from_str(&mut self, message_id: u32, message_str: &str) {
-        send_message_to_socket(APIMessage::new_from_string(
-            "ERROR___",
-            message_id,
-            message_str,
-        ), &self.connection_id)
+        send_message_to_socket(
+            APIMessage::new_from_string("ERROR___", message_id, message_str),
+            &self.connection_id,
+        )
         .await;
     }
     pub async fn send_error_response(&mut self, message_id: u32, message: Vec<u8>) {
-        send_message_to_socket(APIMessage::new("ERROR___", message_id, message), &self.connection_id)
-            .await;
+        send_message_to_socket(
+            APIMessage::new("ERROR___", message_id, message),
+            &self.connection_id,
+        )
+        .await;
     }
     pub async fn handle_peer_message(api_message_orig: APIMessage, connection_id: SaitoHash) {
         match api_message_orig.message_name_as_string().as_str() {
             "RESULT__" | "ERROR___" => {
                 let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
                 let mut request_wakers = request_wakers_lock.write().unwrap();
-                let option_waker = request_wakers.remove(&(connection_id, api_message_orig.message_id));
+                let option_waker =
+                    request_wakers.remove(&(connection_id, api_message_orig.message_id));
 
                 let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
-                let mut request_responses = request_responses_lock.write().unwrap();                
-                request_responses.insert((connection_id, api_message_orig.message_id), api_message_orig);
+                let mut request_responses = request_responses_lock.write().unwrap();
+                request_responses.insert(
+                    (connection_id, api_message_orig.message_id),
+                    api_message_orig,
+                );
 
                 if let Some(waker) = option_waker {
                     waker.wake();
@@ -309,23 +316,21 @@ impl SaitoPeer {
                         .await;
                 }
             }
-            "SHAKCOMP" => {
-                match socket_handshake_verify(&api_message.message_data()) {
-                    Some(deserialize_challenge) => {
-                        peer.set_has_completed_handshake(true);
-                        peer.set_publickey(deserialize_challenge.opponent_pubkey());
-                        peer.send_response(
-                            api_message.message_id,
-                            String::from("OK").as_bytes().try_into().unwrap(),
-                        )
-                        .await;
-                        println!("HANDSHAKE COMPLETE!");
-                    }
-                    None => {
-                        println!("Error verifying peer handshake signature");
-                    }
+            "SHAKCOMP" => match socket_handshake_verify(&api_message.message_data()) {
+                Some(deserialize_challenge) => {
+                    peer.set_has_completed_handshake(true);
+                    peer.set_publickey(deserialize_challenge.opponent_pubkey());
+                    peer.send_response(
+                        api_message.message_id,
+                        String::from("OK").as_bytes().try_into().unwrap(),
+                    )
+                    .await;
+                    println!("HANDSHAKE COMPLETE!");
                 }
-            }
+                None => {
+                    println!("Error verifying peer handshake signature");
+                }
+            },
             "REQBLOCK" => {
                 let api_message = build_request_block_response(&api_message, blockchain_lock).await;
                 send_message_to_socket(api_message, &peer.connection_id).await;
@@ -354,14 +359,13 @@ impl SaitoPeer {
                         let peers_db_global = PEERS_DB_GLOBAL.clone();
                         let mut peer_db = peers_db_global.write().await;
                         let peer = peer_db.get_mut(&connection_id_clone).unwrap();
-                        
+
                         peer.send_command(
                             &String::from("SNDCHAIN"),
                             send_blockchain_message.serialize(),
                         )
                         .await;
                     });
-                    
                 } else {
                     peer.send_error_response_from_str(api_message.message_id, "UNKNOWN BLOCK HASH")
                         .await;
@@ -374,7 +378,7 @@ impl SaitoPeer {
                         AddTransactionResult::Accepted | AddTransactionResult::Exists => {
                             // TODO The tx is accepted, propagate it to all available peers
                             peer.send_response_from_str(api_message.message_id, "OK")
-                            .await;
+                                .await;
                         }
                         AddTransactionResult::Invalid => {
                             peer.send_error_response(
@@ -412,23 +416,29 @@ impl SaitoPeer {
                         let peers_db_global = PEERS_DB_GLOBAL.clone();
                         let mut peer_db = peers_db_global.write().await;
                         let peer = peer_db.get_mut(&connection_id_clone).unwrap();
-                        peer.send_command(&String::from("REQBLOCK"), request_block_message.serialize())
-                             .await;
+                        peer.send_command(
+                            &String::from("REQBLOCK"),
+                            request_block_message.serialize(),
+                        )
+                        .await;
                     });
                 }
             }
             "SNDBLKHD" => {
-                peer.send_error_response_from_str(api_message.message_id, "UNHANDLED COMMAND").await;
+                peer.send_error_response_from_str(api_message.message_id, "UNHANDLED COMMAND")
+                    .await;
             }
             "SNDKYLST" => {
-                peer.send_error_response_from_str(api_message.message_id, "UNHANDLED COMMAND").await;
+                peer.send_error_response_from_str(api_message.message_id, "UNHANDLED COMMAND")
+                    .await;
             }
             _ => {
                 println!(
                     "Unhandled command received by client... {}",
                     &api_message.message_name_as_string()
                 );
-                peer.send_error_response_from_str(api_message.message_id, "NO SUCH").await;
+                peer.send_error_response_from_str(api_message.message_id, "NO SUCH")
+                    .await;
             }
         }
     }
@@ -470,7 +480,7 @@ impl SaitoPeer {
                 let request_blockchain_message =
                     RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
 
-                    self.send_command(
+                self.send_command(
                     &String::from("REQCHAIN"),
                     request_blockchain_message.serialize(),
                 )
@@ -487,7 +497,6 @@ impl SaitoPeer {
                         // nothing to do
                     }
                 }
-                
             }
             "REQBLKHD" => {
                 println!("IMPLEMENT REQBLKHD RESPONSE?!");
@@ -682,11 +691,8 @@ pub async fn build_request_block_response(
     if request_block_message.get_block_id().is_some() {
         APIMessage::new_from_string("ERROR___", api_message.message_id, "Unsupported: fetching blocks by id is not yet supported, please fetch the block by hash.")
     } else if request_block_message.get_block_hash().is_some() {
-        
-        
         //let block_hash: SaitoHash = api_message.message_data[0..32].try_into().unwrap();
         let block_hash: SaitoHash = request_block_message.get_block_hash().unwrap();
-
 
         match blockchain.get_block_sync(&block_hash) {
             Some(target_block) => APIMessage::new(
