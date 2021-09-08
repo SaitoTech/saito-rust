@@ -1,6 +1,7 @@
 use std::{
     fs::{self, File},
     io::{self, Read, Write},
+    path::Path,
     sync::Arc,
 };
 
@@ -37,12 +38,11 @@ impl Storage {
     }
     pub fn write_block_to_disk(block: &mut Block) {
         let filename = Storage::generate_block_filename(block);
-
-        //println!("trying to write to disk: {}", filename);
-
-        let mut buffer = File::create(filename).unwrap();
-        let byte_array: Vec<u8> = block.serialize_for_net();
-        buffer.write_all(&byte_array[..]).unwrap();
+        if !Path::new(&filename).exists() {
+            let mut buffer = File::create(filename).unwrap();
+            let byte_array: Vec<u8> = block.serialize_for_net();
+            buffer.write_all(&byte_array[..]).unwrap();
+        }
     }
 
     pub async fn stream_block_from_disk(block_hash: SaitoHash) -> io::Result<Vec<u8>> {
@@ -99,7 +99,7 @@ impl Storage {
                 }
 
                 let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block, false).await;
+                blockchain.add_block(block).await;
             }
         }
     }

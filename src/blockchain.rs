@@ -2,6 +2,8 @@
 pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
 pub const PRUNE_AFTER_BLOCKS: u64 = 10;
+// max recursion when paying stakers
+pub const MAX_STAKER_RECURSION: u64 = 3;
 
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
@@ -70,9 +72,9 @@ impl Blockchain {
         self.fork_id
     }
 
-    pub async fn add_block(&mut self, block: Block, save_to_disk: bool) {
-println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);  
-       println!(
+    pub async fn add_block(&mut self, block: Block) {
+        println!("ADD BLK HASH: {:?}", block.get_hash());
+        println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
             block.transactions.len()
@@ -238,7 +240,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
             if does_new_chain_validate {
-                self.add_block_success(block_hash, save_to_disk).await;
+                self.add_block_success(block_hash).await;
 
                 //
                 // TODO
@@ -292,16 +294,12 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
             }
         }
     }
-    pub async fn add_block_to_blockchain(
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-        block: Block,
-        save_to_disk: bool,
-    ) {
+    pub async fn add_block_to_blockchain(blockchain_lock: Arc<RwLock<Blockchain>>, block: Block) {
         let mut blockchain = blockchain_lock.write().await;
-        return blockchain.add_block(block, save_to_disk).await;
+        return blockchain.add_block(block).await;
     }
 
-    pub async fn add_block_success(&mut self, block_hash: SaitoHash, save_to_disk: bool) {
+    pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
         println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
 
         let block_id;
@@ -313,9 +311,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         {
             let block = self.get_mut_block(block_hash).await;
             block_id = block.get_id();
-            if save_to_disk || true {
-                Storage::write_block_to_disk(block);
-            }
+            Storage::write_block_to_disk(block);
 
             //
             // TMP - delete transactions
@@ -678,6 +674,14 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         let block = self.blocks.get_mut(&block_hash).unwrap();
         block
     }
+
+    pub fn is_block_indexed(&self, block_hash: SaitoHash) -> bool {
+        if self.blocks.contains_key(&block_hash) {
+            return true;
+        }
+        return false;
+    }
+
     pub fn contains_block_hash_at_block_id(&self, block_id: u64, block_hash: SaitoHash) -> bool {
         self.blockring
             .contains_block_hash_at_block_id(block_id, block_hash)
@@ -798,6 +802,42 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         {
             let block = self.get_mut_block(new_chain[current_wind_index]).await;
             block.generate_metadata();
+
+            //
+            // ensure previous blocks that may be needed to calculate the staking
+            // tables have access to their transaction data so that routing and
+            // staking nodes.
+            //
+            // this means ensuring they are loaded into memory.
+            //
+            if block.get_has_golden_ticket() {
+                let mut cont = 1;
+                let mut previous_block_hash = block.get_previous_block_hash();
+
+                while cont == 1 && previous_block_hash != [0; 32] {
+                    //
+                    // we should never wind an unindexed chain, but
+                    // we will still perform a sanity check so as not
+                    // to imply get_block_sync can be run on unindexed
+                    // blocks
+                    //
+                    if self.is_block_indexed(previous_block_hash) {
+                        println!(
+                            "wind_chain, fetching previous block for golden ticket payout calcs"
+                        );
+                        let previous_block = self.get_mut_block(previous_block_hash).await;
+                        if previous_block.get_has_golden_ticket() {
+                            cont = 0;
+                        } else {
+                            // this also generates metadata if non-existing
+                            previous_block
+                                .upgrade_block_to_block_type(BlockType::Full)
+                                .await;
+                            previous_block_hash = previous_block.get_previous_block_hash();
+                        }
+                    }
+                }
+            }
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
@@ -1306,7 +1346,7 @@ mod tests {
         {
             let mut blockchain = blockchain_lock.write().await;
             let block_copy = block.clone();
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
             let latest_block = blockchain.get_latest_block().unwrap();
@@ -1340,7 +1380,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_ne!(latest_block_id, blockchain.get_latest_block_id());
             assert_ne!(latest_block_hash, blockchain.get_latest_block_hash());
             //latest_block_id = blockchain.get_latest_block_id();
@@ -1378,7 +1418,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
         }
@@ -1483,7 +1523,7 @@ mod tests {
 
             {
                 let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block, false).await;
+                blockchain.add_block(block).await;
                 assert_eq!(test_block_hash, blockchain.get_latest_block_hash());
                 assert_eq!(test_block_id, blockchain.get_latest_block_id());
                 assert_eq!(
