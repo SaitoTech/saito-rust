@@ -1,7 +1,6 @@
 use crate::blockchain::Blockchain;
 use crate::mempool::Mempool;
 use crate::networking::network::Result;
-use crate::networking::peer::handle_inbound_peer_connection;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
@@ -12,7 +11,7 @@ use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
 
-use super::peer::PeersDB;
+use super::peer::{PeersDB, handle_inbound_peer_connection};
 
 #[derive(Debug)]
 struct Invalid;
