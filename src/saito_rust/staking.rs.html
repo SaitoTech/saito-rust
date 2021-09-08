@@ -1051,33 +1051,6 @@
 <span id="1049">1049</span>
 <span id="1050">1050</span>
 <span id="1051">1051</span>
-<span id="1052">1052</span>
-<span id="1053">1053</span>
-<span id="1054">1054</span>
-<span id="1055">1055</span>
-<span id="1056">1056</span>
-<span id="1057">1057</span>
-<span id="1058">1058</span>
-<span id="1059">1059</span>
-<span id="1060">1060</span>
-<span id="1061">1061</span>
-<span id="1062">1062</span>
-<span id="1063">1063</span>
-<span id="1064">1064</span>
-<span id="1065">1065</span>
-<span id="1066">1066</span>
-<span id="1067">1067</span>
-<span id="1068">1068</span>
-<span id="1069">1069</span>
-<span id="1070">1070</span>
-<span id="1071">1071</span>
-<span id="1072">1072</span>
-<span id="1073">1073</span>
-<span id="1074">1074</span>
-<span id="1075">1075</span>
-<span id="1076">1076</span>
-<span id="1077">1077</span>
-<span id="1078">1078</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TODO</span>
@@ -1161,7 +1134,6 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">staking_treasury</span>: <span class="ident">u64</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
-
         <span class="macro">println!</span>(<span class="string">&quot;===========================&quot;</span>);
         <span class="macro">println!</span>(<span class="string">&quot;=== RESET STAKING TABLE ===&quot;</span>);
         <span class="macro">println!</span>(<span class="string">&quot;===========================&quot;</span>);
@@ -1246,7 +1218,7 @@
             <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">set_payout</span>(<span class="ident">staking_profit</span>);
         }
 
-<span class="macro">println!</span>(<span class="string">&quot;stakers: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">stakers</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;stakers: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">stakers</span>);
 
         <span class="kw">return</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>);
     }
@@ -1628,7 +1600,6 @@
         );
     }
 
-
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_roll_forward_staking_table_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::default</span>()));
@@ -1686,7 +1657,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 2</span>
@@ -1704,7 +1675,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 3</span>
@@ -1722,7 +1693,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 4</span>
@@ -1740,7 +1711,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// second staker payment should have happened and staking table reset</span>
@@ -1768,7 +1739,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 6</span>
@@ -1786,7 +1757,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 7</span>
@@ -1804,7 +1775,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// second staker payment should have happened and staking table reset</span>
@@ -1831,7 +1802,7 @@
             <span class="bool-val">false</span>,
         )
         .<span class="kw">await</span>;
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// TEST STAKER PAID</span>
@@ -1851,7 +1822,6 @@
             <span class="comment">//println!(&quot;{:?}&quot;, blk.transactions[2].get_outputs());</span>
             <span class="comment">//assert_eq!(blk.transactions[2].get_outputs()[2].get_slip_type(), SlipType::StakerOutput);</span>
         }
-
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
@@ -1882,7 +1852,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 2 -- staking deposits</span>
@@ -1909,7 +1879,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// the staking deposits should be econd staker payment should have happened and staking table reset</span>
@@ -1938,7 +1908,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// the staking table should have been created when needed for the payout</span>
@@ -1967,7 +1937,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 5 - payout</span>
@@ -1985,7 +1955,7 @@
         )
         .<span class="kw">await</span>;
         <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// the staking table should have been created when needed for the payout</span>
@@ -2041,7 +2011,7 @@
             <span class="ident">current_timestamp</span>,
         )
         .<span class="kw">await</span>;
-        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
+        <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// the staking table should have been created when needed for the payout</span>
@@ -2055,13 +2025,11 @@
         }
     }
 
-
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_roll_forward_staking_table_test_with_test_manager</span>() {
-
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::default</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-	<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">test_manager</span> <span class="op">=</span> <span class="ident">TestManager::new</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">test_manager</span> <span class="op">=</span> <span class="ident">TestManager::new</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
 
         <span class="kw">let</span> <span class="ident">publickey</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">latest_block_hash</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>];
@@ -2076,86 +2044,64 @@
         <span class="comment">// initialize blockchain staking table</span>
         <span class="comment">//</span>
         {
-<span class="comment">/*
-            let mut blockchain = blockchain_lock.write().await;
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
 
-            let mut slip1 = Slip::new();
-            slip1.set_amount(200_000_000);
-            slip1.set_slip_type(SlipType::StakerDeposit);
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slip1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+            <span class="ident">slip1</span>.<span class="ident">set_amount</span>(<span class="number">200_000_000</span>);
+            <span class="ident">slip1</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::StakerDeposit</span>);
 
-            let mut slip2 = Slip::new();
-            slip2.set_amount(300_000_000);
-            slip2.set_slip_type(SlipType::StakerDeposit);
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slip2</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
+            <span class="ident">slip2</span>.<span class="ident">set_amount</span>(<span class="number">300_000_000</span>);
+            <span class="ident">slip2</span>.<span class="ident">set_slip_type</span>(<span class="ident">SlipType::StakerDeposit</span>);
 
-            slip1.set_publickey(publickey);
-            slip2.set_publickey(publickey);
+            <span class="ident">slip1</span>.<span class="ident">set_publickey</span>(<span class="ident">publickey</span>);
+            <span class="ident">slip2</span>.<span class="ident">set_publickey</span>(<span class="ident">publickey</span>);
 
-            slip1.generate_utxoset_key();
-            slip2.generate_utxoset_key();
+            <span class="ident">slip1</span>.<span class="ident">generate_utxoset_key</span>();
+            <span class="ident">slip2</span>.<span class="ident">generate_utxoset_key</span>();
 
-            slip1.on_chain_reorganization(&amp;mut blockchain.utxoset, true, 1);
-            slip2.on_chain_reorganization(&amp;mut blockchain.utxoset, true, 1);
+            <span class="ident">slip1</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>, <span class="number">1</span>);
+            <span class="ident">slip2</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>, <span class="number">1</span>);
 
-            blockchain.staking.add_deposit(slip1);
-            blockchain.staking.add_deposit(slip2);
+            <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">add_deposit</span>(<span class="ident">slip1</span>);
+            <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">add_deposit</span>(<span class="ident">slip2</span>);
 
-            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
-*/</span>
+            <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">reset_staker_table</span>(<span class="number">1_000_000_000</span>); <span class="comment">// 10 Saito</span>
         }
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 1</span>
         <span class="comment">//</span>
-        <span class="ident">test_manager</span>.<span class="ident">add_block</span>(
-            <span class="ident">current_timestamp</span>,
-            <span class="number">3</span>,
-            <span class="number">0</span>,
-            <span class="bool-val">false</span>,
-	    <span class="macro">vec!</span>[],
-        )
-        .<span class="kw">await</span>;
+        <span class="ident">test_manager</span>
+            .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span>, <span class="number">3</span>, <span class="number">0</span>, <span class="bool-val">false</span>, <span class="macro">vec!</span>[])
+            .<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 2</span>
         <span class="comment">//</span>
-        <span class="ident">test_manager</span>.<span class="ident">add_block</span>(
-            <span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">120000</span>,
-            <span class="number">0</span>,
-            <span class="number">1</span>,
-            <span class="bool-val">false</span>,
-	    <span class="macro">vec!</span>[],
-        )
-        .<span class="kw">await</span>;
+        <span class="ident">test_manager</span>
+            .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">120000</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="bool-val">false</span>, <span class="macro">vec!</span>[])
+            .<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 3</span>
         <span class="comment">//</span>
-        <span class="ident">test_manager</span>.<span class="ident">add_block</span>(
-            <span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">240000</span>,
-            <span class="number">0</span>,
-            <span class="number">1</span>,
-            <span class="bool-val">true</span>,
-	    <span class="macro">vec!</span>[],
-        )
-        .<span class="kw">await</span>;
+        <span class="ident">test_manager</span>
+            .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">240000</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="bool-val">false</span>, <span class="macro">vec!</span>[])
+            .<span class="kw">await</span>;
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 4</span>
         <span class="comment">//</span>
-        <span class="ident">test_manager</span>.<span class="ident">add_block</span>(
-            <span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">360000</span>,
-            <span class="number">0</span>,
-            <span class="number">1</span>,
-            <span class="bool-val">true</span>,
-	    <span class="macro">vec!</span>[],
-        )
-        .<span class="kw">await</span>;
+        <span class="ident">test_manager</span>
+            .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">360000</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="bool-val">true</span>, <span class="macro">vec!</span>[])
+            .<span class="kw">await</span>;
 
-	<span class="ident">test_manager</span>.<span class="ident">test_utxoset_consistency</span>().<span class="kw">await</span>;
-<span class="comment">//	test_manager.test_monetary_policy();</span>
+        <span class="comment">//test_manager.check_utxoset().await;</span>
+        <span class="comment">//test_manager.check_token_supply().await;</span>
 
+        <span class="macro">assert_eq!</span>(<span class="number">0</span>, <span class="number">1</span>);
     }
-
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>

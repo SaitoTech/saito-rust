@@ -1049,6 +1049,9 @@
 <span id="1047">1047</span>
 <span id="1048">1048</span>
 <span id="1049">1049</span>
+<span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -2008,16 +2011,19 @@
         <span class="comment">// the slip-level validation logic.</span>
         <span class="comment">//</span>
 
-	<span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() {
-	    <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">validate</span>(<span class="ident">utxoset</span>);
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() {
+            <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">validate</span>(<span class="ident">utxoset</span>);
             <span class="kw">if</span> <span class="ident">is_valid</span> <span class="op">!</span><span class="op">=</span> <span class="bool-val">true</span> {
                 <span class="macro">println!</span>(<span class="string">&quot;tx: {:?}&quot;</span>, <span class="self">self</span>);
-                <span class="macro">println!</span>(<span class="string">&quot;this input is invalid: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>());
-		<span class="kw">return</span> <span class="bool-val">false</span>;
+                <span class="macro">println!</span>(
+                    <span class="string">&quot;this input is invalid: {:?}&quot;</span>,
+                    <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>()
+                );
+                <span class="kw">return</span> <span class="bool-val">false</span>;
             }
-	}
+        }
 
-	<span class="bool-val">true</span>
+        <span class="bool-val">true</span>
         <span class="comment">//let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));</span>
         <span class="comment">//inputs_validate</span>
     }
