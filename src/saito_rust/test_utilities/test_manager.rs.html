@@ -478,7 +478,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoUTXOSetKey</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction</span>::{<span class="ident">Transaction</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction::Transaction</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -757,181 +757,181 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">check_token_supply</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-<span class="comment">/***
-        let mut token_supply: u64 = 0;
-        let mut current_supply: u64 = 0;
-        let mut block_inputs: u64 = 0;
-        let mut block_outputs: u64 = 0;
-        let mut last_block_treasury: u64 = 0;
-        let mut last_block_staking_treasury: u64 = 0;
-        let mut unpaid_but_uncollected1: u64 = 0;
-        let mut unpaid_but_uncollected2: u64 = 0;
-        let mut unpaid_but_uncollected3: u64 = 0;
-        let mut block_contains_fee_tx: u64 = 0;
-        let mut block_contains_gt_tx: u64 = 0;
-        let mut block_fee_tx_idx: u64 = 0;
-        let mut block_gt_tx_idx: u64 = 0;
+        <span class="comment">/***
+                let mut token_supply: u64 = 0;
+                let mut current_supply: u64 = 0;
+                let mut block_inputs: u64 = 0;
+                let mut block_outputs: u64 = 0;
+                let mut last_block_treasury: u64 = 0;
+                let mut last_block_staking_treasury: u64 = 0;
+                let mut unpaid_but_uncollected1: u64 = 0;
+                let mut unpaid_but_uncollected2: u64 = 0;
+                let mut unpaid_but_uncollected3: u64 = 0;
+                let mut block_contains_fee_tx: u64 = 0;
+                let mut block_contains_gt_tx: u64 = 0;
+                let mut block_fee_tx_idx: u64 = 0;
+                let mut block_gt_tx_idx: u64 = 0;
 
-        let blockchain = self.blockchain_lock.read().await;
-        let latest_block_id = blockchain.get_latest_block_id();
+                let blockchain = self.blockchain_lock.read().await;
+                let latest_block_id = blockchain.get_latest_block_id();
 
-        for i in 1..=latest_block_id {
-            let block_hash = blockchain
-                .blockring
-                .get_longest_chain_block_hash_by_block_id(i as u64);
-            let block = blockchain.get_block(block_hash).await;
+                for i in 1..=latest_block_id {
+                    let block_hash = blockchain
+                        .blockring
+                        .get_longest_chain_block_hash_by_block_id(i as u64);
+                    let block = blockchain.get_block(block_hash).await;
 
-            block_inputs = 0;
-            block_outputs = 0;
-            block_contains_fee_tx = 0;
-            block_contains_gt_tx = 0;
+                    block_inputs = 0;
+                    block_outputs = 0;
+                    block_contains_fee_tx = 0;
+                    block_contains_gt_tx = 0;
 
-            //
-            //
-            //
-            for i in 0..block.transactions.len() {
-                //
-                // we ignore the inputs in staking / fee transactions as they have
-                // been pulled from the staking treasury and are already technically
-                // counted in the money supply as an output from a previous slip.
-                // we only care about the difference in token supply represented by
-                // the difference in the staking_treasury.
-                //
-                if block.transactions[i].get_transaction_type() == TransactionType::GoldenTicket {
-                    block_contains_gt_tx = 1;
-                    block_gt_tx_idx = i as u64;
-                }
-                if block.transactions[i].get_transaction_type() == TransactionType::Fee {
-                    block_contains_fee_tx = 1;
-                    block_fee_tx_idx = i as u64;
-                }
-                if block.transactions[i].get_transaction_type() != TransactionType::Fee {
-                    for z in 0..block.transactions[i].inputs.len() {
-                        block_inputs += block.transactions[i].inputs[z].get_amount();
+                    //
+                    //
+                    //
+                    for i in 0..block.transactions.len() {
+                        //
+                        // we ignore the inputs in staking / fee transactions as they have
+                        // been pulled from the staking treasury and are already technically
+                        // counted in the money supply as an output from a previous slip.
+                        // we only care about the difference in token supply represented by
+                        // the difference in the staking_treasury.
+                        //
+                        if block.transactions[i].get_transaction_type() == TransactionType::GoldenTicket {
+                            block_contains_gt_tx = 1;
+                            block_gt_tx_idx = i as u64;
+                        }
+                        if block.transactions[i].get_transaction_type() == TransactionType::Fee {
+                            block_contains_fee_tx = 1;
+                            block_fee_tx_idx = i as u64;
+                        }
+                        if block.transactions[i].get_transaction_type() != TransactionType::Fee {
+                            for z in 0..block.transactions[i].inputs.len() {
+                                block_inputs += block.transactions[i].inputs[z].get_amount();
+                            }
+                        }
+                        for z in 0..block.transactions[i].outputs.len() {
+                            block_outputs += block.transactions[i].outputs[z].get_amount();
+                        }
                     }
-                }
-                for z in 0..block.transactions[i].outputs.len() {
-                    block_outputs += block.transactions[i].outputs[z].get_amount();
-                }
-            }
-
-            println!(
-                &quot;Block {} --- Golden Ticket? {}&quot;,
-                block.get_id(),
-                block_contains_gt_tx
-            );
-
-            unpaid_but_uncollected3 = unpaid_but_uncollected2;
-            unpaid_but_uncollected2 = unpaid_but_uncollected1;
-            unpaid_but_uncollected1 = 0;
-
-            if block_inputs &gt; block_outputs {
-                unpaid_but_uncollected1 = block_inputs - block_outputs;
-            }
-
-            //
-            // token supply set in block #1
-            //
-            if i == 1 {
-                token_supply = block_outputs + block.get_treasury() + block.get_staking_treasury();
-                current_supply = token_supply;
-
-                println!(&quot;initial supply: {}&quot;, token_supply);
-
-            //
-            // if outputs &gt; inputs, difference will be staking treasury and treasury
-            //
-            } else {
-                println!(&quot;block inputs {}&quot;, block_inputs);
-                println!(&quot;block outputs {}&quot;, block_outputs);
-                println!(&quot;lbt {}&quot;, last_block_treasury);
-                println!(&quot;lbst {}&quot;, last_block_staking_treasury);
-                println!(&quot;t {}&quot;, block.get_treasury());
-                println!(&quot;st {}&quot;, block.get_staking_treasury());
-                println!(&quot;ubu1: {}&quot;, unpaid_but_uncollected1);
-                println!(&quot;ubu2: {}&quot;, unpaid_but_uncollected2);
-                println!(&quot;ubu3: {}&quot;, unpaid_but_uncollected3);
-
-                current_supply -= block_inputs;
-                current_supply += block_outputs;
-                current_supply -= last_block_staking_treasury;
-                current_supply += block.get_staking_treasury();
-                current_supply -= last_block_treasury;
-                current_supply += block.get_treasury();
-
-                //
-                // staking treasury and treasury collect payment after 2 blocks
-                // staking treasury
-                //
-                if block_contains_gt_tx == 1 {
-                    if block_contains_fee_tx == 1 {
-                        println!(&quot;block contains fee tx?&quot;);
-                        //
-                        // miner and router payment this block
-                        //
-                        //current_supply += unpaid_but_uncollected1;
-                    }
-
-                    //
-                    // WITH STAKING PAYOUT
-                    //
-                    if unpaid_but_uncollected2 &gt; 0 {
-                        println!(&quot;UNPAID BUT UNCOLLECTED!: {}&quot;, unpaid_but_uncollected2);
-
-                        //
-                        // remove any token supply outstanding from previous block
-                        //
-                        current_supply -= unpaid_but_uncollected2;
-
-                        //
-                        // these payments now show up in outputs / staking_treasury
-                        //
-                        let router_part = unpaid_but_uncollected2 / 2;
-                        let _staker_part = unpaid_but_uncollected2 - router_part;
-
-                        //
-                        // and the block is dealt with
-                        //
-                        unpaid_but_uncollected2 = 0;
-
-                        println!(&quot;giving us current supply of {}&quot;, current_supply);
-                    }
-
-                    //
-                    // everything else is issued....
-                    //
-                    unpaid_but_uncollected1 = 0;
-                } else {
-                    // add new amount
-                    current_supply += unpaid_but_uncollected1;
 
                     println!(
-                        &quot;and we add upbu1 to current_supply: {} -- {}&quot;,
-                        unpaid_but_uncollected1, current_supply
+                        &quot;Block {} --- Golden Ticket? {}&quot;,
+                        block.get_id(),
+                        block_contains_gt_tx
                     );
 
-                    //
-                    // this will be in the treasury now as it has fallen
-                    // too far back to be collected.
-                    //
-                    if unpaid_but_uncollected3 &gt; 0 {
-                        current_supply -= unpaid_but_uncollected3;
+                    unpaid_but_uncollected3 = unpaid_but_uncollected2;
+                    unpaid_but_uncollected2 = unpaid_but_uncollected1;
+                    unpaid_but_uncollected1 = 0;
+
+                    if block_inputs &gt; block_outputs {
+                        unpaid_but_uncollected1 = block_inputs - block_outputs;
                     }
+
+                    //
+                    // token supply set in block #1
+                    //
+                    if i == 1 {
+                        token_supply = block_outputs + block.get_treasury() + block.get_staking_treasury();
+                        current_supply = token_supply;
+
+                        println!(&quot;initial supply: {}&quot;, token_supply);
+
+                    //
+                    // if outputs &gt; inputs, difference will be staking treasury and treasury
+                    //
+                    } else {
+                        println!(&quot;block inputs {}&quot;, block_inputs);
+                        println!(&quot;block outputs {}&quot;, block_outputs);
+                        println!(&quot;lbt {}&quot;, last_block_treasury);
+                        println!(&quot;lbst {}&quot;, last_block_staking_treasury);
+                        println!(&quot;t {}&quot;, block.get_treasury());
+                        println!(&quot;st {}&quot;, block.get_staking_treasury());
+                        println!(&quot;ubu1: {}&quot;, unpaid_but_uncollected1);
+                        println!(&quot;ubu2: {}&quot;, unpaid_but_uncollected2);
+                        println!(&quot;ubu3: {}&quot;, unpaid_but_uncollected3);
+
+                        current_supply -= block_inputs;
+                        current_supply += block_outputs;
+                        current_supply -= last_block_staking_treasury;
+                        current_supply += block.get_staking_treasury();
+                        current_supply -= last_block_treasury;
+                        current_supply += block.get_treasury();
+
+                        //
+                        // staking treasury and treasury collect payment after 2 blocks
+                        // staking treasury
+                        //
+                        if block_contains_gt_tx == 1 {
+                            if block_contains_fee_tx == 1 {
+                                println!(&quot;block contains fee tx?&quot;);
+                                //
+                                // miner and router payment this block
+                                //
+                                //current_supply += unpaid_but_uncollected1;
+                            }
+
+                            //
+                            // WITH STAKING PAYOUT
+                            //
+                            if unpaid_but_uncollected2 &gt; 0 {
+                                println!(&quot;UNPAID BUT UNCOLLECTED!: {}&quot;, unpaid_but_uncollected2);
+
+                                //
+                                // remove any token supply outstanding from previous block
+                                //
+                                current_supply -= unpaid_but_uncollected2;
+
+                                //
+                                // these payments now show up in outputs / staking_treasury
+                                //
+                                let router_part = unpaid_but_uncollected2 / 2;
+                                let _staker_part = unpaid_but_uncollected2 - router_part;
+
+                                //
+                                // and the block is dealt with
+                                //
+                                unpaid_but_uncollected2 = 0;
+
+                                println!(&quot;giving us current supply of {}&quot;, current_supply);
+                            }
+
+                            //
+                            // everything else is issued....
+                            //
+                            unpaid_but_uncollected1 = 0;
+                        } else {
+                            // add new amount
+                            current_supply += unpaid_but_uncollected1;
+
+                            println!(
+                                &quot;and we add upbu1 to current_supply: {} -- {}&quot;,
+                                unpaid_but_uncollected1, current_supply
+                            );
+
+                            //
+                            // this will be in the treasury now as it has fallen
+                            // too far back to be collected.
+                            //
+                            if unpaid_but_uncollected3 &gt; 0 {
+                                current_supply -= unpaid_but_uncollected3;
+                            }
+                        }
+                    }
+
+                    last_block_staking_treasury = block.get_staking_treasury();
+                    last_block_treasury = block.get_treasury();
+
+                    //
+                    // we check that overall token supply has not changed
+                    //
+                    println!(&quot;checking token supply in block {}&quot;, i);
+                    assert_eq!(current_supply, token_supply);
                 }
-            }
 
-            last_block_staking_treasury = block.get_staking_treasury();
-            last_block_treasury = block.get_treasury();
-
-            //
-            // we check that overall token supply has not changed
-            //
-            println!(&quot;checking token supply in block {}&quot;, i);
-            assert_eq!(current_supply, token_supply);
-        }
-
-        assert_eq!(1, 0);
-***/</span>
+                assert_eq!(1, 0);
+        ***/</span>
     }
 }
 

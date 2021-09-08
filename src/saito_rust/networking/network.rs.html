@@ -562,9 +562,6 @@
 <span id="560">560</span>
 <span id="561">561</span>
 <span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>};
@@ -573,7 +570,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::filters</span>::{
     <span class="ident">get_block_route_filter</span>, <span class="ident">post_transaction_route_filter</span>, <span class="ident">ws_upgrade_route_filter</span>,
 };
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::peer</span>::{<span class="ident">SaitoPeer</span>, <span class="ident">OutboundPeer</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::peer</span>::{<span class="ident">OutboundPeer</span>, <span class="ident">SaitoPeer</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::util::format_url_string</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
@@ -637,11 +634,11 @@
             <span class="prelude-val">Ok</span>((<span class="ident">ws_stream</span>, <span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> (<span class="ident">write_sink</span>, <span class="kw-2">mut</span> <span class="ident">read_stream</span>) <span class="op">=</span> <span class="ident">ws_stream</span>.<span class="ident">split</span>();
                 {
-                <span class="kw">let</span> <span class="ident">outbound_peer_db_global</span> <span class="op">=</span> <span class="ident">OUTBOUND_PEER_CONNECTIONS_GLOBAL</span>.<span class="ident">clone</span>();
-                <span class="ident">outbound_peer_db_global</span>
-                    .<span class="ident">write</span>()
-                    .<span class="kw">await</span>
-                    .<span class="ident">insert</span>(<span class="ident">connection_id</span>, <span class="ident">OutboundPeer</span> { <span class="ident">write_sink</span> });
+                    <span class="kw">let</span> <span class="ident">outbound_peer_db_global</span> <span class="op">=</span> <span class="ident">OUTBOUND_PEER_CONNECTIONS_GLOBAL</span>.<span class="ident">clone</span>();
+                    <span class="ident">outbound_peer_db_global</span>
+                        .<span class="ident">write</span>()
+                        .<span class="kw">await</span>
+                        .<span class="ident">insert</span>(<span class="ident">connection_id</span>, <span class="ident">OutboundPeer</span> { <span class="ident">write_sink</span> });
                 }
                 <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>;
                 {
@@ -661,7 +658,8 @@
                             <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span><span class="op">&gt;</span> {
                                 <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span> {
                                     <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">APIMessage::deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>.<span class="ident">into_data</span>());
-                                    <span class="ident">SaitoPeer::handle_peer_message</span>(<span class="ident">api_message</span>, <span class="ident">connection_id</span>).<span class="kw">await</span>;
+                                    <span class="ident">SaitoPeer::handle_peer_message</span>(<span class="ident">api_message</span>, <span class="ident">connection_id</span>)
+                                        .<span class="kw">await</span>;
                                 } <span class="kw">else</span> {
                                     <span class="macro">println!</span>(<span class="string">&quot;Message of length 0... why?&quot;</span>);
                                     <span class="macro">println!</span>(<span class="string">&quot;This seems to occur if we aren&#39;t holding a reference to the sender/stream on the&quot;</span>);
@@ -671,15 +669,13 @@
                                     <span class="macro">println!</span>(<span class="string">&quot;it would be very helpful to see this if starts to occur again. We may want to&quot;</span>);
                                     <span class="macro">println!</span>(<span class="string">&quot;treat this as a disconnect.&quot;</span>);
                                 }
-                            },
+                            }
                             <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                                {
-                                    <span class="macro">println!</span>(<span class="string">&quot;Error reading from peer socket {}&quot;</span>, <span class="ident">error</span>);
-                                    <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
-                                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                                    <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
-                                    <span class="ident">peer</span>.<span class="ident">set_is_connected_or_connecting</span>(<span class="bool-val">false</span>).<span class="kw">await</span>;
-                                }
+                                <span class="macro">println!</span>(<span class="string">&quot;Error reading from peer socket {}&quot;</span>, <span class="ident">error</span>);
+                                <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
+                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                                <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
+                                <span class="ident">peer</span>.<span class="ident">set_is_connected_or_connecting</span>(<span class="bool-val">false</span>).<span class="kw">await</span>;
                             }
                         }
                     }
@@ -688,10 +684,8 @@
                     <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                     <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
-                    <span class="ident">SaitoPeer::send_command</span>(<span class="ident">peer</span>, <span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;SHAKINIT&quot;</span>), <span class="ident">message_data</span>)
-                        .<span class="kw">await</span>;
+                    <span class="ident">SaitoPeer::send_command</span>(<span class="ident">peer</span>, <span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;SHAKINIT&quot;</span>), <span class="ident">message_data</span>).<span class="kw">await</span>;
                 }
-                
             }
             <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="macro">println!</span>(<span class="string">&quot;Error connecting to peer {}&quot;</span>, <span class="ident">error</span>);
