@@ -835,6 +835,8 @@ impl Blockchain {
                                 .await;
                             previous_block_hash = previous_block.get_previous_block_hash();
                         }
+                    } else {
+                        cont = 1000;
                     }
                 }
             }
