@@ -11,7 +11,7 @@ use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
 
-use super::peer::{PeersDB, handle_inbound_peer_connection};
+use super::peer::{handle_inbound_peer_connection, PeersDB};
 
 #[derive(Debug)]
 struct Invalid;

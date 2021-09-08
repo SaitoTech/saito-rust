@@ -5,7 +5,7 @@ use crate::networking::api_message::APIMessage;
 use crate::networking::filters::{
     get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter,
 };
-use crate::networking::peer::{SaitoPeer, OutboundPeer};
+use crate::networking::peer::{OutboundPeer, SaitoPeer};
 use crate::util::format_url_string;
 
 use crate::wallet::Wallet;
@@ -69,11 +69,11 @@ impl Network {
             Ok((ws_stream, _)) => {
                 let (write_sink, mut read_stream) = ws_stream.split();
                 {
-                let outbound_peer_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
-                outbound_peer_db_global
-                    .write()
-                    .await
-                    .insert(connection_id, OutboundPeer { write_sink });
+                    let outbound_peer_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+                    outbound_peer_db_global
+                        .write()
+                        .await
+                        .insert(connection_id, OutboundPeer { write_sink });
                 }
                 let publickey: SaitoPublicKey;
                 {
@@ -93,7 +93,8 @@ impl Network {
                             Ok(message) => {
                                 if message.len() > 0 {
                                     let api_message = APIMessage::deserialize(&message.into_data());
-                                    SaitoPeer::handle_peer_message(api_message, connection_id).await;
+                                    SaitoPeer::handle_peer_message(api_message, connection_id)
+                                        .await;
                                 } else {
                                     println!("Message of length 0... why?");
                                     println!("This seems to occur if we aren't holding a reference to the sender/stream on the");
@@ -103,15 +104,13 @@ impl Network {
                                     println!("it would be very helpful to see this if starts to occur again. We may want to");
                                     println!("treat this as a disconnect.");
                                 }
-                            },
+                            }
                             Err(error) => {
-                                {
-                                    println!("Error reading from peer socket {}", error);
-                                    let peers_db_global = PEERS_DB_GLOBAL.clone();
-                                    let mut peer_db = peers_db_global.write().await;
-                                    let peer = peer_db.get_mut(&connection_id).unwrap();
-                                    peer.set_is_connected_or_connecting(false).await;
-                                }
+                                println!("Error reading from peer socket {}", error);
+                                let peers_db_global = PEERS_DB_GLOBAL.clone();
+                                let mut peer_db = peers_db_global.write().await;
+                                let peer = peer_db.get_mut(&connection_id).unwrap();
+                                peer.set_is_connected_or_connecting(false).await;
                             }
                         }
                     }
@@ -120,10 +119,8 @@ impl Network {
                     let peers_db_global = PEERS_DB_GLOBAL.clone();
                     let mut peer_db = peers_db_global.write().await;
                     let peer = peer_db.get_mut(&connection_id).unwrap();
-                    SaitoPeer::send_command(peer, &String::from("SHAKINIT"), message_data)
-                        .await;
+                    SaitoPeer::send_command(peer, &String::from("SHAKINIT"), message_data).await;
                 }
-                
             }
             Err(error) => {
                 println!("Error connecting to peer {}", error);
