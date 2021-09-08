@@ -1543,6 +1543,8 @@
 <span id="1541">1541</span>
 <span id="1542">1542</span>
 <span id="1543">1543</span>
+<span id="1544">1544</span>
+<span id="1545">1545</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -2381,6 +2383,8 @@
                                 .<span class="kw">await</span>;
                             <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_previous_block_hash</span>();
                         }
+                    } <span class="kw">else</span> {
+                        <span class="ident">cont</span> <span class="op">=</span> <span class="number">1000</span>;
                     }
                 }
             }
