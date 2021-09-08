@@ -942,7 +942,7 @@ impl Block {
                 self.transactions[gt_idx].get_message().to_vec(),
             );
             let random_number = hash(&golden_ticket.get_random().to_vec());
-            let miner_publickey = golden_ticket.get_publickey();
+            let _miner_publickey = golden_ticket.get_publickey();
 
             //
             // miner payout is fees from previous block, no staking treasury
@@ -972,12 +972,10 @@ impl Block {
                 //
                 let mut cont = 1;
                 let mut loop_idx = 0;
-                let mut staking_block_hash = previous_block.get_previous_block_hash();
-                let mut slip_ordinal_to_apply = 1;
+                let _staking_block_hash = previous_block.get_previous_block_hash();
 
                 while cont == 1 {
                     loop_idx += 1;
-                    slip_ordinal_to_apply += 1;
 
                     //
                     // we start with the second block, so once loop_IDX hits the same
@@ -987,7 +985,7 @@ impl Block {
                     if loop_idx >= MAX_STAKER_RECURSION {
                         cont = 0;
                     } else {
-                        let mut staking_block_hash = previous_block.get_previous_block_hash();
+                        let staking_block_hash = previous_block.get_previous_block_hash();
                         if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
                             if !staking_block.get_has_golden_ticket() {
                                 //

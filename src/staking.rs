@@ -978,8 +978,7 @@ mod tests {
         let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 
         let publickey;
-        let mut latest_block_hash = [0; 32];
-        let mut current_timestamp = create_timestamp();
+        let current_timestamp = create_timestamp();
 
         {
             let wallet = wallet_lock.read().await;

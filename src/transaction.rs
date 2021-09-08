@@ -955,22 +955,20 @@ impl Transaction {
         // tokens it will pass this check, which is conducted inside
         // the slip-level validation logic.
         //
+        //for i in 0..self.inputs.len() {
+        //    let is_valid = self.inputs[i].validate(utxoset);
+        //    if is_valid != true {
+        //        println!("tx: {:?}", self);
+        //        println!(
+        //            "this input is invalid: {:?}",
+        //            self.inputs[i].get_slip_type()
+        //        );
+        //        return false;
+        //    }
+        //}
 
-        for i in 0..self.inputs.len() {
-            let is_valid = self.inputs[i].validate(utxoset);
-            if is_valid != true {
-                println!("tx: {:?}", self);
-                println!(
-                    "this input is invalid: {:?}",
-                    self.inputs[i].get_slip_type()
-                );
-                return false;
-            }
-        }
-
-        true
-        //let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
-        //inputs_validate
+        let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
+        inputs_validate
     }
 }
 
