@@ -5,7 +5,6 @@ pub const PRUNE_AFTER_BLOCKS: u64 = 10;
 // max recursion when paying stakers
 pub const MAX_STAKER_RECURSION: u64 = 3;
 
-
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
 use crate::consensus::SaitoMessage;
@@ -74,8 +73,8 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-println!("ADD BLK HASH: {:?} {}", block.get_hash());  
-       println!(
+        println!("ADD BLK HASH: {:?}", block.get_hash());
+        println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
             block.transactions.len()
@@ -295,10 +294,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash());
             }
         }
     }
-    pub async fn add_block_to_blockchain(
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-        block: Block,
-    ) {
+    pub async fn add_block_to_blockchain(blockchain_lock: Arc<RwLock<Blockchain>>, block: Block) {
         let mut blockchain = blockchain_lock.write().await;
         return blockchain.add_block(block).await;
     }
@@ -681,7 +677,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash());
 
     pub fn is_block_indexed(&self, block_hash: SaitoHash) -> bool {
         if self.blocks.contains_key(&block_hash) {
-	    return true;
+            return true;
         }
         return false;
     }
@@ -807,39 +803,41 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash());
             let block = self.get_mut_block(new_chain[current_wind_index]).await;
             block.generate_metadata();
 
-	    //
-	    // ensure previous blocks that may be needed to calculate the staking
-	    // tables have access to their transaction data so that routing and 
-	    // staking nodes.
-	    //
-	    // this means ensuring they are loaded into memory.
-	    //
-	    if block.get_has_golden_ticket() {
+            //
+            // ensure previous blocks that may be needed to calculate the staking
+            // tables have access to their transaction data so that routing and
+            // staking nodes.
+            //
+            // this means ensuring they are loaded into memory.
+            //
+            if block.get_has_golden_ticket() {
+                let mut cont = 1;
+                let mut previous_block_hash = block.get_previous_block_hash();
 
-		let mut cont = 1;
-	        let mut previous_block_hash = block.get_previous_block_hash();
-
-		while cont == 1 && previous_block_hash != [0; 32] {
-
-		    //
-		    // we should never wind an unindexed chain, but 
-		    // we will still perform a sanity check so as not
-		    // to imply get_block_sync can be run on unindexed
-		    // blocks
-		    //
-	            if self.is_block_indexed(previous_block_hash) {
-			println!("wind_chain, fetching previous block for golden ticket payout calcs");
-	                let previous_block = self.get_mut_block(previous_block_hash).await;
-		        if previous_block.get_has_golden_ticket() {
-		            cont = 0;  
-		        } else {
-			    // this also generates metadata if non-existing
-			    previous_block.upgrade_block_to_block_type(BlockType::Full).await;
-		 	    previous_block_hash = previous_block.get_previous_block_hash();
-		        }
-		    }
-		}
-	    }
+                while cont == 1 && previous_block_hash != [0; 32] {
+                    //
+                    // we should never wind an unindexed chain, but
+                    // we will still perform a sanity check so as not
+                    // to imply get_block_sync can be run on unindexed
+                    // blocks
+                    //
+                    if self.is_block_indexed(previous_block_hash) {
+                        println!(
+                            "wind_chain, fetching previous block for golden ticket payout calcs"
+                        );
+                        let previous_block = self.get_mut_block(previous_block_hash).await;
+                        if previous_block.get_has_golden_ticket() {
+                            cont = 0;
+                        } else {
+                            // this also generates metadata if non-existing
+                            previous_block
+                                .upgrade_block_to_block_type(BlockType::Full)
+                                .await;
+                            previous_block_hash = previous_block.get_previous_block_hash();
+                        }
+                    }
+                }
+            }
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();

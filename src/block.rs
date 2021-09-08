@@ -81,14 +81,14 @@ impl ConsensusValues {
             rebroadcast_hash: [0; 32],
             nolan_falling_off_chain: 0,
             staking_treasury: 0,
-	    block_payout: vec![],
+            block_payout: vec![],
         }
     }
 }
 
 //
 // The BlockPayout object is returned by each block to report who
-// receives the payment from the block. It is included in the 
+// receives the payment from the block. It is included in the
 // consensus_values so that the fee transaction can be generated
 // and validated.
 //
@@ -114,8 +114,8 @@ impl BlockPayout {
             miner_payout: 0,
             router_payout: 0,
             staker_payout: 0,
-	    staking_treasury: 0,
-	    staker_slip: Slip::new(),
+            staking_treasury: 0,
+            staker_slip: Slip::new(),
             random_number: [0; 32],
         }
     }
@@ -816,7 +816,6 @@ impl Block {
     // generate hashes and payouts and fee calculations
     //
     pub async fn generate_consensus_values(&self, blockchain: &Blockchain) -> ConsensusValues {
-
         let mut cv = ConsensusValues::new();
 
         //
@@ -935,11 +934,9 @@ impl Block {
             }
         }
 
-
-
-	//
-	// calculate payouts
-	//
+        //
+        // calculate payouts
+        //
         if let Some(gt_idx) = cv.gt_idx {
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
@@ -951,7 +948,6 @@ impl Block {
             // miner payout is fees from previous block, no staking treasury
             //
             if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-
                 let miner_payment = previous_block.get_total_fees() / 2;
                 let router_payment = previous_block.get_total_fees() - miner_payment;
 
@@ -962,114 +958,106 @@ impl Block {
                 let router_publickey = block_payouts.publickey;
                 let mut next_random_number = block_payouts.random_number;
 
-	        let mut payout = BlockPayout::new();
-	        payout.miner = golden_ticket.get_publickey();
-	        payout.router = router_publickey;
-		payout.miner_payout = miner_payment;
-		payout.router_payout = router_payment;
-	 	payout.random_number = next_random_number;
+                let mut payout = BlockPayout::new();
+                payout.miner = golden_ticket.get_publickey();
+                payout.router = router_publickey;
+                payout.miner_payout = miner_payment;
+                payout.router_payout = router_payment;
+                payout.random_number = next_random_number;
 
-	        cv.block_payout.push(payout);
+                cv.block_payout.push(payout);
 
-		//
-		// loop backwards until MAX recursion OR golden ticket
-		//
-		let mut cont = 1;
-		let mut loop_idx = 0;
-		let mut staking_block_hash = previous_block.get_previous_block_hash();
+                //
+                // loop backwards until MAX recursion OR golden ticket
+                //
+                let mut cont = 1;
+                let mut loop_idx = 0;
+                let mut staking_block_hash = previous_block.get_previous_block_hash();
                 let mut slip_ordinal_to_apply = 1;
 
-		while cont == 1 {
+                while cont == 1 {
+                    loop_idx += 1;
+                    slip_ordinal_to_apply += 1;
 
-		    loop_idx += 1;
-		    slip_ordinal_to_apply += 1;
+                    //
+                    // we start with the second block, so once loop_IDX hits the same
+                    // number as MAX_STAKER_RECURSION we have processed N blocks where
+                    // N is MAX_STAKER_RECURSION.
+                    //
+                    if loop_idx >= MAX_STAKER_RECURSION {
+                        cont = 0;
+                    } else {
+                        let mut staking_block_hash = previous_block.get_previous_block_hash();
+                        if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
+                            if !staking_block.get_has_golden_ticket() {
+                                //
+                                // calculate miner and router payments
+                                //
+                                // the staker payout is contained in the slip of the winner. this is
+                                // because we calculate it afresh every time we reset the staking table
+                                // the payment for the router requires calculating the amount that will
+                                // be withheld for the staker treasury, which is what previous_staker_
+                                // payment is measuring.
+                                //
+                                let sp = staking_block.get_total_fees() / 2;
+                                let rp = staking_block.get_total_fees() - sp;
 
-		    //
-		    // we start with the second block, so once loop_IDX hits the same
-		    // number as MAX_STAKER_RECURSION we have processed N blocks where
-		    // N is MAX_STAKER_RECURSION.
-		    //
-		    if loop_idx >= MAX_STAKER_RECURSION {
-			cont = 0;
-		    } else {
+                                println!("staking treasury being mishandled here....");
 
-		    	let mut staking_block_hash = previous_block.get_previous_block_hash();
-                    	if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
-
-			    if !staking_block.get_has_golden_ticket() {
-
-                        	//
-                        	// calculate miner and router payments
-                        	//
-                        	// the staker payout is contained in the slip of the winner. this is
-                        	// because we calculate it afresh every time we reset the staking table
-                        	// the payment for the router requires calculating the amount that will
-                        	// be withheld for the staker treasury, which is what previous_staker_
-                        	// payment is measuring.
-                        	//
-                        	let sp = staking_block.get_total_fees() / 2;
-                       		let rp = staking_block.get_total_fees() - sp;
-
-println!("staking treasury being mishandled here....");
-
-
-	                        //
-        	                // next_random_number
-                	        //
-                        	let staker_slip_option = blockchain.staking.find_winning_staker(next_random_number);
+                                //
+                                // next_random_number
+                                //
+                                let staker_slip_option =
+                                    blockchain.staking.find_winning_staker(next_random_number);
                                 if let Some(staker_slip) = staker_slip_option {
+                                    next_random_number = hash(&next_random_number.to_vec());
 
-                       		    next_random_number = hash(&next_random_number.to_vec());
+                                    let sp2: RouterPayout =
+                                        staking_block.find_winning_router(next_random_number);
+                                    let previous_winning_router = sp2.publickey;
 
-                        	    let sp2: RouterPayout = staking_block.find_winning_router(next_random_number);
-                        	    let previous_winning_router = sp2.publickey;
+                                    //
+                                    // create slip for inclusion
+                                    //
+                                    // the payout is the return on staking, stored separately so that the
+                                    // UTXO for the slip will still validate.
+                                    //
+                                    let mut payout = BlockPayout::new();
+                                    payout.router = previous_winning_router;
+                                    payout.staker = staker_slip.get_publickey();
+                                    //
+                                    // the staker treasury gets the amount that would be paid out to the staker
+                                    // if we were paying them from THIS loop of the blockchain rather than the
+                                    // average amount.
+                                    //
+                                    payout.staker_payout = rp;
+                                    payout.staking_treasury = sp;
+                                    payout.router_payout =
+                                        staker_slip.get_amount() + staker_slip.get_payout();
+                                    payout.random_number = sp2.random_number;
+                                    payout.staker_slip = staker_slip.clone();
 
-				    //
-				    // create slip for inclusion
-                            	    //
-				    // the payout is the return on staking, stored separately so that the
-                            	    // UTXO for the slip will still validate.
-                            	    //
-	        		    let mut payout = BlockPayout::new();
-	        		    payout.router = previous_winning_router;
-				    payout.staker = staker_slip.get_publickey();
-				    //
-                        	    // the staker treasury gets the amount that would be paid out to the staker
-                        	    // if we were paying them from THIS loop of the blockchain rather than the
-                        	    // average amount.
-				    //
-				    payout.staker_payout = rp;
-				    payout.staking_treasury = sp;
-				    payout.router_payout = staker_slip.get_amount() + staker_slip.get_payout();
-	 			    payout.random_number = sp2.random_number;
-				    payout.staker_slip = staker_slip.clone();
+                                    next_random_number = payout.random_number;
 
-				    next_random_number = payout.random_number;
-
-	        		    cv.block_payout.push(payout);
-
-				}
-			    }
-			}
-		    }
-		}
+                                    cv.block_payout.push(payout);
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-
-	    //
-	    // ensure no dupes in staker payouts
-	    //
-	    for i in 0..cv.block_payout.len() {
-	        for z in 0..cv.block_payout.len() {
-		    if z != i {
-			// HACK
-		    }
-	        }
-	    }
+            //
+            // ensure no dupes in staker payouts
+            //
+            for i in 0..cv.block_payout.len() {
+                for z in 0..cv.block_payout.len() {
+                    if z != i {
+                        // HACK
+                    }
+                }
+            }
         }
-
-
-
 
         //
         // calculate fee transaction
@@ -1175,7 +1163,7 @@ println!("staking treasury being mishandled here....");
                             //
                             // add staker input as tx input so it is spent
                             //
-println!("the staker slip is: {:?}", staker_slip);
+                            println!("the staker slip is: {:?}", staker_slip);
                             transaction.add_input(staker_slip);
                         }
 
@@ -1311,7 +1299,6 @@ println!("the staker slip is: {:?}", staker_slip);
     // cumulative block fees they contain.
     //
     pub fn generate_metadata(&mut self) -> bool {
-
         println!(" ... block.prevalid - pre hash:  {:?}", create_timestamp());
 
         //
@@ -1430,7 +1417,7 @@ println!("the staker slip is: {:?}", staker_slip);
         //
         let cv = self.generate_consensus_values(&blockchain).await;
 
-println!("VALIDATE CV: {:?}", cv.block_payout);
+        println!("VALIDATE CV: {:?}", cv.block_payout);
 
         //
         // Previous Block
@@ -1680,23 +1667,23 @@ println!("VALIDATE CV: {:?}", cv.block_payout);
         for i in 0..self.transactions.len() {
             let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
             if transactions_valid2 == false {
-        	println!("TType: {:?}", self.transactions[i].get_transaction_type());
+                println!("TType: {:?}", self.transactions[i].get_transaction_type());
             }
         }
-return true;
+        return true;
 
-//        let transactions_valid = self
-//            .transactions
-//            .par_iter()
-//            .all(|tx| tx.validate(utxoset, staking));
+        //        let transactions_valid = self
+        //            .transactions
+        //            .par_iter()
+        //            .all(|tx| tx.validate(utxoset, staking));
 
-//        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
+        //        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         //
         // and if our transactions are valid, so is the block...
         //
-//        println!(" ... are txs valid: {}", transactions_valid);
-//        transactions_valid
+        //        println!(" ... are txs valid: {}", transactions_valid);
+        //        transactions_valid
     }
 
     pub async fn generate(
@@ -1754,8 +1741,7 @@ return true;
         //
         let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain).await;
 
-println!("MUT CV: {:?}", cv.block_payout);
-
+        println!("MUT CV: {:?}", cv.block_payout);
 
         //
         // TODO - remove

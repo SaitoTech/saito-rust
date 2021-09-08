@@ -1,7 +1,7 @@
 use crate::block::Block;
 use crate::blockchain::GENESIS_PERIOD;
 use crate::crypto::SaitoHash;
-use crate::time::{create_timestamp};
+use crate::time::create_timestamp;
 
 pub const RING_BUFFER_LENGTH: u64 = 2 * GENESIS_PERIOD;
 
