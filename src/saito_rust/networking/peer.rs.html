@@ -729,13 +729,66 @@
 <span id="727">727</span>
 <span id="728">728</span>
 <span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::api_message::APIMessage</span>;
+<span class="kw">use</span> <span class="ident">async_recursion::async_recursion</span>;
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::network::CHALLENGE_EXPIRATION_TIME</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">hash</span>, <span class="ident">sign_blob</span>, <span class="ident">verify</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>};
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool</span>::{<span class="ident">AddTransactionResult</span>, <span class="ident">Mempool</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool</span>::{<span class="ident">AddBlockResult</span>, <span class="ident">AddTransactionResult</span>, <span class="ident">Mempool</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::message_types::handshake_challenge::HandshakeChallenge</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::message_types::request_block_message::RequestBlockMessage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::message_types::request_blockchain_message::RequestBlockchainMessage</span>;
@@ -750,25 +803,31 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
+<span class="kw">use</span> <span class="ident">std::error::Error</span>;
+<span class="kw">use</span> <span class="ident">std::pin::Pin</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
+<span class="kw">use</span> <span class="ident">std::task</span>::{<span class="ident">Context</span>, <span class="ident">Poll</span>, <span class="ident">Waker</span>};
+<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">RwLock</span>, <span class="ident">mpsc</span>};
 <span class="kw">use</span> <span class="ident">tokio_stream::wrappers::UnboundedReceiverStream</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 <span class="kw">use</span> <span class="ident">warp::ws</span>::{<span class="ident">Message</span>, <span class="ident">WebSocket</span>};
 
-<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">FutureExt</span>, <span class="ident">SinkExt</span>, <span class="ident">StreamExt</span>};
+<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">Future</span>, <span class="ident">FutureExt</span>, <span class="ident">SinkExt</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">tokio::net::TcpStream</span>;
 <span class="kw">use</span> <span class="ident">tokio_tungstenite</span>::{<span class="ident">tungstenite</span>, <span class="ident">MaybeTlsStream</span>, <span class="ident">WebSocketStream</span>};
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">PeersDB</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">SaitoHash</span>, <span class="ident">BasePeer</span><span class="op">&gt;</span>;
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">PeersDB</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">SaitoHash</span>, <span class="ident">SaitoPeer</span><span class="op">&gt;</span>;
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">RequestResponses</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">SaitoHash</span>, <span class="ident">u32</span>), <span class="ident">APIMessage</span><span class="op">&gt;</span>;
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">RequestWakers</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">SaitoHash</span>, <span class="ident">u32</span>), <span class="ident">Waker</span><span class="op">&gt;</span>;
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">OutboundPeersDB</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">SaitoHash</span>, <span class="ident">OutboundPeer</span><span class="op">&gt;</span>;
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">InboundPeersDB</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">SaitoHash</span>, <span class="ident">InboundPeer</span><span class="op">&gt;</span>;
 
 <span class="macro">lazy_static::lazy_static!</span> {
-    <span class="comment">// We use Arc for thread-safe reference counting and Mutex for thread-safe mutabilitity</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PEERS_DB_GLOBAL</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">PeersDB::new</span>()));
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">INBOUND_PEER_CONNECTIONS_GLOBAL</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">InboundPeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">InboundPeersDB::new</span>()));
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">OUTBOUND_PEER_CONNECTIONS_GLOBAL</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">OutboundPeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">OutboundPeersDB::new</span>()));
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PEERS_DB_GLOBAL</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">tokio::sync::RwLock</span><span class="op">&lt;</span><span class="ident">PeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">tokio::sync::RwLock::new</span>(<span class="ident">PeersDB::new</span>()));
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PEERS_REQUEST_RESPONSES_GLOBAL</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">std::sync::RwLock</span><span class="op">&lt;</span><span class="ident">RequestResponses</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">std::sync::RwLock::new</span>(<span class="ident">RequestResponses::new</span>()));
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PEERS_REQUEST_WAKERS_GLOBAL</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">std::sync::RwLock</span><span class="op">&lt;</span><span class="ident">RequestWakers</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">std::sync::RwLock::new</span>(<span class="ident">RequestWakers::new</span>()));
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">INBOUND_PEER_CONNECTIONS_GLOBAL</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">tokio::sync::RwLock</span><span class="op">&lt;</span><span class="ident">InboundPeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">tokio::sync::RwLock::new</span>(<span class="ident">InboundPeersDB::new</span>()));
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">OUTBOUND_PEER_CONNECTIONS_GLOBAL</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">tokio::sync::RwLock</span><span class="op">&lt;</span><span class="ident">OutboundPeersDB</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">tokio::sync::RwLock::new</span>(<span class="ident">OutboundPeersDB::new</span>()));
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
@@ -783,13 +842,12 @@
     <span class="ident">is_from_peer_list</span>: <span class="ident">bool</span>,
 }
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BasePeer</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SaitoPeer</span> {
     <span class="ident">peer_flags</span>: <span class="ident">PeerFlags</span>,
     <span class="ident">connection_id</span>: <span class="ident">SaitoHash</span>,
     <span class="ident">publickey</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoPublicKey</span><span class="op">&gt;</span>,
     <span class="ident">host</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span>,
     <span class="ident">port</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>,
-    <span class="ident">requests</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">u32</span>, [<span class="ident">u8</span>; <span class="number">8</span>]<span class="op">&gt;</span>,
     <span class="ident">request_count</span>: <span class="ident">u32</span>,
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -808,7 +866,81 @@
         <span class="ident">SplitSink</span><span class="op">&lt;</span><span class="ident">WebSocketStream</span><span class="op">&lt;</span><span class="ident">MaybeTlsStream</span><span class="op">&lt;</span><span class="ident">TcpStream</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">tungstenite::protocol::Message</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">BasePeer</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PeerRequest</span> {
+    <span class="ident">connection_id</span>: <span class="ident">SaitoHash</span>,
+    <span class="ident">request_id</span>: <span class="ident">u32</span>,
+    <span class="comment">// This is here for debugging</span>
+    <span class="ident">_api_message_command</span>: <span class="ident">String</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">PeerRequest</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">command</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
+        <span class="ident">peer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SaitoPeer</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">peer</span>.<span class="ident">request_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+        <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">APIMessage::new</span>(<span class="ident">command</span>, <span class="ident">peer</span>.<span class="ident">request_count</span> <span class="op">-</span> <span class="number">1</span>, <span class="ident">message</span>);
+        <span class="ident">send_message_to_socket</span>(<span class="ident">api_message</span>, <span class="kw-2">&amp;</span><span class="ident">peer</span>.<span class="ident">connection_id</span>).<span class="kw">await</span>;
+        <span class="ident">PeerRequest</span> {
+            <span class="ident">connection_id</span>: <span class="ident">peer</span>.<span class="ident">connection_id</span>,
+            <span class="ident">request_id</span>: <span class="ident">peer</span>.<span class="ident">request_count</span> <span class="op">-</span> <span class="number">1</span>,
+            <span class="ident">_api_message_command</span>: <span class="ident">String::from</span>(<span class="ident">command</span>),
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">Future</span> <span class="kw">for</span> <span class="ident">PeerRequest</span> {
+    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">APIMessage</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">poll</span>(<span class="self">self</span>: <span class="ident">Pin</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">cx</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span><span class="self">Self</span><span class="ident">::Output</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">request_responses_lock</span> <span class="op">=</span> <span class="ident">PEERS_REQUEST_RESPONSES_GLOBAL</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">request_responses</span> <span class="op">=</span> <span class="ident">request_responses_lock</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>();                
+        <span class="kw">match</span> <span class="ident">request_responses</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">connection_id</span>, <span class="self">self</span>.<span class="ident">request_id</span>)) {
+            <span class="prelude-val">Some</span>(<span class="ident">response</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="comment">// Return from the Future with an important message!</span>
+                <span class="ident">Poll::Ready</span>(<span class="prelude-val">Ok</span>(<span class="ident">response</span>))
+            }
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="ident">request_wakers_lock</span> <span class="op">=</span> <span class="ident">PEERS_REQUEST_WAKERS_GLOBAL</span>.<span class="ident">clone</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">request_wakers</span> <span class="op">=</span> <span class="ident">request_wakers_lock</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>();
+                <span class="ident">request_wakers</span>.<span class="ident">insert</span>((<span class="self">self</span>.<span class="ident">connection_id</span>, <span class="self">self</span>.<span class="ident">request_id</span>), <span class="ident">cx</span>.<span class="ident">waker</span>().<span class="ident">clone</span>());
+                <span class="ident">Poll::Pending</span>
+            }
+        }
+    }
+}
+
+<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_message_to_socket</span>(<span class="ident">api_message</span>: <span class="ident">APIMessage</span>, <span class="ident">connection_id</span>: <span class="kw-2">&amp;</span><span class="ident">SaitoHash</span>) {
+    <span class="kw">let</span> <span class="ident">outbound_peer_connection_db_global</span> <span class="op">=</span> <span class="ident">OUTBOUND_PEER_CONNECTIONS_GLOBAL</span>.<span class="ident">clone</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">outbound_peer_connection_db</span> <span class="op">=</span> <span class="ident">outbound_peer_connection_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+    <span class="kw">let</span> <span class="ident">inbound_peer_connection_db_global</span> <span class="op">=</span> <span class="ident">INBOUND_PEER_CONNECTIONS_GLOBAL</span>.<span class="ident">clone</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inbound_peer_connection_db</span> <span class="op">=</span> <span class="ident">inbound_peer_connection_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+
+    <span class="kw">let</span> <span class="ident">outbound_peer_connection</span> <span class="op">=</span> <span class="ident">outbound_peer_connection_db</span>.<span class="ident">get_mut</span>(<span class="ident">connection_id</span>);
+    <span class="kw">let</span> <span class="ident">inbound_peer_connection</span> <span class="op">=</span> <span class="ident">inbound_peer_connection_db</span>.<span class="ident">get_mut</span>(<span class="ident">connection_id</span>);
+
+    <span class="kw">if</span> <span class="ident">inbound_peer_connection</span>.<span class="ident">is_some</span>() <span class="op">&amp;&amp;</span> <span class="ident">outbound_peer_connection</span>.<span class="ident">is_some</span>() {
+        <span class="macro">panic!</span>(<span class="string">&quot;Peer has both inbound and outbound connections, this should never happen&quot;</span>);
+    }
+    <span class="kw">if</span> <span class="ident">inbound_peer_connection</span>.<span class="ident">is_none</span>() <span class="op">&amp;&amp;</span> <span class="ident">outbound_peer_connection</span>.<span class="ident">is_none</span>() {
+        <span class="macro">panic!</span>(<span class="string">&quot;Peer has neither outbound nor inbound connection&quot;</span>);
+    }
+    <span class="kw">if</span> <span class="ident">outbound_peer_connection</span>.<span class="ident">is_some</span>() {
+        <span class="kw">let</span> <span class="ident">_foo</span> <span class="op">=</span> <span class="ident">outbound_peer_connection</span>
+            .<span class="ident">unwrap</span>()
+            .<span class="ident">write_sink</span>
+            .<span class="ident">send</span>(<span class="ident">api_message</span>.<span class="ident">serialize</span>().<span class="ident">into</span>())
+            .<span class="kw">await</span>;
+    }
+    <span class="kw">if</span> <span class="ident">inbound_peer_connection</span>.<span class="ident">is_some</span>() {
+        <span class="kw">let</span> <span class="ident">_foo</span> <span class="op">=</span> <span class="ident">inbound_peer_connection</span>
+            .<span class="ident">unwrap</span>()
+            .<span class="ident">sender</span>
+            .<span class="ident">send</span>(<span class="prelude-val">Ok</span>(<span class="ident">Message::binary</span>(<span class="ident">api_message</span>.<span class="ident">serialize</span>())));
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">SaitoPeer</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">connection_id</span>: <span class="ident">SaitoHash</span>,
         <span class="ident">host</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span>,
@@ -819,8 +951,8 @@
         <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BasePeer</span> {
-        <span class="ident">BasePeer</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPeer</span> {
+        <span class="ident">SaitoPeer</span> {
             <span class="ident">peer_flags</span>: <span class="ident">PeerFlags</span> {
                 <span class="ident">is_connected_or_connecting</span>,
                 <span class="ident">has_completed_handshake</span>,
@@ -830,7 +962,6 @@
             <span class="ident">host</span>: <span class="ident">host</span>,
             <span class="ident">port</span>: <span class="ident">port</span>,
             <span class="ident">publickey</span>: <span class="prelude-val">None</span>,
-            <span class="ident">requests</span>: <span class="ident">HashMap::new</span>(),
             <span class="ident">request_count</span>: <span class="number">0</span>,
             <span class="ident">wallet_lock</span>,
             <span class="ident">mempool_lock</span>,
@@ -880,121 +1011,94 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_connection_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
         <span class="self">self</span>.<span class="ident">connection_id</span>
     }
-
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">api_message</span>: <span class="ident">APIMessage</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;SEND {}&quot;</span>, <span class="ident">api_message</span>.<span class="ident">message_name_as_string</span>());
-        <span class="kw">let</span> <span class="ident">outbound_peer_connection_db_global</span> <span class="op">=</span> <span class="ident">OUTBOUND_PEER_CONNECTIONS_GLOBAL</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">outbound_peer_connection_db</span> <span class="op">=</span> <span class="ident">outbound_peer_connection_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">inbound_peer_connection_db_global</span> <span class="op">=</span> <span class="ident">INBOUND_PEER_CONNECTIONS_GLOBAL</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inbound_peer_connection_db</span> <span class="op">=</span> <span class="ident">inbound_peer_connection_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-
-        <span class="kw">let</span> <span class="ident">outbound_peer_connection</span> <span class="op">=</span> <span class="ident">outbound_peer_connection_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">connection_id</span>);
-        <span class="kw">let</span> <span class="ident">inbound_peer_connection</span> <span class="op">=</span> <span class="ident">inbound_peer_connection_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">connection_id</span>);
-
-        <span class="kw">if</span> <span class="ident">inbound_peer_connection</span>.<span class="ident">is_some</span>() <span class="op">&amp;&amp;</span> <span class="ident">outbound_peer_connection</span>.<span class="ident">is_some</span>() {
-            <span class="macro">panic!</span>(<span class="string">&quot;Peer has both inbound and outbound connections, this should never happen&quot;</span>);
-        }
-        <span class="kw">if</span> <span class="ident">outbound_peer_connection</span>.<span class="ident">is_some</span>() {
-            <span class="kw">let</span> <span class="ident">_foo</span> <span class="op">=</span> <span class="ident">outbound_peer_connection</span>
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">write_sink</span>
-                .<span class="ident">send</span>(<span class="ident">api_message</span>.<span class="ident">serialize</span>().<span class="ident">into</span>())
-                .<span class="kw">await</span>;
-        }
-        <span class="kw">if</span> <span class="ident">inbound_peer_connection</span>.<span class="ident">is_some</span>() {
-            <span class="kw">let</span> <span class="ident">_foo</span> <span class="op">=</span> <span class="ident">inbound_peer_connection</span>
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">sender</span>
-                .<span class="ident">send</span>(<span class="prelude-val">Ok</span>(<span class="ident">Message::binary</span>(<span class="ident">api_message</span>.<span class="ident">serialize</span>())));
-        }
-    }
+ 
+    <span class="attribute">#[<span class="ident">async_recursion</span>]</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_command</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">command</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">insert</span>(
-            <span class="self">self</span>.<span class="ident">request_count</span>,
-            <span class="ident">String::from</span>(<span class="ident">command</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(),
-        );
-        <span class="self">self</span>.<span class="ident">request_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">APIMessage::new</span>(<span class="ident">command</span>, <span class="self">self</span>.<span class="ident">request_count</span> <span class="op">-</span> <span class="number">1</span>, <span class="ident">message</span>))
-            .<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">peer_request</span> <span class="op">=</span> <span class="ident">PeerRequest::new</span>(<span class="ident">command</span>, <span class="ident">message</span>, <span class="self">self</span>).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">response_message</span> <span class="op">=</span> <span class="ident">peer_request</span>.<span class="kw">await</span>.<span class="ident">expect</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;Error returned from {}&quot;</span>, <span class="ident">command</span>));
+        <span class="kw">match</span> <span class="ident">response_message</span>.<span class="ident">message_name_as_string</span>().<span class="ident">as_str</span>() {
+            <span class="string">&quot;RESULT__&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="macro">println!</span>(<span class="string">&quot;SEND COMMAND GOT RESULT__ {}&quot;</span>, <span class="ident">command</span>);
+                <span class="self">self</span>.<span class="ident">handle_peer_response_command</span>(<span class="ident">command</span>, <span class="kw-2">&amp;</span><span class="ident">response_message</span>).<span class="kw">await</span>;
+            }
+            <span class="string">&quot;ERROR___&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="self">self</span>.<span class="ident">handle_peer_response_error</span>(<span class="ident">command</span>, <span class="kw-2">&amp;</span><span class="ident">response_message</span>);
+            }
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="macro">panic!</span>(<span class="string">&quot;Received non-response response&quot;</span>);
+            }
+        }
     }
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_response_from_str</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">message_id</span>: <span class="ident">u32</span>, <span class="ident">message_str</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">APIMessage::new_from_string</span>(
+        <span class="ident">send_message_to_socket</span>(<span class="ident">APIMessage::new_from_string</span>(
             <span class="string">&quot;RESULT__&quot;</span>,
             <span class="ident">message_id</span>,
             <span class="ident">message_str</span>,
-        ))
+        ), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">connection_id</span>)
         .<span class="kw">await</span>;
     }
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_response</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">message_id</span>: <span class="ident">u32</span>, <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">APIMessage::new</span>(<span class="string">&quot;RESULT__&quot;</span>, <span class="ident">message_id</span>, <span class="ident">message</span>))
+        <span class="ident">send_message_to_socket</span>(<span class="ident">APIMessage::new</span>(<span class="string">&quot;RESULT__&quot;</span>, <span class="ident">message_id</span>, <span class="ident">message</span>), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">connection_id</span>)
             .<span class="kw">await</span>;
     }
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_error_response_from_str</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">message_id</span>: <span class="ident">u32</span>, <span class="ident">message_str</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">APIMessage::new_from_string</span>(
+        <span class="ident">send_message_to_socket</span>(<span class="ident">APIMessage::new_from_string</span>(
             <span class="string">&quot;ERROR___&quot;</span>,
             <span class="ident">message_id</span>,
             <span class="ident">message_str</span>,
-        ))
+        ), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">connection_id</span>)
         .<span class="kw">await</span>;
     }
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_error_response</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">message_id</span>: <span class="ident">u32</span>, <span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">APIMessage::new</span>(<span class="string">&quot;ERROR___&quot;</span>, <span class="ident">message_id</span>, <span class="ident">message</span>))
+        <span class="ident">send_message_to_socket</span>(<span class="ident">APIMessage::new</span>(<span class="string">&quot;ERROR___&quot;</span>, <span class="ident">message_id</span>, <span class="ident">message</span>), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">connection_id</span>)
             .<span class="kw">await</span>;
     }
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_peer_command</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">api_message_orig</span>: <span class="kw-2">&amp;</span><span class="ident">APIMessage</span>) {
-        <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">api_message_orig</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mempool_lock</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>();
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_peer_message</span>(<span class="ident">api_message_orig</span>: <span class="ident">APIMessage</span>, <span class="ident">connection_id</span>: <span class="ident">SaitoHash</span>) {
         <span class="kw">match</span> <span class="ident">api_message_orig</span>.<span class="ident">message_name_as_string</span>().<span class="ident">as_str</span>() {
-            <span class="string">&quot;RESULT__&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT RESULT__&quot;</span>);
-                <span class="kw">let</span> <span class="ident">command_sent</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>.<span class="ident">message_id</span>);
-                <span class="kw">match</span> <span class="ident">command_sent</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">command_name</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="self">self</span>.<span class="ident">handle_peer_response_command</span>(<span class="ident">command_name</span>, <span class="kw-2">&amp;</span><span class="ident">api_message</span>)
-                            .<span class="kw">await</span>;
-                    }
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="macro">println!</span>(
-                            <span class="string">&quot;Peer has sent a {} for a request we don&#39;t know about. Request ID: {}&quot;</span>,
-                            <span class="ident">api_message</span>.<span class="ident">message_name_as_string</span>(),
-                            <span class="ident">api_message</span>.<span class="ident">message_id</span>
-                        );
-                    }
+            <span class="string">&quot;RESULT__&quot;</span> <span class="op">|</span> <span class="string">&quot;ERROR___&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="ident">request_wakers_lock</span> <span class="op">=</span> <span class="ident">PEERS_REQUEST_WAKERS_GLOBAL</span>.<span class="ident">clone</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">request_wakers</span> <span class="op">=</span> <span class="ident">request_wakers_lock</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>();
+                <span class="kw">let</span> <span class="ident">option_waker</span> <span class="op">=</span> <span class="ident">request_wakers</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span>(<span class="ident">connection_id</span>, <span class="ident">api_message_orig</span>.<span class="ident">message_id</span>));
+
+                <span class="kw">let</span> <span class="ident">request_responses_lock</span> <span class="op">=</span> <span class="ident">PEERS_REQUEST_RESPONSES_GLOBAL</span>.<span class="ident">clone</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">request_responses</span> <span class="op">=</span> <span class="ident">request_responses_lock</span>.<span class="ident">write</span>().<span class="ident">unwrap</span>();                
+                <span class="ident">request_responses</span>.<span class="ident">insert</span>((<span class="ident">connection_id</span>, <span class="ident">api_message_orig</span>.<span class="ident">message_id</span>), <span class="ident">api_message_orig</span>);
+
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">waker</span>) <span class="op">=</span> <span class="ident">option_waker</span> {
+                    <span class="ident">waker</span>.<span class="ident">wake</span>();
                 }
             }
-            <span class="string">&quot;ERROR___&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT ERROR___&quot;</span>);
-                <span class="kw">let</span> <span class="ident">command_sent</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">requests</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>.<span class="ident">message_id</span>);
-                <span class="kw">match</span> <span class="ident">command_sent</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">command_name</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="self">self</span>.<span class="ident">handle_peer_response_error</span>(<span class="ident">command_name</span>, <span class="kw-2">&amp;</span><span class="ident">api_message</span>);
-                    }
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="macro">println!</span>(
-                            <span class="string">&quot;Peer has sent an error {} . Request ID: {}&quot;</span>,
-                            <span class="ident">api_message</span>.<span class="ident">message_name_as_string</span>(),
-                            <span class="ident">api_message</span>.<span class="ident">message_id</span>
-                        );
-                    }
-                }
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
+                <span class="ident">SaitoPeer::handle_peer_command</span>(<span class="ident">peer</span>, <span class="kw-2">&amp;</span><span class="ident">api_message_orig</span>).<span class="kw">await</span>;
             }
+        }
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_peer_command</span>(<span class="ident">peer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SaitoPeer</span>, <span class="ident">api_message_orig</span>: <span class="kw-2">&amp;</span><span class="ident">APIMessage</span>) {
+        <span class="comment">// TODO eliminate this .clone():</span>
+        <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">api_message_orig</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">mempool_lock</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">command</span> <span class="op">=</span> <span class="ident">api_message_orig</span>.<span class="ident">message_name_as_string</span>();
+        <span class="macro">println!</span>(<span class="string">&quot;COMMAND {}&quot;</span>, <span class="ident">command</span>);
+        <span class="kw">match</span> <span class="ident">command</span>.<span class="ident">as_str</span>() {
             <span class="string">&quot;SHAKINIT&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SHAKINIT&quot;</span>);
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">serialized_handshake_challenge</span>) <span class="op">=</span>
-                    <span class="ident">build_serialized_challenge</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>, <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>
+                    <span class="ident">build_serialized_challenge</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>, <span class="ident">peer</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>
                 {
-                    <span class="self">self</span>.<span class="ident">send_response</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="ident">serialized_handshake_challenge</span>)
+                    <span class="ident">peer</span>.<span class="ident">send_response</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="ident">serialized_handshake_challenge</span>)
                         .<span class="kw">await</span>;
                 }
             }
             <span class="string">&quot;SHAKCOMP&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SHAKCOMP&quot;</span>);
                 <span class="kw">match</span> <span class="ident">socket_handshake_verify</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>.<span class="ident">message_data</span>()) {
                     <span class="prelude-val">Some</span>(<span class="ident">deserialize_challenge</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="self">self</span>.<span class="ident">set_has_completed_handshake</span>(<span class="bool-val">true</span>);
-                        <span class="self">self</span>.<span class="ident">set_publickey</span>(<span class="ident">deserialize_challenge</span>.<span class="ident">opponent_pubkey</span>());
-                        <span class="self">self</span>.<span class="ident">send_response</span>(
+                        <span class="ident">peer</span>.<span class="ident">set_has_completed_handshake</span>(<span class="bool-val">true</span>);
+                        <span class="ident">peer</span>.<span class="ident">set_publickey</span>(<span class="ident">deserialize_challenge</span>.<span class="ident">opponent_pubkey</span>());
+                        <span class="ident">peer</span>.<span class="ident">send_response</span>(
                             <span class="ident">api_message</span>.<span class="ident">message_id</span>,
                             <span class="ident">String::from</span>(<span class="string">&quot;OK&quot;</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(),
                         )
@@ -1007,24 +1111,21 @@
                 }
             }
             <span class="string">&quot;REQBLOCK&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT REQBLOCK&quot;</span>);
                 <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">build_request_block_response</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>, <span class="ident">blockchain_lock</span>).<span class="kw">await</span>;
-                <span class="self">self</span>.<span class="ident">send</span>(<span class="ident">api_message</span>).<span class="kw">await</span>;
+                <span class="ident">send_message_to_socket</span>(<span class="ident">api_message</span>, <span class="kw-2">&amp;</span><span class="ident">peer</span>.<span class="ident">connection_id</span>).<span class="kw">await</span>;
             }
             <span class="string">&quot;REQBLKHD&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT REQBLKHD&quot;</span>);
                 <span class="kw">let</span> <span class="ident">message_id</span> <span class="op">=</span> <span class="ident">api_message</span>.<span class="ident">message_id</span>;
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">bytes</span>) <span class="op">=</span> <span class="ident">socket_send_block_header</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>, <span class="ident">blockchain_lock</span>).<span class="kw">await</span> {
                     <span class="kw">let</span> <span class="ident">message_data</span> <span class="op">=</span> <span class="ident">String::from</span>(<span class="string">&quot;OK&quot;</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-                    <span class="self">self</span>.<span class="ident">send_response</span>(<span class="ident">message_id</span>, <span class="ident">message_data</span>).<span class="kw">await</span>;
-                    <span class="self">self</span>.<span class="ident">send_command</span>(<span class="string">&quot;SNDBLKHD&quot;</span>, <span class="ident">bytes</span>).<span class="kw">await</span>;
+                    <span class="ident">peer</span>.<span class="ident">send_response</span>(<span class="ident">message_id</span>, <span class="ident">message_data</span>).<span class="kw">await</span>;
+                    <span class="ident">peer</span>.<span class="ident">send_command</span>(<span class="string">&quot;SNDBLKHD&quot;</span>, <span class="ident">bytes</span>).<span class="kw">await</span>;
                 } <span class="kw">else</span> {
-                    <span class="self">self</span>.<span class="ident">send_error_response_from_str</span>(<span class="ident">message_id</span>, <span class="string">&quot;ERROR&quot;</span>).<span class="kw">await</span>;
+                    <span class="ident">peer</span>.<span class="ident">send_error_response_from_str</span>(<span class="ident">message_id</span>, <span class="string">&quot;ERROR&quot;</span>).<span class="kw">await</span>;
                 }
             }
             <span class="string">&quot;REQCHAIN&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT REQCHAIN&quot;</span>);
-                <span class="self">self</span>.<span class="ident">send_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;OK&quot;</span>)
+                <span class="ident">peer</span>.<span class="ident">send_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;OK&quot;</span>)
                     .<span class="kw">await</span>;
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">send_blockchain_message</span>) <span class="op">=</span> <span class="ident">build_send_blockchain_message</span>(
                     <span class="kw-2">&amp;</span><span class="ident">RequestBlockchainMessage::deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>.<span class="ident">message_data</span>()),
@@ -1032,38 +1133,42 @@
                 )
                 .<span class="kw">await</span>
                 {
-                    <span class="self">self</span>.<span class="ident">send_command</span>(
-                        <span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;SNDCHAIN&quot;</span>),
-                        <span class="ident">send_blockchain_message</span>.<span class="ident">serialize</span>(),
-                    )
-                    .<span class="kw">await</span>;
+                    <span class="kw">let</span> <span class="ident">connection_id_clone</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">connection_id</span>.<span class="ident">clone</span>();
+                    <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
+                        <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                        <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id_clone</span>).<span class="ident">unwrap</span>();
+                        
+                        <span class="ident">peer</span>.<span class="ident">send_command</span>(
+                            <span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;SNDCHAIN&quot;</span>),
+                            <span class="ident">send_blockchain_message</span>.<span class="ident">serialize</span>(),
+                        )
+                        .<span class="kw">await</span>;
+                    });
+                    
                 } <span class="kw">else</span> {
-                    <span class="self">self</span>.<span class="ident">send_error_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;UNKNOWN BLOCK HASH&quot;</span>)
+                    <span class="ident">peer</span>.<span class="ident">send_error_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;UNKNOWN BLOCK HASH&quot;</span>)
                         .<span class="kw">await</span>;
                 }
             }
             <span class="string">&quot;SNDTRANS&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SNDTRANS&quot;</span>);
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">tx</span>) <span class="op">=</span> <span class="ident">socket_receive_transaction</span>(<span class="ident">api_message</span>.<span class="ident">clone</span>()) {
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                     <span class="kw">match</span> <span class="ident">mempool</span>.<span class="ident">add_transaction</span>(<span class="ident">tx</span>).<span class="kw">await</span> {
                         <span class="ident">AddTransactionResult::Accepted</span> <span class="op">|</span> <span class="ident">AddTransactionResult::Exists</span> <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="comment">// TODO The tx is accepted, propagate it to all available peers</span>
-                            <span class="self">self</span>.<span class="ident">send_response</span>(
-                                <span class="ident">api_message</span>.<span class="ident">message_id</span>,
-                                <span class="ident">String::from</span>(<span class="string">&quot;OK&quot;</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(),
-                            )
+                            <span class="ident">peer</span>.<span class="ident">send_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;OK&quot;</span>)
                             .<span class="kw">await</span>;
                         }
                         <span class="ident">AddTransactionResult::Invalid</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="self">self</span>.<span class="ident">send_error_response</span>(
+                            <span class="ident">peer</span>.<span class="ident">send_error_response</span>(
                                 <span class="ident">api_message</span>.<span class="ident">message_id</span>,
                                 <span class="ident">String::from</span>(<span class="string">&quot;Invalid&quot;</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(),
                             )
                             .<span class="kw">await</span>;
                         }
                         <span class="ident">AddTransactionResult::Rejected</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="self">self</span>.<span class="ident">send_error_response</span>(
+                            <span class="ident">peer</span>.<span class="ident">send_error_response</span>(
                                 <span class="ident">api_message</span>.<span class="ident">message_id</span>,
                                 <span class="ident">String::from</span>(<span class="string">&quot;Invalid&quot;</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(),
                             )
@@ -1073,8 +1178,8 @@
                 }
             }
             <span class="string">&quot;SNDCHAIN&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SNDCHAIN&quot;</span>);
-                <span class="kw">let</span> <span class="ident">_message_id</span> <span class="op">=</span> <span class="ident">api_message</span>.<span class="ident">message_id</span>;
+                <span class="ident">peer</span>.<span class="ident">send_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;OK&quot;</span>)
+                    .<span class="kw">await</span>;
 
                 <span class="kw">let</span> <span class="ident">send_blockchain_message</span> <span class="op">=</span>
                     <span class="ident">SendBlockchainMessage::deserialize</span>(<span class="ident">api_message</span>.<span class="ident">message_data</span>());
@@ -1086,35 +1191,39 @@
                         <span class="prelude-val">Some</span>(<span class="ident">send_blockchain_block_data</span>.<span class="ident">block_hash</span>),
                         <span class="prelude-val">None</span>,
                     );
-                    <span class="self">self</span>.<span class="ident">send_command</span>(<span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;REQBLOCK&quot;</span>), <span class="ident">request_block_message</span>.<span class="ident">serialize</span>())
-                        .<span class="kw">await</span>;
+                    <span class="kw">let</span> <span class="ident">connection_id_clone</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">connection_id</span>.<span class="ident">clone</span>();
+                    <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
+                        <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                        <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id_clone</span>).<span class="ident">unwrap</span>();
+                        <span class="ident">peer</span>.<span class="ident">send_command</span>(<span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;REQBLOCK&quot;</span>), <span class="ident">request_block_message</span>.<span class="ident">serialize</span>())
+                             .<span class="kw">await</span>;
+                    });
                 }
             }
             <span class="string">&quot;SNDBLKHD&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SNDBLKHD&quot;</span>);
-                <span class="kw">let</span> <span class="ident">_message_id</span> <span class="op">=</span> <span class="ident">api_message</span>.<span class="ident">message_id</span>;
+                <span class="ident">peer</span>.<span class="ident">send_error_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;UNHANDLED COMMAND&quot;</span>).<span class="kw">await</span>;
             }
             <span class="string">&quot;SNDKYLST&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SNDKYLST&quot;</span>);
-                <span class="kw">let</span> <span class="ident">_message_id</span> <span class="op">=</span> <span class="ident">api_message</span>.<span class="ident">message_id</span>;
+                <span class="ident">peer</span>.<span class="ident">send_error_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;UNHANDLED COMMAND&quot;</span>).<span class="kw">await</span>;
             }
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="macro">println!</span>(
                     <span class="string">&quot;Unhandled command received by client... {}&quot;</span>,
                     <span class="kw-2">&amp;</span><span class="ident">api_message</span>.<span class="ident">message_name_as_string</span>()
                 );
+                <span class="ident">peer</span>.<span class="ident">send_error_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;NO SUCH&quot;</span>).<span class="kw">await</span>;
             }
         }
     }
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_peer_response_command</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">command_name</span>: [<span class="ident">u8</span>; <span class="number">8</span>],
+        <span class="ident">command_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">response_api_message</span>: <span class="kw-2">&amp;</span><span class="ident">APIMessage</span>,
     ) {
-        <span class="kw">match</span> <span class="ident">String::from_utf8_lossy</span>(<span class="kw-2">&amp;</span><span class="ident">command_name</span>).<span class="ident">to_string</span>().<span class="ident">as_ref</span>() {
+        <span class="macro">println!</span>(<span class="string">&quot;COMMAND RESPONSE {}&quot;</span>, <span class="ident">command_name</span>);
+        <span class="kw">match</span> <span class="ident">command_name</span> {
             <span class="string">&quot;SHAKINIT&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SHAKINIT RESPONSE&quot;</span>);
-                <span class="comment">// SHAKINIT response</span>
                 <span class="comment">// We should sign the response and send a SHAKCOMP.</span>
                 <span class="comment">// We want to reuse socket_handshake_verify, so we will sign first before</span>
                 <span class="comment">// verifying the peer&#39;s signature</span>
@@ -1140,59 +1249,62 @@
                 }
             }
             <span class="string">&quot;SHAKCOMP&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(
-                    <span class="string">&quot;GOT SHAKCOMP RESPONSE {}&quot;</span>,
-                    <span class="ident">String::from_utf8_lossy</span>(<span class="kw-2">&amp;</span><span class="ident">response_api_message</span>.<span class="ident">message_data</span>()).<span class="ident">to_string</span>()
-                );
                 <span class="comment">// now that we&#39;re connected, we want to request the chain from our new peer and see if we&#39;re synced</span>
                 <span class="comment">// TODO get this data from blockchain.rs or wherever it is...</span>
                 <span class="kw">let</span> <span class="ident">request_blockchain_message</span> <span class="op">=</span>
                     <span class="ident">RequestBlockchainMessage::new</span>(<span class="number">0</span>, [<span class="number">0</span>; <span class="number">32</span>], [<span class="number">42</span>; <span class="number">32</span>]);
 
-                <span class="self">self</span>.<span class="ident">send_command</span>(
+                    <span class="self">self</span>.<span class="ident">send_command</span>(
                     <span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;REQCHAIN&quot;</span>),
                     <span class="ident">request_blockchain_message</span>.<span class="ident">serialize</span>(),
                 )
                 .<span class="kw">await</span>;
             }
             <span class="string">&quot;REQBLOCK&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT REQBLOCK RESPONSE&quot;</span>);
+                <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="ident">response_api_message</span>.<span class="ident">message_data</span>());
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                <span class="kw">match</span> <span class="ident">mempool</span>.<span class="ident">add_block_to_queue</span>(<span class="ident">block</span>) {
+                    <span class="ident">AddBlockResult::Exists</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">println!</span>(<span class="string">&quot;The node appears to be requesting blocks which is already has in it&#39;s mempool queue, this should probably be fixed...&quot;</span>);
+                    }
+                    <span class="ident">AddBlockResult::Accepted</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="comment">// nothing to do</span>
+                    }
+                }
+                
             }
             <span class="string">&quot;REQBLKHD&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT REQBLKHD RESPONSE&quot;</span>);
+                <span class="macro">println!</span>(<span class="string">&quot;IMPLEMENT REQBLKHD RESPONSE?!&quot;</span>);
             }
             <span class="string">&quot;REQCHAIN&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(
-                    <span class="string">&quot;GOT REQCHAIN RESPONSE {}&quot;</span>,
-                    <span class="ident">String::from_utf8_lossy</span>(<span class="kw-2">&amp;</span><span class="ident">response_api_message</span>.<span class="ident">message_data</span>()).<span class="ident">to_string</span>()
-                );
+                <span class="macro">println!</span>(<span class="string">&quot;IMPLEMENT REQCHAIN RESPONSE?!&quot;</span>);
             }
             <span class="string">&quot;SNDTRANS&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SNDTRANS RESPONSE&quot;</span>);
+                <span class="macro">println!</span>(<span class="string">&quot;IMPLEMENT SNDTRANS RESPONSE?!&quot;</span>);
             }
             <span class="string">&quot;SNDCHAIN&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SNDCHAIN RESPONSE&quot;</span>);
+                <span class="macro">println!</span>(<span class="string">&quot;IMPLEMENT SNDCHAIN RESPONSE?!&quot;</span>);
             }
             <span class="string">&quot;SNDBLKHD&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SNDBLKHD RESPONSE&quot;</span>);
+                <span class="macro">println!</span>(<span class="string">&quot;IMPLEMENT SNDBLKHD RESPONSE?!&quot;</span>);
             }
             <span class="string">&quot;SNDKYLST&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;GOT SNDKYLST RESPONSE&quot;</span>);
+                <span class="macro">println!</span>(<span class="string">&quot;IMPLEMENT SNDKYLST RESPONSE?!&quot;</span>);
             }
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
         }
     }
     <span class="kw">fn</span> <span class="ident">handle_peer_response_error</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">command_name</span>: [<span class="ident">u8</span>; <span class="number">8</span>],
+        <span class="ident">command_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">response_api_message</span>: <span class="kw-2">&amp;</span><span class="ident">APIMessage</span>,
     ) {
         <span class="macro">println!</span>(
             <span class="string">&quot;{} ERROR: {}&quot;</span>,
-            <span class="ident">String::from_utf8_lossy</span>(<span class="kw-2">&amp;</span><span class="ident">command_name</span>).<span class="ident">to_string</span>(),
+            <span class="ident">command_name</span>,
             <span class="ident">response_api_message</span>.<span class="ident">message_data_as_str</span>(),
         );
-        <span class="kw">match</span> <span class="ident">String::from_utf8_lossy</span>(<span class="kw-2">&amp;</span><span class="ident">command_name</span>).<span class="ident">to_string</span>().<span class="ident">as_ref</span>() {
+        <span class="kw">match</span> <span class="ident">command_name</span> {
             <span class="string">&quot;SHAKCOMP&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="comment">// TODO delete the peer if there is an error here</span>
             }
@@ -1218,7 +1330,7 @@
     }));
 
     <span class="kw">let</span> <span class="ident">connection_id</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::new_v4</span>().<span class="ident">as_bytes</span>().<span class="ident">to_vec</span>());
-    <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">BasePeer::new</span>(
+    <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">SaitoPeer::new</span>(
         <span class="ident">connection_id</span>,
         <span class="prelude-val">None</span>,
         <span class="prelude-val">None</span>,
@@ -1243,7 +1355,7 @@
         },
     );
 
-    <span class="macro">println!</span>(<span class="string">&quot;{:?} connected&quot;</span>, <span class="ident">connection_id</span>);
+    <span class="macro">println!</span>(<span class="string">&quot;Peer connected!&quot;</span>);
 
     <span class="ident">tokio::task::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">result</span>) <span class="op">=</span> <span class="ident">peer_ws_rcv</span>.<span class="ident">next</span>().<span class="kw">await</span> {
@@ -1256,9 +1368,7 @@
             };
             <span class="kw">if</span> <span class="ident">msg</span>.<span class="ident">as_bytes</span>().<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span> {
                 <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">APIMessage::deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>.<span class="ident">as_bytes</span>().<span class="ident">to_vec</span>());
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peer_db_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
-                <span class="ident">peer</span>.<span class="ident">handle_peer_command</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>).<span class="kw">await</span>;
+                <span class="ident">SaitoPeer::handle_peer_message</span>(<span class="ident">api_message</span>, <span class="ident">connection_id</span>).<span class="kw">await</span>;
             } <span class="kw">else</span> {
                 <span class="macro">println!</span>(<span class="string">&quot;Message of length 0... why?&quot;</span>);
                 <span class="macro">println!</span>(<span class="string">&quot;This seems to occur if we aren&#39;t holding a reference to the sender/stream on the&quot;</span>);
@@ -1356,8 +1466,12 @@
     <span class="kw">if</span> <span class="ident">request_block_message</span>.<span class="ident">get_block_id</span>().<span class="ident">is_some</span>() {
         <span class="ident">APIMessage::new_from_string</span>(<span class="string">&quot;ERROR___&quot;</span>, <span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;Unsupported: fetching blocks by id is not yet supported, please fetch the block by hash.&quot;</span>)
     } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">request_block_message</span>.<span class="ident">get_block_hash</span>().<span class="ident">is_some</span>() {
-        <span class="kw">let</span> <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">api_message</span>.<span class="ident">message_data</span>[<span class="number">0</span>..<span class="number">32</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-        <span class="macro">println!</span>(<span class="string">&quot;REQBLOCK {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">block_hash</span>);
+        
+        
+        <span class="comment">//let block_hash: SaitoHash = api_message.message_data[0..32].try_into().unwrap();</span>
+        <span class="kw">let</span> <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">request_block_message</span>.<span class="ident">get_block_hash</span>().<span class="ident">unwrap</span>();
+
+
         <span class="kw">match</span> <span class="ident">blockchain</span>.<span class="ident">get_block_sync</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>) {
             <span class="prelude-val">Some</span>(<span class="ident">target_block</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">APIMessage::new</span>(
                 <span class="string">&quot;RESULT__&quot;</span>,
@@ -1405,7 +1519,6 @@
     <span class="kw">if</span> <span class="ident">request_blockchain_message</span>.<span class="ident">get_latest_block_id</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span>
         <span class="op">&amp;&amp;</span> <span class="ident">request_blockchain_message</span>.<span class="ident">get_latest_block_hash</span>() <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">block_zero_hash</span>
     {
-        <span class="macro">println!</span>(<span class="string">&quot;GOT BLOCK ZERO HASH&quot;</span>);
         <span class="ident">peers_latest_hash</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">block_zero_hash</span>;
     } <span class="kw">else</span> {
         <span class="comment">// TODO contains_block_hash_at_block_id for some reason needs mutable access to block_ring</span>
@@ -1422,11 +1535,6 @@
         <span class="ident">peers_latest_hash</span> <span class="op">=</span> <span class="ident">request_blockchain_message</span>.<span class="ident">get_latest_block_hash</span>();
     }
 
-    <span class="macro">println!</span>(
-        <span class="string">&quot;GET BLOCK FOR SNDCHAIN {:?}&quot;</span>,
-        <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">peers_latest_hash</span>)
-    );
-
     <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blocks_data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SendBlockchainBlockData</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
@@ -1436,10 +1544,6 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_count</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">while</span> <span class="kw-2">&amp;</span><span class="ident">previous_block_hash</span> <span class="op">!</span><span class="op">=</span> <span class="ident">peers_latest_hash</span> <span class="op">&amp;&amp;</span> <span class="ident">block_count</span> <span class="op">&lt;</span> <span class="ident">GENESIS_PERIOD</span> {
             <span class="ident">block_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-            <span class="macro">println!</span>(
-                <span class="string">&quot;GET BLOCK FOR SNDCHAIN {:?}&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">previous_block_hash</span>)
-            );
             <span class="ident">this_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block_sync</span>(<span class="kw-2">&amp;</span><span class="ident">previous_block_hash</span>).<span class="ident">unwrap</span>();
             <span class="ident">blocks_data</span>.<span class="ident">push</span>(<span class="ident">SendBlockchainBlockData</span> {
                 <span class="ident">block_id</span>: <span class="ident">this_block</span>.<span class="ident">get_id</span>(),

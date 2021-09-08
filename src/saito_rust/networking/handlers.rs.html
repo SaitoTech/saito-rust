@@ -140,12 +140,10 @@
 <span id="138">138</span>
 <span id="139">139</span>
 <span id="140">140</span>
-<span id="141">141</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool::Mempool</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::network::Result</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::peer::handle_inbound_peer_connection</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction::Transaction</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
@@ -156,7 +154,7 @@
 <span class="kw">use</span> <span class="ident">warp::reply::Response</span>;
 <span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">Buf</span>, <span class="ident">Rejection</span>, <span class="ident">Reply</span>};
 
-<span class="kw">use</span> <span class="kw">super</span><span class="ident">::peer::PeersDB</span>;
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::peer</span>::{<span class="ident">PeersDB</span>, <span class="ident">handle_inbound_peer_connection</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">struct</span> <span class="ident">Invalid</span>;
