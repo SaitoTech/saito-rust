@@ -2,6 +2,9 @@
 pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
 pub const PRUNE_AFTER_BLOCKS: u64 = 10;
+// max recursion when paying stakers
+pub const MAX_STAKER_RECURSION: u64 = 3;
+
 
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
@@ -828,7 +831,8 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
 		    // blocks
 		    //
 	            if self.is_block_indexed(previous_block_hash) {
-	                let previous_block = self.get_block_sync(previous_block_hash);
+			println!("wind_chain, fetching previous block for golden ticket payout calcs");
+	                let previous_block = self.get_mut_block(previous_block_hash).await;
 		        if previous_block.get_has_golden_ticket() {
 		            cont = 0;  
 		        } else {

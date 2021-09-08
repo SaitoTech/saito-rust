@@ -203,7 +203,7 @@ println!("ADDING BLOCK! {}", block.get_id());
 		    // everything spendable in blockchain.utxoset should be spendable on longest-chain
 		    //
 		    if *value == 1 {
-		        println!("comparing {} and {}", value, value2);
+		        //println!("comparing {} and {}", value, value2);
                         assert_eq!(value, value2);
 		    } else {
 			//
