@@ -80,9 +80,9 @@ impl Staking {
         &mut self,
         staking_treasury: u64,
     ) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
-        println!("===========================");
-        println!("=== RESET STAKING TABLE ===");
-        println!("===========================");
+        // println!("===========================");
+        // println!("=== RESET STAKING TABLE ===");
+        // println!("===========================");
 
         let res_spend: Vec<Slip> = vec![];
         let res_unspend: Vec<Slip> = vec![];

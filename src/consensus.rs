@@ -13,9 +13,9 @@ use tokio::sync::{broadcast, mpsc};
 /// The consensus state which exposes a run method
 /// initializes Saito state
 struct Consensus {
-    _notify_shutdown: broadcast::Sender<()>,
-    _shutdown_complete_rx: mpsc::Receiver<()>,
-    _shutdown_complete_tx: mpsc::Sender<()>,
+    notify_shutdown_sender: broadcast::Sender<()>,
+    shutdown_complete_sender: mpsc::Sender<()>,
+    shutdown_complete_receiver: mpsc::Receiver<()>,
 }
 
 /// The types of messages broadcast over the main
@@ -38,25 +38,40 @@ pub async fn run() -> crate::Result<()> {
     //
     // handle shutdown messages using broadcast channel
     //
-    let (notify_shutdown, _) = broadcast::channel(1);
-    let (shutdown_complete_tx, shutdown_complete_rx) = mpsc::channel(1);
-    let mut consensus = Consensus {
-        _notify_shutdown: notify_shutdown,
-        _shutdown_complete_tx: shutdown_complete_tx,
-        _shutdown_complete_rx: shutdown_complete_rx,
-    };
+    {
+        let (notify_shutdown_sender, _) = broadcast::channel(1);
+        let (shutdown_complete_sender, shutdown_complete_receiver) = mpsc::channel(1);
+        let mut consensus = Consensus {
+            notify_shutdown_sender: notify_shutdown_sender,
+            shutdown_complete_sender: shutdown_complete_sender,
+            shutdown_complete_receiver: shutdown_complete_receiver,
+        };
 
-    tokio::select! {
-        res = consensus.run() => {
-            if let Err(err) = res {
-                eprintln!("{:?}", err);
+        tokio::select! {
+            res = consensus.run() => {
+                if let Err(err) = res {
+                    eprintln!("{:?}", err);
+                }
+            },
+            _ = signal::ctrl_c() => {
+                println!("Shutting down!");
+                let _foo = consensus.notify_shutdown_sender.send(());
+                println!("Shutting down!");
             }
-        },
-        _ = signal::ctrl_c() => {
-            println!("Shutting down!")
         }
-    }
+        println!("main select has exited");
 
+        let Consensus {
+            notify_shutdown_sender,
+            shutdown_complete_sender,
+            mut shutdown_complete_receiver,
+        } = consensus;
+
+        drop(notify_shutdown_sender);
+        drop(shutdown_complete_sender);
+        let _ = shutdown_complete_receiver.recv().await;
+
+    }
     Ok(())
 }
 
@@ -132,11 +147,24 @@ impl Consensus {
         }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-        let network = Network::new(
+        let mut network = Network::new(
             settings,
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
+            self.notify_shutdown_sender.subscribe(),
+        );
+
+        let mut settings = config::Config::default();
+        settings
+            .merge(config::File::with_name(config_name))
+            .unwrap();
+        let mut network2 = Network::new(
+            settings,
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+            self.notify_shutdown_sender.subscribe(),
         );
         tokio::select! {
             res = crate::mempool::run(
@@ -167,20 +195,24 @@ impl Consensus {
                     eprintln!("miner err {:?}", err)
                 }
             },
-            res = network.run() => {
+            res = network.run(self.notify_shutdown_sender.subscribe()) => {
                 if let Err(err) = res {
                     eprintln!("network err {:?}", err)
                 }
             },
-            res = network.run_server() => {
+            res = network2.run_server() => {
                 if let Err(err) = res {
                     eprintln!("run_server err {:?}", err)
                 }
             },
-            _ = self._shutdown_complete_tx.closed() => {
-                println!("Shutdown message complete")
-            }
+            // _ = self.notify_shutdown_receiver.recv() => {
+            //     println!("Shutdown message complete");  
+            // }
+            // _ = signal::ctrl_c() => {
+            //     println!("Shutting down from consensus run!")
+            // }
         }
+        println!("run select has exited");
         Ok(())
     }
 }

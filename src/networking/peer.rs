@@ -225,7 +225,7 @@ impl SaitoPeer {
     }
 
     #[async_recursion]
-    pub async fn send_command(&mut self, command: &str, message: Vec<u8>) {
+    pub async fn send_command_new(&mut self, command: &str, message: Vec<u8>) -> Result<APIMessage, APIMessage> {
         let peer_request = PeerRequest::new(command, message, self).await;
         let response_message = peer_request
             .await
@@ -233,17 +233,37 @@ impl SaitoPeer {
         match response_message.message_name_as_string().as_str() {
             "RESULT__" => {
                 println!("SEND COMMAND GOT RESULT__ {}", command);
-                self.handle_peer_response_command(command, &response_message)
-                    .await;
+                Ok(response_message)
             }
             "ERROR___" => {
-                self.handle_peer_response_error(command, &response_message);
+                Err(response_message)
             }
             _ => {
                 panic!("Received non-response response");
             }
         }
     }
+
+    // #[async_recursion]
+    // pub async fn send_command_old(&mut self, command: &str, message: Vec<u8>) {
+    //     let peer_request = PeerRequest::new(command, message, self).await;
+    //     let response_message = peer_request
+    //         .await
+    //         .expect(&format!("Error returned from {}", command));
+    //     match response_message.message_name_as_string().as_str() {
+    //         "RESULT__" => {
+    //             println!("SEND COMMAND GOT RESULT__ {}", command);
+    //             // self.handle_peer_response_command(command, &response_message)
+    //             //     .await;
+    //         }
+    //         "ERROR___" => {
+    //             self.handle_peer_response_error(command, &response_message);
+    //         }
+    //         _ => {
+    //             panic!("Received non-response response");
+    //         }
+    //     }
+    // }
     pub async fn send_response_from_str(&mut self, message_id: u32, message_str: &str) {
         send_message_to_socket(
             APIMessage::new_from_string("RESULT__", message_id, message_str),
@@ -272,6 +292,19 @@ impl SaitoPeer {
         )
         .await;
     }
+
+    pub async fn add_block_to_mempool(&mut self, block: Block) {
+        let mut mempool = self.mempool_lock.write().await;
+        match mempool.add_block_to_queue(block) {
+            AddBlockResult::Exists => {
+                println!("The node appears to be requesting blocks which is already has in it's mempool queue, this should probably be fixed...");
+            }
+            AddBlockResult::Accepted => {
+                // nothing to do
+            }
+        }
+    }
+
     pub async fn handle_peer_message(api_message_orig: APIMessage, connection_id: SaitoHash) {
         match api_message_orig.message_name_as_string().as_str() {
             "RESULT__" | "ERROR___" => {
@@ -340,7 +373,7 @@ impl SaitoPeer {
                 if let Some(bytes) = socket_send_block_header(&api_message, blockchain_lock).await {
                     let message_data = String::from("OK").as_bytes().try_into().unwrap();
                     peer.send_response(message_id, message_data).await;
-                    peer.send_command("SNDBLKHD", bytes).await;
+                    let _result = peer.send_command_new("SNDBLKHD", bytes).await;
                 } else {
                     peer.send_error_response_from_str(message_id, "ERROR").await;
                 }
@@ -360,7 +393,7 @@ impl SaitoPeer {
                         let mut peer_db = peers_db_global.write().await;
                         let peer = peer_db.get_mut(&connection_id_clone).unwrap();
 
-                        peer.send_command(
+                        let _result = peer.send_command_new(
                             &String::from("SNDCHAIN"),
                             send_blockchain_message.serialize(),
                         )
@@ -416,7 +449,7 @@ impl SaitoPeer {
                         let peers_db_global = PEERS_DB_GLOBAL.clone();
                         let mut peer_db = peers_db_global.write().await;
                         let peer = peer_db.get_mut(&connection_id_clone).unwrap();
-                        peer.send_command(
+                        let _result = peer.send_command_new(
                             &String::from("REQBLOCK"),
                             request_block_message.serialize(),
                         )
@@ -442,83 +475,83 @@ impl SaitoPeer {
             }
         }
     }
-    async fn handle_peer_response_command(
-        &mut self,
-        command_name: &str,
-        response_api_message: &APIMessage,
-    ) {
-        println!("COMMAND RESPONSE {}", command_name);
-        match command_name {
-            "SHAKINIT" => {
-                // We should sign the response and send a SHAKCOMP.
-                // We want to reuse socket_handshake_verify, so we will sign first before
-                // verifying the peer's signature
-                let privatekey: SaitoPrivateKey;
-                {
-                    let wallet = self.wallet_lock.read().await;
-                    privatekey = wallet.get_privatekey();
-                }
-                let signed_challenge =
-                    sign_blob(&mut response_api_message.message_data.to_vec(), privatekey)
-                        .to_owned();
-                match socket_handshake_verify(&signed_challenge) {
-                    Some(deserialize_challenge) => {
-                        self.set_has_completed_handshake(true);
-                        self.set_publickey(deserialize_challenge.challenger_pubkey());
-                        self.send_command(&String::from("SHAKCOMP"), signed_challenge)
-                            .await;
-                        println!("SHAKECOMPLETE!");
-                    }
-                    None => {
-                        println!("Error verifying peer handshake signature");
-                    }
-                }
-            }
-            "SHAKCOMP" => {
-                // now that we're connected, we want to request the chain from our new peer and see if we're synced
-                // TODO get this data from blockchain.rs or wherever it is...
-                let request_blockchain_message =
-                    RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
+    // async fn handle_peer_response_command(
+    //     &mut self,
+    //     command_name: &str,
+    //     response_api_message: &APIMessage,
+    // ) {
+    //     println!("COMMAND RESPONSE {}", command_name);
+    //     match command_name {
+    //         "SHAKINIT" => {
+    //             // We should sign the response and send a SHAKCOMP.
+    //             // We want to reuse socket_handshake_verify, so we will sign first before
+    //             // verifying the peer's signature
+    //             let privatekey: SaitoPrivateKey;
+    //             {
+    //                 let wallet = self.wallet_lock.read().await;
+    //                 privatekey = wallet.get_privatekey();
+    //             }
+    //             let signed_challenge =
+    //                 sign_blob(&mut response_api_message.message_data.to_vec(), privatekey)
+    //                     .to_owned();
+    //             match socket_handshake_verify(&signed_challenge) {
+    //                 Some(deserialize_challenge) => {
+    //                     self.set_has_completed_handshake(true);
+    //                     self.set_publickey(deserialize_challenge.challenger_pubkey());
+    //                     self.send_command_old(&String::from("SHAKCOMP"), signed_challenge)
+    //                         .await;
+    //                     println!("SHAKECOMPLETE!");
+    //                 }
+    //                 None => {
+    //                     println!("Error verifying peer handshake signature");
+    //                 }
+    //             }
+    //         }
+    //         "SHAKCOMP" => {
+    //             // now that we're connected, we want to request the chain from our new peer and see if we're synced
+    //             // TODO get this data from blockchain.rs or wherever it is...
+    //             let request_blockchain_message =
+    //                 RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
 
-                self.send_command(
-                    &String::from("REQCHAIN"),
-                    request_blockchain_message.serialize(),
-                )
-                .await;
-            }
-            "REQBLOCK" => {
-                let block = Block::deserialize_for_net(response_api_message.message_data());
-                let mut mempool = self.mempool_lock.write().await;
-                match mempool.add_block_to_queue(block) {
-                    AddBlockResult::Exists => {
-                        println!("The node appears to be requesting blocks which is already has in it's mempool queue, this should probably be fixed...");
-                    }
-                    AddBlockResult::Accepted => {
-                        // nothing to do
-                    }
-                }
-            }
-            "REQBLKHD" => {
-                println!("IMPLEMENT REQBLKHD RESPONSE?!");
-            }
-            "REQCHAIN" => {
-                println!("IMPLEMENT REQCHAIN RESPONSE?!");
-            }
-            "SNDTRANS" => {
-                println!("IMPLEMENT SNDTRANS RESPONSE?!");
-            }
-            "SNDCHAIN" => {
-                println!("IMPLEMENT SNDCHAIN RESPONSE?!");
-            }
-            "SNDBLKHD" => {
-                println!("IMPLEMENT SNDBLKHD RESPONSE?!");
-            }
-            "SNDKYLST" => {
-                println!("IMPLEMENT SNDKYLST RESPONSE?!");
-            }
-            _ => {}
-        }
-    }
+    //             self.send_command_old(
+    //                 &String::from("REQCHAIN"),
+    //                 request_blockchain_message.serialize(),
+    //             )
+    //             .await;
+    //         }
+    //         "REQBLOCK" => {
+    //             let block = Block::deserialize_for_net(response_api_message.message_data());
+    //             let mut mempool = self.mempool_lock.write().await;
+    //             match mempool.add_block_to_queue(block) {
+    //                 AddBlockResult::Exists => {
+    //                     println!("The node appears to be requesting blocks which is already has in it's mempool queue, this should probably be fixed...");
+    //                 }
+    //                 AddBlockResult::Accepted => {
+    //                     // nothing to do
+    //                 }
+    //             }
+    //         }
+    //         "REQBLKHD" => {
+    //             println!("IMPLEMENT REQBLKHD RESPONSE?!");
+    //         }
+    //         "REQCHAIN" => {
+    //             println!("IMPLEMENT REQCHAIN RESPONSE?!");
+    //         }
+    //         "SNDTRANS" => {
+    //             println!("IMPLEMENT SNDTRANS RESPONSE?!");
+    //         }
+    //         "SNDCHAIN" => {
+    //             println!("IMPLEMENT SNDCHAIN RESPONSE?!");
+    //         }
+    //         "SNDBLKHD" => {
+    //             println!("IMPLEMENT SNDBLKHD RESPONSE?!");
+    //         }
+    //         "SNDKYLST" => {
+    //             println!("IMPLEMENT SNDKYLST RESPONSE?!");
+    //         }
+    //         _ => {}
+    //     }
+    // }
     fn handle_peer_response_error(
         &mut self,
         command_name: &str,
@@ -765,6 +798,9 @@ pub async fn build_send_blockchain_message(
         let mut this_block: &Block; // = blockchain.get_block_sync(&previous_block_hash).unwrap();
         let mut block_count = 0;
         while &previous_block_hash != peers_latest_hash && block_count < GENESIS_PERIOD {
+            println!("previous_block_hash {:?}", &hex::encode(&previous_block_hash));
+            println!("block_count {}", block_count);
+            
             block_count += 1;
             this_block = blockchain.get_block_sync(&previous_block_hash).unwrap();
             blocks_data.push(SendBlockchainBlockData {

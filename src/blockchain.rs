@@ -3,7 +3,7 @@ pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
 pub const PRUNE_AFTER_BLOCKS: u64 = 10;
 // max recursion when paying stakers
-pub const MAX_STAKER_RECURSION: u64 = 3;
+pub const MAX_STAKER_RECURSION: u64 = 2;
 
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
@@ -11,7 +11,6 @@ use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::staking::Staking;
 use crate::storage::Storage;
-use crate::time::create_timestamp;
 use crate::wallet::Wallet;
 
 use async_recursion::async_recursion;
@@ -73,12 +72,12 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-        println!("ADD BLK HASH: {:?}", block.get_hash());
-        println!(
-            " ... blockchain.add_block start: {:?} txs: {}",
-            create_timestamp(),
-            block.transactions.len()
-        );
+        println!("ADD BLK HASH: {:?}", &hex::encode(&block.get_hash()));
+        // println!(
+        //     " ... blockchain.add_block start: {:?} txs: {}",
+        //     create_timestamp(),
+        //     block.transactions.len()
+        // );
 
         //
         // start by extracting some variables that we will use
@@ -93,7 +92,7 @@ impl Blockchain {
         // sanity checks
         //
         if self.blocks.contains_key(&block_hash) {
-            println!("ERROR: block exists in blockchain {:?}", block.get_hash());
+            println!("ERROR: block already exists in blockchain {:?}", &hex::encode(&block.get_hash()));
             return;
         }
 
@@ -300,7 +299,7 @@ impl Blockchain {
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
-        println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
+       //  println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
 
         let block_id;
 
@@ -319,18 +318,18 @@ impl Blockchain {
             //block.transactions = vec![];
         }
 
-        println!(" ... block save done:            {:?}", create_timestamp());
+        // println!(" ... block save done:            {:?}", create_timestamp());
 
         //
         // TODO - this is merely for testing, we do not intend
         // the routing client to process transactions in its
         // wallet.
         {
-            println!(" ... wallet processing start:    {}", create_timestamp());
+            // println!(" ... wallet processing start:    {}", create_timestamp());
             let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
             wallet.add_block(&block);
-            println!(" ... wallet processing stop:     {}", create_timestamp());
+            // println!(" ... wallet processing stop:     {}", create_timestamp());
         }
 
         //
@@ -750,6 +749,7 @@ impl Blockchain {
         } else {
             true
         }
+        
     }
 
     //
@@ -777,7 +777,7 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-        println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
+        // println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
 
         //
         // if we are winding a non-existent chain with a wind_failure it
@@ -802,7 +802,6 @@ impl Blockchain {
         {
             let block = self.get_mut_block(new_chain[current_wind_index]).await;
             block.generate_metadata();
-
             //
             // ensure previous blocks that may be needed to calculate the staking
             // tables have access to their transaction data so that routing and
@@ -811,10 +810,11 @@ impl Blockchain {
             // this means ensuring they are loaded into memory.
             //
             if block.get_has_golden_ticket() {
-                let mut cont = 1;
+            
+                let mut cont = true;
                 let mut previous_block_hash = block.get_previous_block_hash();
 
-                while cont == 1 && previous_block_hash != [0; 32] {
+                while cont && previous_block_hash != [0; 32] {
                     //
                     // we should never wind an unindexed chain, but
                     // we will still perform a sanity check so as not
@@ -822,12 +822,9 @@ impl Blockchain {
                     // blocks
                     //
                     if self.is_block_indexed(previous_block_hash) {
-                        println!(
-                            "wind_chain, fetching previous block for golden ticket payout calcs"
-                        );
                         let previous_block = self.get_mut_block(previous_block_hash).await;
                         if previous_block.get_has_golden_ticket() {
-                            cont = 0;
+                            cont = false;
                         } else {
                             // this also generates metadata if non-existing
                             previous_block
@@ -836,27 +833,23 @@ impl Blockchain {
                             previous_block_hash = previous_block.get_previous_block_hash();
                         }
                     } else {
-                        cont = 1000;
+                        cont = false;
                     }
                 }
             }
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        println!(" ... before block.validate:      {:?}", create_timestamp());
+        // println!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
-        println!(
-            " ... after block.validate:       {:?} {}",
-            create_timestamp(),
-            does_block_validate
-        );
+        
 
         if does_block_validate {
-            println!(" ... before block ocr            {:?}", create_timestamp());
+            // println!(" ... before block ocr            {:?}", create_timestamp());
 
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
-            println!(" ... before blockring ocr:       {:?}", create_timestamp());
+            // println!(" ... before blockring ocr:       {:?}", create_timestamp());
 
             // blockring update
             self.blockring
@@ -1279,9 +1272,7 @@ pub async fn run(
 mod tests {
 
     use super::*;
-    use crate::{
-        block::Block, golden_ticket::GoldenTicket, miner::Miner, transaction::Transaction,
-    };
+    use crate::{block::Block, golden_ticket::GoldenTicket, miner::Miner, time::create_timestamp, transaction::Transaction};
 
     #[test]
     fn bit_pack_test() {

@@ -1,22 +1,25 @@
+use crate::block::Block;
 use crate::blockchain::Blockchain;
-use crate::crypto::{hash, SaitoHash, SaitoPublicKey};
-use crate::mempool::Mempool;
+use crate::crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey, hash, sign_blob};
+use crate::mempool::{AddBlockResult, Mempool};
 use crate::networking::api_message::APIMessage;
 use crate::networking::filters::{
     get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter,
 };
-use crate::networking::peer::{OutboundPeer, SaitoPeer};
+use crate::networking::message_types::request_blockchain_message::RequestBlockchainMessage;
+use crate::networking::peer::{OutboundPeer, SaitoPeer, socket_handshake_verify};
 use crate::util::format_url_string;
 
 use crate::wallet::Wallet;
 use futures::StreamExt;
 use secp256k1::PublicKey;
-use tokio::sync::RwLock;
+use tokio::time::sleep;
+use tokio::{signal, time};
+use tokio::sync::{RwLock, broadcast};
 use tokio_tungstenite::connect_async;
 use uuid::Uuid;
 
 use std::sync::Arc;
-use std::thread::sleep;
 use std::time::Duration;
 use warp::{Filter, Rejection};
 
@@ -34,6 +37,7 @@ pub struct Network {
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
+    notify_shutdown_receiver: broadcast::Receiver<()>
 }
 
 impl Network {
@@ -42,12 +46,75 @@ impl Network {
         wallet_lock: Arc<RwLock<Wallet>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
+        notify_shutdown_receiver: broadcast::Receiver<()>,
     ) -> Network {
         Network {
             config_settings,
             wallet_lock,
             mempool_lock,
             blockchain_lock,
+            notify_shutdown_receiver,
+        }
+    }
+    pub async fn initialize_handshake(connection_id: &SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
+        {
+            let publickey: SaitoPublicKey;
+            {
+                let wallet = wallet_lock.read().await;
+                publickey = wallet.get_publickey();
+            }
+            let mut message_data = vec![127, 0, 0, 1];
+            message_data.extend(
+                PublicKey::from_slice(&publickey)
+                    .unwrap()
+                    .serialize()
+                    .to_vec(),
+            );
+
+            let peers_db_global = PEERS_DB_GLOBAL.clone();
+            let mut peer_db = peers_db_global.write().await;
+            let peer = peer_db.get_mut(connection_id).unwrap();
+
+
+            let response_api_message = SaitoPeer::send_command_new(peer, &String::from("SHAKINIT"), message_data).await.unwrap();
+
+            // We should sign the response and send a SHAKCOMP.
+            // We want to reuse socket_handshake_verify, so we will sign first before
+            // verifying the peer's signature
+            let privatekey: SaitoPrivateKey;
+            {
+                let wallet = wallet_lock.read().await;
+                privatekey = wallet.get_privatekey();
+            }
+            let signed_challenge =
+                sign_blob(&mut response_api_message.message_data.to_vec(), privatekey)
+                    .to_owned();
+            match socket_handshake_verify(&signed_challenge) {
+                Some(deserialize_challenge) => {
+                    peer.set_has_completed_handshake(true);
+                    peer.set_publickey(deserialize_challenge.challenger_pubkey());
+                    let result = peer.send_command_new(&String::from("SHAKCOMP"), signed_challenge)
+                        .await;
+
+                    if result.is_ok() {
+                        let request_blockchain_message =
+                        RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
+                        let req_chain_result = peer.send_command_new(
+                            &String::from("REQCHAIN"),
+                            request_blockchain_message.serialize(),
+                        )
+                        .await.unwrap();
+                        let block = Block::deserialize_for_net(req_chain_result.message_data());
+                        peer.add_block_to_mempool(block).await;
+                    } else {
+                        // TODO delete the peer if there is an error here
+                    }
+                    println!("SHAKECOMPLETE!");
+                }
+                None => {
+                    println!("Error verifying peer handshake signature");
+                }
+            }
         }
     }
     pub async fn connect_to_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
@@ -75,18 +142,9 @@ impl Network {
                         .await
                         .insert(connection_id, OutboundPeer { write_sink });
                 }
-                let publickey: SaitoPublicKey;
-                {
-                    let wallet = wallet_lock.read().await;
-                    publickey = wallet.get_publickey();
-                }
-                let mut message_data = vec![127, 0, 0, 1];
-                message_data.extend(
-                    PublicKey::from_slice(&publickey)
-                        .unwrap()
-                        .serialize()
-                        .to_vec(),
-                );
+ 
+                // tokio::select! {
+                //     Some(result) = read_stream.next() => {
                 let _foo = tokio::spawn(async move {
                     while let Some(result) = read_stream.next().await {
                         match result {
@@ -113,14 +171,11 @@ impl Network {
                                 peer.set_is_connected_or_connecting(false).await;
                             }
                         }
+                //     }
+                // }
                     }
                 });
-                {
-                    let peers_db_global = PEERS_DB_GLOBAL.clone();
-                    let mut peer_db = peers_db_global.write().await;
-                    let peer = peer_db.get_mut(&connection_id).unwrap();
-                    SaitoPeer::send_command(peer, &String::from("SHAKINIT"), message_data).await;
-                }
+                Network::initialize_handshake(&connection_id, wallet_lock).await;
             }
             Err(error) => {
                 println!("Error connecting to peer {}", error);
@@ -130,7 +185,7 @@ impl Network {
             }
         }
     }
-    pub async fn connect_to_configured_peers(&self) {
+    pub async fn initialize_configured_peers(&self) {
         let peer_settings = match self
             .config_settings
             .get::<Vec<PeerSetting>>("network.peers")
@@ -166,11 +221,69 @@ impl Network {
             }
         }
     }
-    pub async fn spawn_reconnect_to_configured_peers_task(
-        &self,
-        wallet_lock: Arc<RwLock<Wallet>>,
+    // pub async fn spawn_reconnect_to_configured_peers_task(
+    //     wallet_lock: Arc<RwLock<Wallet>>,
+    //     notify_shutdown_receiver: broadcast::Receiver<()>
+    // ) -> crate::Result<()> {
+        
+    //     let _foo = tokio::spawn(async move {
+    //         loop {
+    //             let peer_states: Vec<(SaitoHash, bool)>;
+    //             {
+    //                 let peers_db_global = PEERS_DB_GLOBAL.clone();
+    //                 let peers_db = peers_db_global.read().await;
+    //                 println!("try reconnect... peer count: {}", peers_db.keys().len());
+    //                 peer_states = peers_db
+    //                     .keys()
+    //                     .map(|connection_id| {
+    //                         let peer = peers_db.get(connection_id).unwrap();
+    //                         let should_try_reconnect = peer.get_is_from_peer_list()
+    //                             && !peer.get_is_connected_or_connecting();
+    //                         (*connection_id, should_try_reconnect)
+    //                     })
+    //                     .collect::<Vec<(SaitoHash, bool)>>();
+    //             }
+    //             for (connection_id, should_try_reconnect) in peer_states {
+    //                 if should_try_reconnect {
+    //                     println!("found disconnected peer in peer settings, connecting...");
+    //                     Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
+    //                 }
+    //             }
+    //             sleep(Duration::from_millis(1000));
+    //         }
+    //     })
+    //     .await
+    //     .expect("error: spawn_reconnect_to_configured_peers_task failed");
+    //     Ok(())
+    // }
+    pub async fn run_server(&self) -> crate::Result<()> {
+        let host: [u8; 4] = self.config_settings.get::<[u8; 4]>("network.host").unwrap();
+        let port: u16 = self.config_settings.get::<u16>("network.port").unwrap();
+
+        let routes = get_block_route_filter()
+            .or(post_transaction_route_filter(
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ))
+            .or(ws_upgrade_route_filter(
+                self.wallet_lock.clone(),
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ));
+        warp::serve(routes).run((host, port)).await;
+        Ok(())
+    }
+    pub async fn run(&mut self,
+        notify_shutdown_receiver: broadcast::Receiver<()>
     ) -> crate::Result<()> {
-        let _foo = tokio::spawn(async move {
+        self.initialize_configured_peers().await;
+        // // let _foo = self
+        // //     .spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
+        // //     .await;
+      
+        let run_wallet_lock = self.wallet_lock.clone();
+        //let notify_shutdown_receiver = self.notify_shutdown_receiver.clone();
+        //let _foo = tokio::spawn(async move {
             loop {
                 let peer_states: Vec<(SaitoHash, bool)>;
                 {
@@ -190,38 +303,49 @@ impl Network {
                 for (connection_id, should_try_reconnect) in peer_states {
                     if should_try_reconnect {
                         println!("found disconnected peer in peer settings, connecting...");
-                        Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
+                        //Network::connect_to_peer(connection_id, self.wallet_lock.clone()).await;
+                        Network::connect_to_peer(connection_id, run_wallet_lock.clone()).await;
                     }
                 }
-                sleep(Duration::from_millis(1000));
-            }
-        })
-        .await
-        .expect("error: spawn_reconnect_to_configured_peers_task failed");
-        Ok(())
-    }
-    pub async fn run_server(&self) -> crate::Result<()> {
-        let host: [u8; 4] = self.config_settings.get::<[u8; 4]>("network.host").unwrap();
-        let port: u16 = self.config_settings.get::<u16>("network.port").unwrap();
 
-        let routes = get_block_route_filter()
-            .or(post_transaction_route_filter(
-                self.mempool_lock.clone(),
-                self.blockchain_lock.clone(),
-            ))
-            .or(ws_upgrade_route_filter(
-                self.wallet_lock.clone(),
-                self.mempool_lock.clone(),
-                self.blockchain_lock.clone(),
-            ));
-        warp::serve(routes).run((host, port)).await;
-        Ok(())
-    }
-    pub async fn run(&self) -> crate::Result<()> {
-        self.connect_to_configured_peers().await;
-        let _foo = self
-            .spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
-            .await;
+                sleep(Duration::from_millis(100)).await;
+
+                // let sleep = time::sleep(Duration::from_millis(1000));
+                // tokio::pin!(sleep);
+            
+                // while !sleep.is_elapsed() {
+                //     tokio::select! {
+                //         _ = &mut sleep, if !sleep.is_elapsed() => {
+                //             //println!("operation timed out");
+                //         },
+                //         // _ = self.notify_shutdown_receiver.recv() => {
+                //         //     println!("Shutting down network!");
+                //         //     break;
+                //         // },
+                //     }
+                // }
+                //sleep
+                // tokio::select! {
+                //     res = sleep(Duration::from_millis(1000)) => {
+
+                //     }
+                // }
+            }
+        // })
+        // .await
+        // .expect("error: spawn_reconnect_to_configured_peers_task failed");
+
+        // tokio::select! {
+        //     res =  Network::spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone(), self.notify_shutdown_receiver) => {
+        //         if let Err(err) = res {
+        //             eprintln!("spawn_reconnect_to_configured_peers_task err {:?}", err)
+        //         }
+        //     },
+            
+        //     _ = self.notify_shutdown_receiver.recv() => {
+        //         println!("Shutting down network!")
+        //     },
+        // }
         Ok(())
     }
 }

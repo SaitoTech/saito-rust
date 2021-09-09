@@ -68,6 +68,7 @@ impl Storage {
     }
 
     pub async fn load_blocks_from_disk(blockchain_lock: Arc<RwLock<Blockchain>>) {
+        println!("*** load_blocks_from_disk");
         let mut paths: Vec<_> = fs::read_dir(String::from(BLOCKS_DIR_PATH).clone())
             .unwrap()
             .map(|r| r.unwrap())
@@ -82,10 +83,8 @@ impl Storage {
                 .unwrap()
         });
         for (_pos, path) in paths.iter().enumerate() {
-            if path.path().to_str().unwrap() != String::from(BLOCKS_DIR_PATH).clone() + "empty"
-                && path.path().to_str().unwrap()
-                    != String::from(BLOCKS_DIR_PATH).clone() + ".gitignore"
-            {
+            println!("*********** path {:?}", path);
+            if path.path().to_str().unwrap() != String::from(BLOCKS_DIR_PATH).clone() + ".gitignore" {
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
@@ -97,7 +96,7 @@ impl Storage {
                 if block.get_hash() == [0; 32] {
                     block.generate_hashes();
                 }
-
+                println!("*** load_blocks_from_disk {}", &hex::encode(&block.get_hash()));
                 let mut blockchain = blockchain_lock.write().await;
                 blockchain.add_block(block).await;
             }
