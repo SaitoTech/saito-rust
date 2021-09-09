@@ -12,11 +12,11 @@ use crate::wallet::Wallet;
 use futures::StreamExt;
 use secp256k1::PublicKey;
 use tokio::sync::RwLock;
+use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 use uuid::Uuid;
 
 use std::sync::Arc;
-use std::thread::sleep;
 use std::time::Duration;
 use warp::{Filter, Rejection};
 
@@ -193,7 +193,7 @@ impl Network {
                         Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
                     }
                 }
-                sleep(Duration::from_millis(1000));
+                sleep(Duration::from_millis(1000)).await;
             }
         })
         .await
