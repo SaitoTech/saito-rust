@@ -1,7 +1,6 @@
 use crate::blockchain::Blockchain;
 use crate::mempool::Mempool;
 use crate::networking::network::Result;
-use crate::networking::peer::handle_inbound_peer_connection;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
@@ -12,7 +11,7 @@ use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
 
-use super::peer::PeersDB;
+use super::peer::{handle_inbound_peer_connection, PeersDB};
 
 #[derive(Debug)]
 struct Invalid;
@@ -34,7 +33,7 @@ impl warp::Reply for Message {
 
 pub async fn ws_upgrade_handler(
     ws: warp::ws::Ws,
-    peers_db_lock: Arc<RwLock<PeersDB>>,
+    peer_db_lock: Arc<RwLock<PeersDB>>,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -48,7 +47,7 @@ pub async fn ws_upgrade_handler(
     Ok(ws.on_upgrade(move |socket| {
         handle_inbound_peer_connection(
             socket,
-            peers_db_lock,
+            peer_db_lock,
             wallet_lock,
             mempool_lock,
             blockchain_lock,
@@ -71,7 +70,7 @@ pub async fn post_transaction_handler(
     let mut tx = Transaction::deserialize_from_net(buffer);
     let blockchain = blockchain_lock.read().await;
     tx.generate_metadata(tx.inputs[0].get_publickey());
-    if tx.validate(&blockchain.utxoset) {
+    if tx.validate(&blockchain.utxoset, &blockchain.staking) {
         let response = std::str::from_utf8(&tx.get_signature().to_base58().as_bytes())
             .unwrap()
             .to_string();

@@ -1,6 +1,7 @@
 use std::{
     fs::{self, File},
     io::{self, Read, Write},
+    path::Path,
     sync::Arc,
 };
 use tracing::{event, span, Level};
@@ -11,17 +12,9 @@ use crate::{block::Block, blockchain::Blockchain, crypto::SaitoHash};
 
 pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
 
-pub struct Storage {
-    // blocks_dir_path: String,
-}
+pub struct Storage {}
 
 impl Storage {
-    // pub fn new() -> Self {
-    //     Storage {
-    //         blocks_dir_path: String::from("./data/blocks/"),
-    //     }
-    // }
-
     /// read from a path to a Vec<u8>
     pub fn read(path: &str) -> io::Result<Vec<u8>> {
         let mut f = std::fs::File::open(path)?;
@@ -46,10 +39,11 @@ impl Storage {
     }
     pub fn write_block_to_disk(block: &mut Block) {
         let filename = Storage::generate_block_filename(block);
-
-        let mut buffer = File::create(filename).unwrap();
-        let byte_array: Vec<u8> = block.serialize_for_net();
-        buffer.write_all(&byte_array[..]).unwrap();
+        if !Path::new(&filename).exists() {
+            let mut buffer = File::create(filename).unwrap();
+            let byte_array: Vec<u8> = block.serialize_for_net();
+            buffer.write_all(&byte_array[..]).unwrap();
+        }
     }
 
     pub async fn stream_block_from_disk(block_hash: SaitoHash) -> io::Result<Vec<u8>> {
@@ -93,11 +87,10 @@ impl Storage {
                 && path.path().to_str().unwrap()
                     != String::from(BLOCKS_DIR_PATH).clone() + ".gitignore"
             {
-                event!(Level::TRACE, "PATH: {:?}", path);
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
-                let mut block = Block::deserialize_for_net(encoded);
+                let mut block = Block::deserialize_for_net(&encoded);
 
                 //
                 // the hash needs calculation separately after loading
@@ -107,7 +100,7 @@ impl Storage {
                 }
 
                 let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block, false).await;
+                blockchain.add_block(block).await;
             }
         }
     }
@@ -118,7 +111,7 @@ impl Storage {
         let mut f = File::open(file_to_load).unwrap();
         let mut encoded = Vec::<u8>::new();
         f.read_to_end(&mut encoded).unwrap();
-        let mut block = Block::deserialize_for_net(encoded);
+        let mut block = Block::deserialize_for_net(&encoded);
 
         //
         // the hash needs calculation separately after loading

@@ -8,6 +8,7 @@ use crate::{
     },
     hop::{Hop, HOP_SIZE},
     slip::{Slip, SlipType, SLIP_SIZE},
+    staking::Staking,
     wallet::Wallet,
 };
 use ahash::AHashMap;
@@ -36,6 +37,7 @@ pub enum TransactionType {
     ATR,
     Vip,
     StakerDeposit,
+    StakerWithdrawal,
     Other,
 }
 
@@ -152,6 +154,7 @@ impl Transaction {
 
         let available_balance = wallet.get_available_balance();
         let total_requested = with_payment + with_fee;
+        // println!("in generate transaction ab: {} and pr: {} and fr: {}", available_balance, with_payment, with_fee);
 
         if available_balance >= total_requested {
             let mut transaction = Transaction::new();
@@ -768,7 +771,7 @@ impl Transaction {
         true
     }
 
-    pub fn validate(&self, utxoset: &UtxoSet) -> bool {
+    pub fn validate(&self, utxoset: &UtxoSet, staking: &Staking) -> bool {
         //
         // User-Sent Transactions
         //
@@ -788,6 +791,7 @@ impl Transaction {
         // transaction types.
         //
         let transaction_type = self.get_transaction_type();
+
         if transaction_type != TransactionType::Fee
             && transaction_type != TransactionType::ATR
             && transaction_type != TransactionType::Vip
@@ -870,6 +874,26 @@ impl Transaction {
         if transaction_type == TransactionType::GoldenTicket {}
 
         //
+        // Staking Withdrawal Transactions
+        //
+        if transaction_type == TransactionType::StakerWithdrawal {
+            for i in 0..self.inputs.len() {
+                if self.inputs[i].get_slip_type() == SlipType::StakerWithdrawalPending {
+                    if !staking.validate_slip_in_pending(self.inputs[i].clone()) {
+                        println!("Staking Withdrawal Pending input slip is not in Pending thus transaction invalid!");
+                        return false;
+                    }
+                }
+                if self.inputs[i].get_slip_type() == SlipType::StakerWithdrawalStaking {
+                    if !staking.validate_slip_in_stakers(self.inputs[i].clone()) {
+                        println!("Staking Withdrawal Staker input slip is not in Staker thus transaction invalid!");
+                        return false;
+                    }
+                }
+            }
+        }
+
+        //
         // vip transactions
         //
         // a special class of transactions that do not pay rebroadcasting
@@ -902,8 +926,19 @@ impl Transaction {
         // tokens it will pass this check, which is conducted inside
         // the slip-level validation logic.
         //
-        let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
+        //for i in 0..self.inputs.len() {
+        //    let is_valid = self.inputs[i].validate(utxoset);
+        //    if is_valid != true {
+        //        println!("tx: {:?}", self);
+        //        println!(
+        //            "this input is invalid: {:?}",
+        //            self.inputs[i].get_slip_type()
+        //        );
+        //        return false;
+        //    }
+        //}
 
+        let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
         inputs_validate
     }
 }

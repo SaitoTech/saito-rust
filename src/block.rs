@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::{Blockchain, GENESIS_PERIOD},
+    blockchain::{Blockchain, GENESIS_PERIOD, MAX_STAKER_RECURSION},
     burnfee::BurnFee,
     crypto::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
@@ -8,6 +8,7 @@ use crate::{
     hop::HOP_SIZE,
     merkle::MerkleTreeLayer,
     slip::{Slip, SlipType, SLIP_SIZE},
+    staking::Staking,
     storage::Storage,
     time::{create_timestamp, TracingTimer},
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
@@ -59,6 +60,8 @@ pub struct ConsensusValues {
     pub nolan_falling_off_chain: u64,
     // staker treasury -> amount to add
     pub staking_treasury: i64,
+    // block payout
+    pub block_payout: Vec<BlockPayout>,
 }
 impl ConsensusValues {
     #[allow(clippy::too_many_arguments)]
@@ -79,12 +82,48 @@ impl ConsensusValues {
             rebroadcast_hash: [0; 32],
             nolan_falling_off_chain: 0,
             staking_treasury: 0,
+            block_payout: vec![],
         }
     }
 }
 
 //
-// The BlockPayout object is returned by the function that calculates
+// The BlockPayout object is returned by each block to report who
+// receives the payment from the block. It is included in the
+// consensus_values so that the fee transaction can be generated
+// and validated.
+//
+#[derive(PartialEq, Debug, Clone)]
+pub struct BlockPayout {
+    pub miner: SaitoPublicKey,
+    pub router: SaitoPublicKey,
+    pub staker: SaitoPublicKey,
+    pub miner_payout: u64,
+    pub router_payout: u64,
+    pub staker_payout: u64,
+    pub staking_treasury: u64,
+    pub staker_slip: Slip,
+    pub random_number: SaitoHash,
+}
+impl BlockPayout {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new() -> BlockPayout {
+        BlockPayout {
+            miner: [0; 33],
+            router: [0; 33],
+            staker: [0; 33],
+            miner_payout: 0,
+            router_payout: 0,
+            staker_payout: 0,
+            staking_treasury: 0,
+            staker_slip: Slip::new(),
+            random_number: [0; 32],
+        }
+    }
+}
+
+//
+// The RouterPayout object is returned by the function that calculates
 // who deserves the payment for each block.
 //
 #[derive(PartialEq, Debug, Clone)]
@@ -637,7 +676,7 @@ impl Block {
     /// [burnfee - 8 bytes - u64]
     /// [difficulty - 8 bytes - u64]
     /// [transaction][transaction][transaction]...
-    pub fn deserialize_for_net(bytes: Vec<u8>) -> Block {
+    pub fn deserialize_for_net(bytes: &Vec<u8>) -> Block {
         let transactions_len: u32 = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
         let id: u64 = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
         let timestamp: u64 = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
@@ -992,6 +1031,7 @@ impl Block {
                             //
                             // add staker input as tx input so it is spent
                             //
+                            println!("the staker slip is: {:?}", staker_slip);
                             transaction.add_input(staker_slip);
                         }
 
@@ -1234,6 +1274,7 @@ impl Block {
         &self,
         blockchain: &Blockchain,
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
+        staking: &Staking,
     ) -> bool {
         //
         // no transactions? no thank you
@@ -1267,6 +1308,8 @@ impl Block {
         // they should be given this function.
         //
         let cv = self.generate_consensus_values(&blockchain).await;
+
+        println!("VALIDATE CV: {:?}", cv.block_payout);
 
         //
         // Previous Block
@@ -1564,45 +1607,29 @@ impl Block {
         // parallel processing can make it difficult to find out exactly what the
         // problem is. ergo this code that tries to do them on the main thread so
         // debugging output works.
-        //for i in 0..self.transactions.len() {
-        //    let transactions_valid2 = self.transactions[i].validate(utxoset);
-        //    if transactions_valid2 == false {
-        //	println!("TType: {:?}", self.transactions[i].get_transaction_type());
-        //    }
-        //}
+        for i in 0..self.transactions.len() {
+            let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
+            if transactions_valid2 == false {
+                println!("TType: {:?}", self.transactions[i].get_transaction_type());
+            }
+        }
+        return true;
 
-        let transactions_valid = self.transactions.par_iter().all(|tx| tx.validate(utxoset));
-        event!(
-            Level::TRACE,
-            " ... block.validate: (done all)  {:?}",
-            create_timestamp()
-        );
+        //        let transactions_valid = self
+        //            .transactions
+        //            .par_iter()
+        //            .all(|tx| tx.validate(utxoset, staking));
+
+        //        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         //
         // and if our transactions are valid, so is the block...
         //
-        event!(Level::TRACE, " ... are txs valid: {}", create_timestamp());
-        transactions_valid
+        //        println!(" ... are txs valid: {}", transactions_valid);
+        //        transactions_valid
     }
 
     pub async fn generate(
-        transactions: &mut Vec<Transaction>,
-        previous_block_hash: SaitoHash,
-        wallet_lock: Arc<RwLock<Wallet>>,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-    ) -> Block {
-        let current_timestamp = create_timestamp();
-        return Block::generate_with_timestamp(
-            transactions,
-            previous_block_hash,
-            wallet_lock,
-            blockchain_lock,
-            current_timestamp,
-        )
-        .await;
-    }
-
-    pub async fn generate_with_timestamp(
         transactions: &mut Vec<Transaction>,
         previous_block_hash: SaitoHash,
         wallet_lock: Arc<RwLock<Wallet>>,
@@ -1656,6 +1683,8 @@ impl Block {
         // contextual values
         //
         let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain).await;
+
+        println!("MUT CV: {:?}", cv.block_payout);
 
         //
         // TODO - remove
@@ -1723,6 +1752,10 @@ impl Block {
         //
         // set staking treasury
         //
+        println!(
+            "the staking treasury collected this block is: {}",
+            cv.staking_treasury
+        );
 
         if cv.staking_treasury != 0 {
             let mut adjusted_staking_treasury = previous_block_staking_treasury;
@@ -1736,6 +1769,10 @@ impl Block {
             } else {
                 adjusted_staking_treasury += cv.staking_treasury as u64;
             }
+            println!(
+                "adjusted staking treasury written into block {}",
+                adjusted_staking_treasury
+            );
             block.set_staking_treasury(adjusted_staking_treasury);
         }
 
@@ -1876,7 +1913,7 @@ mod tests {
         block.set_transactions(&mut vec![mock_tx, mock_tx2]);
 
         let serialized_block = block.serialize_for_net();
-        let deserialized_block = Block::deserialize_for_net(serialized_block);
+        let deserialized_block = Block::deserialize_for_net(&serialized_block);
         assert_eq!(block, deserialized_block);
         assert_eq!(deserialized_block.get_id(), 1);
         assert_eq!(deserialized_block.get_timestamp(), timestamp);

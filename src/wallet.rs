@@ -12,6 +12,7 @@ use crate::crypto::{
 };
 use crate::golden_ticket::GoldenTicket;
 use crate::slip::{Slip, SlipType};
+use crate::staking::Staking;
 use crate::transaction::{Transaction, TransactionType};
 use serde::{Deserialize, Serialize};
 use tracing::{event, span, Level};
@@ -132,13 +133,32 @@ impl Wallet {
     }
 
     pub fn add_block(&mut self, block: &Block) {
+        //
         // TODO
+        //
         // There are multiple bugs in this implementation.
+        //
         // If a block is added in a fork all the inputs will be deleted and won't be recovered.
         // Also, outputs added will still be in the wallet even if they are not replayed on the longest chain(and are therefore unspendable)
         for tx in &block.transactions {
             for input in tx.get_inputs() {
-                self.delete_slip(input);
+                if input.get_slip_type() == SlipType::StakerDeposit
+                    || input.get_slip_type() == SlipType::StakerOutput
+                    || input.get_slip_type() == SlipType::StakerWithdrawalStaking
+                    || input.get_slip_type() == SlipType::StakerWithdrawalPending
+                {
+                    //println!(
+                    //    "deleting staker input  with slip uuid: {:?}",
+                    //    input.get_uuid()
+                    //);
+                    self.delete_staked_slip(input);
+                } else {
+                    //println!(
+                    //    "deleting normal input  with slip uuid: {:?}",
+                    //    input.get_uuid()
+                    //);
+                    self.delete_slip(input);
+                }
             }
             for output in tx.get_outputs() {
                 if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
@@ -182,6 +202,12 @@ impl Wallet {
         } else {
             self.slips.push(wallet_slip);
         }
+    }
+
+    pub fn delete_staked_slip(&mut self, slip: &Slip) {
+        self.staked_slips.retain(|x| {
+            x.get_uuid() != slip.get_uuid() || x.get_slip_ordinal() != slip.get_slip_ordinal()
+        });
     }
 
     pub fn delete_slip(&mut self, slip: &Slip) {
@@ -343,6 +369,61 @@ impl Wallet {
         let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
         transaction.set_hash_for_signature(hash_for_signature);
         transaction.sign(self.get_privatekey());
+
+        transaction
+    }
+
+    //
+    // creates a staking withdrawal transaction if possible that removes a slip from
+    // the staking table. this function is primarily used for testing and as a reference
+    // for how these transactions should be formatted, so we will just withdraw the first
+    // staking slip.
+    //
+    pub async fn create_staking_withdrawal_transaction(
+        &mut self,
+        staking: &Staking,
+    ) -> Transaction {
+        let mut transaction = Transaction::new();
+        transaction.set_transaction_type(TransactionType::StakerWithdrawal);
+
+        if self.staked_slips.len() == 0 {
+            return transaction;
+        }
+
+        let slip = self.staked_slips[0].clone();
+
+        let mut input = Slip::new();
+        input.set_publickey(self.get_publickey());
+        input.set_amount(slip.get_amount());
+        input.set_uuid(slip.get_uuid());
+        input.set_slip_ordinal(slip.get_slip_ordinal());
+        input.set_slip_type(SlipType::StakerWithdrawalStaking);
+
+        println!("SLIP TO VALIDATE: ");
+        println!("{:?}", input);
+
+        if staking.validate_slip_in_stakers(input.clone()) {
+            println!("creating staking withdrawal transaction with slip in Staking");
+            input.set_slip_type(SlipType::StakerWithdrawalStaking);
+        }
+        if staking.validate_slip_in_pending(input.clone()) {
+            println!("creating staking withdrawal transaction with slip in Pending");
+            input.set_slip_type(SlipType::StakerWithdrawalPending);
+        }
+
+        let mut output = input.clone();
+        output.set_slip_type(SlipType::Normal);
+
+        // just convert to a normal transaction
+        transaction.add_input(input);
+        transaction.add_output(output);
+
+        let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
+        transaction.set_hash_for_signature(hash_for_signature);
+        transaction.sign(self.get_privatekey());
+
+        // and remember it is spent!
+        self.staked_slips[0].set_spent(true);
 
         transaction
     }

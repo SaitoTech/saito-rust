@@ -2,12 +2,12 @@ use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
 use crate::networking::network::Network;
-use crate::networking::peer::PeersDB;
 use crate::storage::Storage;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use clap::{App, Arg};
-use std::{future::Future, sync::Arc};
+use std::sync::Arc;
+use tokio::signal;
 use tokio::sync::RwLock;
 use tokio::sync::{broadcast, mpsc};
 /// The consensus state which exposes a run method
@@ -34,7 +34,7 @@ pub enum SaitoMessage {
 }
 
 /// Run the Saito consensus runtime
-pub async fn run(shutdown: impl Future) -> crate::Result<()> {
+pub async fn run() -> crate::Result<()> {
     //
     // handle shutdown messages using broadcast channel
     //
@@ -52,7 +52,7 @@ pub async fn run(shutdown: impl Future) -> crate::Result<()> {
                 eprintln!("{:?}", err);
             }
         },
-        _ = shutdown => {
+        _ = signal::ctrl_c() => {
             println!("Shutting down!")
         }
     }
@@ -117,12 +117,9 @@ impl Consensus {
         // broadcast cross-system messages. See SaitoMessage ENUM above
         // for information on cross-system notifications.
         //
-
         let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
-        let peers_db_lock = Arc::new(RwLock::new(PeersDB::new()));
 
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-
         // Load blocks from disk if configured
         let load_blocks_from_disk = match settings.get::<bool>("storage.load_blocks_from_disk") {
             Ok(can_load) => can_load,
@@ -133,17 +130,14 @@ impl Consensus {
         if load_blocks_from_disk {
             Storage::load_blocks_from_disk(blockchain_lock.clone()).await;
         }
-
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
         let network = Network::new(
             settings,
             wallet_lock.clone(),
-            peers_db_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
         );
-
         tokio::select! {
             res = crate::mempool::run(
                 mempool_lock.clone(),
@@ -152,7 +146,7 @@ impl Consensus {
                 broadcast_channel_receiver,
             ) => {
                 if let Err(err) = res {
-                    eprintln!("{:?}", err)
+                    eprintln!("mempool err {:?}", err)
                 }
             },
             res = crate::blockchain::run(
@@ -161,7 +155,7 @@ impl Consensus {
                 broadcast_channel_sender.subscribe()
             ) => {
                 if let Err(err) = res {
-                    eprintln!("{:?}", err)
+                    eprintln!("blockchain err {:?}", err)
                 }
             },
             res = crate::miner::run(
@@ -170,14 +164,19 @@ impl Consensus {
                 broadcast_channel_sender.subscribe()
             ) => {
                 if let Err(err) = res {
-                    eprintln!("{:?}", err)
+                    eprintln!("miner err {:?}", err)
                 }
             },
-            res = network.run(peers_db_lock.clone()) => {
+            res = network.run() => {
                 if let Err(err) = res {
-                    eprintln!("{:?}", err)
+                    eprintln!("network err {:?}", err)
                 }
-            }
+            },
+            res = network.run_server() => {
+                if let Err(err) = res {
+                    eprintln!("run_server err {:?}", err)
+                }
+            },
             _ = self._shutdown_complete_tx.closed() => {
                 println!("Shutdown message complete")
             }

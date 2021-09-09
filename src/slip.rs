@@ -1,7 +1,6 @@
 use crate::{
     blockchain::UtxoSet,
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
-    transaction::TransactionType,
 };
 use ahash::AHashMap;
 use serde::{Deserialize, Serialize};
@@ -67,7 +66,14 @@ impl Slip {
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
         if self.get_amount() > 0 {
             match utxoset.get(&self.utxoset_key) {
-                Some(value) => *value == 1,
+                Some(value) => {
+                    if *value == 1 {
+                        return true;
+                    } else {
+                        println!("value is {} at {:?}", *value, &self.utxoset_key);
+                        return false;
+                    }
+                }
                 None => {
                     event!(
                         Level::ERROR,
@@ -93,6 +99,9 @@ impl Slip {
     ) {
         if self.get_amount() > 0 {
             // TODO cleanup once ready
+            //println!("inserting into utxoset: {:?} value {}", self.utxoset_key, slip_value);
+            //println!("slip_ordinal: {}", self.get_slip_ordinal());
+            //println!("slip_amount: {}", self.get_amount());
             utxoset.entry(self.utxoset_key).or_insert(slip_value);
         }
     }
