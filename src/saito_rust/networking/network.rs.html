@@ -577,11 +577,11 @@
 <span class="kw">use</span> <span class="ident">futures::StreamExt</span>;
 <span class="kw">use</span> <span class="ident">secp256k1::PublicKey</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
+<span class="kw">use</span> <span class="ident">tokio::time::sleep</span>;
 <span class="kw">use</span> <span class="ident">tokio_tungstenite::connect_async</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-<span class="kw">use</span> <span class="ident">std::thread::sleep</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 <span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">Filter</span>, <span class="ident">Rejection</span>};
 
@@ -758,7 +758,7 @@
                         <span class="ident">Network::connect_to_peer</span>(<span class="ident">connection_id</span>, <span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
                     }
                 }
-                <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">1000</span>));
+                <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">1000</span>)).<span class="kw">await</span>;
             }
         })
         .<span class="kw">await</span>
