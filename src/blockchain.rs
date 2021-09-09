@@ -239,6 +239,7 @@ impl Blockchain {
         //  println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
+println!("does validate: {}", does_new_chain_validate);
             if does_new_chain_validate {
                 self.add_block_success(block_hash).await;
 
@@ -295,8 +296,11 @@ impl Blockchain {
         }
     }
     pub async fn add_block_to_blockchain(blockchain_lock: Arc<RwLock<Blockchain>>, block: Block) {
+println!("ABTB1");
         let mut blockchain = blockchain_lock.write().await;
-        return blockchain.add_block(block).await;
+        let res = blockchain.add_block(block).await;
+println!("ABTB3");
+	return res;
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
@@ -800,42 +804,24 @@ impl Blockchain {
         // happen first.
         //
         {
-            let block = self.get_mut_block(new_chain[current_wind_index]).await;
+            let mut block = self.get_mut_block(new_chain[current_wind_index]).await;
             block.generate_metadata();
+
+	    let latest_block_id = block.get_id();
 
             //
             // ensure previous blocks that may be needed to calculate the staking
-            // tables have access to their transaction data so that routing and
-            // staking nodes.
+            // tables or the nolan that are potentially falling off the chain have 
+	    // full access to their transaction data.
             //
-            // this means ensuring they are loaded into memory.
-            //
-            if block.get_has_golden_ticket() {
-                let mut cont = 1;
-                let mut previous_block_hash = block.get_previous_block_hash();
-
-                while cont == 1 && previous_block_hash != [0; 32] {
-                    //
-                    // we should never wind an unindexed chain, but
-                    // we will still perform a sanity check so as not
-                    // to imply get_block_sync can be run on unindexed
-                    // blocks
-                    //
-                    if self.is_block_indexed(previous_block_hash) {
-                        println!(
-                            "wind_chain, fetching previous block for golden ticket payout calcs"
-                        );
-                        let previous_block = self.get_mut_block(previous_block_hash).await;
-                        if previous_block.get_has_golden_ticket() {
-                            cont = 0;
-                        } else {
-                            // this also generates metadata if non-existing
-                            previous_block
-                                .upgrade_block_to_block_type(BlockType::Full)
-                                .await;
-                            previous_block_hash = previous_block.get_previous_block_hash();
-                        }
-                    }
+            for i in 1..MAX_STAKER_RECURSION {
+                if i >= latest_block_id { break; }
+                let bid = latest_block_id - i;
+                let previous_block_hash = self.blockring.get_longest_chain_block_hash_by_block_id(bid);
+                if self.is_block_indexed(previous_block_hash) {
+                    block = self.get_mut_block(previous_block_hash).await;
+                    println!("wind_chain, ensuring block at {} is fully upgraded", bid);
+                    block.upgrade_block_to_block_type(BlockType::Full).await;
                 }
             }
         }

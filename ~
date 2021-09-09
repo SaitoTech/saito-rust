@@ -1112,36 +1112,44 @@ impl Block {
         }
 
 
+
+
+
         //
         // if there is no golden ticket AND there is no golden ticket before the MAX 
 	// blocks we recurse to collect NOLAN we have to add the amount of the unpaid
 	// block to the amount of NOLAN that is falling off our chain.
         //
         if cv.gt_num == 0 {
-	    for i in 1..=MAX_STAKER_RECURSION {
 
-	        if i >= self.get_id() { 
-		    break;
-		}
+	    let collect_nolan_falling_off_chain = 0;
+	    let mut block_id
 
-		let bid = self.get_id() - i;
-		let previous_block_hash = blockchain.blockring.get_longest_chain_block_hash_by_block_id(bid);
-                let previous_block = blockchain.get_block(previous_block_hash).await;
+	    for i in 0..MAX_STAKER_RECURSION {
+		let previous_block_hash = blockchain.get 
+                if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+                    if previous_block.get_has_golden_ticket() == false {
+	    	
 
-                if previous_block.get_has_golden_ticket() {
-		    break;
-		} else {
-		    //
-		    // this is the block BEFORE from which we need to collect the nolan due to
-		    // our iterator starting at 0 for the current block. i.e. if MAX_STAKER_
-		    // RECURSION is 3, at 3 we are the fourth block back.
-		    //
-		    if i == MAX_STAKER_RECURSION {
-                        cv.nolan_falling_off_chain = previous_block.get_total_fees();
-		    }
-	        }
 	    }
+
+
+                    if let Some(previous_previous_block) = blockchain
+                        .blocks
+                        .get(&previous_block.get_previous_block_hash())
+                    {
+                        //
+                        // TODO - we can look into upgrading consensus eventually to stop coinage from
+                        // slipping off the chain. but we can punt on that until receding further into
+                        // the chain is understood in terms of its impact on spam-attacks on the chain
+                        // tip.
+                        //
+                        cv.nolan_falling_off_chain = previous_previous_block.get_total_fees();
+                    }
+                }
+            }
         }
+****/
 
         cv
     }
