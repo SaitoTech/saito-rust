@@ -6,7 +6,7 @@
 
 Saito provides a minimalistic binary RPC interface via websockets for node-to-node interaction.
 
-Blockchain data is encoded as raw-binary for effeciency.
+Blockchain data is encoded as raw-binary.
 
 This enables high throughput and also 2-way(full-duplex) communication between nodes(which is important for things like new block notifications).
 
@@ -20,9 +20,13 @@ A basic SaitoRPC request looks like the following:
 12..    MessageData
 ```
 
-The MessageName is typically the method which the sender wishes to invoke, e.g. GETBLOCK. The ID is used to match requests to responses, similar to the ID in JSON-RPC.
+The `APIMessage` type carries this data.
+
+MessageName is typically the method which the sender wishes to invoke, e.g. GETBLOCK. The ID is used to match requests to responses, similar to the ID in JSON-RPC.
 
 MessageData is arbitrary data whose form depends on the type of message(MessageName).
+
+MessageData should be encoded in a type in networking/message_types for clarity and type-safety.
 
 ## MessageName
 
@@ -61,8 +65,10 @@ MessageData:
 
 ### ERROR___
 
-A response to an RPC method.
+An error response to an RPC method.
 MessageID is the id of the request it is responding to.
+
+TODO: Add a basic type to networking/message_types that just wraps a string for error messages.
 
 MessageData:
 ```bytes
@@ -71,41 +77,19 @@ MessageData:
 
 ### SHAKINIT
 
-A node will not accept new socket connections unless it has completed a handshake with the client attempting to open the connection.
-
-A handshake can be initialized by sending a GET request to /handshakeinit and then POSTing a signed challenge to /handshakecomplete(details below).
-
-Serialized Handshake:
-
-```bytes
-    challenger_ip_address   4 bytes(IP as 4 bytes)
-    opponent_ip_address   4 bytes(IP as 4 bytes)
-    challenger_pubkey       33 bytes(SECP256k1 compact form)
-    opponent_pubkey       33 bytes(SECP256k1 compact form)
-    timestamp               8 bytes(big-endian u64),
-    challenger_sig          64 bytes(SECP256k1 signature)
-    opponent_sig          64 bytes(SECP256k1 signature)(optional)
-```
+After opening a socket a node should initialize a handshake via SHAKINIT with a `HandshakeChallenge` payload.
 
 ### SHAKCOMP
 
-The opponent must sign the handshakeinit payload. I.E. sign the entire blob and append the sig(opponent_sig) to it.
+The opponent must sign the SHAKINIT payload. I.E. sign the entire blob and append the sig(opponent_sig) to it.
 
-The wallet CLI can be used to produce a signed challenge.
+The Saito CLI can be used to produce a signed challenge.
 
 ### REQCHAIN
 
-triggers: remote server should calculate appropriate response and "send blockchain"
+DETAILS OF THESE COMMAND ARE CURRENTLY IN A WORKING DOCUMENT WHICH CAN BE SHARED UPON REQUEST.
 
-MessageData:
-
-```bytes
-0-7         Latest Block ID(u64)
-8-39        Latest Block Hash
-40-61       Fork ID
-```
-
-RESULT__ contains no data, indicates that the request was successful
+TODO
 
 ### SNDCHAIN
 

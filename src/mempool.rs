@@ -214,7 +214,6 @@ impl Mempool {
     ///
     /// Check to see if the `Mempool` has enough work to bundle a block
     ///
-
     pub async fn can_bundle_block(
         &self,
         blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -273,10 +272,12 @@ pub async fn try_bundle_block(
     blockchain_lock: Arc<RwLock<Blockchain>>,
     timestamp_generator: &mut impl TimestampGenerator,
 ) -> Option<Block> {
+    event!(Level::INFO, "try_bundle_block");
     // We use a boolean here so we can avoid taking the write lock most of the time
     let can_bundle;
     {
         let mempool = mempool_lock.read().await;
+        event!(Level::INFO, "got mempool_lock");
         can_bundle = mempool
             .can_bundle_block(blockchain_lock.clone(), timestamp_generator.get_timestamp())
             .await;
@@ -297,6 +298,7 @@ pub async fn process_blocks(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) {
+    event!(Level::INFO, "process blocks...");
     let mut mempool = mempool_lock.write().await;
     mempool.currently_processing_block = true;
     let mut blockchain = blockchain_lock.write().await;

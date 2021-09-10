@@ -2,11 +2,11 @@ use std::convert::TryInto;
 
 use crate::crypto::SaitoHash;
 
-/// - block_id(starts with latest)
-/// - block_hash(starts with latest)
-/// - fork_id
-/// - synctype(optional)
-
+/// Data Object for REQCHAIN. Is used as a  payload in an APIMessage message field.
+/// `latest_block_id` - (optional)(starts with latest)
+/// `latest_block_hash` - (optional)(starts with latest)
+/// 'fork_id` - This is a data object which looks like a hash. It is used to find a common ancestor.
+/// It allows some false positives and will not find the most recent common ancestor.
 #[derive(Debug)]
 pub struct RequestBlockchainMessage {
     latest_block_id: u64,

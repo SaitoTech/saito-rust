@@ -21,6 +21,11 @@ impl Reject for Invalid {}
 struct AlreadyExists;
 impl Reject for AlreadyExists {}
 
+/// It seems that Warp handlers must return a Result<impl Reply>.
+/// It looks like this was used as a simple way to turn a String
+/// into a warp::Reply. It may be possilbe to use use Response::new
+/// directly, or this may not be needed if we get rid of the http
+/// handlers defined below...
 struct Message {
     msg: String,
 }
@@ -31,6 +36,9 @@ impl warp::Reply for Message {
     }
 }
 
+/// websocket upgrade handler. accepts an http connection and upgrades it to WebSocket.
+/// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Upgrade
+/// Thanks, Ryan Dahl!!
 pub async fn ws_upgrade_handler(
     ws: warp::ws::Ws,
     peer_db_lock: Arc<RwLock<PeersDB>>,
@@ -38,12 +46,6 @@ pub async fn ws_upgrade_handler(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) -> std::result::Result<impl Reply, Rejection> {
-    // let peer = InboundPeer {
-    //     has_handshake: false,
-    //     public_key: None,
-    //     sender: None,
-    // };
-
     Ok(ws.on_upgrade(move |socket| {
         handle_inbound_peer_connection(
             socket,
@@ -54,7 +56,8 @@ pub async fn ws_upgrade_handler(
         )
     }))
 }
-
+/// POST tx filter.
+/// TODO remove this? I believe we want ot use the socket for everything...
 pub async fn post_transaction_handler(
     mut body: impl Buf,
     mempool_lock: Arc<RwLock<Mempool>>,
@@ -75,7 +78,6 @@ pub async fn post_transaction_handler(
             .unwrap()
             .to_string();
 
-        //let response = String::from("OK");
         let mut mempool = mempool_lock.write().await;
         let add_tx_result = mempool.add_transaction(tx).await;
         match add_tx_result {
@@ -95,17 +97,8 @@ pub async fn post_transaction_handler(
     }
 }
 
-// pub async fn post_block_handler(mut body: impl Buf) -> Result<impl Reply> {
-//     let mut buffer = vec![];
-//     while body.has_remaining() {
-//         buffer.append(&mut body.chunk().to_vec());
-//         let cnt = body.chunk().len();
-//         body.advance(cnt);
-//     }
-//     let tx = Transaction::deserialize_from_net(buffer);
-//     Ok(warp::reply())
-// }
-
+/// get block handler.
+/// TODO remove this? I believe we want ot use the socket for everything...
 pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
     let mut block_hash = [0u8; 32];
     hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
@@ -118,16 +111,3 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
         }
     }
 }
-
-// pub async fn get_block_handler_json(str_block_hash: String) -> Result<impl Reply> {
-//     let mut block_hash = [0u8; 32];
-//     hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
-
-//     match Storage::stream_json_block_from_disk(block_hash).await {
-//         Ok(json_data) => Ok(warp::reply::json(&json_data)),
-//         Err(_err) => {
-//             eprintln!("{:?}", _err);
-//             Err(warp::reject())
-//         }
-//     }
-// }

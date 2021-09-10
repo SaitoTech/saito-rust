@@ -77,15 +77,6 @@ impl Storage {
         Ok(encoded)
     }
 
-    pub async fn stream_json_block_from_disk(block_hash: SaitoHash) -> io::Result<String> {
-        let mut filename = BLOCKS_DIR_PATH.clone();
-        filename.push_str(&"json/");
-        filename.push_str(&hex::encode(block_hash));
-        filename.push_str(&".json");
-
-        fs::read_to_string(filename)
-    }
-
     pub async fn load_blocks_from_disk(blockchain_lock: Arc<RwLock<Blockchain>>) {
         let mut paths: Vec<_> = fs::read_dir(BLOCKS_DIR_PATH.clone())
             .unwrap()
