@@ -961,6 +961,7 @@ impl Block {
             // miner payout is fees from previous block, no staking treasury
             //
             if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
+
                 let miner_payment = previous_block.get_total_fees() / 2;
                 let router_payment = previous_block.get_total_fees() - miner_payment;
 
@@ -985,7 +986,7 @@ impl Block {
                 //
                 let mut cont = 1;
                 let mut loop_idx = 0;
-                let _staking_block_hash = previous_block.get_previous_block_hash();
+                let mut staking_block_hash = previous_block.get_previous_block_hash();
 
                 while cont == 1 {
                     loop_idx += 1;
@@ -998,8 +999,10 @@ impl Block {
                     if loop_idx >= MAX_STAKER_RECURSION {
                         cont = 0;
                     } else {
-                        let staking_block_hash = previous_block.get_previous_block_hash();
+
                         if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
+                            staking_block_hash = staking_block.get_previous_block_hash();
+
                             if !staking_block.get_has_golden_ticket() {
                                 //
                                 // calculate miner and router payments
@@ -1281,13 +1284,21 @@ impl Block {
 	    // during the fee transaction, so that we cannot pay a staker 
 	    // that is also paid this block otherwise.
 	    //
+	    // we skip the fee transaction as otherwise we have trouble 
+	    // validating the staker slips if we have received a block from
+	    // someone else -- i.e. we will think the slip is spent in the 
+	    // block when generating the FEE TX to check against the in-block
+	    // fee tx.
+	    //
 	    if !self.created_hashmap_of_slips_spent_this_block {
-                for input in transaction.get_inputs() {
-	            self.slips_spent_this_block.entry(input.get_utxoset_key())
-		        .and_modify(|e| { *e += 1 })
-	                .or_insert(1);
-	        }
-		self.created_hashmap_of_slips_spent_this_block = true;
+		if transaction.get_transaction_type() != TransactionType::Fee {
+                    for input in transaction.get_inputs() {
+	                self.slips_spent_this_block.entry(input.get_utxoset_key())
+		            .and_modify(|e| { *e += 1 })
+	                    .or_insert(1);
+	            }
+		    self.created_hashmap_of_slips_spent_this_block = true;
+		}
 	    }
 
 
@@ -1365,8 +1376,6 @@ impl Block {
         // they should be given this function.
         //
         let cv = self.generate_consensus_values(&blockchain).await;
-
-        println!("VALIDATE CV: {:?}", cv.block_payout);
 
         //
         // Previous Block
@@ -1560,6 +1569,8 @@ impl Block {
             let hash1 = hash(&fee_transaction.serialize_for_signature());
             let hash2 = hash(&self.transactions[ft_idx].serialize_for_signature());
             if hash1 != hash2 {
+            let hash1 = hash(&fee_transaction.serialize_for_signature());
+            let hash2 = hash(&self.transactions[ft_idx].serialize_for_signature());
                 println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");
                 return false;
             }
@@ -1697,6 +1708,9 @@ impl Block {
 	// permit us to avoid paying out StakerWithdrawal slips when we
 	// generate the fee payment.
 	//
+	// note -- no need to have an exception for the FEE TX here as 
+	// we have not added it yet.
+	//
         if !block.created_hashmap_of_slips_spent_this_block {
             for transaction in &block.transactions {
                 for input in transaction.get_inputs() {
@@ -1714,8 +1728,6 @@ impl Block {
         // contextual values
         //
         let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain).await;
-
-        println!("MUT CV: {:?}", cv.block_payout);
 
         //
         // TODO - remove
@@ -1764,6 +1776,8 @@ impl Block {
             fee_tx.set_hash_for_signature(hash_for_signature);
             fee_tx.sign(wallet.get_privatekey());
 
+println!("FEE TX PUT INTO BLOCK: {:?}", fee_tx);
+
             //
             // and we add it to the block
             //
@@ -1781,11 +1795,13 @@ impl Block {
         // that is also paid this block otherwise.
         //
         for transaction in &block.transactions {
-            for input in transaction.get_inputs() {
-                block.slips_spent_this_block.entry(input.get_utxoset_key())
-                    .and_modify(|e| { *e += 1 })
-                    .or_insert(1);
-            }
+	    if transaction.get_transaction_type() != TransactionType::Fee {
+                for input in transaction.get_inputs() {
+                    block.slips_spent_this_block.entry(input.get_utxoset_key())
+                        .and_modify(|e| { *e += 1 })
+                        .or_insert(1);
+                }
+	    }
         }
         block.created_hashmap_of_slips_spent_this_block = true;
 

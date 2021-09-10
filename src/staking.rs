@@ -492,6 +492,8 @@ mod tests {
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
+/****
+
     #[test]
     fn staking_table_test() {
         let mut staking = Staking::new();
@@ -970,6 +972,8 @@ mod tests {
             println!("DEPOSIT: {:?}", blockchain.staking.deposits);
         }
     }
+
+****/
 
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test_with_test_manager() {
