@@ -650,7 +650,10 @@ pub async fn build_serialized_challenge(
 pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChallenge> {
     let challenge = HandshakeChallenge::deserialize(message_data);
     if challenge.timestamp() < create_timestamp() - CHALLENGE_EXPIRATION_TIME {
-        event!(Level::ERROR, "Error validating timestamp for handshake complete");
+        event!(
+            Level::ERROR,
+            "Error validating timestamp for handshake complete"
+        );
         return None;
     }
     // we verify both signatures even though one is "ours". This function is called during both

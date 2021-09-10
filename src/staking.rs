@@ -6,14 +6,13 @@
 use crate::{
     block::Block,
     blockchain::GENESIS_PERIOD,
-    crypto::{hash, SaitoHash, SaitoUTXOSetKey},
+    crypto::{hash, SaitoHash},
     golden_ticket::GoldenTicket,
     slip::{Slip, SlipType},
     transaction::TransactionType,
 };
-use ahash::AHashMap;
 use bigint::uint::U256;
-use tracing::{event, span, Level};
+use tracing::{event, Level};
 
 #[derive(Debug, Clone)]
 pub struct Staking {
@@ -382,7 +381,11 @@ impl Staking {
                 // vacillations in on_chain_reorg, such as resetting the table and
                 // then non-longest-chaining the same block
                 //
-                event!(Level::TRACE, "Rolling forward and moving into pending: {}!", self.stakers.len());
+                event!(
+                    Level::TRACE,
+                    "Rolling forward and moving into pending: {}!",
+                    self.stakers.len()
+                );
                 if self.stakers.len() == 0 {
                     //self.reset_staker_table(block.get_staking_treasury());
                     let (_res_spend, _res_unspend, _res_delete) =

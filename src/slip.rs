@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use macros::TryFromByte;
 use std::convert::{TryFrom, TryInto};
 
-use tracing::{event, span, Level};
+use tracing::{event, Level};
 
 /// The size of a serilized slip in bytes.
 pub const SLIP_SIZE: usize = 75;

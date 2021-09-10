@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::{Blockchain, GENESIS_PERIOD, MAX_STAKER_RECURSION},
+    blockchain::{Blockchain, GENESIS_PERIOD},
     burnfee::BurnFee,
     crypto::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
@@ -1309,8 +1309,6 @@ impl Block {
         //
         let cv = self.generate_consensus_values(&blockchain).await;
 
-        println!("VALIDATE CV: {:?}", cv.block_payout);
-
         //
         // Previous Block
         //
@@ -1692,7 +1690,7 @@ impl Block {
         // for testing create some VIP transactions
         //
         if previous_block_id == 0 {
-            for i in 0..10 as i32 {
+            for _i in 0..10 as i32 {
                 let mut transaction =
                     Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 100000)
                         .await;

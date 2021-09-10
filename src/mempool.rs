@@ -11,7 +11,7 @@ use crate::{
 };
 use std::{collections::HashMap, collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
-use tracing::{event, span, Level};
+use tracing::{event, Level};
 
 #[derive(Clone, Debug)]
 pub enum MempoolMessage {

@@ -15,7 +15,6 @@ use crate::slip::{Slip, SlipType};
 use crate::staking::Staking;
 use crate::transaction::{Transaction, TransactionType};
 use serde::{Deserialize, Serialize};
-use tracing::{event, span, Level};
 
 // create an alias for convenience
 type Aes128Cbc = Cbc<Aes128, Pkcs7>;
@@ -40,7 +39,6 @@ pub struct EncryptedWallet {
 }
 impl EncryptedWallet {
     pub fn get_file_name(&self) -> String {
-        event!(Level::INFO, "get_file_name {}", self.file_path);
         self.file_path.clone()
     }
 }
@@ -56,7 +54,7 @@ impl Wallet {
     }
     pub fn new(key_path: &str, password: Option<&str>) -> Self {
         let (publickey, privatekey) = Wallet::load_keys(key_path, password);
-        event!(Level::INFO, "Loaded wallet {}", hex::encode(publickey));
+        println!("Loaded wallet {}", hex::encode(publickey));
         Wallet {
             publickey: publickey,
             privatekey: privatekey,
@@ -72,10 +70,10 @@ impl Wallet {
 
         let decrypted_buffer: Vec<u8>;
         if !path.exists() {
-            event!(Level::INFO, "Creating key file {}", key_path);
+            println!("Creating key file {}", key_path);
             decrypted_buffer = Wallet::create_key_file(&key_path, &password);
         } else {
-            event!(Level::INFO, "Reading key file {}", key_path);
+            println!("Reading key file {}", key_path);
             decrypted_buffer = Wallet::read_key_file(&key_path, &password);
         }
 

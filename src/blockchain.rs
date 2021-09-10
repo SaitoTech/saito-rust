@@ -13,7 +13,7 @@ use crate::staking::Staking;
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
-use tracing::{event, span, Level};
+use tracing::{event, Level};
 
 use async_recursion::async_recursion;
 
@@ -98,7 +98,7 @@ impl Blockchain {
             event!(
                 Level::ERROR,
                 "ERROR: block exists in blockchain {:?}",
-                block.get_hash()
+                &hex::encode(&block.get_hash())
             );
             return;
         }
@@ -311,7 +311,11 @@ impl Blockchain {
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
-        event!(Level::TRACE, " ... blockchain.add_block_success: {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... blockchain.add_block_success: {:?}",
+            create_timestamp()
+        );
         let block_id;
 
         //

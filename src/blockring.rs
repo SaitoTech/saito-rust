@@ -4,7 +4,7 @@ use crate::crypto::SaitoHash;
 
 pub const RING_BUFFER_LENGTH: u64 = 2 * GENESIS_PERIOD;
 
-use tracing::{event, span, Level};
+use tracing::{event, Level};
 
 //
 // This is an index with shorthand information on the block_ids and hashes of the blocks

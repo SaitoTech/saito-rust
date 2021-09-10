@@ -4,7 +4,6 @@ use std::{
     path::Path,
     sync::Arc,
 };
-use tracing::{event, span, Level};
 
 use tokio::sync::RwLock;
 

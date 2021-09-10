@@ -813,7 +813,10 @@ impl Transaction {
                 // it here, we choose to throw an error to raise visibility of
                 // unexpected behavior.
                 //
-                event!(Level::ERROR, "ERROR 757293: there is no hash for signature in a transaction");
+                event!(
+                    Level::ERROR,
+                    "ERROR 757293: there is no hash for signature in a transaction"
+                );
                 return false;
             }
 
@@ -821,7 +824,10 @@ impl Transaction {
             // validate sender exists
             //
             if self.get_inputs().is_empty() {
-                event!(Level::ERROR, "ERROR 582039: less than 1 input in transaction");
+                event!(
+                    Level::ERROR,
+                    "ERROR 582039: less than 1 input in transaction"
+                );
                 return false;
             }
 
@@ -833,7 +839,10 @@ impl Transaction {
             // routing path is fraudulent.
             //
             if !self.validate_routing_path() {
-                event!(Level::ERROR, "ERROR 482033: routing paths do not validate, transaction invalid");
+                event!(
+                    Level::ERROR,
+                    "ERROR 482033: routing paths do not validate, transaction invalid"
+                );
                 return false;
             }
 
@@ -844,11 +853,19 @@ impl Transaction {
                 && self.get_transaction_type() != TransactionType::Fee
                 && self.get_transaction_type() != TransactionType::Vip
             {
-                event!(Level::TRACE, "{} in and {} out", self.total_in, self.total_out);
+                event!(
+                    Level::TRACE,
+                    "{} in and {} out",
+                    self.total_in,
+                    self.total_out
+                );
                 for z in self.get_outputs() {
                     event!(Level::TRACE, "{:?} --- ", z.get_amount());
                 }
-                event!(Level::TRACE, "ERROR 672941: transaction spends more than it has available");
+                event!(
+                    Level::TRACE,
+                    "ERROR 672941: transaction spends more than it has available"
+                );
                 return false;
             }
         }
@@ -916,7 +933,10 @@ impl Transaction {
         // all transactions must have outputs
         //
         if self.get_outputs().is_empty() {
-            event!(Level::ERROR, "ERROR 582039: less than 1 output in transaction");
+            event!(
+                Level::ERROR,
+                "ERROR 582039: less than 1 output in transaction"
+            );
             return false;
         }
 
