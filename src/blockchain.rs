@@ -13,6 +13,7 @@ use crate::staking::Staking;
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
+use tracing::{event, Level};
 
 use async_recursion::async_recursion;
 
@@ -73,7 +74,8 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-        println!(
+        event!(
+            Level::TRACE,
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
             block.transactions.len()
@@ -92,7 +94,11 @@ impl Blockchain {
         // sanity checks
         //
         if self.blocks.contains_key(&block_hash) {
-            println!("ERROR: block exists in blockchain {:?}", block.get_hash());
+            event!(
+                Level::ERROR,
+                "ERROR: block exists in blockchain {:?}",
+                &hex::encode(&block.get_hash())
+            );
             return;
         }
 
@@ -143,10 +149,12 @@ impl Blockchain {
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
         } else {
-            println!("BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT?????");
+            event!(
+                Level::ERROR,
+                "BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT????? {:?}",
+                block.get_hash()
+            );
         }
-
-        // println!(" ... start shared ancestor hunt: {:?}", create_timestamp());
 
         //
         // find shared ancestor of new_block with old_chain
@@ -211,7 +219,10 @@ impl Blockchain {
             // TODO more elegant handling of the first block and other non-longest-chain
             // blocks.
             //
-            // println!("We have added a block without a parent block... ");
+            event!(
+                Level::ERROR,
+                "We have added a block without a parent block... "
+            );
         }
 
         //
@@ -301,8 +312,11 @@ println!("does validate: {}", does_new_chain_validate);
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
-        println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
-
+        event!(
+            Level::TRACE,
+            " ... blockchain.add_block_success: {:?}",
+            create_timestamp()
+        );
         let block_id;
 
         //
@@ -320,18 +334,30 @@ println!("does validate: {}", does_new_chain_validate);
             //block.transactions = vec![];
         }
 
-        println!(" ... block save done:            {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... block save done:            {:?}",
+            create_timestamp()
+        );
 
         //
         // TODO - this is merely for testing, we do not intend
         // the routing client to process transactions in its
         // wallet.
         {
-            println!(" ... wallet processing start:    {}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... wallet processing start:    {}",
+                create_timestamp()
+            );
             let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
             wallet.add_block(&block);
-            println!(" ... wallet processing stop:     {}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... wallet processing stop:     {}",
+                create_timestamp()
+            );
         }
 
         //
@@ -693,11 +719,11 @@ println!("does validate: {}", does_new_chain_validate);
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
-        //        println!("{:?}", new_chain);
-        //        println!("{:?}", old_chain);
-
         if old_chain.len() > new_chain.len() {
-            println!("ERROR 1");
+            event!(
+                Level::ERROR,
+                "ERROR: old chain length is greater than new chain length"
+            );
             return false;
         }
 
@@ -778,7 +804,11 @@ println!("does validate: {}", does_new_chain_validate);
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-        println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... blockchain.wind_chain strt: {:?}",
+            create_timestamp()
+        );
 
         //
         // if we are winding a non-existent chain with a wind_failure it
@@ -823,25 +853,37 @@ println!("does validate: {}", does_new_chain_validate);
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        println!(" ... before block.validate:      {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... before block.validate:      {:?}",
+            create_timestamp()
+        );
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
-        println!(
+        event!(
+            Level::TRACE,
             " ... after block.validate:       {:?} {}",
             create_timestamp(),
             does_block_validate
         );
 
         if does_block_validate {
-            println!(" ... before block ocr            {:?}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... before block ocr            {:?}",
+                create_timestamp()
+            );
 
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
-            println!(" ... before blockring ocr:       {:?}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... before blockring ocr:       {:?}",
+                create_timestamp()
+            );
 
             // blockring update
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
-            // println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
             // staking tables update
             let (res_spend, res_unspend, res_delete) =
@@ -896,7 +938,7 @@ println!("does validate: {}", does_new_chain_validate);
             // will know it has rewound the old chain successfully instead of
             // successfully added the new chain.
             //
-            println!("this block does not validate!");
+            event!(Level::ERROR, "ERROR: this block does not validate!");
             if current_wind_index == new_chain.len() - 1 {
                 //
                 // this is the first block we have tried to add
@@ -1070,7 +1112,8 @@ println!("does validate: {}", does_new_chain_validate);
     // deletes all blocks at a single block_id
     //
     pub async fn delete_blocks(&mut self, delete_block_id: u64) {
-        println!(
+        event!(
+            Level::TRACE,
             "removing data including from disk at id {}",
             delete_block_id
         );
@@ -1084,7 +1127,11 @@ println!("does validate: {}", does_new_chain_validate);
             }
         }
 
-        println!("number of hashes to remove {}", block_hashes_copy.len());
+        event!(
+            Level::TRACE,
+            "number of hashes to remove {}",
+            block_hashes_copy.len()
+        );
 
         for hash in block_hashes_copy {
             self.delete_block(delete_block_id, hash).await;
@@ -1116,7 +1163,6 @@ println!("does validate: {}", does_new_chain_validate);
             //
             // deletes block from disk
             //
-            println!("delete filename {}", pblock_filename);
             Storage::delete_block_from_disk(pblock_filename).await;
         }
 
@@ -1141,10 +1187,7 @@ println!("does validate: {}", does_new_chain_validate);
         if PRUNE_AFTER_BLOCKS > self.get_latest_block_id() {
             return;
         }
-
         let prune_blocks_at_block_id = self.get_latest_block_id() - PRUNE_AFTER_BLOCKS;
-
-        //println!("downgrade blocks at block_id: {}", prune_blocks_at_block_id);
 
         let mut block_hashes_copy: Vec<SaitoHash> = vec![];
 

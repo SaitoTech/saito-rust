@@ -11,6 +11,7 @@ use crate::{
 };
 use std::{collections::HashMap, collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
+use tracing::{event, Level};
 
 #[derive(Clone, Debug)]
 pub enum MempoolMessage {
@@ -110,8 +111,6 @@ impl Mempool {
         let routing_work_available_for_me =
             transaction.get_routing_work_for_publickey(self.mempool_publickey);
 
-        //        println!("adding tx with routing work for me: {}", routing_work_available_for_me);
-
         if self
             .transactions
             .iter()
@@ -175,7 +174,7 @@ impl Mempool {
         {
             return AddTransactionResult::Exists;
         } else {
-            println!("adding golden ticket to mempool...");
+            event!(Level::TRACE, "adding golden ticket to mempool...");
             self.transactions.push(transaction);
             return AddTransactionResult::Accepted;
         }
@@ -229,7 +228,14 @@ impl Mempool {
         if let Some(previous_block) = blockchain.get_latest_block() {
             let work_available = self.calculate_work_available();
             let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
-
+            let time_elapsed = current_timestamp - previous_block.get_timestamp();
+            event!(
+                Level::INFO,
+                "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
+                work_available,
+                work_needed,
+                time_elapsed
+            );
             work_available >= work_needed
         } else {
             true
@@ -464,7 +470,6 @@ mod tests {
             let wallet = wallet_lock.read().await;
             let balance = wallet.get_available_balance();
             assert_eq!(balance, 11000000);
-            println!("balance {}", balance);
         }
         for _i in 0..4 {
             let block = make_block_with_mempool(

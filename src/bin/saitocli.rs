@@ -91,7 +91,7 @@ pub async fn main() -> saito_rust::Result<()> {
     if let Some(ref _matches) = matches.subcommand_matches("print") {
         // TODO add an arg to enable/disable printing the private key
         // TODO add and arg to chande modes between hex and base58
-        println!(" public key : {}", hex::encode(wallet.get_publickey()));
+        println!("public key : {}", hex::encode(wallet.get_publickey()));
         println!("private key : {}", hex::encode(wallet.get_privatekey()));
     }
     if let Some(ref matches) = matches.subcommand_matches("tx") {

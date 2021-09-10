@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use macros::TryFromByte;
 use std::convert::{TryFrom, TryInto};
 
+use tracing::{event, Level};
+
 /// The size of a serilized slip in bytes.
 pub const SLIP_SIZE: usize = 75;
 
@@ -73,7 +75,8 @@ impl Slip {
                     }
                 }
                 None => {
-                    println!(
+                    event!(
+                        Level::ERROR,
                         "value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}",
                         self.utxoset_key,
                         self.get_slip_type(),
@@ -157,7 +160,10 @@ impl Slip {
     // runs when block is purged for good
     pub fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_utxoset_key() == [0; 74] {
-            println!("ERROR 572034: asked to remove a slip without its utxoset_key properly set!");
+            event!(
+                Level::ERROR,
+                "ERROR 572034: asked to remove a slip without its utxoset_key properly set!"
+            );
             false;
         }
         utxoset.remove_entry(&self.get_utxoset_key());

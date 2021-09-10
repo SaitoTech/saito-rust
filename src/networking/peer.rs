@@ -31,6 +31,7 @@ use warp::ws::{Message, WebSocket};
 use futures::{Future, FutureExt, SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
+use tracing::{event, Level};
 
 pub type PeersDB = HashMap<SaitoHash, SaitoPeer>;
 pub type RequestResponses = HashMap<(SaitoHash, u32), APIMessage>;
@@ -325,10 +326,9 @@ impl SaitoPeer {
                         String::from("OK").as_bytes().try_into().unwrap(),
                     )
                     .await;
-                    println!("HANDSHAKE COMPLETE!");
                 }
                 None => {
-                    println!("Error verifying peer handshake signature");
+                    event!(Level::ERROR, "Error verifying peer handshake signature");
                 }
             },
             "REQBLOCK" => {
@@ -433,7 +433,8 @@ impl SaitoPeer {
                     .await;
             }
             _ => {
-                println!(
+                event!(
+                    Level::ERROR,
                     "Unhandled command received by client... {}",
                     &api_message.message_name_as_string()
                 );
@@ -467,10 +468,9 @@ impl SaitoPeer {
                         self.set_publickey(deserialize_challenge.challenger_pubkey());
                         self.send_command(&String::from("SHAKCOMP"), signed_challenge)
                             .await;
-                        println!("SHAKECOMPLETE!");
                     }
                     None => {
-                        println!("Error verifying peer handshake signature");
+                        event!(Level::ERROR, "Error verifying peer handshake signature");
                     }
                 }
             }
@@ -650,7 +650,10 @@ pub async fn build_serialized_challenge(
 pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChallenge> {
     let challenge = HandshakeChallenge::deserialize(message_data);
     if challenge.timestamp() < create_timestamp() - CHALLENGE_EXPIRATION_TIME {
-        println!("Error validating timestamp for handshake complete");
+        event!(
+            Level::ERROR,
+            "Error validating timestamp for handshake complete"
+        );
         return None;
     }
     // we verify both signatures even though one is "ours". This function is called during both
@@ -661,7 +664,7 @@ pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChalle
         challenge.opponent_sig().unwrap(),
         challenge.opponent_pubkey(),
     ) {
-        println!("Error with validating opponent sig");
+        event!(Level::ERROR, "Error with validating opponent sig");
         return None;
     }
     if !verify(
@@ -670,7 +673,7 @@ pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChalle
         challenge.challenger_pubkey(),
     ) {
         // TODO figure out how to return more meaningful errors from Warp and replace all the warp::reject
-        println!("Error with validating challenger sig");
+        event!(Level::ERROR, "Error with validating challenger sig");
         return None;
     }
 
