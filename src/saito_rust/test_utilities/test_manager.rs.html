@@ -468,6 +468,7 @@
 <span id="466">466</span>
 <span id="467">467</span>
 <span id="468">468</span>
+<span id="469">469</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TestManager provides a set of functions to simplify testing. It&#39;s goal is to</span>
@@ -696,7 +697,8 @@
                     <span class="comment">// everything spendable in blockchain.utxoset should be spendable on longest-chain</span>
                     <span class="comment">//</span>
                     <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">value</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
-                        <span class="comment">//println!(&quot;comparing {} and {}&quot;, value, value2);</span>
+			<span class="macro">println!</span>(<span class="string">&quot;for key: {:?}&quot;</span>, <span class="ident">key</span>);
+                        <span class="macro">println!</span>(<span class="string">&quot;comparing {} and {}&quot;</span>, <span class="ident">value</span>, <span class="ident">value2</span>);
                         <span class="macro">assert_eq!</span>(<span class="ident">value</span>, <span class="ident">value2</span>);
                     } <span class="kw">else</span> {
                         <span class="comment">//</span>
