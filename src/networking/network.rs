@@ -176,7 +176,6 @@ impl Network {
                 {
                     let peers_db_global = PEERS_DB_GLOBAL.clone();
                     let peers_db = peers_db_global.read().await;
-                    println!("try reconnect... peer count: {}", peers_db.keys().len());
                     peer_states = peers_db
                         .keys()
                         .map(|connection_id| {

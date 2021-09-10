@@ -12,6 +12,7 @@ use crate::{
     transaction::TransactionType,
 };
 use bigint::uint::U256;
+use tracing::{event, Level};
 
 #[derive(Debug, Clone)]
 pub struct Staking {
@@ -80,9 +81,9 @@ impl Staking {
         &mut self,
         staking_treasury: u64,
     ) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
-        println!("===========================");
-        println!("=== RESET STAKING TABLE ===");
-        println!("===========================");
+        event!(Level::TRACE, "===========================");
+        event!(Level::TRACE, "=== RESET STAKING TABLE ===");
+        event!(Level::TRACE, "===========================");
 
         let res_spend: Vec<Slip> = vec![];
         let res_unspend: Vec<Slip> = vec![];
@@ -365,9 +366,6 @@ impl Staking {
 
             let staker_output = fee_transaction.outputs[2].clone(); // 3rd output is staker
             let staker_input = fee_transaction.inputs[0].clone(); // 1st input is staker
-            println!("Block {} has payout: ", &block.get_id());
-            //println!("staker input:  {:?}", staker_input);
-            //println!("staker output: {:?}", staker_output);
 
             //
             // roll forward
@@ -383,7 +381,8 @@ impl Staking {
                 // vacillations in on_chain_reorg, such as resetting the table and
                 // then non-longest-chaining the same block
                 //
-                println!(
+                event!(
+                    Level::TRACE,
                     "Rolling forward and moving into pending: {}!",
                     self.stakers.len()
                 );
@@ -396,12 +395,12 @@ impl Staking {
                 //
                 // move staker to pending
                 //
-                //println!("staker table is: {:?}", self.stakers);
 
                 let lucky_staker_option = self.find_winning_staker(staker_random_number);
                 if let Some(lucky_staker) = lucky_staker_option {
-                    println!("the lucky staker is: {:?}", lucky_staker);
-                    println!(
+                    event!(Level::TRACE, "the lucky staker is: {:?}", lucky_staker);
+                    event!(
+                        Level::TRACE,
                         "moving from staker into pending: {}",
                         lucky_staker.get_amount()
                     );
@@ -422,7 +421,7 @@ impl Staking {
             // roll backward
             //
             } else {
-                println!("roll backward...");
+                event!(Level::TRACE, "roll backward...");
 
                 //
                 // reset pending if necessary

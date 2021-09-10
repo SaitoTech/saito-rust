@@ -188,7 +188,6 @@ pub async fn make_mock_blockchain(
 
         block_hashes.push(block.get_hash());
         {
-            println!("{}", i);
             let mut blockchain = blockchain_lock.write().await;
             blockchain.add_block(block).await;
         }
