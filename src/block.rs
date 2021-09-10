@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::{Blockchain, GENESIS_PERIOD},
+    blockchain::{Blockchain, GENESIS_PERIOD, MAX_STAKER_RECURSION},
     burnfee::BurnFee,
     crypto::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,

@@ -3,7 +3,7 @@ pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
 pub const PRUNE_AFTER_BLOCKS: u64 = 10;
 // max recursion when paying stakers
-pub const MAX_STAKER_RECURSION: u64 = 3;
+pub const MAX_STAKER_RECURSION: u64 = 2;
 
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
