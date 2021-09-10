@@ -342,7 +342,6 @@
 <span id="340">340</span>
 <span id="341">341</span>
 <span id="342">342</span>
-<span id="343">343</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
@@ -534,7 +533,6 @@
 
         <span class="ident">block_hashes</span>.<span class="ident">push</span>(<span class="ident">block</span>.<span class="ident">get_hash</span>());
         {
-            <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">i</span>);
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
             <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
         }

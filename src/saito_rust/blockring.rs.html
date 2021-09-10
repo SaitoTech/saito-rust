@@ -417,12 +417,15 @@
 <span id="415">415</span>
 <span id="416">416</span>
 <span id="417">417</span>
+<span id="418">418</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::GENESIS_PERIOD</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">RING_BUFFER_LENGTH</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">2</span> <span class="op">*</span> <span class="ident">GENESIS_PERIOD</span>;
+
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="comment">//</span>
 <span class="comment">// This is an index with shorthand information on the block_ids and hashes of the blocks</span>
@@ -531,7 +534,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">print_lc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">GENESIS_PERIOD</span> {
             <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">block_ring</span>[(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">usize</span>)].<span class="ident">block_hashes</span>.<span class="ident">is_empty</span>() {
-                <span class="macro">println!</span>(
+                <span class="macro">event!</span>(
+                    <span class="ident">Level::TRACE</span>,
                     <span class="string">&quot;Block {:?}: {:?}&quot;</span>,
                     <span class="ident">i</span>,
                     <span class="self">self</span>.<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="ident">i</span>)
@@ -657,8 +661,6 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">blockring_reorganization_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockring</span> <span class="op">=</span> <span class="ident">BlockRing::new</span>();
-
-        <span class="macro">println!</span>(<span class="string">&quot;This is a quick test!&quot;</span>);
 
         <span class="comment">//</span>
         <span class="comment">// Good Blocks</span>

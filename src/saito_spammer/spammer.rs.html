@@ -234,6 +234,8 @@
 <span id="232">232</span>
 <span id="233">233</span>
 <span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 # Saito Transaction Spammer
@@ -253,6 +255,8 @@ TODO: Fill in these docs
 
 <span class="kw">use</span> <span class="ident">rayon::iter::IntoParallelIterator</span>;
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
+
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="attribute">#[<span class="ident">tokio::main</span>]</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">saito_rust::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
@@ -362,12 +366,12 @@ TODO: Fill in these docs
         <span class="kw">let</span> <span class="ident">server_transaction_url</span> <span class="op">=</span>
             <span class="macro">format!</span>(<span class="string">&quot;http://{}/sendtransaction&quot;</span>, <span class="ident">format_url_string</span>(<span class="ident">host</span>, <span class="ident">port</span>),);
 
-        <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">server_transaction_url</span>);
+        <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">server_transaction_url</span>);
 
         <span class="kw">loop</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
-            <span class="macro">println!</span>(<span class="string">&quot;TXS TO GENERATE: {:?}&quot;</span>, <span class="ident">txs_to_generate</span>);
+            <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;TXS TO GENERATE: {:?}&quot;</span>, <span class="ident">txs_to_generate</span>);
 
             <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">txs_to_generate</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span>

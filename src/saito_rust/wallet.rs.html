@@ -540,7 +540,6 @@
 <span id="538">538</span>
 <span id="539">539</span>
 <span id="540">540</span>
-<span id="541">541</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage</span>::{<span class="ident">Persistable</span>, <span class="ident">Storage</span>};
 <span class="kw">use</span> <span class="ident">aes::Aes128</span>;
@@ -583,7 +582,6 @@
 }
 <span class="kw">impl</span> <span class="ident">EncryptedWallet</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_file_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
-        <span class="macro">println!</span>(<span class="string">&quot;get_file_name {}&quot;</span>, <span class="self">self</span>.<span class="ident">file_path</span>);
         <span class="self">self</span>.<span class="ident">file_path</span>.<span class="ident">clone</span>()
     }
 }

@@ -511,6 +511,11 @@
 <span id="509">509</span>
 <span id="510">510</span>
 <span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -525,6 +530,7 @@
 };
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">collections::VecDeque</span>, <span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MempoolMessage</span> {
@@ -624,8 +630,6 @@
         <span class="kw">let</span> <span class="ident">routing_work_available_for_me</span> <span class="op">=</span>
             <span class="ident">transaction</span>.<span class="ident">get_routing_work_for_publickey</span>(<span class="self">self</span>.<span class="ident">mempool_publickey</span>);
 
-        <span class="comment">//        println!(&quot;adding tx with routing work for me: {}&quot;, routing_work_available_for_me);</span>
-
         <span class="kw">if</span> <span class="self">self</span>
             .<span class="ident">transactions</span>
             .<span class="ident">iter</span>()
@@ -689,7 +693,7 @@
         {
             <span class="kw">return</span> <span class="ident">AddTransactionResult::Exists</span>;
         } <span class="kw">else</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;adding golden ticket to mempool...&quot;</span>);
+            <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;adding golden ticket to mempool...&quot;</span>);
             <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
             <span class="kw">return</span> <span class="ident">AddTransactionResult::Accepted</span>;
         }
@@ -743,7 +747,14 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">previous_block</span>) <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>() {
             <span class="kw">let</span> <span class="ident">work_available</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">calculate_work_available</span>();
             <span class="kw">let</span> <span class="ident">work_needed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">calculate_work_needed</span>(<span class="ident">previous_block</span>, <span class="ident">current_timestamp</span>);
-
+            <span class="kw">let</span> <span class="ident">time_elapsed</span> <span class="op">=</span> <span class="ident">current_timestamp</span> <span class="op">-</span> <span class="ident">previous_block</span>.<span class="ident">get_timestamp</span>();
+            <span class="macro">event!</span>(
+                <span class="ident">Level::INFO</span>,
+                <span class="string">&quot;work available: {:?} -- work needed: {:?} -- time elapsed: {:?} &quot;</span>,
+                <span class="ident">work_available</span>,
+                <span class="ident">work_needed</span>,
+                <span class="ident">time_elapsed</span>
+            );
             <span class="ident">work_available</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">work_needed</span>
         } <span class="kw">else</span> {
             <span class="bool-val">true</span>
@@ -978,7 +989,6 @@
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="kw">let</span> <span class="ident">balance</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_available_balance</span>();
             <span class="macro">assert_eq!</span>(<span class="ident">balance</span>, <span class="number">11000000</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;balance {}&quot;</span>, <span class="ident">balance</span>);
         }
         <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">4</span> {
             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">make_block_with_mempool</span>(

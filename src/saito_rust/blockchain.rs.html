@@ -1545,6 +1545,49 @@
 <span id="1543">1543</span>
 <span id="1544">1544</span>
 <span id="1545">1545</span>
+<span id="1546">1546</span>
+<span id="1547">1547</span>
+<span id="1548">1548</span>
+<span id="1549">1549</span>
+<span id="1550">1550</span>
+<span id="1551">1551</span>
+<span id="1552">1552</span>
+<span id="1553">1553</span>
+<span id="1554">1554</span>
+<span id="1555">1555</span>
+<span id="1556">1556</span>
+<span id="1557">1557</span>
+<span id="1558">1558</span>
+<span id="1559">1559</span>
+<span id="1560">1560</span>
+<span id="1561">1561</span>
+<span id="1562">1562</span>
+<span id="1563">1563</span>
+<span id="1564">1564</span>
+<span id="1565">1565</span>
+<span id="1566">1566</span>
+<span id="1567">1567</span>
+<span id="1568">1568</span>
+<span id="1569">1569</span>
+<span id="1570">1570</span>
+<span id="1571">1571</span>
+<span id="1572">1572</span>
+<span id="1573">1573</span>
+<span id="1574">1574</span>
+<span id="1575">1575</span>
+<span id="1576">1576</span>
+<span id="1577">1577</span>
+<span id="1578">1578</span>
+<span id="1579">1579</span>
+<span id="1580">1580</span>
+<span id="1581">1581</span>
+<span id="1582">1582</span>
+<span id="1583">1583</span>
+<span id="1584">1584</span>
+<span id="1585">1585</span>
+<span id="1586">1586</span>
+<span id="1587">1587</span>
+<span id="1588">1588</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -1561,6 +1604,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time::create_timestamp</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="kw">use</span> <span class="ident">async_recursion::async_recursion</span>;
 
@@ -1621,8 +1665,9 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;ADD BLK HASH: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_hash</span>());
-        <span class="macro">println!</span>(
+        <span class="comment">//println!(&quot;ADD BLK HASH: {:?}&quot;, block.get_hash());</span>
+        <span class="macro">event!</span>(
+            <span class="ident">Level::TRACE</span>,
             <span class="string">&quot; ... blockchain.add_block start: {:?} txs: {}&quot;</span>,
             <span class="ident">create_timestamp</span>(),
             <span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>()
@@ -1641,7 +1686,11 @@
         <span class="comment">// sanity checks</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>) {
-            <span class="macro">println!</span>(<span class="string">&quot;ERROR: block exists in blockchain {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_hash</span>());
+            <span class="macro">event!</span>(
+                <span class="ident">Level::ERROR</span>,
+                <span class="string">&quot;ERROR: block exists in blockchain {:?}&quot;</span>,
+                <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_hash</span>())
+            );
             <span class="kw">return</span>;
         }
 
@@ -1692,10 +1741,12 @@
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>) {
             <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">insert</span>(<span class="ident">block_hash</span>, <span class="ident">block</span>);
         } <span class="kw">else</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT?????&quot;</span>);
+            <span class="macro">event!</span>(
+                <span class="ident">Level::ERROR</span>,
+                <span class="string">&quot;BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT????? {:?}&quot;</span>,
+                <span class="ident">block</span>.<span class="ident">get_hash</span>()
+            );
         }
-
-        <span class="comment">// println!(&quot; ... start shared ancestor hunt: {:?}&quot;, create_timestamp());</span>
 
         <span class="comment">//</span>
         <span class="comment">// find shared ancestor of new_block with old_chain</span>
@@ -1760,7 +1811,10 @@
             <span class="comment">// TODO more elegant handling of the first block and other non-longest-chain</span>
             <span class="comment">// blocks.</span>
             <span class="comment">//</span>
-            <span class="comment">// println!(&quot;We have added a block without a parent block... &quot;);</span>
+            <span class="macro">event!</span>(
+                <span class="ident">Level::ERROR</span>,
+                <span class="string">&quot;We have added a block without a parent block... &quot;</span>
+            );
         }
 
         <span class="comment">//</span>
@@ -1848,8 +1902,11 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_success</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot; ... blockchain.add_block_succe: {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
-
+        <span class="macro">event!</span>(
+            <span class="ident">Level::TRACE</span>,
+            <span class="string">&quot; ... blockchain.add_block_success: {:?}&quot;</span>,
+            <span class="ident">create_timestamp</span>()
+        );
         <span class="kw">let</span> <span class="ident">block_id</span>;
 
         <span class="comment">//</span>
@@ -1867,18 +1924,30 @@
             <span class="comment">//block.transactions = vec![];</span>
         }
 
-        <span class="macro">println!</span>(<span class="string">&quot; ... block save done:            {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">event!</span>(
+            <span class="ident">Level::TRACE</span>,
+            <span class="string">&quot; ... block save done:            {:?}&quot;</span>,
+            <span class="ident">create_timestamp</span>()
+        );
 
         <span class="comment">//</span>
         <span class="comment">// TODO - this is merely for testing, we do not intend</span>
         <span class="comment">// the routing client to process transactions in its</span>
         <span class="comment">// wallet.</span>
         {
-            <span class="macro">println!</span>(<span class="string">&quot; ... wallet processing start:    {}&quot;</span>, <span class="ident">create_timestamp</span>());
+            <span class="macro">event!</span>(
+                <span class="ident">Level::TRACE</span>,
+                <span class="string">&quot; ... wallet processing start:    {}&quot;</span>,
+                <span class="ident">create_timestamp</span>()
+            );
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>();
             <span class="ident">wallet</span>.<span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>);
-            <span class="macro">println!</span>(<span class="string">&quot; ... wallet processing stop:     {}&quot;</span>, <span class="ident">create_timestamp</span>());
+            <span class="macro">event!</span>(
+                <span class="ident">Level::TRACE</span>,
+                <span class="string">&quot; ... wallet processing stop:     {}&quot;</span>,
+                <span class="ident">create_timestamp</span>()
+            );
         }
 
         <span class="comment">//</span>
@@ -2240,11 +2309,11 @@
         <span class="ident">new_chain</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>,
         <span class="ident">old_chain</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="comment">//        println!(&quot;{:?}&quot;, new_chain);</span>
-        <span class="comment">//        println!(&quot;{:?}&quot;, old_chain);</span>
-
         <span class="kw">if</span> <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">new_chain</span>.<span class="ident">len</span>() {
-            <span class="macro">println!</span>(<span class="string">&quot;ERROR 1&quot;</span>);
+            <span class="macro">event!</span>(
+                <span class="ident">Level::ERROR</span>,
+                <span class="string">&quot;ERROR: old chain length is greater than new chain length&quot;</span>
+            );
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
@@ -2325,7 +2394,11 @@
         <span class="ident">current_wind_index</span>: <span class="ident">usize</span>,
         <span class="ident">wind_failure</span>: <span class="ident">bool</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="macro">println!</span>(<span class="string">&quot; ... blockchain.wind_chain strt: {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">event!</span>(
+            <span class="ident">Level::TRACE</span>,
+            <span class="string">&quot; ... blockchain.wind_chain strt: {:?}&quot;</span>,
+            <span class="ident">create_timestamp</span>()
+        );
 
         <span class="comment">//</span>
         <span class="comment">// if we are winding a non-existent chain with a wind_failure it</span>
@@ -2359,7 +2432,7 @@
             <span class="comment">// this means ensuring they are loaded into memory.</span>
             <span class="comment">//</span>
             <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_has_golden_ticket</span>() {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cont</span> <span class="op">=</span> <span class="number">1</span>;
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cont</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="number">1</span>;
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>();
 
                 <span class="kw">while</span> <span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> <span class="op">&amp;&amp;</span> <span class="ident">previous_block_hash</span> <span class="op">!</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>] {
@@ -2391,25 +2464,37 @@
         }
 
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>]).<span class="ident">unwrap</span>();
-        <span class="macro">println!</span>(<span class="string">&quot; ... before block.validate:      {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">event!</span>(
+            <span class="ident">Level::TRACE</span>,
+            <span class="string">&quot; ... before block.validate:      {:?}&quot;</span>,
+            <span class="ident">create_timestamp</span>()
+        );
         <span class="kw">let</span> <span class="ident">does_block_validate</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">staking</span>).<span class="kw">await</span>;
-        <span class="macro">println!</span>(
+        <span class="macro">event!</span>(
+            <span class="ident">Level::TRACE</span>,
             <span class="string">&quot; ... after block.validate:       {:?} {}&quot;</span>,
             <span class="ident">create_timestamp</span>(),
             <span class="ident">does_block_validate</span>
         );
 
         <span class="kw">if</span> <span class="ident">does_block_validate</span> {
-            <span class="macro">println!</span>(<span class="string">&quot; ... before block ocr            {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+            <span class="macro">event!</span>(
+                <span class="ident">Level::TRACE</span>,
+                <span class="string">&quot; ... before block ocr            {:?}&quot;</span>,
+                <span class="ident">create_timestamp</span>()
+            );
 
             <span class="comment">// utxoset update</span>
             <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>);
-            <span class="macro">println!</span>(<span class="string">&quot; ... before blockring ocr:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+            <span class="macro">event!</span>(
+                <span class="ident">Level::TRACE</span>,
+                <span class="string">&quot; ... before blockring ocr:       {:?}&quot;</span>,
+                <span class="ident">create_timestamp</span>()
+            );
 
             <span class="comment">// blockring update</span>
             <span class="self">self</span>.<span class="ident">blockring</span>
                 .<span class="ident">on_chain_reorganization</span>(<span class="ident">block</span>.<span class="ident">get_id</span>(), <span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="bool-val">true</span>);
-            <span class="comment">// println!(&quot; ... after on-chain-reorg:       {:?}&quot;, create_timestamp());</span>
 
             <span class="comment">// staking tables update</span>
             <span class="kw">let</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>) <span class="op">=</span>
@@ -2464,7 +2549,7 @@
             <span class="comment">// will know it has rewound the old chain successfully instead of</span>
             <span class="comment">// successfully added the new chain.</span>
             <span class="comment">//</span>
-            <span class="macro">println!</span>(<span class="string">&quot;this block does not validate!&quot;</span>);
+            <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;ERROR: this block does not validate!&quot;</span>);
             <span class="kw">if</span> <span class="ident">current_wind_index</span> <span class="op">=</span><span class="op">=</span> <span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span> {
                 <span class="comment">//</span>
                 <span class="comment">// this is the first block we have tried to add</span>
@@ -2638,7 +2723,8 @@
     <span class="comment">// deletes all blocks at a single block_id</span>
     <span class="comment">//</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete_blocks</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">delete_block_id</span>: <span class="ident">u64</span>) {
-        <span class="macro">println!</span>(
+        <span class="macro">event!</span>(
+            <span class="ident">Level::TRACE</span>,
             <span class="string">&quot;removing data including from disk at id {}&quot;</span>,
             <span class="ident">delete_block_id</span>
         );
@@ -2652,7 +2738,11 @@
             }
         }
 
-        <span class="macro">println!</span>(<span class="string">&quot;number of hashes to remove {}&quot;</span>, <span class="ident">block_hashes_copy</span>.<span class="ident">len</span>());
+        <span class="macro">event!</span>(
+            <span class="ident">Level::TRACE</span>,
+            <span class="string">&quot;number of hashes to remove {}&quot;</span>,
+            <span class="ident">block_hashes_copy</span>.<span class="ident">len</span>()
+        );
 
         <span class="kw">for</span> <span class="ident">hash</span> <span class="kw">in</span> <span class="ident">block_hashes_copy</span> {
             <span class="self">self</span>.<span class="ident">delete_block</span>(<span class="ident">delete_block_id</span>, <span class="ident">hash</span>).<span class="kw">await</span>;
@@ -2684,7 +2774,6 @@
             <span class="comment">//</span>
             <span class="comment">// deletes block from disk</span>
             <span class="comment">//</span>
-            <span class="macro">println!</span>(<span class="string">&quot;delete filename {}&quot;</span>, <span class="ident">pblock_filename</span>);
             <span class="ident">Storage::delete_block_from_disk</span>(<span class="ident">pblock_filename</span>).<span class="kw">await</span>;
         }
 
@@ -2709,10 +2798,7 @@
         <span class="kw">if</span> <span class="ident">PRUNE_AFTER_BLOCKS</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>() {
             <span class="kw">return</span>;
         }
-
         <span class="kw">let</span> <span class="ident">prune_blocks_at_block_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>() <span class="op">-</span> <span class="ident">PRUNE_AFTER_BLOCKS</span>;
-
-        <span class="comment">//println!(&quot;downgrade blocks at block_id: {}&quot;, prune_blocks_at_block_id);</span>
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_hashes_copy</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 

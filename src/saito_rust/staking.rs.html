@@ -1049,7 +1049,6 @@
 <span id="1047">1047</span>
 <span id="1048">1048</span>
 <span id="1049">1049</span>
-<span id="1050">1050</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TODO</span>
@@ -1065,6 +1064,7 @@
     <span class="ident">transaction::TransactionType</span>,
 };
 <span class="kw">use</span> <span class="ident">bigint::uint::U256</span>;
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Staking</span> {
@@ -1133,9 +1133,9 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">staking_treasury</span>: <span class="ident">u64</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
-        <span class="macro">println!</span>(<span class="string">&quot;===========================&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;=== RESET STAKING TABLE ===&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;===========================&quot;</span>);
+        <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;===========================&quot;</span>);
+        <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;=== RESET STAKING TABLE ===&quot;</span>);
+        <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;===========================&quot;</span>);
 
         <span class="kw">let</span> <span class="ident">res_spend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="ident">res_unspend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
@@ -1418,9 +1418,6 @@
 
             <span class="kw">let</span> <span class="ident">staker_output</span> <span class="op">=</span> <span class="ident">fee_transaction</span>.<span class="ident">outputs</span>[<span class="number">2</span>].<span class="ident">clone</span>(); <span class="comment">// 3rd output is staker</span>
             <span class="kw">let</span> <span class="ident">staker_input</span> <span class="op">=</span> <span class="ident">fee_transaction</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">clone</span>(); <span class="comment">// 1st input is staker</span>
-            <span class="macro">println!</span>(<span class="string">&quot;Block {} has payout: &quot;</span>, <span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_id</span>());
-            <span class="comment">//println!(&quot;staker input:  {:?}&quot;, staker_input);</span>
-            <span class="comment">//println!(&quot;staker output: {:?}&quot;, staker_output);</span>
 
             <span class="comment">//</span>
             <span class="comment">// roll forward</span>
@@ -1436,7 +1433,8 @@
                 <span class="comment">// vacillations in on_chain_reorg, such as resetting the table and</span>
                 <span class="comment">// then non-longest-chaining the same block</span>
                 <span class="comment">//</span>
-                <span class="macro">println!</span>(
+                <span class="macro">event!</span>(
+                    <span class="ident">Level::TRACE</span>,
                     <span class="string">&quot;Rolling forward and moving into pending: {}!&quot;</span>,
                     <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>()
                 );
@@ -1449,12 +1447,12 @@
                 <span class="comment">//</span>
                 <span class="comment">// move staker to pending</span>
                 <span class="comment">//</span>
-                <span class="comment">//println!(&quot;staker table is: {:?}&quot;, self.stakers);</span>
 
                 <span class="kw">let</span> <span class="ident">lucky_staker_option</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">find_winning_staker</span>(<span class="ident">staker_random_number</span>);
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lucky_staker</span>) <span class="op">=</span> <span class="ident">lucky_staker_option</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;the lucky staker is: {:?}&quot;</span>, <span class="ident">lucky_staker</span>);
-                    <span class="macro">println!</span>(
+                    <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;the lucky staker is: {:?}&quot;</span>, <span class="ident">lucky_staker</span>);
+                    <span class="macro">event!</span>(
+                        <span class="ident">Level::TRACE</span>,
                         <span class="string">&quot;moving from staker into pending: {}&quot;</span>,
                         <span class="ident">lucky_staker</span>.<span class="ident">get_amount</span>()
                     );
@@ -1475,7 +1473,7 @@
             <span class="comment">// roll backward</span>
             <span class="comment">//</span>
             } <span class="kw">else</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;roll backward...&quot;</span>);
+                <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;roll backward...&quot;</span>);
 
                 <span class="comment">//</span>
                 <span class="comment">// reset pending if necessary</span>

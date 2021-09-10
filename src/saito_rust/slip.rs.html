@@ -326,6 +326,12 @@
 <span id="324">324</span>
 <span id="325">325</span>
 <span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::UtxoSet</span>,
@@ -336,6 +342,8 @@
 
 <span class="kw">use</span> <span class="ident">macros::TryFromByte</span>;
 <span class="kw">use</span> <span class="ident">std::convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>};
+
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="doccomment">/// The size of a serilized slip in bytes.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SLIP_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">75</span>;
@@ -402,7 +410,8 @@
                     }
                 }
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">println!</span>(
+                    <span class="macro">event!</span>(
+                        <span class="ident">Level::ERROR</span>,
                         <span class="string">&quot;value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}&quot;</span>,
                         <span class="self">self</span>.<span class="ident">utxoset_key</span>,
                         <span class="self">self</span>.<span class="ident">get_slip_type</span>(),
@@ -486,7 +495,10 @@
     <span class="comment">// runs when block is purged for good</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoUTXOSetKey</span>, <span class="ident">u64</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_utxoset_key</span>() <span class="op">=</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">74</span>] {
-            <span class="macro">println!</span>(<span class="string">&quot;ERROR 572034: asked to remove a slip without its utxoset_key properly set!&quot;</span>);
+            <span class="macro">event!</span>(
+                <span class="ident">Level::ERROR</span>,
+                <span class="string">&quot;ERROR 572034: asked to remove a slip without its utxoset_key properly set!&quot;</span>
+            );
             <span class="bool-val">false</span>;
         }
         <span class="ident">utxoset</span>.<span class="ident">remove_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_utxoset_key</span>());

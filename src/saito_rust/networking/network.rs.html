@@ -561,7 +561,6 @@
 <span id="559">559</span>
 <span id="560">560</span>
 <span id="561">561</span>
-<span id="562">562</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>};
@@ -741,7 +740,6 @@
                 {
                     <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
                     <span class="kw">let</span> <span class="ident">peers_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-                    <span class="macro">println!</span>(<span class="string">&quot;try reconnect... peer count: {}&quot;</span>, <span class="ident">peers_db</span>.<span class="ident">keys</span>().<span class="ident">len</span>());
                     <span class="ident">peer_states</span> <span class="op">=</span> <span class="ident">peers_db</span>
                         .<span class="ident">keys</span>()
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">connection_id</span><span class="op">|</span> {
