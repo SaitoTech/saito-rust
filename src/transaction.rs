@@ -425,16 +425,8 @@ impl Transaction {
         //
         if self.path.len() == 0 {
             if self.inputs.len() > 0 {
-                println!(
-                    "we have inputs! we are transaction type: {:?}",
-                    self.get_transaction_type()
-                );
                 return self.inputs[0].get_publickey();
             } else {
-                println!(
-                    "we have no inputs! we are transaction type: {:?}",
-                    self.get_transaction_type()
-                );
                 return [0; 33];
             }
         }

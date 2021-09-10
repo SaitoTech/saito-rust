@@ -38,9 +38,7 @@ impl Storage {
     }
     pub fn write_block_to_disk(block: &mut Block) {
         let filename = Storage::generate_block_filename(block);
-println!("FILENAME: {}", filename);
         if !Path::new(&filename).exists() {
-println!("SAVING BLOCK!");
             let mut buffer = File::create(filename).unwrap();
             let byte_array: Vec<u8> = block.serialize_for_net();
             buffer.write_all(&byte_array[..]).unwrap();

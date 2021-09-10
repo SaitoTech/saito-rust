@@ -164,8 +164,6 @@ impl Staking {
             self.stakers[i].set_payout(staking_profit);
         }
 
-        println!("stakers: {:?}", self.stakers);
-
         return (res_spend, res_unspend, res_delete);
     }
 
@@ -365,15 +363,11 @@ impl Staking {
 
             let staker_output = fee_transaction.outputs[2].clone(); // 3rd output is staker
             let staker_input = fee_transaction.inputs[0].clone(); // 1st input is staker
-            println!("Block {} has payout: ", &block.get_id());
-            //println!("staker input:  {:?}", staker_input);
-            //println!("staker output: {:?}", staker_output);
 
             //
             // roll forward
             //
             if longest_chain {
-                //println!("ok, ready to roll...");
 
                 //
                 // re-create staker table, if needed
@@ -396,15 +390,8 @@ impl Staking {
                 //
                 // move staker to pending
                 //
-                //println!("staker table is: {:?}", self.stakers);
-
                 let lucky_staker_option = self.find_winning_staker(staker_random_number);
                 if let Some(lucky_staker) = lucky_staker_option {
-                    println!("the lucky staker is: {:?}", lucky_staker);
-                    println!(
-                        "moving from staker into pending: {}",
-                        lucky_staker.get_amount()
-                    );
                     self.remove_staker(lucky_staker.clone());
                     self.add_pending(staker_output.clone());
                 }
@@ -492,7 +479,6 @@ mod tests {
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
-/****
 
     #[test]
     fn staking_table_test() {
@@ -973,7 +959,6 @@ mod tests {
         }
     }
 
-****/
 
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test_with_test_manager() {
@@ -992,6 +977,7 @@ mod tests {
         //
         // initialize blockchain staking table
         //
+/**
         {
             let mut blockchain = blockchain_lock.write().await;
 
@@ -1017,6 +1003,7 @@ mod tests {
 
             blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
         }
+***/
 
         //
         // BLOCK 1
@@ -1046,9 +1033,9 @@ mod tests {
             .add_block(current_timestamp + 360000, 0, 1, true, vec![])
             .await;
 
-        //test_manager.check_utxoset().await;
+        test_manager.check_utxoset().await;
         //test_manager.check_token_supply().await;
 
-        assert_eq!(0, 1);
+        //assert_eq!(0, 1);
     }
 }

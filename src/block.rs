@@ -1569,8 +1569,6 @@ impl Block {
             let hash1 = hash(&fee_transaction.serialize_for_signature());
             let hash2 = hash(&self.transactions[ft_idx].serialize_for_signature());
             if hash1 != hash2 {
-            let hash1 = hash(&fee_transaction.serialize_for_signature());
-            let hash2 = hash(&self.transactions[ft_idx].serialize_for_signature());
                 println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");
                 return false;
             }
@@ -1775,8 +1773,6 @@ impl Block {
             let hash_for_signature: SaitoHash = hash(&fee_tx.serialize_for_signature());
             fee_tx.set_hash_for_signature(hash_for_signature);
             fee_tx.sign(wallet.get_privatekey());
-
-println!("FEE TX PUT INTO BLOCK: {:?}", fee_tx);
 
             //
             // and we add it to the block

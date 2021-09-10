@@ -73,7 +73,6 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-        println!("ADD BLK HASH: {:?}", block.get_hash());
         println!(
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
@@ -296,10 +295,8 @@ println!("does validate: {}", does_new_chain_validate);
         }
     }
     pub async fn add_block_to_blockchain(blockchain_lock: Arc<RwLock<Blockchain>>, block: Block) {
-println!("ABTB1");
         let mut blockchain = blockchain_lock.write().await;
         let res = blockchain.add_block(block).await;
-println!("ABTB3");
 	return res;
     }
 
@@ -820,7 +817,6 @@ println!("ABTB3");
                 let previous_block_hash = self.blockring.get_longest_chain_block_hash_by_block_id(bid);
                 if self.is_block_indexed(previous_block_hash) {
                     block = self.get_mut_block(previous_block_hash).await;
-                    println!("wind_chain, ensuring block at {} is fully upgraded", bid);
                     block.upgrade_block_to_block_type(BlockType::Full).await;
                 }
             }
