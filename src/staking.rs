@@ -165,8 +165,6 @@ impl Staking {
             self.stakers[i].set_payout(staking_profit);
         }
 
-        println!("stakers: {:?}", self.stakers);
-
         return (res_spend, res_unspend, res_delete);
     }
 
@@ -371,7 +369,6 @@ impl Staking {
             // roll forward
             //
             if longest_chain {
-                //println!("ok, ready to roll...");
 
                 //
                 // re-create staker table, if needed
@@ -395,7 +392,6 @@ impl Staking {
                 //
                 // move staker to pending
                 //
-
                 let lucky_staker_option = self.find_winning_staker(staker_random_number);
                 if let Some(lucky_staker) = lucky_staker_option {
                     event!(Level::TRACE, "the lucky staker is: {:?}", lucky_staker);
@@ -490,6 +486,7 @@ mod tests {
     };
     use std::sync::Arc;
     use tokio::sync::RwLock;
+
 
     #[test]
     fn staking_table_test() {
@@ -970,6 +967,7 @@ mod tests {
         }
     }
 
+
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test_with_test_manager() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
@@ -987,6 +985,7 @@ mod tests {
         //
         // initialize blockchain staking table
         //
+/**
         {
             let mut blockchain = blockchain_lock.write().await;
 
@@ -1012,6 +1011,7 @@ mod tests {
 
             blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
         }
+***/
 
         //
         // BLOCK 1
@@ -1041,9 +1041,9 @@ mod tests {
             .add_block(current_timestamp + 360000, 0, 1, true, vec![])
             .await;
 
-        //test_manager.check_utxoset().await;
+        test_manager.check_utxoset().await;
         //test_manager.check_token_supply().await;
 
-        assert_eq!(0, 1);
+        //assert_eq!(0, 1);
     }
 }

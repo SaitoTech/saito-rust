@@ -225,7 +225,8 @@ impl TestManager {
                     // everything spendable in blockchain.utxoset should be spendable on longest-chain
                     //
                     if *value == 1 {
-                        //println!("comparing {} and {}", value, value2);
+			println!("for key: {:?}", key);
+                        println!("comparing {} and {}", value, value2);
                         assert_eq!(value, value2);
                     } else {
                         //
