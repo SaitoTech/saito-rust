@@ -419,9 +419,6 @@
 <span id="417">417</span>
 <span id="418">418</span>
 <span id="419">419</span>
-<span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TestManager provides a set of functions to simplify testing. It&#39;s goal is to</span>
@@ -716,14 +713,12 @@
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">token_supply</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_supply</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_inputs</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_outputs</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">previous_block_treasury</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_inputs</span>: <span class="ident">u64</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_outputs</span>: <span class="ident">u64</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">previous_block_treasury</span>: <span class="ident">u64</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_block_treasury</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_block_treasury</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_block_staking_treasury</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unpaid_but_uncollected</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_contains_fee_tx</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_contains_fee_tx</span>: <span class="ident">u64</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_fee_tx_idx</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
 
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
@@ -776,7 +771,6 @@
 
                     <span class="ident">token_supply</span> <span class="op">=</span> <span class="ident">block_outputs</span> <span class="op">+</span> <span class="ident">block</span>.<span class="ident">get_treasury</span>() <span class="op">+</span> <span class="ident">block</span>.<span class="ident">get_staking_treasury</span>();
                     <span class="ident">current_supply</span> <span class="op">=</span> <span class="ident">token_supply</span>;
-                    <span class="macro">println!</span>(<span class="string">&quot;initial supply: {}&quot;</span>, <span class="ident">token_supply</span>);
 
 		} <span class="kw">else</span> {
 
@@ -795,7 +789,7 @@
 		        <span class="comment">// treasury increases must come here uncollected</span>
 		        <span class="comment">//</span>
 		        <span class="kw">if</span> <span class="ident">current_block_treasury</span> <span class="op">&gt;</span> <span class="ident">previous_block_treasury</span> {
-		            <span class="ident">unpaid_but_uncollected</span> <span class="op">-</span><span class="op">=</span> (<span class="ident">current_block_treasury</span> <span class="op">-</span> <span class="ident">previous_block_treasury</span>);
+		            <span class="ident">unpaid_but_uncollected</span> <span class="op">-</span><span class="op">=</span> <span class="ident">current_block_treasury</span> <span class="op">-</span> <span class="ident">previous_block_treasury</span>;
 		        }
 
  	  	    } <span class="kw">else</span> {
@@ -821,7 +815,7 @@
 		        <span class="comment">// treasury increases must come here uncollected</span>
 		        <span class="comment">//</span>
 		        <span class="kw">if</span> <span class="ident">current_block_treasury</span> <span class="op">&gt;</span> <span class="ident">previous_block_treasury</span> {
-		            <span class="ident">unpaid_but_uncollected</span> <span class="op">-</span><span class="op">=</span> (<span class="ident">current_block_treasury</span> <span class="op">-</span> <span class="ident">previous_block_treasury</span>);
+		            <span class="ident">unpaid_but_uncollected</span> <span class="op">-</span><span class="op">=</span> <span class="ident">current_block_treasury</span> <span class="op">-</span> <span class="ident">previous_block_treasury</span>;
 		        }
 
 		    }
