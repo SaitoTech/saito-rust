@@ -2063,7 +2063,7 @@
 
             blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
         }
-***/</span>
+**/</span>
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 1</span>
@@ -2094,9 +2094,9 @@
             .<span class="kw">await</span>;
 
         <span class="ident">test_manager</span>.<span class="ident">check_utxoset</span>().<span class="kw">await</span>;
-        <span class="comment">//test_manager.check_token_supply().await;</span>
+        <span class="ident">test_manager</span>.<span class="ident">check_token_supply</span>().<span class="kw">await</span>;
 
-        <span class="comment">//assert_eq!(0, 1);</span>
+        <span class="macro">assert_eq!</span>(<span class="number">0</span>, <span class="number">1</span>);
     }
 }
 </pre></div>

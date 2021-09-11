@@ -422,53 +422,6 @@
 <span id="420">420</span>
 <span id="421">421</span>
 <span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
-<span id="425">425</span>
-<span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
-<span id="434">434</span>
-<span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TestManager provides a set of functions to simplify testing. It&#39;s goal is to</span>
@@ -479,7 +432,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoUTXOSetKey</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction::Transaction</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -523,7 +476,7 @@
         <span class="ident">additional_txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
     ) {
         <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">latest_block_hash</span>;
-        <span class="macro">println!</span>(<span class="string">&quot;ADDING BLOCK 2! {:?}&quot;</span>, <span class="ident">parent_hash</span>);
+        <span class="comment">//println!(&quot;ADDING BLOCK 2! {:?}&quot;, parent_hash);</span>
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">add_block_on_hash</span>(
                 <span class="ident">timestamp</span>,
@@ -560,7 +513,7 @@
             )
             .<span class="kw">await</span>;
 
-        <span class="macro">println!</span>(<span class="string">&quot;ADDING BLOCK! {}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_id</span>());
+        <span class="comment">//println!(&quot;ADDING BLOCK! {}&quot;, block.get_id());</span>
 
         <span class="self">self</span>.<span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
         <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="self">self</span>.<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
@@ -690,22 +643,22 @@
         <span class="comment">// check main utxoset matches longest-chain</span>
         <span class="comment">//</span>
         <span class="kw">for</span> (<span class="ident">key</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">blockchain</span>.<span class="ident">utxoset</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;{:?} / {}&quot;</span>, <span class="ident">key</span>, <span class="ident">value</span>);
+            <span class="comment">//println!(&quot;{:?} / {}&quot;, key, value);</span>
             <span class="kw">match</span> <span class="ident">utxoset</span>.<span class="ident">get</span>(<span class="ident">key</span>) {
                 <span class="prelude-val">Some</span>(<span class="ident">value2</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">//</span>
                     <span class="comment">// everything spendable in blockchain.utxoset should be spendable on longest-chain</span>
                     <span class="comment">//</span>
                     <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">value</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
-			<span class="macro">println!</span>(<span class="string">&quot;for key: {:?}&quot;</span>, <span class="ident">key</span>);
-                        <span class="macro">println!</span>(<span class="string">&quot;comparing {} and {}&quot;</span>, <span class="ident">value</span>, <span class="ident">value2</span>);
+			<span class="comment">//println!(&quot;for key: {:?}&quot;, key);</span>
+                        <span class="comment">//println!(&quot;comparing {} and {}&quot;, value, value2);</span>
                         <span class="macro">assert_eq!</span>(<span class="ident">value</span>, <span class="ident">value2</span>);
                     } <span class="kw">else</span> {
                         <span class="comment">//</span>
                         <span class="comment">// everything spent in blockchain.utxoset should be spent on longest-chain</span>
                         <span class="comment">//</span>
                         <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">value</span> <span class="op">&gt;</span> <span class="number">1</span> {
-                            <span class="macro">println!</span>(<span class="string">&quot;comparing {} and {}&quot;</span>, <span class="ident">value</span>, <span class="ident">value2</span>);
+                            <span class="comment">//println!(&quot;comparing {} and {}&quot;, value, value2);</span>
                             <span class="macro">assert_eq!</span>(<span class="ident">value</span>, <span class="ident">value2</span>);
                         } <span class="kw">else</span> {
                             <span class="comment">//</span>
@@ -715,8 +668,8 @@
                     }
                 }
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;comparing {:?} with expected value {}&quot;</span>, <span class="ident">key</span>, <span class="ident">value</span>);
-                    <span class="macro">println!</span>(<span class="string">&quot;Value does not exist in actual blockchain!&quot;</span>);
+<span class="comment">//                    println!(&quot;comparing {:?} with expected value {}&quot;, key, value);</span>
+<span class="comment">//                    println!(&quot;Value does not exist in actual blockchain!&quot;);</span>
                     <span class="macro">assert_eq!</span>(<span class="number">1</span>, <span class="number">2</span>);
                 }
             }
@@ -726,21 +679,21 @@
         <span class="comment">// check longest-chain matches utxoset</span>
         <span class="comment">//</span>
         <span class="kw">for</span> (<span class="ident">key</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">utxoset</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;{:?} / {}&quot;</span>, <span class="ident">key</span>, <span class="ident">value</span>);
+            <span class="comment">//println!(&quot;{:?} / {}&quot;, key, value);</span>
             <span class="kw">match</span> <span class="ident">blockchain</span>.<span class="ident">utxoset</span>.<span class="ident">get</span>(<span class="ident">key</span>) {
                 <span class="prelude-val">Some</span>(<span class="ident">value2</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">//</span>
                     <span class="comment">// everything spendable in longest-chain should be spendable on blockchain.utxoset</span>
                     <span class="comment">//</span>
                     <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">value</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
-                        <span class="macro">println!</span>(<span class="string">&quot;comparing {} and {}&quot;</span>, <span class="ident">value</span>, <span class="ident">value2</span>);
+<span class="comment">//                        println!(&quot;comparing {} and {}&quot;, value, value2);</span>
                         <span class="macro">assert_eq!</span>(<span class="ident">value</span>, <span class="ident">value2</span>);
                     } <span class="kw">else</span> {
                         <span class="comment">//</span>
                         <span class="comment">// everything spent in longest-chain should be spendable on blockchain.utxoset</span>
                         <span class="comment">//</span>
                         <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">value</span> <span class="op">&gt;</span> <span class="number">1</span> {
-                            <span class="macro">println!</span>(<span class="string">&quot;comparing {} and {}&quot;</span>, <span class="ident">value</span>, <span class="ident">value2</span>);
+<span class="comment">//                            println!(&quot;comparing {} and {}&quot;, value, value2);</span>
                             <span class="macro">assert_eq!</span>(<span class="ident">value</span>, <span class="ident">value2</span>);
                         } <span class="kw">else</span> {
                             <span class="comment">//</span>
@@ -758,182 +711,135 @@
         }
     }
 
+
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">check_token_supply</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        <span class="comment">/***
-                let mut token_supply: u64 = 0;
-                let mut current_supply: u64 = 0;
-                let mut block_inputs: u64 = 0;
-                let mut block_outputs: u64 = 0;
-                let mut last_block_treasury: u64 = 0;
-                let mut last_block_staking_treasury: u64 = 0;
-                let mut unpaid_but_uncollected1: u64 = 0;
-                let mut unpaid_but_uncollected2: u64 = 0;
-                let mut unpaid_but_uncollected3: u64 = 0;
-                let mut block_contains_fee_tx: u64 = 0;
-                let mut block_contains_gt_tx: u64 = 0;
-                let mut block_fee_tx_idx: u64 = 0;
-                let mut block_gt_tx_idx: u64 = 0;
 
-                let blockchain = self.blockchain_lock.read().await;
-                let latest_block_id = blockchain.get_latest_block_id();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">token_supply</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_supply</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_inputs</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_outputs</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">previous_block_treasury</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_block_treasury</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_block_treasury</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_block_staking_treasury</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unpaid_but_uncollected</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_contains_fee_tx</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_fee_tx_idx</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
 
-                for i in 1..=latest_block_id {
-                    let block_hash = blockchain
-                        .blockring
-                        .get_longest_chain_block_hash_by_block_id(i as u64);
-                    let block = blockchain.get_block(block_hash).await;
+        <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">latest_block_id</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>();
 
-                    block_inputs = 0;
-                    block_outputs = 0;
-                    block_contains_fee_tx = 0;
-                    block_contains_gt_tx = 0;
+        <span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="op">=</span><span class="ident">latest_block_id</span> {
 
-                    //
-                    //
-                    //
-                    for i in 0..block.transactions.len() {
-                        //
-                        // we ignore the inputs in staking / fee transactions as they have
-                        // been pulled from the staking treasury and are already technically
-                        // counted in the money supply as an output from a previous slip.
-                        // we only care about the difference in token supply represented by
-                        // the difference in the staking_treasury.
-                        //
-                        if block.transactions[i].get_transaction_type() == TransactionType::GoldenTicket {
-                            block_contains_gt_tx = 1;
-                            block_gt_tx_idx = i as u64;
-                        }
-                        if block.transactions[i].get_transaction_type() == TransactionType::Fee {
-                            block_contains_fee_tx = 1;
-                            block_fee_tx_idx = i as u64;
-                        }
-                        if block.transactions[i].get_transaction_type() != TransactionType::Fee {
-                            for z in 0..block.transactions[i].inputs.len() {
-                                block_inputs += block.transactions[i].inputs[z].get_amount();
-                            }
-                        }
-                        for z in 0..block.transactions[i].outputs.len() {
-                            block_outputs += block.transactions[i].outputs[z].get_amount();
-                        }
+            <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>
+                .<span class="ident">blockring</span>
+                .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>);
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="ident">block_hash</span>).<span class="kw">await</span>;
+
+            <span class="ident">block_inputs</span> <span class="op">=</span> <span class="number">0</span>;
+            <span class="ident">block_outputs</span> <span class="op">=</span> <span class="number">0</span>;
+            <span class="ident">block_contains_fee_tx</span> <span class="op">=</span> <span class="number">0</span>;
+
+	    <span class="ident">previous_block_treasury</span> <span class="op">=</span> <span class="ident">current_block_treasury</span>;
+	    <span class="ident">current_block_treasury</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_treasury</span>();
+
+            <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>() {
+                <span class="comment">//</span>
+                <span class="comment">// we ignore the inputs in staking / fee transactions as they have</span>
+                <span class="comment">// been pulled from the staking treasury and are already technically</span>
+                <span class="comment">// counted in the money supply as an output from a previous slip.</span>
+                <span class="comment">// we only care about the difference in token supply represented by</span>
+                <span class="comment">// the difference in the staking_treasury.</span>
+                <span class="comment">//</span>
+                <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">get_transaction_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::Fee</span> {
+                    <span class="ident">block_contains_fee_tx</span> <span class="op">=</span> <span class="number">1</span>;
+                    <span class="ident">block_fee_tx_idx</span> <span class="op">=</span> <span class="ident">t</span> <span class="kw">as</span> <span class="ident">usize</span>;
+                } <span class="kw">else</span> {
+                    <span class="kw">for</span> <span class="ident">z</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">inputs</span>.<span class="ident">len</span>() {
+                        <span class="ident">block_inputs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">inputs</span>[<span class="ident">z</span>].<span class="ident">get_amount</span>();
                     }
-
-                    println!(
-                        &quot;Block {} --- Golden Ticket? {}&quot;,
-                        block.get_id(),
-                        block_contains_gt_tx
-                    );
-
-                    unpaid_but_uncollected3 = unpaid_but_uncollected2;
-                    unpaid_but_uncollected2 = unpaid_but_uncollected1;
-                    unpaid_but_uncollected1 = 0;
-
-                    if block_inputs &gt; block_outputs {
-                        unpaid_but_uncollected1 = block_inputs - block_outputs;
+                    <span class="kw">for</span> <span class="ident">z</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">outputs</span>.<span class="ident">len</span>() {
+                        <span class="ident">block_outputs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">outputs</span>[<span class="ident">z</span>].<span class="ident">get_amount</span>();
                     }
-
-                    //
-                    // token supply set in block #1
-                    //
-                    if i == 1 {
-                        token_supply = block_outputs + block.get_treasury() + block.get_staking_treasury();
-                        current_supply = token_supply;
-
-                        println!(&quot;initial supply: {}&quot;, token_supply);
-
-                    //
-                    // if outputs &gt; inputs, difference will be staking treasury and treasury
-                    //
-                    } else {
-                        println!(&quot;block inputs {}&quot;, block_inputs);
-                        println!(&quot;block outputs {}&quot;, block_outputs);
-                        println!(&quot;lbt {}&quot;, last_block_treasury);
-                        println!(&quot;lbst {}&quot;, last_block_staking_treasury);
-                        println!(&quot;t {}&quot;, block.get_treasury());
-                        println!(&quot;st {}&quot;, block.get_staking_treasury());
-                        println!(&quot;ubu1: {}&quot;, unpaid_but_uncollected1);
-                        println!(&quot;ubu2: {}&quot;, unpaid_but_uncollected2);
-                        println!(&quot;ubu3: {}&quot;, unpaid_but_uncollected3);
-
-                        current_supply -= block_inputs;
-                        current_supply += block_outputs;
-                        current_supply -= last_block_staking_treasury;
-                        current_supply += block.get_staking_treasury();
-                        current_supply -= last_block_treasury;
-                        current_supply += block.get_treasury();
-
-                        //
-                        // staking treasury and treasury collect payment after 2 blocks
-                        // staking treasury
-                        //
-                        if block_contains_gt_tx == 1 {
-                            if block_contains_fee_tx == 1 {
-                                println!(&quot;block contains fee tx?&quot;);
-                                //
-                                // miner and router payment this block
-                                //
-                                //current_supply += unpaid_but_uncollected1;
-                            }
-
-                            //
-                            // WITH STAKING PAYOUT
-                            //
-                            if unpaid_but_uncollected2 &gt; 0 {
-                                println!(&quot;UNPAID BUT UNCOLLECTED!: {}&quot;, unpaid_but_uncollected2);
-
-                                //
-                                // remove any token supply outstanding from previous block
-                                //
-                                current_supply -= unpaid_but_uncollected2;
-
-                                //
-                                // these payments now show up in outputs / staking_treasury
-                                //
-                                let router_part = unpaid_but_uncollected2 / 2;
-                                let _staker_part = unpaid_but_uncollected2 - router_part;
-
-                                //
-                                // and the block is dealt with
-                                //
-                                unpaid_but_uncollected2 = 0;
-
-                                println!(&quot;giving us current supply of {}&quot;, current_supply);
-                            }
-
-                            //
-                            // everything else is issued....
-                            //
-                            unpaid_but_uncollected1 = 0;
-                        } else {
-                            // add new amount
-                            current_supply += unpaid_but_uncollected1;
-
-                            println!(
-                                &quot;and we add upbu1 to current_supply: {} -- {}&quot;,
-                                unpaid_but_uncollected1, current_supply
-                            );
-
-                            //
-                            // this will be in the treasury now as it has fallen
-                            // too far back to be collected.
-                            //
-                            if unpaid_but_uncollected3 &gt; 0 {
-                                current_supply -= unpaid_but_uncollected3;
-                            }
-                        }
-                    }
-
-                    last_block_staking_treasury = block.get_staking_treasury();
-                    last_block_treasury = block.get_treasury();
-
-                    //
-                    // we check that overall token supply has not changed
-                    //
-                    println!(&quot;checking token supply in block {}&quot;, i);
-                    assert_eq!(current_supply, token_supply);
                 }
 
-                assert_eq!(1, 0);
-        ***/</span>
+		<span class="comment">//</span>
+		<span class="comment">// block one sets circulation</span>
+		<span class="comment">//</span>
+                <span class="kw">if</span> <span class="ident">i</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
+
+                    <span class="ident">token_supply</span> <span class="op">=</span> <span class="ident">block_outputs</span> <span class="op">+</span> <span class="ident">block</span>.<span class="ident">get_treasury</span>() <span class="op">+</span> <span class="ident">block</span>.<span class="ident">get_staking_treasury</span>();
+                    <span class="ident">current_supply</span> <span class="op">=</span> <span class="ident">token_supply</span>;
+                    <span class="macro">println!</span>(<span class="string">&quot;initial supply: {}&quot;</span>, <span class="ident">token_supply</span>);
+
+		} <span class="kw">else</span> {
+
+		    <span class="comment">//</span>
+		    <span class="comment">// figure out how much is in circulation</span>
+		    <span class="comment">//</span>
+		    <span class="kw">if</span> <span class="ident">block_contains_fee_tx</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+
+                        <span class="ident">current_supply</span> <span class="op">-</span><span class="op">=</span> <span class="ident">block_inputs</span>;
+                        <span class="ident">current_supply</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block_outputs</span>;
+
+                        <span class="ident">unpaid_but_uncollected</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block_inputs</span>;
+			<span class="ident">unpaid_but_uncollected</span> <span class="op">-</span><span class="op">=</span> <span class="ident">block_outputs</span>;
+
+		        <span class="comment">//</span>
+		        <span class="comment">// treasury increases must come here uncollected</span>
+		        <span class="comment">//</span>
+		        <span class="kw">if</span> <span class="ident">current_block_treasury</span> <span class="op">&gt;</span> <span class="ident">previous_block_treasury</span> {
+		            <span class="ident">unpaid_but_uncollected</span> <span class="op">-</span><span class="op">=</span> (<span class="ident">current_block_treasury</span> <span class="op">-</span> <span class="ident">previous_block_treasury</span>);
+		        }
+
+ 	  	    } <span class="kw">else</span> {
+
+			<span class="comment">//</span>
+			<span class="comment">// calculate total amount paid</span>
+			<span class="comment">//</span>
+			<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_fees_paid</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
+			<span class="kw">let</span> <span class="ident">fee_transaction</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">block_fee_tx_idx</span>];
+			<span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">fee_transaction</span>.<span class="ident">get_outputs</span>() {
+			    <span class="ident">total_fees_paid</span> <span class="op">+</span><span class="op">=</span> <span class="ident">output</span>.<span class="ident">get_amount</span>();
+			}
+
+                        <span class="ident">current_supply</span> <span class="op">-</span><span class="op">=</span> <span class="ident">block_inputs</span>;
+                        <span class="ident">current_supply</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block_outputs</span>;
+                        <span class="ident">current_supply</span> <span class="op">+</span><span class="op">=</span> <span class="ident">total_fees_paid</span>;
+
+                        <span class="ident">unpaid_but_uncollected</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block_inputs</span>;
+			<span class="ident">unpaid_but_uncollected</span> <span class="op">-</span><span class="op">=</span> <span class="ident">block_outputs</span>;
+			<span class="ident">unpaid_but_uncollected</span> <span class="op">-</span><span class="op">=</span> <span class="ident">total_fees_paid</span>;
+
+		        <span class="comment">//</span>
+		        <span class="comment">// treasury increases must come here uncollected</span>
+		        <span class="comment">//</span>
+		        <span class="kw">if</span> <span class="ident">current_block_treasury</span> <span class="op">&gt;</span> <span class="ident">previous_block_treasury</span> {
+		            <span class="ident">unpaid_but_uncollected</span> <span class="op">-</span><span class="op">=</span> (<span class="ident">current_block_treasury</span> <span class="op">-</span> <span class="ident">previous_block_treasury</span>);
+		        }
+
+		    }
+			
+
+		    <span class="comment">//</span>
+		    <span class="comment">// token supply should be constant</span>
+		    <span class="comment">//</span>
+		    <span class="kw">let</span> <span class="ident">total_in_circulation</span> <span class="op">=</span> <span class="ident">current_supply</span> <span class="op">+</span> <span class="ident">unpaid_but_uncollected</span> <span class="op">+</span> <span class="ident">block</span>.<span class="ident">get_treasury</span>() <span class="op">+</span> <span class="ident">block</span>.<span class="ident">get_staking_treasury</span>();
+
+                    <span class="comment">//</span>
+                    <span class="comment">// we check that overall token supply has not changed</span>
+                    <span class="comment">//</span>
+                    <span class="macro">println!</span>(<span class="string">&quot;checking token supply in block {}&quot;</span>, <span class="ident">i</span>);
+                    <span class="macro">assert_eq!</span>(<span class="ident">total_in_circulation</span>, <span class="ident">token_supply</span>);
+                }
+            }    
+	}
     }
 }
 
