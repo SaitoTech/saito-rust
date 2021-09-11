@@ -70,7 +70,7 @@ impl Slip {
                     if *value == 1 {
                         return true;
                     } else {
-                        println!("value is {} at {:?}", *value, &self.utxoset_key);
+                        //println!("value is {} at {:?}", *value, &self.utxoset_key);
                         return false;
                     }
                 }
@@ -99,7 +99,7 @@ impl Slip {
     ) {
         if self.get_amount() > 0 {
             // TODO cleanup once ready
-            println!("updating utxoset: {:?} value {}", self.utxoset_key, slip_value);
+            //println!("updating utxoset: {:?} value {}", self.utxoset_key, slip_value);
             //println!("slip_ordinal: {}", self.get_slip_ordinal());
             //println!("slip_amount: {}", self.get_amount());
             utxoset.entry(self.utxoset_key).or_insert(slip_value);

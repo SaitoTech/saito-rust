@@ -1011,7 +1011,7 @@ mod tests {
 
             blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
         }
-***/
+**/
 
         //
         // BLOCK 1
@@ -1042,8 +1042,8 @@ mod tests {
             .await;
 
         test_manager.check_utxoset().await;
-        //test_manager.check_token_supply().await;
+        test_manager.check_token_supply().await;
 
-        //assert_eq!(0, 1);
+        assert_eq!(0, 1);
     }
 }
