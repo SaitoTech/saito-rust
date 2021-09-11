@@ -162,8 +162,6 @@ impl Transaction {
             let input_len = input_slips.len();
             let output_len = output_slips.len();
 
-println!("INPUT LEN IS: {}", input_len);
-
             for _i in 0..input_len {
                 transaction.add_input(input_slips[0].clone());
 		input_slips.remove(0);
@@ -178,8 +176,6 @@ println!("INPUT LEN IS: {}", input_len);
             output.set_publickey(to_publickey);
             output.set_amount(with_payment);
             transaction.add_output(output);
-
-println!("transaction returned with inputs {}", transaction.get_inputs().len());
 
             return transaction;
         } else {
@@ -204,7 +200,6 @@ println!("transaction returned with inputs {}", transaction.get_inputs().len());
                 output.set_amount(with_payment);
                 transaction.add_output(output);
 
-println!("transaction returned with inputs {}", transaction.get_inputs().len());
                 return transaction;
             }
 
@@ -223,7 +218,6 @@ println!("transaction returned with inputs {}", transaction.get_inputs().len());
 		    output_slips.remove(0);
                 }
 
-println!("transaction returned with inputs {}", transaction.get_inputs().len());
                 return transaction;
             }
 

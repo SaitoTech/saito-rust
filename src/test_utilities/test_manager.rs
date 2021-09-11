@@ -291,14 +291,12 @@ impl TestManager {
 
         let mut token_supply: u64 = 0;
         let mut current_supply: u64 = 0;
-        let mut block_inputs: u64 = 0;
-        let mut block_outputs: u64 = 0;
-        let mut previous_block_treasury: u64 = 0;
+        let mut block_inputs: u64;
+        let mut block_outputs: u64;
+        let mut previous_block_treasury: u64;
         let mut current_block_treasury: u64 = 0;
-        let mut last_block_treasury: u64 = 0;
-        let mut last_block_staking_treasury: u64 = 0;
         let mut unpaid_but_uncollected: u64 = 0;
-        let mut block_contains_fee_tx: u64 = 0;
+        let mut block_contains_fee_tx: u64;
         let mut block_fee_tx_idx: usize = 0;
 
         let blockchain = self.blockchain_lock.read().await;
@@ -351,7 +349,6 @@ impl TestManager {
 
                     token_supply = block_outputs + block.get_treasury() + block.get_staking_treasury();
                     current_supply = token_supply;
-                    println!("initial supply: {}", token_supply);
 
 		} else {
 
@@ -370,7 +367,7 @@ impl TestManager {
 		        // treasury increases must come here uncollected
 		        //
 		        if current_block_treasury > previous_block_treasury {
-		            unpaid_but_uncollected -= (current_block_treasury - previous_block_treasury);
+		            unpaid_but_uncollected -= current_block_treasury - previous_block_treasury;
 		        }
 
  	  	    } else {
@@ -396,7 +393,7 @@ impl TestManager {
 		        // treasury increases must come here uncollected
 		        //
 		        if current_block_treasury > previous_block_treasury {
-		            unpaid_but_uncollected -= (current_block_treasury - previous_block_treasury);
+		            unpaid_but_uncollected -= current_block_treasury - previous_block_treasury;
 		        }
 
 		    }
