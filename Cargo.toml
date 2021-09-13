@@ -18,7 +18,7 @@ name = "saitocli"
 path = "src/bin/saitocli.rs"
 
 [dependencies]
-aes = "0.7.4"
+aes = "0.7.5"
 ahash = "0.7.4"
 async-recursion = "0.3.2"
 base58 = "0.1.0"
