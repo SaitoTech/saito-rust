@@ -225,7 +225,7 @@ impl TestManager {
                     // everything spendable in blockchain.utxoset should be spendable on longest-chain
                     //
                     if *value == 1 {
-			//println!("for key: {:?}", key);
+                        //println!("for key: {:?}", key);
                         //println!("comparing {} and {}", value, value2);
                         assert_eq!(value, value2);
                     } else {
@@ -243,8 +243,8 @@ impl TestManager {
                     }
                 }
                 None => {
-//                    println!("comparing {:?} with expected value {}", key, value);
-//                    println!("Value does not exist in actual blockchain!");
+                    //                    println!("comparing {:?} with expected value {}", key, value);
+                    //                    println!("Value does not exist in actual blockchain!");
                     assert_eq!(1, 2);
                 }
             }
@@ -261,14 +261,14 @@ impl TestManager {
                     // everything spendable in longest-chain should be spendable on blockchain.utxoset
                     //
                     if *value == 1 {
-//                        println!("comparing {} and {}", value, value2);
+                        //                        println!("comparing {} and {}", value, value2);
                         assert_eq!(value, value2);
                     } else {
                         //
                         // everything spent in longest-chain should be spendable on blockchain.utxoset
                         //
                         if *value > 1 {
-//                            println!("comparing {} and {}", value, value2);
+                            //                            println!("comparing {} and {}", value, value2);
                             assert_eq!(value, value2);
                         } else {
                             //
@@ -286,9 +286,7 @@ impl TestManager {
         }
     }
 
-
     pub async fn check_token_supply(&self) {
-
         let mut token_supply: u64 = 0;
         let mut current_supply: u64 = 0;
         let mut block_inputs: u64;
@@ -306,7 +304,6 @@ impl TestManager {
         //
         //
         for i in 1..=latest_block_id {
-
             let block_hash = blockchain
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(i as u64);
@@ -316,8 +313,8 @@ impl TestManager {
             block_outputs = 0;
             block_contains_fee_tx = 0;
 
-	    previous_block_treasury = current_block_treasury;
-	    current_block_treasury = block.get_treasury();
+            previous_block_treasury = current_block_treasury;
+            current_block_treasury = block.get_treasury();
 
             //
             //
@@ -342,67 +339,65 @@ impl TestManager {
                     }
                 }
 
-		//
-		// block one sets circulation
-		//
+                //
+                // block one sets circulation
+                //
                 if i == 1 {
-
-                    token_supply = block_outputs + block.get_treasury() + block.get_staking_treasury();
+                    token_supply =
+                        block_outputs + block.get_treasury() + block.get_staking_treasury();
                     current_supply = token_supply;
-
-		} else {
-
-		    //
-		    // figure out how much is in circulation
-		    //
-		    if block_contains_fee_tx == 0 {
-
+                } else {
+                    //
+                    // figure out how much is in circulation
+                    //
+                    if block_contains_fee_tx == 0 {
                         current_supply -= block_inputs;
                         current_supply += block_outputs;
 
                         unpaid_but_uncollected += block_inputs;
-			unpaid_but_uncollected -= block_outputs;
+                        unpaid_but_uncollected -= block_outputs;
 
-		        //
-		        // treasury increases must come here uncollected
-		        //
-		        if current_block_treasury > previous_block_treasury {
-		            unpaid_but_uncollected -= current_block_treasury - previous_block_treasury;
-		        }
-
- 	  	    } else {
-
-			//
-			// calculate total amount paid
-			//
-			let mut total_fees_paid: u64 = 0;
-			let fee_transaction = &block.transactions[block_fee_tx_idx];
-			for output in fee_transaction.get_outputs() {
-			    total_fees_paid += output.get_amount();
-			}
+                        //
+                        // treasury increases must come here uncollected
+                        //
+                        if current_block_treasury > previous_block_treasury {
+                            unpaid_but_uncollected -=
+                                current_block_treasury - previous_block_treasury;
+                        }
+                    } else {
+                        //
+                        // calculate total amount paid
+                        //
+                        let mut total_fees_paid: u64 = 0;
+                        let fee_transaction = &block.transactions[block_fee_tx_idx];
+                        for output in fee_transaction.get_outputs() {
+                            total_fees_paid += output.get_amount();
+                        }
 
                         current_supply -= block_inputs;
                         current_supply += block_outputs;
                         current_supply += total_fees_paid;
 
                         unpaid_but_uncollected += block_inputs;
-			unpaid_but_uncollected -= block_outputs;
-			unpaid_but_uncollected -= total_fees_paid;
+                        unpaid_but_uncollected -= block_outputs;
+                        unpaid_but_uncollected -= total_fees_paid;
 
-		        //
-		        // treasury increases must come here uncollected
-		        //
-		        if current_block_treasury > previous_block_treasury {
-		            unpaid_but_uncollected -= current_block_treasury - previous_block_treasury;
-		        }
+                        //
+                        // treasury increases must come here uncollected
+                        //
+                        if current_block_treasury > previous_block_treasury {
+                            unpaid_but_uncollected -=
+                                current_block_treasury - previous_block_treasury;
+                        }
+                    }
 
-		    }
-			
-
-		    //
-		    // token supply should be constant
-		    //
-		    let total_in_circulation = current_supply + unpaid_but_uncollected + block.get_treasury() + block.get_staking_treasury();
+                    //
+                    // token supply should be constant
+                    //
+                    let total_in_circulation = current_supply
+                        + unpaid_but_uncollected
+                        + block.get_treasury()
+                        + block.get_staking_treasury();
 
                     //
                     // we check that overall token supply has not changed
@@ -410,8 +405,8 @@ impl TestManager {
                     println!("checking token supply in block {}", i);
                     assert_eq!(total_in_circulation, token_supply);
                 }
-            }    
-	}
+            }
+        }
     }
 }
 

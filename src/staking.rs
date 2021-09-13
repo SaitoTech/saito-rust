@@ -369,7 +369,6 @@ impl Staking {
             // roll forward
             //
             if longest_chain {
-
                 //
                 // re-create staker table, if needed
                 //
@@ -486,7 +485,6 @@ mod tests {
     };
     use std::sync::Arc;
     use tokio::sync::RwLock;
-
 
     #[test]
     fn staking_table_test() {
@@ -967,7 +965,6 @@ mod tests {
         }
     }
 
-
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test_with_test_manager() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
@@ -980,39 +977,38 @@ mod tests {
         {
             let wallet = wallet_lock.read().await;
             publickey = wallet.get_publickey();
-println!("publickey: {:?}", publickey);
+            println!("publickey: {:?}", publickey);
         }
 
         //
         // initialize blockchain staking table
         //
 
-//        {
-//            let mut blockchain = blockchain_lock.write().await;
+        //        {
+        //            let mut blockchain = blockchain_lock.write().await;
 
-//            let mut slip1 = Slip::new();
-//            slip1.set_amount(200_000_000);
-//            slip1.set_slip_type(SlipType::StakerDeposit);
+        //            let mut slip1 = Slip::new();
+        //            slip1.set_amount(200_000_000);
+        //            slip1.set_slip_type(SlipType::StakerDeposit);
 
-//            let mut slip2 = Slip::new();
-//            slip2.set_amount(300_000_000);
-//            slip2.set_slip_type(SlipType::StakerDeposit);
+        //            let mut slip2 = Slip::new();
+        //            slip2.set_amount(300_000_000);
+        //            slip2.set_slip_type(SlipType::StakerDeposit);
 
-//            slip1.set_publickey(publickey);
-//            slip2.set_publickey(publickey);
+        //            slip1.set_publickey(publickey);
+        //            slip2.set_publickey(publickey);
 
-//            slip1.generate_utxoset_key();
-//            slip2.generate_utxoset_key();
+        //            slip1.generate_utxoset_key();
+        //            slip2.generate_utxoset_key();
 
-//            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
-//            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+        //            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+        //            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
 
-//            blockchain.staking.add_deposit(slip1);
-//            blockchain.staking.add_deposit(slip2);
+        //            blockchain.staking.add_deposit(slip1);
+        //            blockchain.staking.add_deposit(slip2);
 
-//            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
-//        }
-
+        //            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
+        //        }
 
         //
         // BLOCK 1
@@ -1044,6 +1040,5 @@ println!("publickey: {:?}", publickey);
 
         test_manager.check_utxoset().await;
         test_manager.check_token_supply().await;
-
     }
 }
