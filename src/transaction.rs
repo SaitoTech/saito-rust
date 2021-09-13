@@ -164,11 +164,11 @@ impl Transaction {
 
             for _i in 0..input_len {
                 transaction.add_input(input_slips[0].clone());
-		input_slips.remove(0);
+                input_slips.remove(0);
             }
             for _i in 0..output_len {
                 transaction.add_output(output_slips[0].clone());
-		output_slips.remove(0);
+                output_slips.remove(0);
             }
 
             // add the payment
@@ -187,11 +187,11 @@ impl Transaction {
 
                 for _i in 0..input_len {
                     transaction.add_input(input_slips[0].clone());
-		    input_slips.remove(0);
+                    input_slips.remove(0);
                 }
                 for _i in 0..output_len {
                     transaction.add_output(output_slips[0].clone());
-		    output_slips.remove(0);
+                    output_slips.remove(0);
                 }
 
                 // add the payment
@@ -211,11 +211,11 @@ impl Transaction {
 
                 for _i in 0..input_len {
                     transaction.add_input(input_slips[0].clone());
-		    input_slips.remove(0);
+                    input_slips.remove(0);
                 }
                 for _i in 0..output_len {
                     transaction.add_output(output_slips[0].clone());
-		    output_slips.remove(0);
+                    output_slips.remove(0);
                 }
 
                 return transaction;

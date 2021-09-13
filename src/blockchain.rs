@@ -249,7 +249,6 @@ impl Blockchain {
         //  println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
-println!("does validate: {}", does_new_chain_validate);
             if does_new_chain_validate {
                 self.add_block_success(block_hash).await;
 
@@ -308,7 +307,7 @@ println!("does validate: {}", does_new_chain_validate);
     pub async fn add_block_to_blockchain(blockchain_lock: Arc<RwLock<Blockchain>>, block: Block) {
         let mut blockchain = blockchain_lock.write().await;
         let res = blockchain.add_block(block).await;
-	return res;
+        return res;
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
@@ -834,17 +833,20 @@ println!("does validate: {}", does_new_chain_validate);
             let mut block = self.get_mut_block(new_chain[current_wind_index]).await;
             block.generate_metadata();
 
-	    let latest_block_id = block.get_id();
+            let latest_block_id = block.get_id();
 
             //
             // ensure previous blocks that may be needed to calculate the staking
-            // tables or the nolan that are potentially falling off the chain have 
-	    // full access to their transaction data.
+            // tables or the nolan that are potentially falling off the chain have
+            // full access to their transaction data.
             //
             for i in 1..MAX_STAKER_RECURSION {
-                if i >= latest_block_id { break; }
+                if i >= latest_block_id {
+                    break;
+                }
                 let bid = latest_block_id - i;
-                let previous_block_hash = self.blockring.get_longest_chain_block_hash_by_block_id(bid);
+                let previous_block_hash =
+                    self.blockring.get_longest_chain_block_hash_by_block_id(bid);
                 if self.is_block_indexed(previous_block_hash) {
                     block = self.get_mut_block(previous_block_hash).await;
                     block.upgrade_block_to_block_type(BlockType::Full).await;

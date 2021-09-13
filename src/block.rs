@@ -327,8 +327,8 @@ impl Block {
             rebroadcast_hash: [0; 32],
             //filename: String::new(),
             block_type: BlockType::Full,
-	    // hashmap of all SaitoUTXOSetKeys of the slips in the block 
-	    slips_spent_this_block: AHashMap::new(),
+            // hashmap of all SaitoUTXOSetKeys of the slips in the block
+            slips_spent_this_block: AHashMap::new(),
             created_hashmap_of_slips_spent_this_block: false,
         }
     }
@@ -939,7 +939,6 @@ impl Block {
             }
         }
 
-
         //
         // calculate payments to miners / routers / stakers
         //
@@ -954,7 +953,6 @@ impl Block {
             // miner payout is fees from previous block, no staking treasury
             //
             if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-
                 let miner_payment = previous_block.get_total_fees() / 2;
                 let router_payment = previous_block.get_total_fees() - miner_payment;
 
@@ -992,7 +990,6 @@ impl Block {
                     if loop_idx >= MAX_STAKER_RECURSION {
                         cont = 0;
                     } else {
-
                         if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
                             staking_block_hash = staking_block.get_previous_block_hash();
 
@@ -1010,45 +1007,53 @@ impl Block {
                                 let rp = staking_block.get_total_fees() - sp;
 
                                 let mut payout = BlockPayout::new();
-                                payout.router = staking_block.find_winning_router(next_random_number).publickey;
-				payout.router_payout = rp;
+                                payout.router = staking_block
+                                    .find_winning_router(next_random_number)
+                                    .publickey;
+                                payout.router_payout = rp;
                                 payout.staking_treasury = sp as i64;
 
                                 next_random_number = hash(&next_random_number.to_vec());
 
-                                let staker_slip_option = blockchain.staking.find_winning_staker(next_random_number);
+                                let staker_slip_option =
+                                    blockchain.staking.find_winning_staker(next_random_number);
                                 if let Some(staker_slip) = staker_slip_option {
+                                    let mut slip_was_spent = 0;
 
-				    let mut slip_was_spent = 0;
+                                    //
+                                    // check to see if the block already pays out to this slip
+                                    //
+                                    for i in 0..cv.block_payout.len() {
+                                        if cv.block_payout[i].staker_slip.get_utxoset_key()
+                                            == staker_slip.get_utxoset_key()
+                                        {
+                                            slip_was_spent = 1;
+                                            break;
+                                        }
+                                    }
 
-				    //
-				    // check to see if the block already pays out to this slip
-				    //
-            			    for i in 0..cv.block_payout.len() {
-					if cv.block_payout[i].staker_slip.get_utxoset_key() == staker_slip.get_utxoset_key() {
-					    slip_was_spent = 1;
-					    break;
-					}
-				    }
+                                    //
+                                    // check to see if staker slip already spent/withdrawn
+                                    //
+                                    if self
+                                        .slips_spent_this_block
+                                        .contains_key(&staker_slip.get_utxoset_key())
+                                    {
+                                        slip_was_spent = 1;
+                                    }
 
-				    //
-				    // check to see if staker slip already spent/withdrawn
-				    //
-				    if self.slips_spent_this_block.contains_key(&staker_slip.get_utxoset_key()) {
-				        slip_was_spent = 1;
-				    }
-          
                                     //
                                     // add payout to staker if staker is new
                                     //
-				    // the payout is the return on staking, stored separately so that the
+                                    // the payout is the return on staking, stored separately so that the
                                     // UTXO for the slip will still validate.
                                     //
-				    if slip_was_spent == 0 {
+                                    if slip_was_spent == 0 {
                                         payout.staker = staker_slip.get_publickey();
-                                        payout.staker_payout = staker_slip.get_amount() + staker_slip.get_payout();
+                                        payout.staker_payout =
+                                            staker_slip.get_amount() + staker_slip.get_payout();
                                         payout.staker_slip = staker_slip.clone();
-				    }
+                                    }
 
                                     next_random_number = hash(&next_random_number.to_vec());
 
@@ -1060,35 +1065,33 @@ impl Block {
                 }
             }
 
-	    //
-	    // now create fee transaction using the block payout data
-	    //
-	    let mut slip_ordinal = 0;
+            //
+            // now create fee transaction using the block payout data
+            //
+            let mut slip_ordinal = 0;
             let mut transaction = Transaction::new();
             transaction.set_transaction_type(TransactionType::Fee);
 
-	    for i in 0..cv.block_payout.len() {
-
-	        if cv.block_payout[i].miner != [0; 33] {
+            for i in 0..cv.block_payout.len() {
+                if cv.block_payout[i].miner != [0; 33] {
                     let mut output = Slip::new();
                     output.set_publickey(cv.block_payout[i].miner);
                     output.set_amount(cv.block_payout[i].miner_payout);
                     output.set_slip_type(SlipType::MinerOutput);
                     output.set_slip_ordinal(slip_ordinal);
-		    transaction.add_output(output.clone());
-		    slip_ordinal += 1;
-		}
-	        if cv.block_payout[i].router != [0; 33] {
+                    transaction.add_output(output.clone());
+                    slip_ordinal += 1;
+                }
+                if cv.block_payout[i].router != [0; 33] {
                     let mut output = Slip::new();
                     output.set_publickey(cv.block_payout[i].router);
                     output.set_amount(cv.block_payout[i].router_payout);
                     output.set_slip_type(SlipType::RouterOutput);
                     output.set_slip_ordinal(slip_ordinal);
-		    transaction.add_output(output.clone());
-		    slip_ordinal += 1;
-		}
-	        if cv.block_payout[i].staker != [0; 33] {
-
+                    transaction.add_output(output.clone());
+                    slip_ordinal += 1;
+                }
+                if cv.block_payout[i].staker != [0; 33] {
                     transaction.add_input(cv.block_payout[i].staker_slip.clone());
 
                     let mut output = Slip::new();
@@ -1096,46 +1099,46 @@ impl Block {
                     output.set_amount(cv.block_payout[i].staker_payout);
                     output.set_slip_type(SlipType::StakerOutput);
                     output.set_slip_ordinal(slip_ordinal);
-		    transaction.add_output(output);
-		    slip_ordinal += 1;
+                    transaction.add_output(output);
+                    slip_ordinal += 1;
                     cv.staking_treasury += cv.block_payout[i].staking_treasury;
                     cv.staking_treasury -= cv.block_payout[i].staker_payout as i64;
-		}
+                }
             }
 
             cv.fee_transaction = Some(transaction);
         }
 
-
         //
-        // if there is no golden ticket AND there is no golden ticket before the MAX 
-	// blocks we recurse to collect NOLAN we have to add the amount of the unpaid
-	// block to the amount of NOLAN that is falling off our chain.
+        // if there is no golden ticket AND there is no golden ticket before the MAX
+        // blocks we recurse to collect NOLAN we have to add the amount of the unpaid
+        // block to the amount of NOLAN that is falling off our chain.
         //
         if cv.gt_num == 0 {
-	    for i in 1..=MAX_STAKER_RECURSION {
+            for i in 1..=MAX_STAKER_RECURSION {
+                if i >= self.get_id() {
+                    break;
+                }
 
-	        if i >= self.get_id() { 
-		    break;
-		}
-
-		let bid = self.get_id() - i;
-		let previous_block_hash = blockchain.blockring.get_longest_chain_block_hash_by_block_id(bid);
+                let bid = self.get_id() - i;
+                let previous_block_hash = blockchain
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(bid);
                 let previous_block = blockchain.get_block(previous_block_hash).await;
 
                 if previous_block.get_has_golden_ticket() {
-		    break;
-		} else {
-		    //
-		    // this is the block BEFORE from which we need to collect the nolan due to
-		    // our iterator starting at 0 for the current block. i.e. if MAX_STAKER_
-		    // RECURSION is 3, at 3 we are the fourth block back.
-		    //
-		    if i == MAX_STAKER_RECURSION {
+                    break;
+                } else {
+                    //
+                    // this is the block BEFORE from which we need to collect the nolan due to
+                    // our iterator starting at 0 for the current block. i.e. if MAX_STAKER_
+                    // RECURSION is 3, at 3 we are the fourth block back.
+                    //
+                    if i == MAX_STAKER_RECURSION {
                         cv.nolan_falling_off_chain = previous_block.get_total_fees();
-		    }
-	        }
-	    }
+                    }
+                }
+            }
         }
 
         cv
@@ -1280,31 +1283,30 @@ impl Block {
             cumulative_fees = transaction.generate_metadata_cumulative_fees(cumulative_fees);
             cumulative_work = transaction.generate_metadata_cumulative_work(cumulative_work);
 
-	    //
-	    // update slips_spent_this_block so that we have a record of
-	    // how many times input slips are spent in this block. we will
-	    // use this later to ensure there are no duplicates. this include
-	    // during the fee transaction, so that we cannot pay a staker 
-	    // that is also paid this block otherwise.
-	    //
-	    // we skip the fee transaction as otherwise we have trouble 
-	    // validating the staker slips if we have received a block from
-	    // someone else -- i.e. we will think the slip is spent in the 
-	    // block when generating the FEE TX to check against the in-block
-	    // fee tx.
-	    //
-	    if !self.created_hashmap_of_slips_spent_this_block {
-		if transaction.get_transaction_type() != TransactionType::Fee {
+            //
+            // update slips_spent_this_block so that we have a record of
+            // how many times input slips are spent in this block. we will
+            // use this later to ensure there are no duplicates. this include
+            // during the fee transaction, so that we cannot pay a staker
+            // that is also paid this block otherwise.
+            //
+            // we skip the fee transaction as otherwise we have trouble
+            // validating the staker slips if we have received a block from
+            // someone else -- i.e. we will think the slip is spent in the
+            // block when generating the FEE TX to check against the in-block
+            // fee tx.
+            //
+            if !self.created_hashmap_of_slips_spent_this_block {
+                if transaction.get_transaction_type() != TransactionType::Fee {
                     for input in transaction.get_inputs() {
-	                self.slips_spent_this_block.entry(input.get_utxoset_key())
-		            .and_modify(|e| { *e += 1 })
-	                    .or_insert(1);
-	            }
-		    self.created_hashmap_of_slips_spent_this_block = true;
-		}
-	    }
-
-
+                        self.slips_spent_this_block
+                            .entry(input.get_utxoset_key())
+                            .and_modify(|e| *e += 1)
+                            .or_insert(1);
+                    }
+                    self.created_hashmap_of_slips_spent_this_block = true;
+                }
+            }
 
             //
             // also check the transactions for golden ticket and fees
@@ -1760,7 +1762,6 @@ impl Block {
         //
         mem::swap(&mut block.transactions, transactions);
 
-
         //
         // update slips_spent_this_block so that we have a record of
         // how many times input slips are spent in this block. we will
@@ -1768,26 +1769,26 @@ impl Block {
         // during the fee transaction, so that we cannot pay a staker
         // that is also paid this block otherwise.
         //
-	// this will not include the fee transaction or the ATR txs
-	// because they have not been added to teh block yet, but they
-	// permit us to avoid paying out StakerWithdrawal slips when we
-	// generate the fee payment.
-	//
-	// note -- no need to have an exception for the FEE TX here as 
-	// we have not added it yet.
-	//
+        // this will not include the fee transaction or the ATR txs
+        // because they have not been added to teh block yet, but they
+        // permit us to avoid paying out StakerWithdrawal slips when we
+        // generate the fee payment.
+        //
+        // note -- no need to have an exception for the FEE TX here as
+        // we have not added it yet.
+        //
         if !block.created_hashmap_of_slips_spent_this_block {
             for transaction in &block.transactions {
                 for input in transaction.get_inputs() {
-                    block.slips_spent_this_block.entry(input.get_utxoset_key())
-                        .and_modify(|e| { *e += 1 })
+                    block
+                        .slips_spent_this_block
+                        .entry(input.get_utxoset_key())
+                        .and_modify(|e| *e += 1)
                         .or_insert(1);
                 }
                 block.created_hashmap_of_slips_spent_this_block = true;
             }
         }
-
-
 
         //
         // contextual values
@@ -1809,7 +1810,6 @@ impl Block {
             }
         }
 
-
         //
         // ATR transactions
         //
@@ -1821,8 +1821,6 @@ impl Block {
         if rlen > 0 {
             block.transactions.append(&mut cv.rebroadcasts);
         }
-
-
 
         //
         // fee transactions
@@ -1846,9 +1844,6 @@ impl Block {
             block.add_transaction(fee_tx);
         }
 
-
-
-
         //
         // update slips_spent_this_block so that we have a record of
         // how many times input slips are spent in this block. we will
@@ -1857,17 +1852,17 @@ impl Block {
         // that is also paid this block otherwise.
         //
         for transaction in &block.transactions {
-	    if transaction.get_transaction_type() != TransactionType::Fee {
+            if transaction.get_transaction_type() != TransactionType::Fee {
                 for input in transaction.get_inputs() {
-                    block.slips_spent_this_block.entry(input.get_utxoset_key())
-                        .and_modify(|e| { *e += 1 })
+                    block
+                        .slips_spent_this_block
+                        .entry(input.get_utxoset_key())
+                        .and_modify(|e| *e += 1)
                         .or_insert(1);
                 }
-	    }
+            }
         }
         block.created_hashmap_of_slips_spent_this_block = true;
-
-
 
         //
         // set difficulty
