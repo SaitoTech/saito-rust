@@ -249,6 +249,9 @@ impl Mempool {
     ) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_hash = blockchain.get_latest_block_hash();
+
+println!("We are generating the block with this block hash: {:?}", blockchain.get_latest_block_hash());
+
         let block = Block::generate(
             &mut self.transactions,
             previous_block_hash,

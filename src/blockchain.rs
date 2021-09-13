@@ -74,11 +74,14 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
+
         event!(
             Level::TRACE,
-            " ... blockchain.add_block start: {:?} txs: {}",
+            " ... blockchain.add_block start: {:?} txs: {} hash: {:?}, and id {}",
             create_timestamp(),
-            block.transactions.len()
+            block.transactions.len(),
+            block.get_hash(),
+            block.get_id()
         );
 
         //
@@ -89,6 +92,9 @@ impl Blockchain {
         let block_hash = block.get_hash();
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_longest_chain_block_hash();
+
+println!("blockring reports prev hash: {:?}", previous_block_hash);
+println!("block reports: {:?}", block.get_previous_block_hash());
 
         //
         // sanity checks

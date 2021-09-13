@@ -130,6 +130,7 @@ pub async fn main() -> saito_rust::Result<()> {
         event!(Level::INFO, "{:?}", server_transaction_url);
 
         loop {
+
             let mut transactions: Vec<Transaction> = vec![];
 
             event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
@@ -146,6 +147,7 @@ pub async fn main() -> saito_rust::Result<()> {
                 );
 
                 // sign ...
+                //transaction.generate_metadata();
                 transaction.sign(privatekey);
 
                 // add some test hops ...
@@ -155,6 +157,9 @@ pub async fn main() -> saito_rust::Result<()> {
                 transaction
                     .add_hop_to_path(wallet_lock.clone(), publickey)
                     .await;
+
+
+//println!("TRANSACTION: {:?}", transaction);
 
                 transactions.push(transaction);
             }
@@ -175,7 +180,7 @@ pub async fn main() -> saito_rust::Result<()> {
                     }
                 }
             }
-            sleep(Duration::from_millis(2000));
+            sleep(Duration::from_millis(4000));
         }
     });
 
