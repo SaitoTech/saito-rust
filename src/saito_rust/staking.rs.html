@@ -1044,11 +1044,6 @@
 <span id="1042">1042</span>
 <span id="1043">1043</span>
 <span id="1044">1044</span>
-<span id="1045">1045</span>
-<span id="1046">1046</span>
-<span id="1047">1047</span>
-<span id="1048">1048</span>
-<span id="1049">1049</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TODO</span>
@@ -1421,7 +1416,6 @@
             <span class="comment">// roll forward</span>
             <span class="comment">//</span>
             <span class="kw">if</span> <span class="ident">longest_chain</span> {
-
                 <span class="comment">//</span>
                 <span class="comment">// re-create staker table, if needed</span>
                 <span class="comment">//</span>
@@ -1538,7 +1532,6 @@
     };
     <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
     <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
-
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">staking_table_test</span>() {
@@ -2019,7 +2012,6 @@
         }
     }
 
-
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_roll_forward_staking_table_test_with_test_manager</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::default</span>()));
@@ -2032,39 +2024,38 @@
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
-<span class="macro">println!</span>(<span class="string">&quot;publickey: {:?}&quot;</span>, <span class="ident">publickey</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;publickey: {:?}&quot;</span>, <span class="ident">publickey</span>);
         }
 
         <span class="comment">//</span>
         <span class="comment">// initialize blockchain staking table</span>
         <span class="comment">//</span>
 
-<span class="comment">//        {</span>
-<span class="comment">//            let mut blockchain = blockchain_lock.write().await;</span>
+        <span class="comment">//        {</span>
+        <span class="comment">//            let mut blockchain = blockchain_lock.write().await;</span>
 
-<span class="comment">//            let mut slip1 = Slip::new();</span>
-<span class="comment">//            slip1.set_amount(200_000_000);</span>
-<span class="comment">//            slip1.set_slip_type(SlipType::StakerDeposit);</span>
+        <span class="comment">//            let mut slip1 = Slip::new();</span>
+        <span class="comment">//            slip1.set_amount(200_000_000);</span>
+        <span class="comment">//            slip1.set_slip_type(SlipType::StakerDeposit);</span>
 
-<span class="comment">//            let mut slip2 = Slip::new();</span>
-<span class="comment">//            slip2.set_amount(300_000_000);</span>
-<span class="comment">//            slip2.set_slip_type(SlipType::StakerDeposit);</span>
+        <span class="comment">//            let mut slip2 = Slip::new();</span>
+        <span class="comment">//            slip2.set_amount(300_000_000);</span>
+        <span class="comment">//            slip2.set_slip_type(SlipType::StakerDeposit);</span>
 
-<span class="comment">//            slip1.set_publickey(publickey);</span>
-<span class="comment">//            slip2.set_publickey(publickey);</span>
+        <span class="comment">//            slip1.set_publickey(publickey);</span>
+        <span class="comment">//            slip2.set_publickey(publickey);</span>
 
-<span class="comment">//            slip1.generate_utxoset_key();</span>
-<span class="comment">//            slip2.generate_utxoset_key();</span>
+        <span class="comment">//            slip1.generate_utxoset_key();</span>
+        <span class="comment">//            slip2.generate_utxoset_key();</span>
 
-<span class="comment">//            slip1.on_chain_reorganization(&amp;mut blockchain.utxoset, true, 1);</span>
-<span class="comment">//            slip2.on_chain_reorganization(&amp;mut blockchain.utxoset, true, 1);</span>
+        <span class="comment">//            slip1.on_chain_reorganization(&amp;mut blockchain.utxoset, true, 1);</span>
+        <span class="comment">//            slip2.on_chain_reorganization(&amp;mut blockchain.utxoset, true, 1);</span>
 
-<span class="comment">//            blockchain.staking.add_deposit(slip1);</span>
-<span class="comment">//            blockchain.staking.add_deposit(slip2);</span>
+        <span class="comment">//            blockchain.staking.add_deposit(slip1);</span>
+        <span class="comment">//            blockchain.staking.add_deposit(slip2);</span>
 
-<span class="comment">//            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito</span>
-<span class="comment">//        }</span>
-
+        <span class="comment">//            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito</span>
+        <span class="comment">//        }</span>
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 1</span>
@@ -2096,7 +2087,6 @@
 
         <span class="ident">test_manager</span>.<span class="ident">check_utxoset</span>().<span class="kw">await</span>;
         <span class="ident">test_manager</span>.<span class="ident">check_token_supply</span>().<span class="kw">await</span>;
-
     }
 }
 </pre></div>
