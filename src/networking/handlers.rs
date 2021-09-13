@@ -1,7 +1,6 @@
 use crate::blockchain::Blockchain;
 use crate::mempool::Mempool;
 use crate::networking::network::Result;
-use crate::networking::peer::handle_inbound_peer_connection;
 use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
@@ -12,7 +11,7 @@ use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
 
-use super::peer::PeersDB;
+use super::peer::{handle_inbound_peer_connection, PeersDB};
 
 #[derive(Debug)]
 struct Invalid;
@@ -103,16 +102,11 @@ pub async fn post_transaction_handler(
 //         let cnt = body.chunk().len();
 //         body.advance(cnt);
 //     }
-
 //     let tx = Transaction::deserialize_from_net(buffer);
-//     println!("{:?}", tx.get_signature());
-
 //     Ok(warp::reply())
 // }
 
 pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
-    println!("GET BLOCK");
-
     let mut block_hash = [0u8; 32];
     hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
 
@@ -126,8 +120,6 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
 }
 
 // pub async fn get_block_handler_json(str_block_hash: String) -> Result<impl Reply> {
-//     println!("GET BLOCK");
-
 //     let mut block_hash = [0u8; 32];
 //     hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
 

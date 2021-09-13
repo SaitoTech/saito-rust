@@ -5,18 +5,18 @@ use crate::networking::api_message::APIMessage;
 use crate::networking::filters::{
     get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter,
 };
-use crate::networking::peer::{BasePeer, OutboundPeer};
+use crate::networking::peer::{OutboundPeer, SaitoPeer};
 use crate::util::format_url_string;
 
 use crate::wallet::Wallet;
 use futures::StreamExt;
 use secp256k1::PublicKey;
 use tokio::sync::RwLock;
+use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 use uuid::Uuid;
 
 use std::sync::Arc;
-use std::thread::sleep;
 use std::time::Duration;
 use warp::{Filter, Rejection};
 
@@ -64,17 +64,17 @@ impl Network {
             peer.set_is_connected_or_connecting(true).await;
         }
 
-        // let (ws_stream, _) = connect_async(peer_url).await.expect("Failed to connect");
         let ws_stream_result = connect_async(peer_url).await;
         match ws_stream_result {
             Ok((ws_stream, _)) => {
                 let (write_sink, mut read_stream) = ws_stream.split();
-                let outbound_peer_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
-                outbound_peer_db_global
-                    .write()
-                    .await
-                    .insert(connection_id, OutboundPeer { write_sink });
-
+                {
+                    let outbound_peer_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+                    outbound_peer_db_global
+                        .write()
+                        .await
+                        .insert(connection_id, OutboundPeer { write_sink });
+                }
                 let publickey: SaitoPublicKey;
                 {
                     let wallet = wallet_lock.read().await;
@@ -87,24 +87,14 @@ impl Network {
                         .serialize()
                         .to_vec(),
                 );
-                {
-                    let peers_db_global = PEERS_DB_GLOBAL.clone();
-                    let mut peer_db = peers_db_global.write().await;
-                    let peer = peer_db.get_mut(&connection_id).unwrap();
-                    peer.send_command(&String::from("SHAKINIT"), message_data)
-                        .await;
-                }
-
                 let _foo = tokio::spawn(async move {
                     while let Some(result) = read_stream.next().await {
                         match result {
                             Ok(message) => {
                                 if message.len() > 0 {
                                     let api_message = APIMessage::deserialize(&message.into_data());
-                                    let peers_db_global = PEERS_DB_GLOBAL.clone();
-                                    let mut peer_db = peers_db_global.write().await;
-                                    let peer = peer_db.get_mut(&connection_id).unwrap();
-                                    peer.handle_peer_command(&api_message).await;
+                                    SaitoPeer::handle_peer_message(api_message, connection_id)
+                                        .await;
                                 } else {
                                     println!("Message of length 0... why?");
                                     println!("This seems to occur if we aren't holding a reference to the sender/stream on the");
@@ -114,19 +104,23 @@ impl Network {
                                     println!("it would be very helpful to see this if starts to occur again. We may want to");
                                     println!("treat this as a disconnect.");
                                 }
-                            },
+                            }
                             Err(error) => {
-                                {
-                                    println!("Error reading from peer socket {}", error);
-                                    let peers_db_global = PEERS_DB_GLOBAL.clone();
-                                    let mut peer_db = peers_db_global.write().await;
-                                    let peer = peer_db.get_mut(&connection_id).unwrap();
-                                    peer.set_is_connected_or_connecting(false).await;
-                                }
+                                println!("Error reading from peer socket {}", error);
+                                let peers_db_global = PEERS_DB_GLOBAL.clone();
+                                let mut peer_db = peers_db_global.write().await;
+                                let peer = peer_db.get_mut(&connection_id).unwrap();
+                                peer.set_is_connected_or_connecting(false).await;
                             }
                         }
                     }
-                }).await;
+                });
+                {
+                    let peers_db_global = PEERS_DB_GLOBAL.clone();
+                    let mut peer_db = peers_db_global.write().await;
+                    let peer = peer_db.get_mut(&connection_id).unwrap();
+                    SaitoPeer::send_command(peer, &String::from("SHAKINIT"), message_data).await;
+                }
             }
             Err(error) => {
                 println!("Error connecting to peer {}", error);
@@ -151,7 +145,7 @@ impl Network {
             for peer_setting in peer_settings {
                 let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
 
-                let peer = BasePeer::new(
+                let peer = SaitoPeer::new(
                     connection_id,
                     Some(peer_setting.host),
                     Some(peer_setting.port),
@@ -182,16 +176,10 @@ impl Network {
                 {
                     let peers_db_global = PEERS_DB_GLOBAL.clone();
                     let peers_db = peers_db_global.read().await;
-                    println!("try reconnect... peer count: {}", peers_db.keys().len());
                     peer_states = peers_db
                         .keys()
                         .map(|connection_id| {
                             let peer = peers_db.get(connection_id).unwrap();
-                            println!(
-                                "get_is_from_peer_list {}, get_is_connected_or_connecting {}",
-                                peer.get_is_from_peer_list(),
-                                peer.get_is_connected_or_connecting()
-                            );
                             let should_try_reconnect = peer.get_is_from_peer_list()
                                 && !peer.get_is_connected_or_connecting();
                             (*connection_id, should_try_reconnect)
@@ -200,11 +188,11 @@ impl Network {
                 }
                 for (connection_id, should_try_reconnect) in peer_states {
                     if should_try_reconnect {
-                        println!("found disconnected peer...");
+                        println!("found disconnected peer in peer settings, connecting...");
                         Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
                     }
                 }
-                sleep(Duration::from_millis(1000));
+                sleep(Duration::from_millis(1000)).await;
             }
         })
         .await

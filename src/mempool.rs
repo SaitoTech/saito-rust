@@ -11,6 +11,7 @@ use crate::{
 };
 use std::{collections::HashMap, collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
+use tracing::{event, Level};
 
 #[derive(Clone, Debug)]
 pub enum MempoolMessage {
@@ -38,7 +39,7 @@ pub enum AddTransactionResult {
 /// received over the network are queued in the `Mempool` before being added to
 /// the `Blockchain`
 pub struct Mempool {
-    blocks: VecDeque<Block>,
+    blocks_queue: VecDeque<Block>,
     pub transactions: Vec<Transaction>, // vector so we just copy it over
     routing_work_in_mempool: u64,
     wallet_lock: Arc<RwLock<Wallet>>,
@@ -53,7 +54,7 @@ impl Mempool {
     #[allow(clippy::clippy::new_without_default)]
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Mempool {
-            blocks: VecDeque::new(),
+            blocks_queue: VecDeque::new(),
             transactions: vec![],
             routing_work_in_mempool: 0,
             wallet_lock,
@@ -76,16 +77,16 @@ impl Mempool {
         self.broadcast_channel_sender = Some(bcs);
     }
 
-    pub fn add_block(&mut self, block: Block) -> AddBlockResult {
+    pub fn add_block_to_queue(&mut self, block: Block) -> AddBlockResult {
         let hash_to_insert = block.get_hash();
         if self
-            .blocks
+            .blocks_queue
             .iter()
             .any(|block| block.get_hash() == hash_to_insert)
         {
             return AddBlockResult::Exists;
         } else {
-            self.blocks.push_back(block);
+            self.blocks_queue.push_back(block);
             return AddBlockResult::Accepted;
         }
     }
@@ -109,8 +110,6 @@ impl Mempool {
 
         let routing_work_available_for_me =
             transaction.get_routing_work_for_publickey(self.mempool_publickey);
-
-        //        println!("adding tx with routing work for me: {}", routing_work_available_for_me);
 
         if self
             .transactions
@@ -175,7 +174,7 @@ impl Mempool {
         {
             return AddTransactionResult::Exists;
         } else {
-            println!("adding golden ticket to mempool...");
+            event!(Level::TRACE, "adding golden ticket to mempool...");
             self.transactions.push(transaction);
             return AddTransactionResult::Accepted;
         }
@@ -229,7 +228,14 @@ impl Mempool {
         if let Some(previous_block) = blockchain.get_latest_block() {
             let work_available = self.calculate_work_available();
             let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
-
+            let time_elapsed = current_timestamp - previous_block.get_timestamp();
+            event!(
+                Level::INFO,
+                "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
+                work_available,
+                work_needed,
+                time_elapsed
+            );
             work_available >= work_needed
         } else {
             true
@@ -289,9 +295,9 @@ pub async fn process_blocks(
     let mut mempool = mempool_lock.write().await;
     mempool.currently_processing_block = true;
     let mut blockchain = blockchain_lock.write().await;
-    while let Some(block) = mempool.blocks.pop_front() {
+    while let Some(block) = mempool.blocks_queue.pop_front() {
         mempool.delete_transactions(&block.transactions);
-        blockchain.add_block(block, true).await;
+        blockchain.add_block(block).await;
     }
     mempool.currently_processing_block = false;
 }
@@ -348,7 +354,7 @@ pub async fn run(
                             &mut SystemTimestampGenerator{},
                         ).await {
                             let mut mempool = mempool_lock.write().await;
-                            if AddBlockResult::Accepted == mempool.add_block(block) {
+                            if AddBlockResult::Accepted == mempool.add_block_to_queue(block) {
                                 mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                             } else {
                                 panic!("Tried to make a block that already exists");
@@ -421,7 +427,7 @@ mod tests {
     fn mempool_new_test() {
         let wallet = Wallet::new("test/testwallet", Some("asdf"));
         let mempool = Mempool::new(Arc::new(RwLock::new(wallet)));
-        assert_eq!(mempool.blocks, VecDeque::new());
+        assert_eq!(mempool.blocks_queue, VecDeque::new());
     }
 
     #[test]
@@ -431,13 +437,15 @@ mod tests {
 
         let block = Block::new();
 
-        mempool.add_block(block.clone());
+        mempool.add_block_to_queue(block.clone());
 
-        assert_eq!(Some(block), mempool.blocks.pop_front())
+        assert_eq!(Some(block), mempool.blocks_queue.pop_front())
     }
 
+    #[ignore]
     #[tokio::test]
     async fn blockchain_test() {
+        // TODO Fix this test
         let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
@@ -464,7 +472,6 @@ mod tests {
             let wallet = wallet_lock.read().await;
             let balance = wallet.get_available_balance();
             assert_eq!(balance, 11000000);
-            println!("balance {}", balance);
         }
         for _i in 0..4 {
             let block = make_block_with_mempool(
@@ -481,7 +488,7 @@ mod tests {
             {
                 let mut blockchain = blockchain_lock.write().await;
                 let prev_hash_before = block.get_previous_block_hash();
-                blockchain.add_block(block, false).await;
+                blockchain.add_block(block).await;
                 let prev_hash_after = blockchain
                     .get_latest_block()
                     .unwrap()

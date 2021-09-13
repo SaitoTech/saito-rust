@@ -1,5 +1,5 @@
 use crate::{
-    blockchain::{Blockchain, GENESIS_PERIOD},
+    blockchain::{Blockchain, GENESIS_PERIOD, MAX_STAKER_RECURSION},
     burnfee::BurnFee,
     crypto::{
         hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
@@ -10,7 +10,7 @@ use crate::{
     slip::{Slip, SlipType, SLIP_SIZE},
     staking::Staking,
     storage::Storage,
-    time::create_timestamp,
+    time::{create_timestamp, TracingTimer},
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
     wallet::Wallet,
 };
@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::{mem, sync::Arc};
 use tokio::sync::RwLock;
+use tracing::{event, span, Level};
 
 pub const BLOCK_HEADER_SIZE: usize = 213;
 
@@ -59,6 +60,8 @@ pub struct ConsensusValues {
     pub nolan_falling_off_chain: u64,
     // staker treasury -> amount to add
     pub staking_treasury: i64,
+    // block payout
+    pub block_payout: Vec<BlockPayout>,
 }
 impl ConsensusValues {
     #[allow(clippy::too_many_arguments)]
@@ -79,13 +82,53 @@ impl ConsensusValues {
             rebroadcast_hash: [0; 32],
             nolan_falling_off_chain: 0,
             staking_treasury: 0,
+            block_payout: vec![],
         }
     }
 }
 
 //
-// The BlockPayout object is returned by the function that calculates
-// who deserves the payment for each block.
+// The BlockPayout object is returned by each block to report who
+// receives the payment from the block. It is included in the
+// consensus_values so that the fee transaction can be generated
+// and validated.
+//
+#[derive(PartialEq, Debug, Clone)]
+pub struct BlockPayout {
+    pub miner: SaitoPublicKey,
+    pub router: SaitoPublicKey,
+    pub staker: SaitoPublicKey,
+    pub miner_payout: u64,
+    pub router_payout: u64,
+    pub staker_payout: u64,
+    pub staking_treasury: i64,
+    pub staker_slip: Slip,
+    pub random_number: SaitoHash,
+}
+impl BlockPayout {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new() -> BlockPayout {
+        BlockPayout {
+            miner: [0; 33],
+            router: [0; 33],
+            staker: [0; 33],
+            miner_payout: 0,
+            router_payout: 0,
+            staker_payout: 0,
+            staking_treasury: 0,
+            staker_slip: Slip::new(),
+            random_number: [0; 32],
+        }
+    }
+}
+
+//
+// The RouterPayout object is returned by the function that calculates
+// who deserves the payment for each block. This is somewhat obsolete but
+// is used to generate the BlockPayout object above.
+//
+// TODO eliminate reliance on this struct when creating the block payout
+// object to permit its removal.
 //
 #[derive(PartialEq, Debug, Clone)]
 pub struct RouterPayout {
@@ -247,6 +290,11 @@ pub struct Block {
     pub rebroadcast_hash: [u8; 32],
     // the state of the block w/ pruning etc
     pub block_type: BlockType,
+    // vector of staker slips spent this block - used to prevent withdrawals and payouts same block
+    #[serde(skip)]
+    pub slips_spent_this_block: AHashMap<SaitoUTXOSetKey, u64>,
+    #[serde(skip)]
+    pub created_hashmap_of_slips_spent_this_block: bool,
 }
 
 impl Block {
@@ -279,6 +327,9 @@ impl Block {
             rebroadcast_hash: [0; 32],
             //filename: String::new(),
             block_type: BlockType::Full,
+            // hashmap of all SaitoUTXOSetKeys of the slips in the block
+            slips_spent_this_block: AHashMap::new(),
+            created_hashmap_of_slips_spent_this_block: false,
         }
     }
 
@@ -478,7 +529,12 @@ impl Block {
     // not possible, return false. if it is possible, return true once upgraded.
     //
     pub async fn upgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
-        println!("upgrade_block_to_block_type {:?}", self.block_type);
+        let _span = span!(Level::TRACE, "UPGRADE BLOCK");
+        event!(
+            Level::TRACE,
+            "UPGRADE_BLOCK_TO_BLOCK_TYPE {:?}",
+            self.block_type
+        );
         if self.block_type == block_type {
             return true;
         }
@@ -517,7 +573,8 @@ impl Block {
     // true, otherwise return false.
     //
     pub async fn downgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
-        //println!("downgrading block: {}", self.get_id());
+        let _span = span!(Level::TRACE, "DOWNGRADE BLOCK");
+        event!(Level::TRACE, "BLOCK_ID {:?}", self.get_id());
 
         if self.block_type == block_type {
             return true;
@@ -528,7 +585,6 @@ impl Block {
         // load the block if it exists on disk.
         //
         if block_type == BlockType::Pruned {
-            println!("pruning!");
             self.transactions = vec![];
             self.set_block_type(BlockType::Pruned);
             return true;
@@ -632,7 +688,7 @@ impl Block {
     /// [burnfee - 8 bytes - u64]
     /// [difficulty - 8 bytes - u64]
     /// [transaction][transaction][transaction]...
-    pub fn deserialize_for_net(bytes: Vec<u8>) -> Block {
+    pub fn deserialize_for_net(bytes: &Vec<u8>) -> Block {
         let transactions_len: u32 = u32::from_be_bytes(bytes[0..4].try_into().unwrap());
         let id: u64 = u64::from_be_bytes(bytes[4..12].try_into().unwrap());
         let timestamp: u64 = u64::from_be_bytes(bytes[12..20].try_into().unwrap());
@@ -807,18 +863,15 @@ impl Block {
             let difficulty = previous_block.get_difficulty();
             if !previous_block.get_has_golden_ticket() && cv.gt_num == 0 {
                 if difficulty > 0 {
-                    //println!("PREVIOUS BLOCK DIFFICULTY IS GREATER THAN 0");
                     cv.expected_difficulty = previous_block.get_difficulty() - 1;
                 }
             } else if previous_block.get_has_golden_ticket() && cv.gt_num > 0 {
-                //println!("WE'RE ADDING ONE TO DIFFICULTY");
                 cv.expected_difficulty = difficulty + 1;
             } else {
-                //println!("DIFFICULTY REMAINS THE SAME");
                 cv.expected_difficulty = difficulty;
             }
         } else {
-            println!("Previous block not found");
+            event!(Level::ERROR, "CAN'T FIND PREVIOUSLY BLOCK");
         }
 
         //
@@ -828,12 +881,6 @@ impl Block {
             let pruned_block_hash = blockchain
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(self.get_id() - 2);
-
-            println!("pruned block hash: {:?}", pruned_block_hash);
-            println!(
-                "pruned block hash hex: {:?}",
-                &hex::encode(&pruned_block_hash)
-            );
 
             //
             // generate metadata should have prepared us with a pre-prune block
@@ -860,10 +907,6 @@ impl Block {
                                 //
                                 // TODO - floating fee based on previous block average
                                 //
-                                println!(
-                                    "GENERATING REBROADCAST TX: {:?}",
-                                    transaction.get_transaction_type()
-                                );
                                 let rebroadcast_transaction =
                                     Transaction::generate_rebroadcast_transaction(
                                         &transaction,
@@ -897,153 +940,202 @@ impl Block {
         }
 
         //
-        // calculate fee transaction
+        // calculate payments to miners / routers / stakers
         //
         if let Some(gt_idx) = cv.gt_idx {
-            //
-            // grab random input from golden ticket
-            //
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
             let random_number = hash(&golden_ticket.get_random().to_vec());
-            let miner_publickey = golden_ticket.get_publickey();
+            let _miner_publickey = golden_ticket.get_publickey();
 
             //
-            // payout is from last block
+            // miner payout is fees from previous block, no staking treasury
             //
             if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-                let mut transaction = Transaction::new();
-                transaction.set_transaction_type(TransactionType::Fee);
+                let miner_payment = previous_block.get_total_fees() / 2;
+                let router_payment = previous_block.get_total_fees() - miner_payment;
 
                 //
                 // calculate miner and router payments
                 //
-                let miner_payment = previous_block.get_total_fees() / 2;
-                let router_payment = previous_block.get_total_fees() - miner_payment;
                 let block_payouts: RouterPayout = previous_block.find_winning_router(random_number);
                 let router_publickey = block_payouts.publickey;
-                let next_random_number = block_payouts.random_number;
+                let mut next_random_number = block_payouts.random_number;
 
-                let mut output1 = Slip::new();
-                output1.set_publickey(miner_publickey);
-                output1.set_amount(miner_payment);
-                output1.set_slip_type(SlipType::MinerOutput);
-                output1.set_slip_ordinal(0);
+                let mut payout = BlockPayout::new();
+                payout.miner = golden_ticket.get_publickey();
+                payout.router = router_publickey;
+                payout.miner_payout = miner_payment;
+                payout.router_payout = router_payment;
+                payout.random_number = next_random_number;
 
-                let mut output2 = Slip::new();
-                output2.set_publickey(router_publickey);
-                output2.set_amount(router_payment);
-                output2.set_slip_type(SlipType::RouterOutput);
-                output2.set_slip_ordinal(1);
-
-                transaction.add_output(output1);
-                transaction.add_output(output2);
+                cv.block_payout.push(payout);
 
                 //
-                // do we have any staker payments to make
+                // loop backwards until MAX recursion OR golden ticket
                 //
-                if let Some(previous_previous_block) = blockchain
-                    .blocks
-                    .get(&previous_block.get_previous_block_hash())
-                {
+                let mut cont = 1;
+                let mut loop_idx = 0;
+                let mut staking_block_hash = previous_block.get_previous_block_hash();
+
+                while cont == 1 {
+                    loop_idx += 1;
+
                     //
-                    // if the previous_block did not contain a golden ticket, then we can make a
-                    // payout to a random staker.
+                    // we start with the second block, so once loop_IDX hits the same
+                    // number as MAX_STAKER_RECURSION we have processed N blocks where
+                    // N is MAX_STAKER_RECURSION.
                     //
-                    if previous_block.get_has_golden_ticket() == false {
-                        //
-                        let mut slip_ordinal_to_apply = 2;
+                    if loop_idx >= MAX_STAKER_RECURSION {
+                        cont = 0;
+                    } else {
+                        if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
+                            staking_block_hash = staking_block.get_previous_block_hash();
 
-                        //
-                        // calculate miner and router payments
-                        //
-                        // the staker payout is contained in the slip of the winner. this is
-                        // because we calculate it afresh every time we reset the staking table
-                        // the payment for the router requires calculating the amount that will
-                        // be withheld for the staker treasury, which is what previous_staker_
-                        // payment is measuring.
-                        //
-                        let previous_staker_payment = previous_previous_block.get_total_fees() / 2;
-                        let previous_router_payment =
-                            previous_previous_block.get_total_fees() - previous_staker_payment;
-                        // the staker treasury gets the amount that would be paid out to the staker
-                        // if we were paying them from THIS loop of the blockchain rather than the
-                        // average amount.
-                        cv.staking_treasury = previous_staker_payment as i64;
+                            if !staking_block.get_has_golden_ticket() {
+                                //
+                                // calculate miner and router payments
+                                //
+                                // the staker payout is contained in the slip of the winner. this is
+                                // because we calculate it afresh every time we reset the staking table
+                                // the payment for the router requires calculating the amount that will
+                                // be withheld for the staker treasury, which is what previous_staker_
+                                // payment is measuring.
+                                //
+                                let sp = staking_block.get_total_fees() / 2;
+                                let rp = staking_block.get_total_fees() - sp;
 
-                        //
-                        // next_random_number
-                        //
-                        let staker_slip_option =
-                            blockchain.staking.find_winning_staker(next_random_number);
-                        let another_random_number = hash(&next_random_number.to_vec());
-                        let block_payouts2: RouterPayout =
-                            previous_block.find_winning_router(another_random_number);
-                        let previous_winning_router = block_payouts2.publickey;
+                                let mut payout = BlockPayout::new();
+                                payout.router = staking_block
+                                    .find_winning_router(next_random_number)
+                                    .publickey;
+                                payout.router_payout = rp;
+                                payout.staking_treasury = sp as i64;
 
-                        if let Some(staker_slip) = staker_slip_option {
-                            let mut output3 = Slip::new();
-                            output3.set_publickey(staker_slip.get_publickey());
-                            // the payout is the return on staking, stored separately so that the
-                            // UTXO for the slip will still validate.
-                            output3.set_amount(staker_slip.get_amount() + staker_slip.get_payout());
+                                next_random_number = hash(&next_random_number.to_vec());
 
-                            // remove from staking treasury as we are paying out
-                            cv.staking_treasury -= staker_slip.get_amount() as i64;
+                                let staker_slip_option =
+                                    blockchain.staking.find_winning_staker(next_random_number);
+                                if let Some(staker_slip) = staker_slip_option {
+                                    let mut slip_was_spent = 0;
 
-                            output3.set_slip_type(SlipType::StakerOutput);
-                            output3.set_slip_ordinal(slip_ordinal_to_apply);
-                            slip_ordinal_to_apply += 1;
-                            transaction.add_output(output3);
+                                    //
+                                    // check to see if the block already pays out to this slip
+                                    //
+                                    for i in 0..cv.block_payout.len() {
+                                        if cv.block_payout[i].staker_slip.get_utxoset_key()
+                                            == staker_slip.get_utxoset_key()
+                                        {
+                                            slip_was_spent = 1;
+                                            break;
+                                        }
+                                    }
 
-                            //
-                            // add staker input as tx input so it is spent
-                            //
-println!("the staker slip is: {:?}", staker_slip);
-                            transaction.add_input(staker_slip);
+                                    //
+                                    // check to see if staker slip already spent/withdrawn
+                                    //
+                                    if self
+                                        .slips_spent_this_block
+                                        .contains_key(&staker_slip.get_utxoset_key())
+                                    {
+                                        slip_was_spent = 1;
+                                    }
+
+                                    //
+                                    // add payout to staker if staker is new
+                                    //
+                                    // the payout is the return on staking, stored separately so that the
+                                    // UTXO for the slip will still validate.
+                                    //
+                                    if slip_was_spent == 0 {
+                                        payout.staker = staker_slip.get_publickey();
+                                        payout.staker_payout =
+                                            staker_slip.get_amount() + staker_slip.get_payout();
+                                        payout.staker_slip = staker_slip.clone();
+                                    }
+
+                                    next_random_number = hash(&next_random_number.to_vec());
+
+                                    cv.block_payout.push(payout);
+                                }
+                            }
                         }
-
-                        let mut output4 = Slip::new();
-                        output4.set_publickey(previous_winning_router);
-                        output4.set_amount(previous_router_payment);
-                        output4.set_slip_type(SlipType::RouterOutput);
-                        output4.set_slip_ordinal(slip_ordinal_to_apply);
-                        transaction.add_output(output4);
-
-                        //
-                        // in case we loop back further, use this random number
-                        //
-                        let _yet_another_random_number = block_payouts2.random_number;
                     }
                 }
-
-                //
-                // fee transaction added to consensus values
-                //
-                cv.fee_transaction = Some(transaction);
             }
+
+            //
+            // now create fee transaction using the block payout data
+            //
+            let mut slip_ordinal = 0;
+            let mut transaction = Transaction::new();
+            transaction.set_transaction_type(TransactionType::Fee);
+
+            for i in 0..cv.block_payout.len() {
+                if cv.block_payout[i].miner != [0; 33] {
+                    let mut output = Slip::new();
+                    output.set_publickey(cv.block_payout[i].miner);
+                    output.set_amount(cv.block_payout[i].miner_payout);
+                    output.set_slip_type(SlipType::MinerOutput);
+                    output.set_slip_ordinal(slip_ordinal);
+                    transaction.add_output(output.clone());
+                    slip_ordinal += 1;
+                }
+                if cv.block_payout[i].router != [0; 33] {
+                    let mut output = Slip::new();
+                    output.set_publickey(cv.block_payout[i].router);
+                    output.set_amount(cv.block_payout[i].router_payout);
+                    output.set_slip_type(SlipType::RouterOutput);
+                    output.set_slip_ordinal(slip_ordinal);
+                    transaction.add_output(output.clone());
+                    slip_ordinal += 1;
+                }
+                if cv.block_payout[i].staker != [0; 33] {
+                    transaction.add_input(cv.block_payout[i].staker_slip.clone());
+
+                    let mut output = Slip::new();
+                    output.set_publickey(cv.block_payout[i].staker);
+                    output.set_amount(cv.block_payout[i].staker_payout);
+                    output.set_slip_type(SlipType::StakerOutput);
+                    output.set_slip_ordinal(slip_ordinal);
+                    transaction.add_output(output);
+                    slip_ordinal += 1;
+                    cv.staking_treasury += cv.block_payout[i].staking_treasury;
+                    cv.staking_treasury -= cv.block_payout[i].staker_payout as i64;
+                }
+            }
+
+            cv.fee_transaction = Some(transaction);
         }
 
         //
-        // if there is no golden ticket AND the previous_block did not have a golden ticket
-        // either then there has been no payout for the previous_previous_block and we
-        // should capture the funds in the treasury.
+        // if there is no golden ticket AND there is no golden ticket before the MAX
+        // blocks we recurse to collect NOLAN we have to add the amount of the unpaid
+        // block to the amount of NOLAN that is falling off our chain.
         //
         if cv.gt_num == 0 {
-            if let Some(previous_block) = blockchain.blocks.get(&self.get_previous_block_hash()) {
-                if previous_block.get_has_golden_ticket() == false {
-                    if let Some(previous_previous_block) = blockchain
-                        .blocks
-                        .get(&previous_block.get_previous_block_hash())
-                    {
-                        //
-                        // TODO - we can look into upgrading consensus eventually to stop coinage from
-                        // slipping off the chain. but we can punt on that until receding further into
-                        // the chain is understood in terms of its impact on spam-attacks on the chain
-                        // tip.
-                        //
-                        cv.nolan_falling_off_chain = previous_previous_block.get_total_fees();
+            for i in 1..=MAX_STAKER_RECURSION {
+                if i >= self.get_id() {
+                    break;
+                }
+
+                let bid = self.get_id() - i;
+                let previous_block_hash = blockchain
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(bid);
+                let previous_block = blockchain.get_block(previous_block_hash).await;
+
+                if previous_block.get_has_golden_ticket() {
+                    break;
+                } else {
+                    //
+                    // this is the block BEFORE from which we need to collect the nolan due to
+                    // our iterator starting at 0 for the current block. i.e. if MAX_STAKER_
+                    // RECURSION is 3, at 3 we are the fourth block back.
+                    //
+                    if i == MAX_STAKER_RECURSION {
+                        cv.nolan_falling_off_chain = previous_block.get_total_fees();
                     }
                 }
             }
@@ -1136,7 +1228,13 @@ println!("the staker slip is: {:?}", staker_slip);
     // cumulative block fees they contain.
     //
     pub fn generate_metadata(&mut self) -> bool {
-        println!(" ... block.prevalid - pre hash:  {:?}", create_timestamp());
+        let mut _tracing_tracker = TracingTimer::new();
+        event!(
+            Level::TRACE,
+            " ... block.prevalid - pre hash:  {:?}",
+            // tracing_tracker.time_since_last();
+            create_timestamp(),
+        );
 
         //
         // if we are generating the metadata for a block, we use the
@@ -1150,7 +1248,12 @@ println!("the staker slip is: {:?}", staker_slip);
             .par_iter_mut()
             .all(|tx| tx.generate_metadata(creator_publickey));
 
-        println!(" ... block.prevalid - pst hash:  {:?}", create_timestamp());
+        let _span = span!(Level::TRACE, "PREVALIDATION");
+        event!(
+            Level::TRACE,
+            " ... block.prevalid - pst hash:  {:?}",
+            create_timestamp()
+        );
 
         //
         // we need to calculate the cumulative figures AFTER the
@@ -1179,6 +1282,31 @@ println!("the staker slip is: {:?}", staker_slip);
 
             cumulative_fees = transaction.generate_metadata_cumulative_fees(cumulative_fees);
             cumulative_work = transaction.generate_metadata_cumulative_work(cumulative_work);
+
+            //
+            // update slips_spent_this_block so that we have a record of
+            // how many times input slips are spent in this block. we will
+            // use this later to ensure there are no duplicates. this include
+            // during the fee transaction, so that we cannot pay a staker
+            // that is also paid this block otherwise.
+            //
+            // we skip the fee transaction as otherwise we have trouble
+            // validating the staker slips if we have received a block from
+            // someone else -- i.e. we will think the slip is spent in the
+            // block when generating the FEE TX to check against the in-block
+            // fee tx.
+            //
+            if !self.created_hashmap_of_slips_spent_this_block {
+                if transaction.get_transaction_type() != TransactionType::Fee {
+                    for input in transaction.get_inputs() {
+                        self.slips_spent_this_block
+                            .entry(input.get_utxoset_key())
+                            .and_modify(|e| *e += 1)
+                            .or_insert(1);
+                    }
+                    self.created_hashmap_of_slips_spent_this_block = true;
+                }
+            }
 
             //
             // also check the transactions for golden ticket and fees
@@ -1218,7 +1346,12 @@ println!("the staker slip is: {:?}", staker_slip);
         self.set_total_fees(cumulative_fees);
         self.set_routing_work_for_creator(cumulative_work);
 
-        println!(" ... block.pre_validation_done:  {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... block.pre_validation_done:  {:?}",
+            create_timestamp(),
+            // tracing_tracker.time_since_last();
+        );
 
         true
     }
@@ -1233,11 +1366,19 @@ println!("the staker slip is: {:?}", staker_slip);
         // no transactions? no thank you
         //
         if self.transactions.len() == 0 {
-            println!("ERROR 424342: block does not validate as it has no transactions");
+            event!(
+                Level::ERROR,
+                "ERROR 424342: block does not validate as it has no transactions",
+            );
             return false;
         }
 
-        println!(" ... block.validate: (burn fee)  {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... block.validate: (burn fee)  {:?}",
+            create_timestamp(),
+            // tracing_tracker.time_since_last();
+        );
 
         //
         // Consensus Values
@@ -1269,10 +1410,15 @@ println!("the staker slip is: {:?}", staker_slip);
             // validate treasury
             //
             if self.get_treasury() != previous_block.get_treasury() + cv.nolan_falling_off_chain {
-                println!(
+                //     "ERROR: treasury does not validate: {} expected versus {} found",
+                //     (previous_block.get_treasury() + cv.nolan_falling_off_chain),
+                //     self.get_treasury(),
+                event!(
+                    Level::ERROR,
                     "ERROR: treasury does not validate: {} expected versus {} found",
                     (previous_block.get_treasury() + cv.nolan_falling_off_chain),
                     self.get_treasury(),
+                    // tracing_tracker.time_since_last();
                 );
                 return false;
             }
@@ -1294,11 +1440,15 @@ println!("the staker slip is: {:?}", staker_slip);
             }
 
             if self.get_staking_treasury() != adjusted_staking_treasury {
-                println!(
+                event!(
+                    Level::ERROR,
                     "ERROR: staking treasury does not validate: {} expected versus {} found",
                     adjusted_staking_treasury,
                     self.get_staking_treasury(),
                 );
+                //     "ERROR: staking treasury does not validate: {} expected versus {} found",
+                //     adjusted_staking_treasury,
+                //     self.get_staking_treasury(),
                 return false;
             }
 
@@ -1312,14 +1462,19 @@ println!("the staker slip is: {:?}", staker_slip);
                     previous_block.get_timestamp(),
                 );
             if new_burnfee != self.get_burnfee() {
-                println!(
+                event!(
+                    Level::ERROR,
                     "ERROR: burn fee does not validate, expected: {}",
                     new_burnfee
                 );
                 return false;
             }
 
-            println!(" ... burn fee in blk validated:  {:?}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... burn fee in blk validated:  {:?}",
+                create_timestamp()
+            );
 
             //
             // validate routing work required
@@ -1334,11 +1489,18 @@ println!("the staker slip is: {:?}", staker_slip);
                     previous_block.get_timestamp(),
                 );
             if self.routing_work_for_creator < amount_of_routing_work_needed {
-                println!("Error 510293: block lacking adequate routing work from creator");
+                event!(
+                    Level::ERROR,
+                    "Error 510293: block lacking adequate routing work from creator"
+                );
                 return false;
             }
 
-            println!(" ... done routing work required: {:?}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... done routing work required: {:?}",
+                create_timestamp()
+            );
 
             //
             // validate golden ticket
@@ -1367,14 +1529,25 @@ println!("the staker slip is: {:?}", staker_slip);
                     solution,
                     previous_block.get_difficulty(),
                 ) {
-                    println!("ERROR: Golden Ticket solution does not validate against previous block hash and difficulty");
+                    event!(
+                        Level::ERROR,
+                        "ERROR: Golden Ticket solution does not validate against previous block hash and difficulty"
+                    );
                     return false;
                 }
             }
-            println!(" ... golden ticket: (validated)  {:?}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... golden ticket: (validated)  {:?}",
+                create_timestamp()
+            );
         }
 
-        println!(" ... block.validate: (merkle rt) {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... block.validate: (merkle rt) {:?}",
+            create_timestamp()
+        );
 
         //
         // validate atr
@@ -1390,15 +1563,24 @@ println!("the staker slip is: {:?}", staker_slip);
         // expected number given the consensus values we calculated earlier.
         //
         if cv.total_rebroadcast_slips != self.total_rebroadcast_slips {
-            println!("ERROR 624442: rebroadcast slips total incorrect");
+            event!(
+                Level::ERROR,
+                "ERROR 624442: rebroadcast slips total incorrect"
+            );
             return false;
         }
         if cv.total_rebroadcast_nolan != self.total_rebroadcast_nolan {
-            println!("ERROR 294018: rebroadcast nolan amount incorrect");
+            event!(
+                Level::ERROR,
+                "ERROR 294018: rebroadcast nolan amount incorrect"
+            );
             return false;
         }
         if cv.rebroadcast_hash != self.rebroadcast_hash {
-            println!("ERROR 123422: hash of rebroadcast transactions incorrect");
+            event!(
+                Level::ERROR,
+                "ERROR 123422: hash of rebroadcast transactions incorrect"
+            );
             return false;
         }
 
@@ -1408,11 +1590,15 @@ println!("the staker slip is: {:?}", staker_slip);
         if self.get_merkle_root() == [0; 32]
             && self.get_merkle_root() != self.generate_merkle_root()
         {
-            println!("merkle root is unset or is invalid false 1");
+            event!(Level::ERROR, "merkle root is unset or is invalid false 1");
             return false;
         }
 
-        println!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... block.validate: (cv-data)   {:?}",
+            create_timestamp()
+        );
 
         //
         // validate fee transactions
@@ -1427,7 +1613,8 @@ println!("the staker slip is: {:?}", staker_slip);
             // no golden ticket? invalid
             //
             if cv.gt_idx.is_none() {
-                println!(
+                event!(
+                    Level::ERROR,
                     "ERROR 48203: block appears to have fee transaction without golden ticket"
                 );
                 return false;
@@ -1440,13 +1627,13 @@ println!("the staker slip is: {:?}", staker_slip);
             //
             fee_transaction.generate_metadata(self.get_creator());
 
-            //println!("CV: {:?}", fee_transaction);
-            //println!("BLK: {:?}", self.transactions[ft_idx]);
-
             let hash1 = hash(&fee_transaction.serialize_for_signature());
             let hash2 = hash(&self.transactions[ft_idx].serialize_for_signature());
             if hash1 != hash2 {
-                println!("ERROR 627428: block fee transaction doesn't match cv fee transaction");
+                event!(
+                    Level::ERROR,
+                    "ERROR 627428: block fee transaction doesn't match cv fee transaction"
+                );
                 return false;
             }
         }
@@ -1465,7 +1652,8 @@ println!("the staker slip is: {:?}", staker_slip);
         // distinction is in practice less clean.
         //
         if cv.expected_difficulty != self.get_difficulty() {
-            println!(
+            event!(
+                Level::ERROR,
                 "difficulty is false {} vs {}",
                 cv.expected_difficulty,
                 self.get_difficulty()
@@ -1473,7 +1661,11 @@ println!("the staker slip is: {:?}", staker_slip);
             return false;
         }
 
-        println!(" ... block.validate: (txs valid) {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... block.validate: (txs valid) {:?}",
+            create_timestamp()
+        );
 
         //
         // validate transactions
@@ -1502,23 +1694,23 @@ println!("the staker slip is: {:?}", staker_slip);
         for i in 0..self.transactions.len() {
             let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
             if transactions_valid2 == false {
-        	println!("TType: {:?}", self.transactions[i].get_transaction_type());
+                println!("TType: {:?}", self.transactions[i].get_transaction_type());
             }
         }
-return true;
+        return true;
 
-//        let transactions_valid = self
-//            .transactions
-//            .par_iter()
-//            .all(|tx| tx.validate(utxoset, staking));
+        //        let transactions_valid = self
+        //            .transactions
+        //            .par_iter()
+        //            .all(|tx| tx.validate(utxoset, staking));
 
-//        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
+        //        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         //
         // and if our transactions are valid, so is the block...
         //
-//        println!(" ... are txs valid: {}", transactions_valid);
-//        transactions_valid
+        //        println!(" ... are txs valid: {}", transactions_valid);
+        //        transactions_valid
     }
 
     pub async fn generate(
@@ -1529,7 +1721,6 @@ return true;
         current_timestamp: u64,
     ) -> Block {
         let blockchain = blockchain_lock.read().await;
-
         let wallet = wallet_lock.read().await;
         let publickey = wallet.get_publickey();
         let privatekey = wallet.get_privatekey();
@@ -1572,6 +1763,34 @@ return true;
         mem::swap(&mut block.transactions, transactions);
 
         //
+        // update slips_spent_this_block so that we have a record of
+        // how many times input slips are spent in this block. we will
+        // use this later to ensure there are no duplicates. this include
+        // during the fee transaction, so that we cannot pay a staker
+        // that is also paid this block otherwise.
+        //
+        // this will not include the fee transaction or the ATR txs
+        // because they have not been added to teh block yet, but they
+        // permit us to avoid paying out StakerWithdrawal slips when we
+        // generate the fee payment.
+        //
+        // note -- no need to have an exception for the FEE TX here as
+        // we have not added it yet.
+        //
+        if !block.created_hashmap_of_slips_spent_this_block {
+            for transaction in &block.transactions {
+                for input in transaction.get_inputs() {
+                    block
+                        .slips_spent_this_block
+                        .entry(input.get_utxoset_key())
+                        .and_modify(|e| *e += 1)
+                        .or_insert(1);
+                }
+                block.created_hashmap_of_slips_spent_this_block = true;
+            }
+        }
+
+        //
         // contextual values
         //
         let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain).await;
@@ -1582,8 +1801,7 @@ return true;
         // for testing create some VIP transactions
         //
         if previous_block_id == 0 {
-            for i in 0..10 as i32 {
-                println!("generating VIP transaction {}", i);
+            for _i in 0..10 as i32 {
                 let mut transaction =
                     Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 100000)
                         .await;
@@ -1625,6 +1843,26 @@ return true;
             //
             block.add_transaction(fee_tx);
         }
+
+        //
+        // update slips_spent_this_block so that we have a record of
+        // how many times input slips are spent in this block. we will
+        // use this later to ensure there are no duplicates. this include
+        // during the fee transaction, so that we cannot pay a staker
+        // that is also paid this block otherwise.
+        //
+        for transaction in &block.transactions {
+            if transaction.get_transaction_type() != TransactionType::Fee {
+                for input in transaction.get_inputs() {
+                    block
+                        .slips_spent_this_block
+                        .entry(input.get_utxoset_key())
+                        .and_modify(|e| *e += 1)
+                        .or_insert(1);
+                }
+            }
+        }
+        block.created_hashmap_of_slips_spent_this_block = true;
 
         //
         // set difficulty
@@ -1684,7 +1922,6 @@ return true;
     }
 
     pub async fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
-        println!("Deleting data in block...");
         for tx in &self.transactions {
             tx.delete(utxoset).await;
         }
@@ -1805,7 +2042,7 @@ mod tests {
         block.set_transactions(&mut vec![mock_tx, mock_tx2]);
 
         let serialized_block = block.serialize_for_net();
-        let deserialized_block = Block::deserialize_for_net(serialized_block);
+        let deserialized_block = Block::deserialize_for_net(&serialized_block);
         assert_eq!(block, deserialized_block);
         assert_eq!(deserialized_block.get_id(), 1);
         assert_eq!(deserialized_block.get_timestamp(), timestamp);

@@ -39,7 +39,6 @@ pub struct EncryptedWallet {
 }
 impl EncryptedWallet {
     pub fn get_file_name(&self) -> String {
-        println!("get_file_name {}", self.file_path);
         self.file_path.clone()
     }
 }

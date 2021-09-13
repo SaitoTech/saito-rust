@@ -2,6 +2,8 @@
 pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
 pub const PRUNE_AFTER_BLOCKS: u64 = 10;
+// max recursion when paying stakers
+pub const MAX_STAKER_RECURSION: u64 = 2;
 
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
@@ -11,6 +13,7 @@ use crate::staking::Staking;
 use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
+use tracing::{event, Level};
 
 use async_recursion::async_recursion;
 
@@ -70,9 +73,9 @@ impl Blockchain {
         self.fork_id
     }
 
-    pub async fn add_block(&mut self, block: Block, save_to_disk: bool) {
-println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);  
-       println!(
+    pub async fn add_block(&mut self, block: Block) {
+        event!(
+            Level::TRACE,
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
             block.transactions.len()
@@ -91,7 +94,11 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         // sanity checks
         //
         if self.blocks.contains_key(&block_hash) {
-            println!("ERROR: block exists in blockchain {:?}", block.get_hash());
+            event!(
+                Level::ERROR,
+                "ERROR: block exists in blockchain {:?}",
+                &hex::encode(&block.get_hash())
+            );
             return;
         }
 
@@ -142,10 +149,12 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
         } else {
-            println!("BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT?????");
+            event!(
+                Level::ERROR,
+                "BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT????? {:?}",
+                block.get_hash()
+            );
         }
-
-        // println!(" ... start shared ancestor hunt: {:?}", create_timestamp());
 
         //
         // find shared ancestor of new_block with old_chain
@@ -210,7 +219,10 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
             // TODO more elegant handling of the first block and other non-longest-chain
             // blocks.
             //
-            // println!("We have added a block without a parent block... ");
+            event!(
+                Level::ERROR,
+                "We have added a block without a parent block... "
+            );
         }
 
         //
@@ -238,7 +250,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
             if does_new_chain_validate {
-                self.add_block_success(block_hash, save_to_disk).await;
+                self.add_block_success(block_hash).await;
 
                 //
                 // TODO
@@ -292,18 +304,18 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
             }
         }
     }
-    pub async fn add_block_to_blockchain(
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-        block: Block,
-        save_to_disk: bool,
-    ) {
+    pub async fn add_block_to_blockchain(blockchain_lock: Arc<RwLock<Blockchain>>, block: Block) {
         let mut blockchain = blockchain_lock.write().await;
-        return blockchain.add_block(block, save_to_disk).await;
+        let res = blockchain.add_block(block).await;
+        return res;
     }
 
-    pub async fn add_block_success(&mut self, block_hash: SaitoHash, save_to_disk: bool) {
-        println!(" ... blockchain.add_block_succe: {:?}", create_timestamp());
-
+    pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
+        event!(
+            Level::TRACE,
+            " ... blockchain.add_block_success: {:?}",
+            create_timestamp()
+        );
         let block_id;
 
         //
@@ -313,9 +325,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         {
             let block = self.get_mut_block(block_hash).await;
             block_id = block.get_id();
-            if save_to_disk || true {
-                Storage::write_block_to_disk(block);
-            }
+            Storage::write_block_to_disk(block);
 
             //
             // TMP - delete transactions
@@ -323,18 +333,30 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
             //block.transactions = vec![];
         }
 
-        println!(" ... block save done:            {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... block save done:            {:?}",
+            create_timestamp()
+        );
 
         //
         // TODO - this is merely for testing, we do not intend
         // the routing client to process transactions in its
         // wallet.
         {
-            println!(" ... wallet processing start:    {}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... wallet processing start:    {}",
+                create_timestamp()
+            );
             let mut wallet = self.wallet_lock.write().await;
             let block = self.blocks.get(&block_hash).unwrap();
             wallet.add_block(&block);
-            println!(" ... wallet processing stop:     {}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... wallet processing stop:     {}",
+                create_timestamp()
+            );
         }
 
         //
@@ -678,6 +700,14 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         let block = self.blocks.get_mut(&block_hash).unwrap();
         block
     }
+
+    pub fn is_block_indexed(&self, block_hash: SaitoHash) -> bool {
+        if self.blocks.contains_key(&block_hash) {
+            return true;
+        }
+        return false;
+    }
+
     pub fn contains_block_hash_at_block_id(&self, block_id: u64, block_hash: SaitoHash) -> bool {
         self.blockring
             .contains_block_hash_at_block_id(block_id, block_hash)
@@ -688,11 +718,11 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         new_chain: &Vec<[u8; 32]>,
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
-        //        println!("{:?}", new_chain);
-        //        println!("{:?}", old_chain);
-
         if old_chain.len() > new_chain.len() {
-            println!("ERROR 1");
+            event!(
+                Level::ERROR,
+                "ERROR: old chain length is greater than new chain length"
+            );
             return false;
         }
 
@@ -773,7 +803,11 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-        println!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... blockchain.wind_chain strt: {:?}",
+            create_timestamp()
+        );
 
         //
         // if we are winding a non-existent chain with a wind_failure it
@@ -796,30 +830,62 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         // happen first.
         //
         {
-            let block = self.get_mut_block(new_chain[current_wind_index]).await;
+            let mut block = self.get_mut_block(new_chain[current_wind_index]).await;
             block.generate_metadata();
+
+            let latest_block_id = block.get_id();
+
+            //
+            // ensure previous blocks that may be needed to calculate the staking
+            // tables or the nolan that are potentially falling off the chain have
+            // full access to their transaction data.
+            //
+            for i in 1..MAX_STAKER_RECURSION {
+                if i >= latest_block_id {
+                    break;
+                }
+                let bid = latest_block_id - i;
+                let previous_block_hash =
+                    self.blockring.get_longest_chain_block_hash_by_block_id(bid);
+                if self.is_block_indexed(previous_block_hash) {
+                    block = self.get_mut_block(previous_block_hash).await;
+                    block.upgrade_block_to_block_type(BlockType::Full).await;
+                }
+            }
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        println!(" ... before block.validate:      {:?}", create_timestamp());
+        event!(
+            Level::TRACE,
+            " ... before block.validate:      {:?}",
+            create_timestamp()
+        );
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
-        println!(
+        event!(
+            Level::TRACE,
             " ... after block.validate:       {:?} {}",
             create_timestamp(),
             does_block_validate
         );
 
         if does_block_validate {
-            println!(" ... before block ocr            {:?}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... before block ocr            {:?}",
+                create_timestamp()
+            );
 
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
-            println!(" ... before blockring ocr:       {:?}", create_timestamp());
+            event!(
+                Level::TRACE,
+                " ... before blockring ocr:       {:?}",
+                create_timestamp()
+            );
 
             // blockring update
             self.blockring
                 .on_chain_reorganization(block.get_id(), block.get_hash(), true);
-            // println!(" ... after on-chain-reorg:       {:?}", create_timestamp());
 
             // staking tables update
             let (res_spend, res_unspend, res_delete) =
@@ -874,7 +940,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
             // will know it has rewound the old chain successfully instead of
             // successfully added the new chain.
             //
-            println!("this block does not validate!");
+            event!(Level::ERROR, "ERROR: this block does not validate!");
             if current_wind_index == new_chain.len() - 1 {
                 //
                 // this is the first block we have tried to add
@@ -1048,7 +1114,8 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
     // deletes all blocks at a single block_id
     //
     pub async fn delete_blocks(&mut self, delete_block_id: u64) {
-        println!(
+        event!(
+            Level::TRACE,
             "removing data including from disk at id {}",
             delete_block_id
         );
@@ -1062,7 +1129,11 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
             }
         }
 
-        println!("number of hashes to remove {}", block_hashes_copy.len());
+        event!(
+            Level::TRACE,
+            "number of hashes to remove {}",
+            block_hashes_copy.len()
+        );
 
         for hash in block_hashes_copy {
             self.delete_block(delete_block_id, hash).await;
@@ -1094,7 +1165,6 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
             //
             // deletes block from disk
             //
-            println!("delete filename {}", pblock_filename);
             Storage::delete_block_from_disk(pblock_filename).await;
         }
 
@@ -1119,10 +1189,7 @@ println!("ADD BLK HASH: {:?} {}", block.get_hash(), save_to_disk);
         if PRUNE_AFTER_BLOCKS > self.get_latest_block_id() {
             return;
         }
-
         let prune_blocks_at_block_id = self.get_latest_block_id() - PRUNE_AFTER_BLOCKS;
-
-        //println!("downgrade blocks at block_id: {}", prune_blocks_at_block_id);
 
         let mut block_hashes_copy: Vec<SaitoHash> = vec![];
 
@@ -1306,7 +1373,7 @@ mod tests {
         {
             let mut blockchain = blockchain_lock.write().await;
             let block_copy = block.clone();
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
             let latest_block = blockchain.get_latest_block().unwrap();
@@ -1340,7 +1407,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_ne!(latest_block_id, blockchain.get_latest_block_id());
             assert_ne!(latest_block_hash, blockchain.get_latest_block_hash());
             //latest_block_id = blockchain.get_latest_block_id();
@@ -1378,7 +1445,7 @@ mod tests {
 
         {
             let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block, false).await;
+            blockchain.add_block(block).await;
             assert_eq!(latest_block_id, blockchain.get_latest_block_id());
             assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
         }
@@ -1483,7 +1550,7 @@ mod tests {
 
             {
                 let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block, false).await;
+                blockchain.add_block(block).await;
                 assert_eq!(test_block_hash, blockchain.get_latest_block_hash());
                 assert_eq!(test_block_id, blockchain.get_latest_block_id());
                 assert_eq!(
