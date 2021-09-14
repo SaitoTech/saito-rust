@@ -54,9 +54,9 @@
 <span class="kw">impl</span> <span class="ident">MerkleTreeLayer</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">left</span>: <span class="ident">SaitoHash</span>, <span class="ident">right</span>: <span class="ident">SaitoHash</span>, <span class="ident">level</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MerkleTreeLayer</span> {
         <span class="ident">MerkleTreeLayer</span> {
-            <span class="ident">left</span>: <span class="ident">left</span>,
-            <span class="ident">right</span>: <span class="ident">right</span>,
-            <span class="ident">level</span>: <span class="ident">level</span>,
+            <span class="ident">left</span>,
+            <span class="ident">right</span>,
+            <span class="ident">level</span>,
             <span class="ident">hash</span>: [<span class="number">0</span>; <span class="number">32</span>],
         }
     }

@@ -1095,7 +1095,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_winning_staker</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">random_number</span>: <span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         }
 
@@ -1148,7 +1148,7 @@
         <span class="self">self</span>.<span class="ident">pending</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="self">self</span>.<span class="ident">deposits</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>);
         }
 
@@ -1360,7 +1360,7 @@
             <span class="comment">//</span>
             <span class="comment">// reset stakers if necessary</span>
             <span class="comment">//</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
                 <span class="comment">//self.reset_staker_table(block.get_staking_treasury());</span>
                 <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
             }
@@ -1368,7 +1368,7 @@
             <span class="comment">//</span>
             <span class="comment">// reset pending if necessary</span>
             <span class="comment">//</span>
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">is_empty</span>() {
                 <span class="self">self</span>.<span class="ident">pending</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                 <span class="self">self</span>.<span class="ident">deposits</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                 <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {
@@ -1429,7 +1429,7 @@
                     <span class="string">&quot;Rolling forward and moving into pending: {}!&quot;</span>,
                     <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>()
                 );
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
                     <span class="comment">//self.reset_staker_table(block.get_staking_treasury());</span>
                     <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span>
                         <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
@@ -1453,7 +1453,7 @@
                 <span class="comment">//</span>
                 <span class="comment">// re-create staker table, if needed</span>
                 <span class="comment">//</span>
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
                     <span class="comment">//self.reset_staker_table(block.get_staking_treasury());</span>
                     <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span>
                         <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
@@ -1468,7 +1468,7 @@
                 <span class="comment">//</span>
                 <span class="comment">// reset pending if necessary</span>
                 <span class="comment">//</span>
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">is_empty</span>() {
                     <span class="self">self</span>.<span class="ident">pending</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                     <span class="self">self</span>.<span class="ident">deposits</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {
@@ -1497,7 +1497,7 @@
                 <span class="comment">//</span>
                 <span class="comment">// reset pending if necessary</span>
                 <span class="comment">//</span>
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">is_empty</span>() {
                     <span class="self">self</span>.<span class="ident">pending</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                     <span class="self">self</span>.<span class="ident">deposits</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {

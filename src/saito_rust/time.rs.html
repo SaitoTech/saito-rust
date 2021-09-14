@@ -112,7 +112,7 @@
 }
 <span class="kw">impl</span> <span class="ident">TracingTimer</span> {
     <span class="doccomment">/// Create a new TracingTimer</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::clippy::new_without_default</span>)]</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_without_default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">TracingTimer</span> {
         <span class="ident">TracingTimer</span> {
             <span class="ident">prev_timestamp</span>: <span class="ident">create_timestamp</span>(),
@@ -134,7 +134,7 @@
 <span class="doccomment">/// A helper for tracing. Get the amount of time for a series of. Only for use in a single task/thread/future.</span>
 <span class="kw">impl</span> <span class="ident">TracingAccumulator</span> {
     <span class="doccomment">/// Create a new TracingAccumulator</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::clippy::new_without_default</span>)]</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_without_default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">TracingAccumulator</span> {
         <span class="ident">TracingAccumulator</span> {
             <span class="ident">prev_timestamp</span>: <span class="ident">create_timestamp</span>(),

@@ -1118,7 +1118,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Transaction</span> {
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::clippy::new_without_default</span>)]</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_without_default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">timestamp</span>: <span class="number">0</span>,
@@ -1377,7 +1377,7 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_routing_work_for_publickey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="comment">// there is not routing path</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> <span class="number">0</span>;
         }
 
@@ -1479,7 +1479,7 @@
         <span class="comment">// definition. this is the edge-case where sending a tx</span>
         <span class="comment">// can make you money.</span>
         <span class="comment">//</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">path</span>.<span class="ident">is_empty</span>() {
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span> {
                 <span class="kw">return</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_publickey</span>();
             } <span class="kw">else</span> {
