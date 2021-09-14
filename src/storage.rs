@@ -1,15 +1,18 @@
 use std::{
     fs::{self, File},
-    io::{self, Read, Write},
+    io::{self, Read, Write, BufRead},
     path::Path,
     sync::Arc,
 };
+use crate::slip::{Slip, SlipType};
+use crate::crypto::{SaitoPublicKey};
 
 use tokio::sync::RwLock;
 
 use crate::{block::Block, blockchain::Blockchain, crypto::SaitoHash};
 
 pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
+pub const ISSUANCE_FILE_PATH: &'static str = "./data/issuance/issuance";
 
 pub struct Storage {}
 
@@ -105,7 +108,6 @@ impl Storage {
     }
 
     pub async fn load_block_from_disk(filename: String) -> Block {
-        //let file_to_load = BLOCKS_DIR_PATH.to_string() + &filename;
         let file_to_load = &filename;
         let mut f = File::open(file_to_load).unwrap();
         let mut encoded = Vec::<u8>::new();
@@ -122,13 +124,78 @@ impl Storage {
         return block;
     }
 
+
+    pub fn return_token_supply_slips_from_disk() -> Vec<Slip> {
+
+	let mut v : Vec<Slip> = vec![];
+
+        // File hosts must exist in current path before this produces output
+        if let Ok(lines) = Storage::read_lines_from_file(ISSUANCE_FILE_PATH) {
+            // Consumes the iterator, returns an (Optional) String
+            for line in lines {
+                if let Ok(ip) = line {
+		    let mut iter = ip.split_whitespace();
+		    let tmp = iter.next().unwrap();
+		    let tmp2 = iter.next().unwrap();
+		    let typ = iter.next().unwrap();
+
+		    let amt : u64 = tmp.parse::<u64>().unwrap();
+		    let tmp3 = tmp2.as_bytes();
+
+		    let mut add : SaitoPublicKey = [0; 33];
+		    for i in 0..33 { add[i] = tmp3[i]; }
+
+		    let mut slip = Slip::new();
+        	    slip.set_publickey(add);
+        	    slip.set_amount(amt);
+		    if typ.eq("VipOutput") { slip.set_slip_type(SlipType::VipOutput); }
+		    if typ.eq("StakerDeposit") { slip.set_slip_type(SlipType::StakerDeposit); }
+		    if typ.eq("Normal") { slip.set_slip_type(SlipType::Normal); }
+		    v.push(slip);
+                }
+            }
+        }
+
+	return v;
+
+    }
+
     pub async fn delete_block_from_disk(filename: String) -> bool {
         let _res = std::fs::remove_file(filename);
         true
     }
+
+    pub fn read_lines_from_file<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>> where P: AsRef<Path>, {
+        let file = File::open(filename)?;
+        Ok(io::BufReader::new(file).lines())
+    }
+
 }
 
 pub trait Persistable {
     fn save(&self);
     fn load(filename: &str) -> Self;
 }
+
+
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn read_issuance_file_test() {
+
+	let slips = Storage::return_token_supply_slips_from_disk();
+
+println!("{:?}", slips);
+
+assert_eq!(1, 2);
+
+    }
+
+}
+
+
+
