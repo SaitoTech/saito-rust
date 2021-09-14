@@ -63,10 +63,7 @@ pub async fn main() -> saito_rust::Result<()> {
         )
         .get_matches();
 
-    let config_name = match matches.value_of("config") {
-        Some(name) => name,
-        None => "config",
-    };
+    let config_name = matches.value_of("config").unwrap_or("config");
 
     let mut settings = config::Config::default();
     settings
