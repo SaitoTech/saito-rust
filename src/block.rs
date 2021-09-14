@@ -181,7 +181,7 @@ pub struct BlockHeader {
 }
 
 impl BlockHeader {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new(
         id: u64,
         timestamp: u64,
@@ -298,7 +298,7 @@ pub struct Block {
 }
 
 impl Block {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Block {
         Block {
             id: 0,
@@ -757,7 +757,7 @@ impl Block {
     // TODO - this logic should probably be in the merkle-root class
     //
     pub fn generate_merkle_root(&self) -> SaitoHash {
-        if self.transactions.len() == 0 {
+        if self.transactions.is_empty() {
             return [0; 32];
         }
 
@@ -1365,7 +1365,7 @@ impl Block {
         //
         // no transactions? no thank you
         //
-        if self.transactions.len() == 0 {
+        if self.transactions.is_empty() {
             event!(
                 Level::ERROR,
                 "ERROR 424342: block does not validate as it has no transactions",

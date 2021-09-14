@@ -22,7 +22,7 @@ pub struct RingItem {
 }
 
 impl RingItem {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             lc_pos: None,
@@ -94,7 +94,7 @@ pub struct BlockRing {
 
 impl BlockRing {
     /// Create new `BlockRing`
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         //
         // initialize the block-ring
