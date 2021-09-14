@@ -163,7 +163,7 @@ pub async fn main() -> saito_rust::Result<()> {
         println!("private key : {}", hex::encode(wallet.get_privatekey()));
     }
     if let Some(matches) = matches.subcommand_matches("block") {
-        let mut filename = String::from(BLOCKS_DIR_PATH).clone();
+        let mut filename = BLOCKS_DIR_PATH.clone();
         let block_filename = matches.value_of("filename").unwrap();
         filename.push_str(block_filename);
         let block = Storage::load_block_from_disk(filename).await;
@@ -174,7 +174,7 @@ pub async fn main() -> saito_rust::Result<()> {
         );
     }
     if let Some(_matches) = matches.subcommand_matches("blocks") {
-        let mut paths: Vec<_> = fs::read_dir(String::from(BLOCKS_DIR_PATH))
+        let mut paths: Vec<_> = fs::read_dir(BLOCKS_DIR_PATH.clone())
             .unwrap()
             .map(|r| r.unwrap())
             .collect();
@@ -188,9 +188,8 @@ pub async fn main() -> saito_rust::Result<()> {
                 .unwrap()
         });
         for (_pos, path) in paths.iter().enumerate() {
-            if path.path().to_str().unwrap() != String::from(BLOCKS_DIR_PATH).clone() + "empty"
-                && path.path().to_str().unwrap()
-                    != String::from(BLOCKS_DIR_PATH).clone() + ".gitignore"
+            if path.path().to_str().unwrap() != BLOCKS_DIR_PATH.clone() + "empty"
+                && path.path().to_str().unwrap() != BLOCKS_DIR_PATH.clone() + ".gitignore"
             {
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
