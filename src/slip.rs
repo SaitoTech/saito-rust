@@ -49,7 +49,7 @@ pub struct Slip {
 }
 
 impl Slip {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             publickey: [0; 33],

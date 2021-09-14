@@ -68,7 +68,7 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             timestamp: 0,
@@ -327,7 +327,7 @@ impl Transaction {
 
     pub fn get_routing_work_for_publickey(&self, publickey: SaitoPublicKey) -> u64 {
         // there is not routing path
-        if self.path.len() == 0 {
+        if self.path.is_empty() {
             return 0;
         }
 
@@ -429,7 +429,7 @@ impl Transaction {
         // definition. this is the edge-case where sending a tx
         // can make you money.
         //
-        if self.path.len() == 0 {
+        if self.path.is_empty() {
             if self.inputs.len() > 0 {
                 return self.inputs[0].get_publickey();
             } else {

@@ -48,7 +48,7 @@ impl Staking {
     }
 
     pub fn find_winning_staker(&self, random_number: SaitoHash) -> Option<Slip> {
-        if self.stakers.len() == 0 {
+        if self.stakers.is_empty() {
             return None;
         }
 
@@ -101,7 +101,7 @@ impl Staking {
         self.pending = vec![];
         self.deposits = vec![];
 
-        if self.stakers.len() == 0 {
+        if self.stakers.is_empty() {
             return (res_spend, res_unspend, res_delete);
         }
 
@@ -313,7 +313,7 @@ impl Staking {
             //
             // reset stakers if necessary
             //
-            if self.stakers.len() == 0 {
+            if self.stakers.is_empty() {
                 //self.reset_staker_table(block.get_staking_treasury());
                 let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(100_000_000);
             }
@@ -321,7 +321,7 @@ impl Staking {
             //
             // reset pending if necessary
             //
-            if self.pending.len() == 0 {
+            if self.pending.is_empty() {
                 self.pending = vec![];
                 self.deposits = vec![];
                 for i in 0..self.stakers.len() {
@@ -382,7 +382,7 @@ impl Staking {
                     "Rolling forward and moving into pending: {}!",
                     self.stakers.len()
                 );
-                if self.stakers.len() == 0 {
+                if self.stakers.is_empty() {
                     //self.reset_staker_table(block.get_staking_treasury());
                     let (_res_spend, _res_unspend, _res_delete) =
                         self.reset_staker_table(100_000_000);
@@ -406,7 +406,7 @@ impl Staking {
                 //
                 // re-create staker table, if needed
                 //
-                if self.stakers.len() == 0 {
+                if self.stakers.is_empty() {
                     //self.reset_staker_table(block.get_staking_treasury());
                     let (_res_spend, _res_unspend, _res_delete) =
                         self.reset_staker_table(100_000_000);
@@ -421,7 +421,7 @@ impl Staking {
                 //
                 // reset pending if necessary
                 //
-                if self.pending.len() == 0 {
+                if self.pending.is_empty() {
                     self.pending = vec![];
                     self.deposits = vec![];
                     for i in 0..self.stakers.len() {
@@ -450,7 +450,7 @@ impl Staking {
                 //
                 // reset pending if necessary
                 //
-                if self.pending.len() == 0 {
+                if self.pending.is_empty() {
                     self.pending = vec![];
                     self.deposits = vec![];
                     for i in 0..self.stakers.len() {

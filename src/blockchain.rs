@@ -47,7 +47,7 @@ pub struct Blockchain {
 }
 
 impl Blockchain {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Blockchain {
             staking: Staking::new(),
@@ -814,7 +814,7 @@ impl Blockchain {
         // means our wind attempt failed and we should move directly into
         // add_block_failure() by returning false.
         //
-        if wind_failure == true && new_chain.len() == 0 {
+        if wind_failure == true && new_chain.is_empty() {
             return false;
         }
 

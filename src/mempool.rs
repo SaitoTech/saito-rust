@@ -51,7 +51,7 @@ pub struct Mempool {
 }
 
 impl Mempool {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Mempool {
             blocks_queue: VecDeque::new(),
@@ -219,7 +219,7 @@ impl Mempool {
         if self.currently_processing_block {
             return false;
         }
-        if self.transactions.len() == 0 {
+        if self.transactions.is_empty() {
             return false;
         }
 

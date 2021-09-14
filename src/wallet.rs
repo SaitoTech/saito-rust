@@ -280,14 +280,14 @@ impl Wallet {
         //
         // ensure not empty
         //
-        if inputs.len() == 0 {
+        if inputs.is_empty() {
             let mut input = Slip::new();
             input.set_publickey(my_publickey);
             input.set_amount(0);
             input.set_uuid([0; 32]);
             inputs.push(input);
         }
-        if outputs.len() == 0 {
+        if outputs.is_empty() {
             let mut output = Slip::new();
             output.set_publickey(my_publickey);
             output.set_amount(0);
@@ -384,7 +384,7 @@ impl Wallet {
         let mut transaction = Transaction::new();
         transaction.set_transaction_type(TransactionType::StakerWithdrawal);
 
-        if self.staked_slips.len() == 0 {
+        if self.staked_slips.is_empty() {
             return transaction;
         }
 
@@ -451,7 +451,7 @@ pub struct WalletSlip {
 }
 
 impl WalletSlip {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         WalletSlip {
             uuid: [0; 32],
