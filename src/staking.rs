@@ -758,7 +758,8 @@ mod tests {
             println!("DEPOSIT 3: {:?}", blockchain.staking.deposits);
 
             //assert_eq!(blk.get_has_fee_transaction(), true);
-            //assert_eq!(blk.get_fee_transaction_idx(), 2); // normal tx, golden ticket, fee tx
+            //assert_eq!(blk.get_fee_transaction_idx(), 2);
+            // normal tx, golden ticket, fee tx
             //println!("{:?}", blk.transactions[2].get_outputs());
             //assert_eq!(blk.transactions[2].get_outputs()[2].get_slip_type(), SlipType::StakerOutput);
         }

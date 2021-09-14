@@ -188,9 +188,8 @@ pub async fn main() -> saito_rust::Result<()> {
                 .unwrap()
         });
         for (_pos, path) in paths.iter().enumerate() {
-            if path.path().to_str().unwrap() != String::from(BLOCKS_DIR_PATH).clone() + "empty"
-                && path.path().to_str().unwrap()
-                    != String::from(BLOCKS_DIR_PATH).clone() + ".gitignore"
+            if path.path().to_str().unwrap() != BLOCKS_DIR_PATH.clone() + "empty"
+                && path.path().to_str().unwrap() != BLOCKS_DIR_PATH.clone() + ".gitignore"
             {
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();

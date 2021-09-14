@@ -1881,10 +1881,6 @@ impl Block {
         //
         // set staking treasury
         //
-        println!(
-            "the staking treasury collected this block is: {}",
-            cv.staking_treasury
-        );
 
         if cv.staking_treasury != 0 {
             let mut adjusted_staking_treasury = previous_block_staking_treasury;
