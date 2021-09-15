@@ -2666,7 +2666,7 @@
             <span class="kw">return</span> <span class="bool-val">true</span>;
         }
 
-        <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="bool-val">false</span>
     }
 
     <span class="comment">//</span>
@@ -2692,7 +2692,7 @@
             <span class="kw">return</span> <span class="bool-val">true</span>;
         }
 
-        <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="bool-val">false</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) {
@@ -3795,11 +3795,11 @@
         <span class="comment">// debugging output works.</span>
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">len</span>() {
             <span class="kw">let</span> <span class="ident">transactions_valid2</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">i</span>].<span class="ident">validate</span>(<span class="ident">utxoset</span>, <span class="ident">staking</span>);
-            <span class="kw">if</span> <span class="ident">transactions_valid2</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span> {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">transactions_valid2</span> {
                 <span class="macro">println!</span>(<span class="string">&quot;TType: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">i</span>].<span class="ident">get_transaction_type</span>());
             }
         }
-        <span class="kw">return</span> <span class="bool-val">true</span>;
+        <span class="bool-val">true</span>
 
         <span class="comment">//        let transactions_valid = self</span>
         <span class="comment">//            .transactions</span>
@@ -3931,7 +3931,7 @@
         <span class="comment">// associated with that golden ticket to create a fair output for the</span>
         <span class="comment">// previous block.</span>
         <span class="comment">//</span>
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">cv</span>.<span class="ident">fee_transaction</span>.<span class="ident">is_none</span>() {
+        <span class="kw">if</span> <span class="ident">cv</span>.<span class="ident">fee_transaction</span>.<span class="ident">is_some</span>() {
             <span class="comment">//</span>
             <span class="comment">// creator signs fee transaction</span>
             <span class="comment">//</span>

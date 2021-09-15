@@ -131,8 +131,6 @@
 <span id="129">129</span>
 <span id="130">130</span>
 <span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
 </pre><pre class="rust">
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">HEARTBEAT</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">30_000</span>;
 
@@ -175,9 +173,7 @@
         <span class="kw">let</span> <span class="ident">work_needed_float</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="ident">burn_fee_previous_block_as_float</span> <span class="op">/</span> <span class="ident">elapsed_time_float</span>;
 
         <span class="comment">// convert back to nolan for rounding / safety</span>
-        <span class="kw">let</span> <span class="ident">work_needed_nolan</span> <span class="op">=</span> (<span class="ident">work_needed_float</span> <span class="op">*</span> <span class="number">100_000_000.0</span>).<span class="ident">round</span>() <span class="kw">as</span> <span class="ident">u64</span>;
-
-        <span class="ident">work_needed_nolan</span>
+        (<span class="ident">work_needed_float</span> <span class="op">*</span> <span class="number">100_000_000.0</span>).<span class="ident">round</span>() <span class="kw">as</span> <span class="ident">u64</span>
     }
 
     <span class="doccomment">/// Returns an adjusted burnfee based on the start value provided</span>

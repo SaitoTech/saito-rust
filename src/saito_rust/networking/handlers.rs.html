@@ -250,7 +250,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">block_bytes</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">block_bytes</span>),
         <span class="prelude-val">Err</span>(<span class="ident">_err</span>) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">_err</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">warp::reject</span>());
+            <span class="prelude-val">Err</span>(<span class="ident">warp::reject</span>())
         }
     }
 }
@@ -263,7 +263,7 @@
 <span class="comment">//         Ok(json_data) =&gt; Ok(warp::reply::json(&amp;json_data)),</span>
 <span class="comment">//         Err(_err) =&gt; {</span>
 <span class="comment">//             eprintln!(&quot;{:?}&quot;, _err);</span>
-<span class="comment">//             return Err(warp::reject());</span>
+<span class="comment">//             Err(warp::reject())</span>
 <span class="comment">//         }</span>
 <span class="comment">//     }</span>
 <span class="comment">// }</span>

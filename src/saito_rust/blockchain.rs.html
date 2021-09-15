@@ -1822,7 +1822,7 @@
                     <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>().<span class="ident">set_lc</span>(<span class="bool-val">true</span>);
                 }
 
-                <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_some</span>() {
                     <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>
                         .<span class="ident">as_ref</span>()
                         .<span class="ident">unwrap</span>()
@@ -1843,7 +1843,7 @@
             } <span class="kw">else</span> {
                 <span class="self">self</span>.<span class="ident">add_block_failure</span>().<span class="kw">await</span>;
 
-                <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_some</span>() {
                     <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>
                         .<span class="ident">as_ref</span>()
                         .<span class="ident">unwrap</span>()
@@ -1854,7 +1854,7 @@
         } <span class="kw">else</span> {
             <span class="self">self</span>.<span class="ident">add_block_failure</span>().<span class="kw">await</span>;
 
-            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_some</span>() {
                 <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>
                     .<span class="ident">as_ref</span>()
                     .<span class="ident">unwrap</span>()
@@ -1866,7 +1866,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
-        <span class="kw">return</span> <span class="ident">res</span>;
+        <span class="ident">res</span>
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block_success</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span>) {
@@ -1967,7 +1967,7 @@
         <span class="comment">//</span>
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
             <span class="kw">if</span> (<span class="ident">current_block_id</span> <span class="op">-</span> <span class="ident">i</span>) <span class="op">%</span> <span class="number">10</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
-                <span class="ident">current_block_id</span> <span class="op">=</span> <span class="ident">current_block_id</span> <span class="op">-</span> <span class="ident">i</span>;
+                <span class="ident">current_block_id</span> <span class="op">-</span><span class="op">=</span> <span class="ident">i</span>;
                 <span class="kw">break</span>;
             }
         }
@@ -2231,7 +2231,7 @@
         <span class="comment">//</span>
         <span class="comment">// no match? return 0 -- no shared ancestor</span>
         <span class="comment">//</span>
-        <span class="kw">return</span> <span class="number">0</span>;
+        <span class="number">0</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_latest_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Block</span><span class="op">&gt;</span> {
@@ -2264,7 +2264,7 @@
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>) {
             <span class="kw">return</span> <span class="bool-val">true</span>;
         }
-        <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="bool-val">false</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains_block_hash_at_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>, <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -2326,12 +2326,12 @@
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">unwind_chain</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>, <span class="kw-2">&amp;</span><span class="ident">old_chain</span>, <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">true</span>)
                 .<span class="kw">await</span>;
-            <span class="kw">return</span> <span class="ident">res</span>;
+            <span class="ident">res</span>
         } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">new_chain</span>.<span class="ident">is_empty</span>() {
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">wind_chain</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>, <span class="kw-2">&amp;</span><span class="ident">old_chain</span>, <span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">false</span>)
                 .<span class="kw">await</span>;
-            <span class="kw">return</span> <span class="ident">res</span>;
+            <span class="ident">res</span>
         } <span class="kw">else</span> {
             <span class="bool-val">true</span>
         }
@@ -2373,7 +2373,7 @@
         <span class="comment">// means our wind attempt failed and we should move directly into</span>
         <span class="comment">// add_block_failure() by returning false.</span>
         <span class="comment">//</span>
-        <span class="kw">if</span> <span class="ident">wind_failure</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">true</span> <span class="op">&amp;&amp;</span> <span class="ident">new_chain</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">if</span> <span class="ident">wind_failure</span> <span class="op">&amp;&amp;</span> <span class="ident">new_chain</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
@@ -2487,7 +2487,7 @@
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_wind_index</span> <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">false</span>)
                 .<span class="kw">await</span>;
-            <span class="kw">return</span> <span class="ident">res</span>;
+            <span class="ident">res</span>
         } <span class="kw">else</span> {
             <span class="comment">//</span>
             <span class="comment">// we have had an error while winding the chain. this requires us to</span>
@@ -2524,7 +2524,7 @@
                 <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
                     .<span class="ident">wind_chain</span>(<span class="ident">old_chain</span>, <span class="ident">new_chain</span>, <span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">true</span>)
                     .<span class="kw">await</span>;
-                <span class="kw">return</span> <span class="ident">res</span>;
+                <span class="ident">res</span>
             } <span class="kw">else</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chain_to_unwind</span>: <span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
@@ -2549,7 +2549,7 @@
                 <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
                     .<span class="ident">unwind_chain</span>(<span class="ident">old_chain</span>, <span class="kw-2">&amp;</span><span class="ident">chain_to_unwind</span>, <span class="number">0</span>, <span class="bool-val">true</span>)
                     .<span class="kw">await</span>;
-                <span class="kw">return</span> <span class="ident">res</span>;
+                <span class="ident">res</span>
             }
         }
     }
@@ -2624,7 +2624,7 @@
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">wind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="ident">wind_failure</span>)
                 .<span class="kw">await</span>;
-            <span class="kw">return</span> <span class="ident">res</span>;
+            <span class="ident">res</span>
         } <span class="kw">else</span> {
             <span class="comment">//</span>
             <span class="comment">// continue unwinding,, which means</span>
@@ -2635,7 +2635,7 @@
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">unwind_chain</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>, <span class="ident">current_unwind_index</span> <span class="op">+</span> <span class="number">1</span>, <span class="ident">wind_failure</span>)
                 .<span class="kw">await</span>;
-            <span class="kw">return</span> <span class="ident">res</span>;
+            <span class="ident">res</span>
         }
     }
 

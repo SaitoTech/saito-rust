@@ -673,10 +673,10 @@
             .<span class="ident">iter</span>()
             .<span class="ident">any</span>(<span class="op">|</span><span class="ident">block</span><span class="op">|</span> <span class="ident">block</span>.<span class="ident">get_hash</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">hash_to_insert</span>)
         {
-            <span class="kw">return</span> <span class="ident">AddBlockResult::Exists</span>;
+            <span class="ident">AddBlockResult::Exists</span>
         } <span class="kw">else</span> {
             <span class="self">self</span>.<span class="ident">blocks_queue</span>.<span class="ident">push_back</span>(<span class="ident">block</span>);
-            <span class="kw">return</span> <span class="ident">AddBlockResult::Accepted</span>;
+            <span class="ident">AddBlockResult::Accepted</span>
         }
     }
 
@@ -705,11 +705,11 @@
             .<span class="ident">iter</span>()
             .<span class="ident">any</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> <span class="ident">transaction</span>.<span class="ident">get_signature</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">tx_sig_to_insert</span>)
         {
-            <span class="kw">return</span> <span class="ident">AddTransactionResult::Exists</span>;
+            <span class="ident">AddTransactionResult::Exists</span>
         } <span class="kw">else</span> {
             <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
             <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">+</span><span class="op">=</span> <span class="ident">routing_work_available_for_me</span>;
-            <span class="kw">return</span> <span class="ident">AddTransactionResult::Accepted</span>;
+            <span class="ident">AddTransactionResult::Accepted</span>
         }
     }
 
@@ -761,11 +761,11 @@
             .<span class="ident">iter</span>()
             .<span class="ident">any</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> <span class="ident">transaction</span>.<span class="ident">is_golden_ticket</span>())
         {
-            <span class="kw">return</span> <span class="ident">AddTransactionResult::Exists</span>;
+            <span class="ident">AddTransactionResult::Exists</span>
         } <span class="kw">else</span> {
             <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;adding golden ticket to mempool...&quot;</span>);
             <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
-            <span class="kw">return</span> <span class="ident">AddTransactionResult::Accepted</span>;
+            <span class="ident">AddTransactionResult::Accepted</span>
         }
     }
 
@@ -776,7 +776,7 @@
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">&gt;</span> <span class="number">0</span> {
             <span class="kw">return</span> <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span>;
         }
-        <span class="kw">return</span> <span class="number">0</span>;
+        <span class="number">0</span>
     }
 
     <span class="comment">//</span>

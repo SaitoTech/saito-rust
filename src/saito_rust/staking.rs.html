@@ -1111,7 +1111,7 @@
 
         <span class="kw">let</span> <span class="ident">winning_slip</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">retrieve_from_pos</span> <span class="kw">as</span> <span class="ident">usize</span>].<span class="ident">clone</span>();
 
-        <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">winning_slip</span>);
+        <span class="prelude-val">Some</span>(<span class="ident">winning_slip</span>)
     }
 
     <span class="comment">//</span>
@@ -1205,14 +1205,14 @@
             <span class="kw">let</span> (<span class="ident">z</span>, <span class="ident">f</span>) <span class="op">=</span> <span class="ident">nominator</span>.<span class="ident">overflowing_div</span>(<span class="ident">denominator</span>);
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">staking_profit</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-            <span class="kw">if</span> <span class="ident">f</span> <span class="op">!</span><span class="op">=</span> <span class="bool-val">true</span> {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">f</span> {
                 <span class="ident">staking_profit</span> <span class="op">=</span> <span class="ident">z</span>.<span class="ident">as_u64</span>();
             }
 
             <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">set_payout</span>(<span class="ident">staking_profit</span>);
         }
 
-        <span class="kw">return</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>);
+        (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_slip_in_deposits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -1221,7 +1221,7 @@
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
         }
-        <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="bool-val">false</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_slip_in_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -1230,7 +1230,7 @@
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
         }
-        <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="bool-val">false</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_slip_in_pending</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -1239,7 +1239,7 @@
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
         }
-        <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="bool-val">false</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_deposit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) {
@@ -1261,7 +1261,7 @@
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
         }
-        <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="bool-val">false</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_staker</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -1271,7 +1271,7 @@
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
         }
-        <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="bool-val">false</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_pending</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
@@ -1281,7 +1281,7 @@
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
         }
-        <span class="kw">return</span> <span class="bool-val">false</span>;
+        <span class="bool-val">false</span>
     }
 
     <span class="comment">//</span>
@@ -1405,7 +1405,7 @@
             <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">outputs</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="number">3</span> {
                 <span class="kw">return</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>);
             }
-            <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="number">1</span> {
+            <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">inputs</span>.<span class="ident">is_empty</span>() {
                 <span class="kw">return</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>);
             }
 
@@ -1513,7 +1513,7 @@
             }
         }
 
-        <span class="kw">return</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>);
+        (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>)
     }
 }
 
