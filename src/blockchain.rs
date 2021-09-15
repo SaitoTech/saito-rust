@@ -1237,20 +1237,6 @@ pub async fn run(
     }
 
     //
-    // local broadcasting loop
-    //
-    //let test_sender = blockchain_channel_sender.clone();
-    //tokio::spawn(async move {
-    //    loop {
-    //test_sender
-    //    .send(MempoolMessage::TryBundleBlock)
-    //    .await
-    //    .expect("error: GenerateBlock message failed to send");
-    //        sleep(Duration::from_millis(1000));
-    //    }
-    //});
-
-    //
     // receive broadcast messages
     //
     loop {
