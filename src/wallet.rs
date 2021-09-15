@@ -138,7 +138,7 @@ impl Wallet {
         //
         // If a block is added in a fork all the inputs will be deleted and won't be recovered.
         // Also, outputs added will still be in the wallet even if they are not replayed on the longest chain(and are therefore unspendable)
-        for tx in &block.transactions {
+        for tx in block.get_transactions() {
             for input in tx.get_inputs() {
                 if input.get_slip_type() == SlipType::StakerDeposit
                     || input.get_slip_type() == SlipType::StakerOutput
@@ -170,7 +170,7 @@ impl Wallet {
     // removes all slips in block when pruned / deleted
     //
     pub fn delete_block(&mut self, block: &Block) {
-        for tx in &block.transactions {
+        for tx in block.get_transactions() {
             for input in tx.get_inputs() {
                 self.delete_slip(input);
             }

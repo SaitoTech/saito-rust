@@ -47,7 +47,7 @@ scripts/test.sh
 or
 
 ```
-cargo test --features=test-utilities
+cargo test
 ```
 
 ### Code formatting

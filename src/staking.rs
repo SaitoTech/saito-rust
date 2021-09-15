@@ -257,7 +257,7 @@ impl Staking {
         //
         // add/remove deposits
         //
-        for tx in &block.transactions {
+        for tx in block.get_transactions() {
             if tx.get_transaction_type() == TransactionType::StakerWithdrawal {
                 //
                 // someone has successfully withdrawn so we need to remove this slip
@@ -340,10 +340,11 @@ impl Staking {
         // update staking tables
         //
         if block.get_has_fee_transaction() && block.get_has_golden_ticket() {
-            let fee_transaction = &block.transactions[block.get_fee_transaction_idx() as usize];
+            let fee_transaction =
+                &block.get_transactions()[block.get_fee_transaction_idx() as usize];
 
             let golden_ticket_transaction =
-                &block.transactions[block.get_golden_ticket_idx() as usize];
+                &block.get_transactions()[block.get_golden_ticket_idx() as usize];
 
             //
             // grab random input from golden ticket
@@ -903,7 +904,7 @@ mod tests {
         //
         {
             let mut blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(latest_block_hash).await;
+            let blk = blockchain.get_block(&latest_block_hash).await.unwrap();
             println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             println!("STAKERS: {:?}", blockchain.staking.stakers);
             println!("PENDING: {:?}", blockchain.staking.pending);
