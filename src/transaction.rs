@@ -135,7 +135,7 @@ impl Transaction {
             }
         }
 
-        return true;
+        true
     }
 
     //
@@ -177,7 +177,7 @@ impl Transaction {
             output.set_amount(with_payment);
             transaction.add_output(output);
 
-            return transaction;
+            transaction
         } else {
             if available_balance > with_payment {
                 let mut transaction = Transaction::new();
@@ -242,7 +242,7 @@ impl Transaction {
             transaction.add_input(input1);
             transaction.add_output(output1);
 
-            return transaction;
+            transaction
         }
     }
 
@@ -355,7 +355,7 @@ impl Transaction {
             routing_work_available_to_publickey -= half_of_routing_work;
         }
 
-        return routing_work_available_to_publickey;
+        routing_work_available_to_publickey
     }
 
     pub fn add_input(&mut self, input_slip: Slip) {
@@ -430,7 +430,7 @@ impl Transaction {
         // can make you money.
         //
         if self.path.is_empty() {
-            if self.inputs.len() > 0 {
+            if !self.inputs.is_empty() {
                 return self.inputs[0].get_publickey();
             } else {
                 return [0; 33];
@@ -482,7 +482,7 @@ impl Transaction {
         //
         // we should never reach this
         //
-        return [0; 33];
+        [0; 33]
     }
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
@@ -687,7 +687,7 @@ impl Transaction {
     // calculate cumulative routing work in block
     //
     pub fn generate_metadata_cumulative_work(&mut self, cumulative_work: u64) -> u64 {
-        return cumulative_work + self.routing_work_for_creator;
+        cumulative_work + self.routing_work_for_creator
     }
     //
     // calculate hashes used in signatures

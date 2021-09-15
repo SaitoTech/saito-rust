@@ -64,7 +64,7 @@ impl Staking {
 
         let winning_slip = self.stakers[retrieve_from_pos as usize].clone();
 
-        return Some(winning_slip);
+        Some(winning_slip)
     }
 
     //
@@ -158,14 +158,14 @@ impl Staking {
             let (z, f) = nominator.overflowing_div(denominator);
 
             let mut staking_profit: u64 = 0;
-            if f != true {
+            if !f {
                 staking_profit = z.as_u64();
             }
 
             self.stakers[i].set_payout(staking_profit);
         }
 
-        return (res_spend, res_unspend, res_delete);
+        (res_spend, res_unspend, res_delete)
     }
 
     pub fn validate_slip_in_deposits(&self, slip: Slip) -> bool {
@@ -174,7 +174,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn validate_slip_in_stakers(&self, slip: Slip) -> bool {
@@ -183,7 +183,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn validate_slip_in_pending(&self, slip: Slip) -> bool {
@@ -192,7 +192,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn add_deposit(&mut self, slip: Slip) {
@@ -214,7 +214,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn remove_staker(&mut self, slip: Slip) -> bool {
@@ -224,7 +224,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn remove_pending(&mut self, slip: Slip) -> bool {
@@ -234,7 +234,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     //
@@ -358,7 +358,7 @@ impl Staking {
             if fee_transaction.outputs.len() < 3 {
                 return (res_spend, res_unspend, res_delete);
             }
-            if fee_transaction.inputs.len() < 1 {
+            if fee_transaction.inputs.is_empty() {
                 return (res_spend, res_unspend, res_delete);
             }
 
@@ -466,7 +466,7 @@ impl Staking {
             }
         }
 
-        return (res_spend, res_unspend, res_delete);
+        (res_spend, res_unspend, res_delete)
     }
 }
 

@@ -34,7 +34,7 @@ impl GoldenTicket {
 
     // TODO - review exact algorithm in use here
     pub fn is_valid_solution(target: SaitoHash, solution: SaitoHash, difficulty: u64) -> bool {
-        let difficulty_order = (difficulty as f64 / 1_0000_0000 as f64).round() as usize;
+        let difficulty_order = (difficulty as f64 / 1_0000_0000_f64).round() as usize;
         let difficulty_grain = difficulty % 1_0000_0000;
 
         let random_solution = U256::from_big_endian(&solution[..difficulty_order]);

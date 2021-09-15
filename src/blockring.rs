@@ -125,8 +125,7 @@ impl BlockRing {
 
     pub fn contains_block_hash_at_block_id(&self, block_id: u64, block_hash: SaitoHash) -> bool {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
-        let res = self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash);
-        return res;
+        self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash)
     }
 
     pub fn add_block(&mut self, block: &Block) {
@@ -147,7 +146,7 @@ impl BlockRing {
                 v.push(self.block_ring[(insert_pos as usize)].block_hashes[i].clone());
             }
         }
-        return v;
+        v
     }
 
     pub fn on_chain_reorganization(&mut self, block_id: u64, hash: SaitoHash, lc: bool) -> bool {

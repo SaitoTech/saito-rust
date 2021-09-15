@@ -56,8 +56,8 @@ impl Wallet {
         let (publickey, privatekey) = Wallet::load_keys(key_path, password);
         println!("Loaded wallet {}", hex::encode(publickey));
         Wallet {
-            publickey: publickey,
-            privatekey: privatekey,
+            publickey,
+            privatekey,
             slips: vec![],
             staked_slips: vec![],
         }
@@ -229,7 +229,7 @@ impl Wallet {
                 available_balance += slip.get_amount();
             }
         }
-        return available_balance;
+        available_balance
     }
 
     // the nolan_requested is omitted from the slips created - only the change
@@ -295,7 +295,7 @@ impl Wallet {
             outputs.push(output);
         }
 
-        return (inputs, outputs);
+        (inputs, outputs)
     }
 
     pub fn sign(&self, message_bytes: &[u8]) -> SaitoSignature {

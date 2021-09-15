@@ -338,5 +338,5 @@ pub async fn make_mock_block_with_info(
     )
     .await;
 
-    return block;
+    block
 }

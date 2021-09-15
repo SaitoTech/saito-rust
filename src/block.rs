@@ -564,7 +564,7 @@ impl Block {
             return true;
         }
 
-        return false;
+        false
     }
 
     //
@@ -590,7 +590,7 @@ impl Block {
             return true;
         }
 
-        return false;
+        false
     }
 
     pub fn sign(&mut self, publickey: SaitoPublicKey, privatekey: SaitoPrivateKey) {
@@ -1693,11 +1693,11 @@ impl Block {
         // debugging output works.
         for i in 0..self.transactions.len() {
             let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
-            if transactions_valid2 == false {
+            if !transactions_valid2 {
                 println!("TType: {:?}", self.transactions[i].get_transaction_type());
             }
         }
-        return true;
+        true
 
         //        let transactions_valid = self
         //            .transactions
@@ -1829,7 +1829,7 @@ impl Block {
         // associated with that golden ticket to create a fair output for the
         // previous block.
         //
-        if !cv.fee_transaction.is_none() {
+        if cv.fee_transaction.is_some() {
             //
             // creator signs fee transaction
             //

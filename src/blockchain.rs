@@ -263,7 +263,7 @@ impl Blockchain {
                     self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
                 }
 
-                if !self.broadcast_channel_sender.is_none() {
+                if self.broadcast_channel_sender.is_some() {
                     self.broadcast_channel_sender
                         .as_ref()
                         .unwrap()
@@ -284,7 +284,7 @@ impl Blockchain {
             } else {
                 self.add_block_failure().await;
 
-                if !self.broadcast_channel_sender.is_none() {
+                if self.broadcast_channel_sender.is_some() {
                     self.broadcast_channel_sender
                         .as_ref()
                         .unwrap()
@@ -295,7 +295,7 @@ impl Blockchain {
         } else {
             self.add_block_failure().await;
 
-            if !self.broadcast_channel_sender.is_none() {
+            if self.broadcast_channel_sender.is_some() {
                 self.broadcast_channel_sender
                     .as_ref()
                     .unwrap()
@@ -307,7 +307,7 @@ impl Blockchain {
     pub async fn add_block_to_blockchain(blockchain_lock: Arc<RwLock<Blockchain>>, block: Block) {
         let mut blockchain = blockchain_lock.write().await;
         let res = blockchain.add_block(block).await;
-        return res;
+        res
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
@@ -408,7 +408,7 @@ impl Blockchain {
         //
         for i in 0..10 {
             if (current_block_id - i) % 10 == 0 {
-                current_block_id = current_block_id - i;
+                current_block_id -= i;
                 break;
             }
         }
@@ -672,7 +672,7 @@ impl Blockchain {
         //
         // no match? return 0 -- no shared ancestor
         //
-        return 0;
+        0
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
@@ -705,7 +705,7 @@ impl Blockchain {
         if self.blocks.contains_key(&block_hash) {
             return true;
         }
-        return false;
+        false
     }
 
     pub fn contains_block_hash_at_block_id(&self, block_id: u64, block_hash: SaitoHash) -> bool {
@@ -767,12 +767,12 @@ impl Blockchain {
             let res = self
                 .unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
                 .await;
-            return res;
+            res
         } else if !new_chain.is_empty() {
             let res = self
                 .wind_chain(&new_chain, &old_chain, new_chain.len() - 1, false)
                 .await;
-            return res;
+            res
         } else {
             true
         }
@@ -814,7 +814,7 @@ impl Blockchain {
         // means our wind attempt failed and we should move directly into
         // add_block_failure() by returning false.
         //
-        if wind_failure == true && new_chain.is_empty() {
+        if wind_failure && new_chain.is_empty() {
             return false;
         }
 
@@ -928,7 +928,7 @@ impl Blockchain {
             let res = self
                 .wind_chain(new_chain, old_chain, current_wind_index - 1, false)
                 .await;
-            return res;
+            res
         } else {
             //
             // we have had an error while winding the chain. this requires us to
@@ -965,7 +965,7 @@ impl Blockchain {
                 let res = self
                     .wind_chain(old_chain, new_chain, new_chain.len() - 1, true)
                     .await;
-                return res;
+                res
             } else {
                 let mut chain_to_unwind: Vec<[u8; 32]> = vec![];
 
@@ -990,7 +990,7 @@ impl Blockchain {
                 let res = self
                     .unwind_chain(old_chain, &chain_to_unwind, 0, true)
                     .await;
-                return res;
+                res
             }
         }
     }
@@ -1065,7 +1065,7 @@ impl Blockchain {
             let res = self
                 .wind_chain(new_chain, old_chain, new_chain.len() - 1, wind_failure)
                 .await;
-            return res;
+            res
         } else {
             //
             // continue unwinding,, which means
@@ -1076,7 +1076,7 @@ impl Blockchain {
             let res = self
                 .unwind_chain(new_chain, old_chain, current_unwind_index + 1, wind_failure)
                 .await;
-            return res;
+            res
         }
     }
 

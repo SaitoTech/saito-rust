@@ -84,10 +84,10 @@ impl Mempool {
             .iter()
             .any(|block| block.get_hash() == hash_to_insert)
         {
-            return AddBlockResult::Exists;
+            AddBlockResult::Exists
         } else {
             self.blocks_queue.push_back(block);
-            return AddBlockResult::Accepted;
+            AddBlockResult::Accepted
         }
     }
 
@@ -116,11 +116,11 @@ impl Mempool {
             .iter()
             .any(|transaction| transaction.get_signature() == tx_sig_to_insert)
         {
-            return AddTransactionResult::Exists;
+            AddTransactionResult::Exists
         } else {
             self.transactions.push(transaction);
             self.routing_work_in_mempool += routing_work_available_for_me;
-            return AddTransactionResult::Accepted;
+            AddTransactionResult::Accepted
         }
     }
 
@@ -172,11 +172,11 @@ impl Mempool {
             .iter()
             .any(|transaction| transaction.is_golden_ticket())
         {
-            return AddTransactionResult::Exists;
+            AddTransactionResult::Exists
         } else {
             event!(Level::TRACE, "adding golden ticket to mempool...");
             self.transactions.push(transaction);
-            return AddTransactionResult::Accepted;
+            AddTransactionResult::Accepted
         }
     }
 
@@ -187,7 +187,7 @@ impl Mempool {
         if self.routing_work_in_mempool > 0 {
             return self.routing_work_in_mempool;
         }
-        return 0;
+        0
     }
 
     //
