@@ -196,7 +196,6 @@ impl Mempool {
     pub fn calculate_work_needed(&self, previous_block: &Block, current_timestamp: u64) -> u64 {
         let previous_block_timestamp = previous_block.get_timestamp();
         let previous_block_burnfee = previous_block.get_burnfee();
-        // let current_timestamp = create_timestamp();
 
         let work_needed: u64 = BurnFee::return_routing_work_needed_to_produce_block_in_nolan(
             previous_block_burnfee,
@@ -231,7 +230,7 @@ impl Mempool {
             let time_elapsed = current_timestamp - previous_block.get_timestamp();
             event!(
                 Level::INFO,
-                "work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
+                "can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
                 work_available,
                 work_needed,
                 time_elapsed
@@ -245,7 +244,7 @@ impl Mempool {
     pub async fn generate_block(
         &mut self,
         blockchain_lock: Arc<RwLock<Blockchain>>,
-        timestamp_generator: &mut impl TimestampGenerator,
+        timestamp_generator: Box<&mut dyn TimestampGenerator>,
     ) -> Block {
         let blockchain = blockchain_lock.read().await;
         let previous_block_hash = blockchain.get_latest_block_hash();
@@ -269,6 +268,7 @@ pub async fn try_bundle_block(
     blockchain_lock: Arc<RwLock<Blockchain>>,
     timestamp_generator: &mut impl TimestampGenerator,
 ) -> Option<Block> {
+    // We use a boolean here so we can avoid taking the write lock most of the time
     let can_bundle;
     {
         let mempool = mempool_lock.read().await;
@@ -280,7 +280,7 @@ pub async fn try_bundle_block(
         let mut mempool = mempool_lock.write().await;
         Some(
             mempool
-                .generate_block(blockchain_lock.clone(), timestamp_generator)
+                .generate_block(blockchain_lock.clone(), Box::new(timestamp_generator))
                 .await,
         )
     } else {
@@ -363,17 +363,6 @@ pub async fn run(
 
                     },
 
-                    // This appears to be unused and does the same thing that TryBundleBlock does.....
-                    // GenerateBlock makes periodic attempts to analyse the state of
-                    // the mempool and produce blocks if possible.
-                    // MempoolMessage::GenerateBlock => {
-                    //     let mut mempool = mempool_lock.write().await;
-                    //     let block = mempool.generate_block(blockchain_lock.clone()).await;
-                    //     if AddBlockResult::Accepted == mempool.add_block(block) {
-                    //         mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message")
-                    //     }
-                    // },
-
                     // ProcessBlocks will add blocks FIFO from the queue into blockchain
                     MempoolMessage::ProcessBlocks => {
                         process_blocks(mempool_lock.clone(), blockchain_lock.clone()).await;
@@ -416,7 +405,7 @@ mod tests {
     use super::*;
     use crate::{
         block::Block,
-        test_utilities::mocks::{add_vip_block, make_block_with_mempool},
+        test_utilities::mocks::{add_vip_block, make_block_with_mempool, MockTimestampGenerator},
         wallet::Wallet,
     };
 
@@ -442,15 +431,13 @@ mod tests {
         assert_eq!(Some(block), mempool.blocks_queue.pop_front())
     }
 
-    #[ignore]
     #[tokio::test]
-    async fn blockchain_test() {
-        // TODO Fix this test
+    async fn mempool_bundle_blocks_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
-        let prev_block;
+        let mut prev_block;
         {
             let wallet = wallet_lock.read().await;
             publickey = wallet.get_publickey();
@@ -462,6 +449,8 @@ mod tests {
             wallet_lock.clone(),
         )
         .await;
+        // make sure to create the mock_timestamp_generator after the VIP block.
+        let mut mock_timestamp_generator = MockTimestampGenerator::new();
         {
             let blockchain = blockchain_lock.read().await;
             prev_block = blockchain.get_latest_block().unwrap().clone();
@@ -475,19 +464,20 @@ mod tests {
         }
         for _i in 0..4 {
             let block = make_block_with_mempool(
+                &mut mock_timestamp_generator,
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
                 wallet_lock.clone(),
             )
             .await;
             assert_eq!(prev_block.get_hash(), block.get_previous_block_hash());
-
             let latest_block_id = block.get_id();
             let latest_block_hash = block.get_hash();
             let latest_block_prev_hash = block.get_previous_block_hash();
             {
                 let mut blockchain = blockchain_lock.write().await;
                 let prev_hash_before = block.get_previous_block_hash();
+                // add block to blockchain(normally this is done in mempool also, see test below)
                 blockchain.add_block(block).await;
                 let prev_hash_after = blockchain
                     .get_latest_block()
@@ -511,7 +501,85 @@ mod tests {
                         .unwrap()
                         .get_previous_block_hash()
                 );
-                // prev_block = blockchain.get_latest_block().unwrap().clone();
+                prev_block = blockchain.get_latest_block().unwrap().clone();
+            }
+        }
+    }
+    #[tokio::test]
+    async fn mempool_bundle_and_process_blocks_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let publickey;
+        let mut prev_block;
+        {
+            let wallet = wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+        }
+        add_vip_block(
+            publickey,
+            [0; 32],
+            blockchain_lock.clone(),
+            wallet_lock.clone(),
+        )
+        .await;
+        // make sure to create the mock_timestamp_generator after the VIP block.
+        let mut mock_timestamp_generator = MockTimestampGenerator::new();
+        {
+            let blockchain = blockchain_lock.read().await;
+            prev_block = blockchain.get_latest_block().unwrap().clone();
+            assert_eq!(prev_block.get_id(), 1);
+        }
+
+        {
+            let wallet = wallet_lock.read().await;
+            let balance = wallet.get_available_balance();
+            assert_eq!(balance, 11000000);
+        }
+        for _i in 0..4 {
+            let block = make_block_with_mempool(
+                &mut mock_timestamp_generator,
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+                wallet_lock.clone(),
+            )
+            .await;
+            assert_eq!(prev_block.get_hash(), block.get_previous_block_hash());
+
+            let latest_block_id = block.get_id();
+            let latest_block_hash = block.get_hash();
+            let latest_block_prev_hash = block.get_previous_block_hash();
+            {
+                let prev_hash_before = block.get_previous_block_hash();
+                {
+                    let mut mempool = mempool_lock.write().await;
+                    mempool.add_block_to_queue(block);
+                }
+                process_blocks(mempool_lock.clone(), blockchain_lock.clone()).await;
+                let blockchain = blockchain_lock.read().await;
+                let prev_hash_after = blockchain
+                    .get_latest_block()
+                    .unwrap()
+                    .get_previous_block_hash();
+                assert_eq!(prev_hash_before, prev_hash_after);
+
+                assert_eq!(latest_block_id, blockchain.get_latest_block_id());
+                assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+                assert_eq!(
+                    prev_block.get_hash(),
+                    blockchain
+                        .get_latest_block()
+                        .unwrap()
+                        .get_previous_block_hash()
+                );
+                assert_eq!(
+                    latest_block_prev_hash,
+                    blockchain
+                        .get_latest_block()
+                        .unwrap()
+                        .get_previous_block_hash()
+                );
+                prev_block = blockchain.get_latest_block().unwrap().clone();
             }
         }
     }
