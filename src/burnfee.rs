@@ -39,9 +39,7 @@ impl BurnFee {
         let work_needed_float: f64 = burn_fee_previous_block_as_float / elapsed_time_float;
 
         // convert back to nolan for rounding / safety
-        let work_needed_nolan = (work_needed_float * 100_000_000.0).round() as u64;
-
-        work_needed_nolan
+        (work_needed_float * 100_000_000.0).round() as u64
     }
 
     /// Returns an adjusted burnfee based on the start value provided

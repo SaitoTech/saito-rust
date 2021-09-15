@@ -152,7 +152,7 @@ pub async fn main() -> saito_rust::Result<()> {
         .subcommand(App::new("blocks").about("print info about all blocks in the data directory"))
         .get_matches();
 
-    if let Some(ref matches) = matches.subcommand_matches("print") {
+    if let Some(matches) = matches.subcommand_matches("print") {
         // example usage:
         // cargo run --bin saitocli -- print --keyfile test/testwallet --password asdf
         let key_file = matches.value_of("keyfile").unwrap();
@@ -162,19 +162,19 @@ pub async fn main() -> saito_rust::Result<()> {
         println!("public key : {}", hex::encode(wallet.get_publickey()));
         println!("private key : {}", hex::encode(wallet.get_privatekey()));
     }
-    if let Some(ref matches) = matches.subcommand_matches("block") {
+    if let Some(matches) = matches.subcommand_matches("block") {
         let mut filename = String::from(BLOCKS_DIR_PATH).clone();
         let block_filename = matches.value_of("filename").unwrap();
         filename.push_str(block_filename);
-        let block = Storage::load_block_from_disk(String::from(filename)).await;
+        let block = Storage::load_block_from_disk(filename).await;
         println!("hash: {:?}", &hex::encode(&block.get_hash()));
         println!(
             "prev hash: {:?}",
             &hex::encode(&block.get_previous_block_hash())
         );
     }
-    if let Some(ref _matches) = matches.subcommand_matches("blocks") {
-        let mut paths: Vec<_> = fs::read_dir(String::from(BLOCKS_DIR_PATH).clone())
+    if let Some(_matches) = matches.subcommand_matches("blocks") {
+        let mut paths: Vec<_> = fs::read_dir(String::from(BLOCKS_DIR_PATH))
             .unwrap()
             .map(|r| r.unwrap())
             .collect();
@@ -208,7 +208,7 @@ pub async fn main() -> saito_rust::Result<()> {
             }
         }
     }
-    if let Some(ref matches) = matches.subcommand_matches("tx") {
+    if let Some(matches) = matches.subcommand_matches("tx") {
         let key_file = matches.value_of("keyfile").unwrap();
         let password = matches.value_of("password");
 

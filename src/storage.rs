@@ -119,7 +119,7 @@ impl Storage {
             block.generate_hashes();
         }
 
-        return block;
+        block
     }
 
     pub async fn delete_block_from_disk(filename: String) -> bool {

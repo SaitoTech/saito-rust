@@ -114,7 +114,7 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
         Ok(block_bytes) => Ok(block_bytes),
         Err(_err) => {
             eprintln!("{:?}", _err);
-            return Err(warp::reject());
+            Err(warp::reject())
         }
     }
 }
@@ -127,7 +127,7 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
 //         Ok(json_data) => Ok(warp::reply::json(&json_data)),
 //         Err(_err) => {
 //             eprintln!("{:?}", _err);
-//             return Err(warp::reject());
+//             Err(warp::reject())
 //         }
 //     }
 // }

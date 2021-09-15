@@ -62,7 +62,7 @@ impl TestManager {
                 parent_hash,
             )
             .await;
-        return block;
+        block
     }
 
     //
@@ -172,7 +172,7 @@ impl TestManager {
 
         block.sign(publickey, privatekey);
 
-        return block;
+        block
     }
 
     //
