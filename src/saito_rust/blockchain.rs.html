@@ -1556,20 +1556,6 @@
 <span id="1554">1554</span>
 <span id="1555">1555</span>
 <span id="1556">1556</span>
-<span id="1557">1557</span>
-<span id="1558">1558</span>
-<span id="1559">1559</span>
-<span id="1560">1560</span>
-<span id="1561">1561</span>
-<span id="1562">1562</span>
-<span id="1563">1563</span>
-<span id="1564">1564</span>
-<span id="1565">1565</span>
-<span id="1566">1566</span>
-<span id="1567">1567</span>
-<span id="1568">1568</span>
-<span id="1569">1569</span>
-<span id="1570">1570</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -2808,20 +2794,6 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
         <span class="ident">blockchain</span>.<span class="ident">set_broadcast_channel_sender</span>(<span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>());
     }
-
-    <span class="comment">//</span>
-    <span class="comment">// local broadcasting loop</span>
-    <span class="comment">//</span>
-    <span class="comment">//let test_sender = blockchain_channel_sender.clone();</span>
-    <span class="comment">//tokio::spawn(async move {</span>
-    <span class="comment">//    loop {</span>
-    <span class="comment">//test_sender</span>
-    <span class="comment">//    .send(MempoolMessage::TryBundleBlock)</span>
-    <span class="comment">//    .await</span>
-    <span class="comment">//    .expect(&quot;error: GenerateBlock message failed to send&quot;);</span>
-    <span class="comment">//        sleep(Duration::from_millis(1000));</span>
-    <span class="comment">//    }</span>
-    <span class="comment">//});</span>
 
     <span class="comment">//</span>
     <span class="comment">// receive broadcast messages</span>

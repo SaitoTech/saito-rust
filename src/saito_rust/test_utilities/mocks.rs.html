@@ -422,6 +422,7 @@
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">make_block_with_mempool</span>(
+    <span class="ident">mock_timestamp_generator</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MockTimestampGenerator</span>,
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -438,12 +439,11 @@
         <span class="macro">assert_eq!</span>(<span class="ident">add_tx_result</span>, <span class="ident">AddTransactionResult::Accepted</span>);
     }
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span> <span class="op">=</span> <span class="ident">MockTimestampGenerator::new</span>();
     <span class="ident">mock_timestamp_generator</span>.<span class="ident">advance</span>(<span class="ident">HEARTBEAT</span> <span class="op">*</span> <span class="number">2</span>);
     <span class="kw">let</span> <span class="ident">block_option</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::mempool::try_bundle_block</span>(
         <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
         <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span>,
+        <span class="ident">mock_timestamp_generator</span>,
     )
     .<span class="kw">await</span>;
     <span class="macro">assert!</span>(<span class="ident">block_option</span>.<span class="ident">is_some</span>());
