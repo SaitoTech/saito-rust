@@ -397,15 +397,10 @@ impl Wallet {
         input.set_slip_ordinal(slip.get_slip_ordinal());
         input.set_slip_type(SlipType::StakerWithdrawalStaking);
 
-        println!("SLIP TO VALIDATE: ");
-        println!("{:?}", input);
-
         if staking.validate_slip_in_stakers(input.clone()) {
-            println!("creating staking withdrawal transaction with slip in Staking");
             input.set_slip_type(SlipType::StakerWithdrawalStaking);
         }
         if staking.validate_slip_in_pending(input.clone()) {
-            println!("creating staking withdrawal transaction with slip in Pending");
             input.set_slip_type(SlipType::StakerWithdrawalPending);
         }
 

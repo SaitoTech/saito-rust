@@ -402,7 +402,6 @@ impl TestManager {
                     //
                     // we check that overall token supply has not changed
                     //
-                    println!("checking token supply in block {}", i);
                     assert_eq!(total_in_circulation, token_supply);
                 }
             }
