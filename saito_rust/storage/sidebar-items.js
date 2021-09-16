@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["BLOCKS_DIR_PATH",""]],"struct":[["Storage",""]],"trait":[["Persistable",""]]});
+initSidebarItems({"fn":[["configure_storage",""]],"struct":[["BLOCKS_DIR_PATH",""],["Storage",""],["StorageConfigurer",""]],"trait":[["Persistable",""]]});
