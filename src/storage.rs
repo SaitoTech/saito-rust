@@ -13,6 +13,7 @@ use crate::{block::Block, blockchain::Blockchain, crypto::SaitoHash};
 
 pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
 pub const ISSUANCE_FILE_PATH: &'static str = "./data/issuance/issuance";
+pub const EARLYBIRDS_FILE_PATH: &'static str = "./data/issuance/earlybirds";
 
 pub struct Storage {}
 
@@ -124,50 +125,65 @@ impl Storage {
         return block;
     }
 
-
-    pub fn return_token_supply_slips_from_disk() -> Vec<Slip> {
-
-	let mut v : Vec<Slip> = vec![];
-
-        // File hosts must exist in current path before this produces output
-        if let Ok(lines) = Storage::read_lines_from_file(ISSUANCE_FILE_PATH) {
-            // Consumes the iterator, returns an (Optional) String
-            for line in lines {
-                if let Ok(ip) = line {
-		    let mut iter = ip.split_whitespace();
-		    let tmp = iter.next().unwrap();
-		    let tmp2 = iter.next().unwrap();
-		    let typ = iter.next().unwrap();
-
-		    let amt : u64 = tmp.parse::<u64>().unwrap();
-		    let tmp3 = tmp2.as_bytes();
-
-		    let mut add : SaitoPublicKey = [0; 33];
-		    for i in 0..33 { add[i] = tmp3[i]; }
-
-		    let mut slip = Slip::new();
-        	    slip.set_publickey(add);
-        	    slip.set_amount(amt);
-		    if typ.eq("VipOutput") { slip.set_slip_type(SlipType::VipOutput); }
-		    if typ.eq("StakerDeposit") { slip.set_slip_type(SlipType::StakerDeposit); }
-		    if typ.eq("Normal") { slip.set_slip_type(SlipType::Normal); }
-		    v.push(slip);
-                }
-            }
-        }
-
-	return v;
-
-    }
-
     pub async fn delete_block_from_disk(filename: String) -> bool {
         let _res = std::fs::remove_file(filename);
         true
     }
 
+
+
+    //
+    // token issuance functions below
+    //
+    pub fn return_token_supply_slips_from_disk() -> Vec<Slip> {
+
+	let mut v : Vec<Slip> = vec![];
+
+        if let Ok(lines) = Storage::read_lines_from_file(ISSUANCE_FILE_PATH) {
+            for line in lines {
+                if let Ok(ip) = line {
+		    let s = Storage::convert_issuance_into_slip(ip);
+		    v.push(s);
+                }
+            }
+        }
+        if let Ok(lines) = Storage::read_lines_from_file(EARLYBIRDS_FILE_PATH) {
+            for line in lines {
+                if let Ok(ip) = line {
+		    let s = Storage::convert_issuance_into_slip(ip);
+		    v.push(s);
+                }
+            }
+        }
+
+	return v;
+    }
+
     pub fn read_lines_from_file<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>> where P: AsRef<Path>, {
         let file = File::open(filename)?;
         Ok(io::BufReader::new(file).lines())
+    }
+
+    pub fn convert_issuance_into_slip(line) -> Slip {
+        let mut iter = ip.split_whitespace();
+	let tmp = iter.next().unwrap();
+	let tmp2 = iter.next().unwrap();
+	let typ = iter.next().unwrap();
+
+	let amt : u64 = tmp.parse::<u64>().unwrap();
+	let tmp3 = tmp2.as_bytes();
+
+	let mut add : SaitoPublicKey = [0; 33];
+	for i in 0..33 { add[i] = tmp3[i]; }
+
+	let mut slip = Slip::new();
+        slip.set_publickey(add);
+        slip.set_amount(amt);
+	if typ.eq("VipOutput") { slip.set_slip_type(SlipType::VipOutput); }
+	if typ.eq("StakerDeposit") { slip.set_slip_type(SlipType::StakerDeposit); }
+	if typ.eq("Normal") { slip.set_slip_type(SlipType::Normal); }
+	
+	return slip;
     }
 
 }
