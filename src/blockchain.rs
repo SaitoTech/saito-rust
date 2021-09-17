@@ -18,7 +18,6 @@ use tracing::{event, Level};
 use async_recursion::async_recursion;
 
 use ahash::AHashMap;
-use rayon::prelude::*;
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -74,11 +73,12 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
+        event!(Level::INFO, "add_block {}", &hex::encode(&block.get_hash()));
         event!(
             Level::TRACE,
             " ... blockchain.add_block start: {:?} txs: {}",
             create_timestamp(),
-            block.transactions.len()
+            block.get_transactions().len()
         );
 
         //
@@ -323,14 +323,9 @@ impl Blockchain {
         //
         //let storage = Storage::new();
         {
-            let block = self.get_mut_block(block_hash).await;
+            let block = self.get_mut_block(&block_hash).await;
             block_id = block.get_id();
             Storage::write_block_to_disk(block);
-
-            //
-            // TMP - delete transactions
-            //
-            //block.transactions = vec![];
         }
 
         event!(
@@ -387,12 +382,8 @@ impl Blockchain {
             // to use to check the utxoset.
             //
             {
-                let pblock = self.get_mut_block(pruned_block_hash).await;
+                let pblock = self.get_mut_block(&pruned_block_hash).await;
                 pblock.upgrade_block_to_block_type(BlockType::Full).await;
-                let _transactions_pre_calculated = pblock
-                    .transactions
-                    .par_iter_mut()
-                    .all(|tx| tx.generate_metadata_hashes());
             }
         }
     }
@@ -691,13 +682,12 @@ impl Blockchain {
     pub fn get_block_sync(&self, block_hash: &SaitoHash) -> Option<&Block> {
         self.blocks.get(block_hash)
     }
-    pub async fn get_block(&self, block_hash: SaitoHash) -> &Block {
-        let block = self.blocks.get(&block_hash).unwrap();
-        block
+    pub async fn get_block(&self, block_hash: &SaitoHash) -> Option<&Block> {
+        self.blocks.get(block_hash)
     }
 
-    pub async fn get_mut_block(&mut self, block_hash: SaitoHash) -> &mut Block {
-        let block = self.blocks.get_mut(&block_hash).unwrap();
+    pub async fn get_mut_block(&mut self, block_hash: &SaitoHash) -> &mut Block {
+        let block = self.blocks.get_mut(block_hash).unwrap();
         block
     }
 
@@ -830,7 +820,7 @@ impl Blockchain {
         // happen first.
         //
         {
-            let mut block = self.get_mut_block(new_chain[current_wind_index]).await;
+            let mut block = self.get_mut_block(&new_chain[current_wind_index]).await;
             block.generate_metadata();
 
             let latest_block_id = block.get_id();
@@ -848,7 +838,7 @@ impl Blockchain {
                 let previous_block_hash =
                     self.blockring.get_longest_chain_block_hash_by_block_id(bid);
                 if self.is_block_indexed(previous_block_hash) {
-                    block = self.get_mut_block(previous_block_hash).await;
+                    block = self.get_mut_block(&previous_block_hash).await;
                     block.upgrade_block_to_block_type(BlockType::Full).await;
                 }
             }
@@ -1207,7 +1197,7 @@ impl Blockchain {
             // ask the block to remove its transactions
             //
             {
-                let pblock = self.get_mut_block(hash).await;
+                let pblock = self.get_mut_block(&hash).await;
                 pblock
                     .downgrade_block_to_block_type(BlockType::Pruned)
                     .await;

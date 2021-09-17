@@ -312,7 +312,7 @@ pub async fn make_mock_block_with_info(
     }
 
     if golden_ticket {
-        let blk = blockchain.get_block(last_block_hash).await;
+        let blk = blockchain.get_block(&last_block_hash).await.unwrap();
         let last_block_difficulty = blk.get_difficulty();
         let golden_ticket: GoldenTicket = miner
             .mine_on_block_until_golden_ticket_found(last_block_hash, last_block_difficulty)
