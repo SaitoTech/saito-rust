@@ -217,20 +217,6 @@
 <span id="217">217</span>
 <span id="218">218</span>
 <span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 # Saito Transaction Spammer
@@ -255,8 +241,7 @@ TODO: Fill in these docs
 
 <span class="attribute">#[<span class="ident">tokio::main</span>]</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">saito_rust::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="comment">//let args: Vec&lt;String&gt; = std::env::args().collect();</span>
-
+    <span class="ident">tracing_subscriber::fmt::init</span>();
     <span class="kw">let</span> <span class="ident">matches</span> <span class="op">=</span> <span class="ident">App::new</span>(<span class="string">&quot;Saito Runtime&quot;</span>)
         .<span class="ident">about</span>(<span class="string">&quot;Runs a Saito Node&quot;</span>)
         .<span class="ident">arg</span>(
@@ -304,9 +289,6 @@ TODO: Fill in these docs
         .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="ident">config_name</span>))
         .<span class="ident">unwrap</span>();
 
-    <span class="comment">// let key_path = matches.value_of(&quot;key_path&quot;).unwrap();</span>
-    <span class="comment">// let password = matches.value_of(&quot;password&quot;);</span>
-
     <span class="kw">let</span> <span class="ident">txs_to_generate</span>: <span class="ident">i32</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;transactions&quot;</span>) {
         <span class="prelude-val">Some</span>(<span class="ident">num</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">num</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">i32</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>(),
         <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">10</span>,
@@ -319,16 +301,6 @@ TODO: Fill in these docs
 
     <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>))));
     <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-
-    <span class="comment">// Load blocks from disk if configured</span>
-    <span class="comment">// let load_blocks_from_disk = match settings.get::&lt;bool&gt;(&quot;storage.load_blocks_from_disk&quot;) {</span>
-    <span class="comment">//     Ok(can_load) =&gt; can_load,</span>
-    <span class="comment">//     Err(_) =&gt; true,</span>
-    <span class="comment">// };</span>
-
-    <span class="comment">// if load_blocks_from_disk {</span>
-    <span class="comment">//     Storage::load_blocks_from_disk(blockchain_lock.clone()).await;</span>
-    <span class="comment">// }</span>
 
     <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
     <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));

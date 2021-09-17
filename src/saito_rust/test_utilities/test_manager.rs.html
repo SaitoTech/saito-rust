@@ -411,6 +411,60 @@
 <span id="411">411</span>
 <span id="412">412</span>
 <span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TestManager provides a set of functions to simplify testing. It&#39;s goal is to</span>
@@ -491,7 +545,7 @@
         <span class="ident">additional_txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
         <span class="ident">parent_hash</span>: <span class="ident">SaitoHash</span>,
     ) {
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">generate_block</span>(
                 <span class="ident">parent_hash</span>,
                 <span class="ident">timestamp</span>,
@@ -502,7 +556,15 @@
             )
             .<span class="kw">await</span>;
 
-        <span class="comment">//println!(&quot;ADDING BLOCK! {}&quot;, block.get_id());</span>
+        <span class="kw">let</span> <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>;
+        <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>;
+
+        {
+            <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
+            <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
+        }
+        <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">publickey</span>, <span class="ident">privatekey</span>);
 
         <span class="self">self</span>.<span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
         <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="self">self</span>.<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block</span>).<span class="kw">await</span>;
@@ -558,7 +620,7 @@
         }
 
         <span class="kw">if</span> <span class="ident">golden_ticket</span> {
-            <span class="kw">let</span> <span class="ident">blk</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="ident">parent_hash</span>).<span class="kw">await</span>;
+            <span class="kw">let</span> <span class="ident">blk</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="ident">parent_hash</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">last_block_difficulty</span> <span class="op">=</span> <span class="ident">blk</span>.<span class="ident">get_difficulty</span>();
             <span class="kw">let</span> <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span> <span class="op">=</span> <span class="ident">miner</span>
                 .<span class="ident">mine_on_block_until_golden_ticket_found</span>(<span class="ident">parent_hash</span>, <span class="ident">last_block_difficulty</span>)
@@ -575,7 +637,7 @@
         <span class="comment">//</span>
         <span class="comment">// create block</span>
         <span class="comment">//</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
             <span class="ident">parent_hash</span>,
             <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
@@ -583,8 +645,6 @@
             <span class="ident">timestamp</span>,
         )
         .<span class="kw">await</span>;
-
-        <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">publickey</span>, <span class="ident">privatekey</span>);
 
         <span class="ident">block</span>
     }
@@ -622,9 +682,9 @@
             <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>
                 .<span class="ident">blockring</span>
                 .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>);
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="ident">block_hash</span>).<span class="kw">await</span>;
-            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>() {
-                <span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">i</span>].<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">utxoset</span>, <span class="bool-val">true</span>, <span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>);
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
+            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">get_transactions</span>().<span class="ident">len</span>() {
+                <span class="ident">block</span>.<span class="ident">get_transactions</span>()[<span class="ident">i</span>].<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">utxoset</span>, <span class="bool-val">true</span>, <span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>);
             }
         }
 
@@ -714,14 +774,11 @@
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">latest_block_id</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>();
 
-        <span class="comment">//</span>
-        <span class="comment">//</span>
-        <span class="comment">//</span>
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="op">=</span><span class="ident">latest_block_id</span> {
             <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>
                 .<span class="ident">blockring</span>
                 .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>);
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="ident">block_hash</span>).<span class="kw">await</span>;
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
 
             <span class="ident">block_inputs</span> <span class="op">=</span> <span class="number">0</span>;
             <span class="ident">block_outputs</span> <span class="op">=</span> <span class="number">0</span>;
@@ -730,10 +787,7 @@
             <span class="ident">previous_block_treasury</span> <span class="op">=</span> <span class="ident">current_block_treasury</span>;
             <span class="ident">current_block_treasury</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_treasury</span>();
 
-            <span class="comment">//</span>
-            <span class="comment">//</span>
-            <span class="comment">//</span>
-            <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>() {
+            <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">get_transactions</span>().<span class="ident">len</span>() {
                 <span class="comment">//</span>
                 <span class="comment">// we ignore the inputs in staking / fee transactions as they have</span>
                 <span class="comment">// been pulled from the staking treasury and are already technically</span>
@@ -741,15 +795,15 @@
                 <span class="comment">// we only care about the difference in token supply represented by</span>
                 <span class="comment">// the difference in the staking_treasury.</span>
                 <span class="comment">//</span>
-                <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">get_transaction_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::Fee</span> {
+                <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_transactions</span>()[<span class="ident">t</span>].<span class="ident">get_transaction_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::Fee</span> {
                     <span class="ident">block_contains_fee_tx</span> <span class="op">=</span> <span class="number">1</span>;
                     <span class="ident">block_fee_tx_idx</span> <span class="op">=</span> <span class="ident">t</span> <span class="kw">as</span> <span class="ident">usize</span>;
                 } <span class="kw">else</span> {
-                    <span class="kw">for</span> <span class="ident">z</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">inputs</span>.<span class="ident">len</span>() {
-                        <span class="ident">block_inputs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">inputs</span>[<span class="ident">z</span>].<span class="ident">get_amount</span>();
+                    <span class="kw">for</span> <span class="ident">z</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">get_transactions</span>()[<span class="ident">t</span>].<span class="ident">inputs</span>.<span class="ident">len</span>() {
+                        <span class="ident">block_inputs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_transactions</span>()[<span class="ident">t</span>].<span class="ident">inputs</span>[<span class="ident">z</span>].<span class="ident">get_amount</span>();
                     }
-                    <span class="kw">for</span> <span class="ident">z</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">outputs</span>.<span class="ident">len</span>() {
-                        <span class="ident">block_outputs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">t</span>].<span class="ident">outputs</span>[<span class="ident">z</span>].<span class="ident">get_amount</span>();
+                    <span class="kw">for</span> <span class="ident">z</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">block</span>.<span class="ident">get_transactions</span>()[<span class="ident">t</span>].<span class="ident">outputs</span>.<span class="ident">len</span>() {
+                        <span class="ident">block_outputs</span> <span class="op">+</span><span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_transactions</span>()[<span class="ident">t</span>].<span class="ident">outputs</span>[<span class="ident">z</span>].<span class="ident">get_amount</span>();
                     }
                 }
 
@@ -783,7 +837,7 @@
                         <span class="comment">// calculate total amount paid</span>
                         <span class="comment">//</span>
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_fees_paid</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
-                        <span class="kw">let</span> <span class="ident">fee_transaction</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">transactions</span>[<span class="ident">block_fee_tx_idx</span>];
+                        <span class="kw">let</span> <span class="ident">fee_transaction</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_transactions</span>()[<span class="ident">block_fee_tx_idx</span>];
                         <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">fee_transaction</span>.<span class="ident">get_outputs</span>() {
                             <span class="ident">total_fees_paid</span> <span class="op">+</span><span class="op">=</span> <span class="ident">output</span>.<span class="ident">get_amount</span>();
                         }
@@ -820,6 +874,60 @@
                 }
             }
         }
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_block_consistency</span>(<span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>) {
+        <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_net</span>();
+
+        <span class="kw">let</span> <span class="ident">deserialized_block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_block</span>);
+
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_id</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_id</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_timestamp</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_timestamp</span>());
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>(),
+            <span class="ident">deserialized_block</span>.<span class="ident">get_previous_block_hash</span>()
+        );
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_creator</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_creator</span>());
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">block</span>.<span class="ident">get_merkle_root</span>(),
+            <span class="ident">deserialized_block</span>.<span class="ident">get_merkle_root</span>()
+        );
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_signature</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_signature</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_treasury</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_treasury</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_burnfee</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_burnfee</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_difficulty</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_difficulty</span>());
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">block</span>.<span class="ident">get_staking_treasury</span>(),
+            <span class="ident">deserialized_block</span>.<span class="ident">get_staking_treasury</span>()
+        );
+        <span class="comment">// assert_eq!(block.get_total_fees(), deserialized_block.get_total_fees());</span>
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">block</span>.<span class="ident">get_routing_work_for_creator</span>(),
+            <span class="ident">deserialized_block</span>.<span class="ident">get_routing_work_for_creator</span>()
+        );
+        <span class="comment">// assert_eq!(block.get_lc(), deserialized_block.get_lc());</span>
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">block</span>.<span class="ident">get_has_golden_ticket</span>(),
+            <span class="ident">deserialized_block</span>.<span class="ident">get_has_golden_ticket</span>()
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">block</span>.<span class="ident">get_has_fee_transaction</span>(),
+            <span class="ident">deserialized_block</span>.<span class="ident">get_has_fee_transaction</span>()
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">block</span>.<span class="ident">get_golden_ticket_idx</span>(),
+            <span class="ident">deserialized_block</span>.<span class="ident">get_golden_ticket_idx</span>()
+        );
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">block</span>.<span class="ident">get_fee_transaction_idx</span>(),
+            <span class="ident">deserialized_block</span>.<span class="ident">get_fee_transaction_idx</span>()
+        );
+        <span class="comment">// assert_eq!(block.get_total_rebroadcast_slips(), deserialized_block.get_total_rebroadcast_slips());</span>
+        <span class="comment">// assert_eq!(block.get_total_rebroadcast_nolan(), deserialized_block.get_total_rebroadcast_nolan());</span>
+        <span class="comment">// assert_eq!(block.get_rebroadcast_hash(), deserialized_block.get_rebroadcast_hash());</span>
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_block_type</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_block_type</span>());
+        <span class="comment">// assert_eq!(block.slips_spent_this_block, deserialized_block.slips_spent_this_block);</span>
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_pre_hash</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_pre_hash</span>());
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_hash</span>(), <span class="ident">deserialized_block</span>.<span class="ident">get_hash</span>());
     }
 }
 

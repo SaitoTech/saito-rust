@@ -1544,16 +1544,6 @@
 <span id="1544">1544</span>
 <span id="1545">1545</span>
 <span id="1546">1546</span>
-<span id="1547">1547</span>
-<span id="1548">1548</span>
-<span id="1549">1549</span>
-<span id="1550">1550</span>
-<span id="1551">1551</span>
-<span id="1552">1552</span>
-<span id="1553">1553</span>
-<span id="1554">1554</span>
-<span id="1555">1555</span>
-<span id="1556">1556</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -1575,7 +1565,6 @@
 <span class="kw">use</span> <span class="ident">async_recursion::async_recursion</span>;
 
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
-<span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 
@@ -1631,11 +1620,12 @@
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {
+        <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;add_block {}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_hash</span>()));
         <span class="macro">event!</span>(
             <span class="ident">Level::TRACE</span>,
             <span class="string">&quot; ... blockchain.add_block start: {:?} txs: {}&quot;</span>,
             <span class="ident">create_timestamp</span>(),
-            <span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>()
+            <span class="ident">block</span>.<span class="ident">get_transactions</span>().<span class="ident">len</span>()
         );
 
         <span class="comment">//</span>
@@ -1880,14 +1870,9 @@
         <span class="comment">//</span>
         <span class="comment">//let storage = Storage::new();</span>
         {
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="ident">block_hash</span>).<span class="kw">await</span>;
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="kw">await</span>;
             <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
             <span class="ident">Storage::write_block_to_disk</span>(<span class="ident">block</span>);
-
-            <span class="comment">//</span>
-            <span class="comment">// TMP - delete transactions</span>
-            <span class="comment">//</span>
-            <span class="comment">//block.transactions = vec![];</span>
         }
 
         <span class="macro">event!</span>(
@@ -1944,12 +1929,8 @@
             <span class="comment">// to use to check the utxoset.</span>
             <span class="comment">//</span>
             {
-                <span class="kw">let</span> <span class="ident">pblock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="ident">pruned_block_hash</span>).<span class="kw">await</span>;
+                <span class="kw">let</span> <span class="ident">pblock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="kw-2">&amp;</span><span class="ident">pruned_block_hash</span>).<span class="kw">await</span>;
                 <span class="ident">pblock</span>.<span class="ident">upgrade_block_to_block_type</span>(<span class="ident">BlockType::Full</span>).<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="ident">_transactions_pre_calculated</span> <span class="op">=</span> <span class="ident">pblock</span>
-                    .<span class="ident">transactions</span>
-                    .<span class="ident">par_iter_mut</span>()
-                    .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">generate_metadata_hashes</span>());
             }
         }
     }
@@ -2248,13 +2229,12 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_sync</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_hash</span>: <span class="kw-2">&amp;</span><span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Block</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="ident">block_hash</span>)
     }
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Block</span> {
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>();
-        <span class="ident">block</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_hash</span>: <span class="kw-2">&amp;</span><span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Block</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="ident">block_hash</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_mut_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Block</span> {
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="ident">unwrap</span>();
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_mut_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_hash</span>: <span class="kw-2">&amp;</span><span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Block</span> {
+        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get_mut</span>(<span class="ident">block_hash</span>).<span class="ident">unwrap</span>();
         <span class="ident">block</span>
     }
 
@@ -2387,7 +2367,7 @@
         <span class="comment">// happen first.</span>
         <span class="comment">//</span>
         {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>]).<span class="kw">await</span>;
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="ident">current_wind_index</span>]).<span class="kw">await</span>;
             <span class="ident">block</span>.<span class="ident">generate_metadata</span>();
 
             <span class="kw">let</span> <span class="ident">latest_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
@@ -2405,7 +2385,7 @@
                 <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span>
                     <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="ident">bid</span>);
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_block_indexed</span>(<span class="ident">previous_block_hash</span>) {
-                    <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="ident">previous_block_hash</span>).<span class="kw">await</span>;
+                    <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="kw-2">&amp;</span><span class="ident">previous_block_hash</span>).<span class="kw">await</span>;
                     <span class="ident">block</span>.<span class="ident">upgrade_block_to_block_type</span>(<span class="ident">BlockType::Full</span>).<span class="kw">await</span>;
                 }
             }
@@ -2764,7 +2744,7 @@
             <span class="comment">// ask the block to remove its transactions</span>
             <span class="comment">//</span>
             {
-                <span class="kw">let</span> <span class="ident">pblock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="ident">hash</span>).<span class="kw">await</span>;
+                <span class="kw">let</span> <span class="ident">pblock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>).<span class="kw">await</span>;
                 <span class="ident">pblock</span>
                     .<span class="ident">downgrade_block_to_block_type</span>(<span class="ident">BlockType::Pruned</span>)
                     .<span class="kw">await</span>;
