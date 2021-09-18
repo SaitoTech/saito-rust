@@ -203,7 +203,7 @@ impl BlockRing {
         }
     }
 
-    pub fn get_longest_chain_block_hash(&self) -> SaitoHash {
+    pub fn get_latest_block_hash(&self) -> SaitoHash {
         match self.block_ring_lc_pos {
             Some(block_ring_lc_pos) => match self.block_ring[block_ring_lc_pos].lc_pos {
                 Some(lc_pos) => self.block_ring[block_ring_lc_pos].block_hashes[lc_pos],
@@ -350,7 +350,7 @@ mod test {
 
         // TODO: These next 3 are also wrong, they should probably return None or panic
         assert_eq!(0, blockring.get_longest_chain_block_id());
-        assert_eq!([0; 32], blockring.get_longest_chain_block_hash());
+        assert_eq!([0; 32], blockring.get_latest_block_hash());
         assert_eq!(
             [0; 32],
             blockring.get_longest_chain_block_hash_by_block_id(0)
@@ -360,7 +360,7 @@ mod test {
         assert_eq!(0, blockring.get_longest_chain_block_id());
         assert_eq!(
             mock_block.get_hash(),
-            blockring.get_longest_chain_block_hash()
+            blockring.get_latest_block_hash()
         );
         assert_eq!(
             mock_block.get_hash(),

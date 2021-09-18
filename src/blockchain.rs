@@ -76,9 +76,8 @@ impl Blockchain {
 
         event!(
             Level::TRACE,
-            " ... blockchain.add_block start: {:?} txs: {} hash: {:?}, and id {}",
+            " ... blockchain.add_block start: {:?} hash: {:?}, and id {}",
             create_timestamp(),
-            block.transactions.len(),
             block.get_hash(),
             block.get_id()
         );
@@ -90,7 +89,7 @@ impl Blockchain {
         //
         let block_hash = block.get_hash();
         let block_id = block.get_id();
-        let previous_block_hash = self.blockring.get_longest_chain_block_hash();
+        let previous_block_hash = self.blockring.get_latest_block_hash();
 
 println!("blockring reports prev hash: {:?}", previous_block_hash);
 println!("block reports: {:?}", block.get_previous_block_hash());
@@ -672,12 +671,12 @@ println!("block reports: {:?}", block.get_previous_block_hash());
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
-        let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block_hash = self.blockring.get_latest_block_hash();
         self.blocks.get(&block_hash)
     }
 
     pub fn get_latest_block_hash(&self) -> SaitoHash {
-        self.blockring.get_longest_chain_block_hash()
+        self.blockring.get_latest_block_hash()
     }
 
     pub fn get_latest_block_id(&self) -> u64 {
