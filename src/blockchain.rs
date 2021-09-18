@@ -498,7 +498,7 @@ impl Blockchain {
             //
             for i in 0..10 {
                 if (pbid - i) % 10 == 0 {
-                    pbid = pbid - i;
+                    pbid -= i;
                     break;
                 }
             }
