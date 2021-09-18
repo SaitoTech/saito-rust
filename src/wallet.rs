@@ -7,7 +7,7 @@ use std::path::Path;
 
 use crate::block::Block;
 use crate::crypto::{
-    generate_keys, hash, keys_from_slice, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey,
+    generate_keys, hash, generate_keypair_from_privatekey, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey,
     SaitoSignature, SaitoUTXOSetKey,
 };
 use crate::golden_ticket::GoldenTicket;
@@ -43,7 +43,7 @@ impl EncryptedWallet {
     }
 }
 impl Wallet {
-    pub fn default() -> Self {
+    pub fn new() -> Wallet {
         let (publickey, privatekey) = generate_keys();
         Wallet {
             publickey,
@@ -52,18 +52,8 @@ impl Wallet {
             staked_slips: vec![],
         }
     }
-    pub fn new(key_path: &str, password: Option<&str>) -> Self {
-        let (publickey, privatekey) = Wallet::load_keys(key_path, password);
-        println!("Loaded wallet {}", hex::encode(publickey));
-        Wallet {
-            publickey,
-            privatekey,
-            slips: vec![],
-            staked_slips: vec![],
-        }
-    }
 
-    pub fn load_keys(key_path: &str, password: Option<&str>) -> ([u8; 33], [u8; 32]) {
+    pub fn load_keys(&mut self, key_path: &str, password: Option<&str>) {
         let mut filename = String::from("data/");
         filename.push_str(key_path);
         let path = Path::new(&filename);
@@ -77,8 +67,13 @@ impl Wallet {
             decrypted_buffer = Wallet::read_key_file(&key_path, &password);
         }
 
-        keys_from_slice(&decrypted_buffer)
+	let (publickey, privatekey) = generate_keypair_from_privatekey(&decrypted_buffer);
+
+	self.set_publickey(publickey);
+	self.set_privatekey(privatekey);
+
     }
+
 
     fn create_key_file(key_file_path: &str, opts_password: &Option<&str>) -> Vec<u8> {
         let password: String;
@@ -220,6 +215,14 @@ impl Wallet {
 
     pub fn get_publickey(&self) -> SaitoPublicKey {
         self.publickey
+    }
+
+    pub fn set_privatekey(&mut self, privatekey : SaitoPrivateKey) {
+        self.privatekey = privatekey;
+    }
+
+    pub fn set_publickey(&mut self, publickey : SaitoPublicKey) {
+        self.publickey = publickey;
     }
 
     pub fn get_available_balance(&self) -> u64 {

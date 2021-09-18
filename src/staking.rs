@@ -540,7 +540,7 @@ mod tests {
 
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
         let mut latest_block_hash = [0; 32];
@@ -765,7 +765,7 @@ mod tests {
 
     #[tokio::test]
     async fn blockchain_staking_deposits_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
         let mut latest_block_hash = [0; 32];
@@ -966,7 +966,7 @@ mod tests {
 
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test_with_test_manager() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 

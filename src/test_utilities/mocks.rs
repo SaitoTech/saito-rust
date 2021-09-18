@@ -209,7 +209,8 @@ pub fn make_mock_block(
         timestamp,
         prev_timestamp,
     );
-    let wallet = Wallet::new("test/testwallet", Some("asdf"));
+    let mut wallet = Wallet::new();
+    wallet.load_keys("test/testwallet", Some("asdf"));
     let mut mock_input = Slip::new();
     mock_input.set_publickey(wallet.get_publickey());
     mock_input.set_uuid([0; 32]);

@@ -1959,7 +1959,8 @@ mod tests {
 
     #[test]
     fn block_sign_test() {
-        let wallet = Wallet::new("test/testwallet", Some("asdf"));
+        let mut wallet = Wallet::new();
+        wallet.load_keys("test/testwallet", Some("asdf"));
         let mut block = Block::new();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
@@ -2034,7 +2035,8 @@ mod tests {
     #[test]
     fn block_merkle_root_test() {
         let mut block = Block::new();
-        let wallet = Wallet::new("test/testwallet", Some("asdf"));
+        let mut wallet = Wallet::new();
+        wallet.load_keys("test/testwallet", Some("asdf"));
 
         let mut transactions = (0..5)
             .into_iter()
@@ -2053,7 +2055,8 @@ mod tests {
     #[tokio::test]
     async fn block_downgrade_test() {
         let mut block = Block::new();
-        let wallet = Wallet::new("test/testwallet", Some("asdf"));
+        let mut wallet = Wallet::new();
+        wallet.load_keys("test/testwallet", Some("asdf"));
         let mut transactions = (0..5)
             .into_iter()
             .map(|_| {
@@ -2075,7 +2078,7 @@ mod tests {
 
     #[tokio::test]
     async fn block_serialization_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 

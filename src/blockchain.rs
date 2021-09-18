@@ -1315,7 +1315,11 @@ mod tests {
 
     #[tokio::test]
     async fn add_blocks_test_1() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+	{
+            let mut wallet = wallet_lock.write().await;
+	    wallet.load_keys("test/testwallet", Some("asdf"));
+	}
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
 
@@ -1437,7 +1441,11 @@ mod tests {
     #[tokio::test]
     async fn produce_four_blocks_test() {
         // There... are... four blocks!
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+	{
+            let mut wallet = wallet_lock.write().await;
+	    wallet.load_keys("test/testwallet", Some("asdf"));
+	}
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut miner = Miner::new(wallet_lock.clone());
 
