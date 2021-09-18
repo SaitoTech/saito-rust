@@ -217,6 +217,11 @@
 <span id="217">217</span>
 <span id="218">218</span>
 <span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 # Saito Transaction Spammer
@@ -333,6 +338,7 @@ TODO: Fill in these docs
         <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">server_transaction_url</span>);
 
         <span class="kw">loop</span> {
+
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
             <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;TXS TO GENERATE: {:?}&quot;</span>, <span class="ident">txs_to_generate</span>);
@@ -349,6 +355,7 @@ TODO: Fill in these docs
                 );
 
                 <span class="comment">// sign ...</span>
+                <span class="comment">//transaction.generate_metadata();</span>
                 <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">privatekey</span>);
 
                 <span class="comment">// add some test hops ...</span>
@@ -358,6 +365,9 @@ TODO: Fill in these docs
                 <span class="ident">transaction</span>
                     .<span class="ident">add_hop_to_path</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>)
                     .<span class="kw">await</span>;
+
+
+<span class="comment">//println!(&quot;TRANSACTION: {:?}&quot;, transaction);</span>
 
                 <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
             }
@@ -378,7 +388,7 @@ TODO: Fill in these docs
                     }
                 }
             }
-            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">2000</span>));
+            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">4000</span>));
         }
     });
 

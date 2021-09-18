@@ -1041,9 +1041,6 @@
 <span id="1041">1041</span>
 <span id="1042">1042</span>
 <span id="1043">1043</span>
-<span id="1044">1044</span>
-<span id="1045">1045</span>
-<span id="1046">1046</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TODO</span>
@@ -1361,8 +1358,7 @@
             <span class="comment">// reset stakers if necessary</span>
             <span class="comment">//</span>
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
-                <span class="comment">//self.reset_staker_table(block.get_staking_treasury());</span>
-                <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
+                <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="ident">block</span>.<span class="ident">get_staking_treasury</span>());
             }
         } <span class="kw">else</span> {
             <span class="comment">//</span>
@@ -1431,9 +1427,8 @@
                     <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>()
                 );
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
-                    <span class="comment">//self.reset_staker_table(block.get_staking_treasury());</span>
                     <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span>
-                        <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
+                        <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="ident">block</span>.<span class="ident">get_staking_treasury</span>());
                 }
 
                 <span class="comment">//</span>
@@ -1455,9 +1450,8 @@
                 <span class="comment">// re-create staker table, if needed</span>
                 <span class="comment">//</span>
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
-                    <span class="comment">//self.reset_staker_table(block.get_staking_treasury());</span>
                     <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span>
-                        <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="number">100_000_000</span>);
+                        <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="ident">block</span>.<span class="ident">get_staking_treasury</span>());
                 }
 
             <span class="comment">//</span>
