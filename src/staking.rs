@@ -314,8 +314,7 @@ impl Staking {
             // reset stakers if necessary
             //
             if self.stakers.is_empty() {
-                //self.reset_staker_table(block.get_staking_treasury());
-                let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(100_000_000);
+                let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(block.get_staking_treasury());
             }
         } else {
             //
@@ -384,9 +383,8 @@ impl Staking {
                     self.stakers.len()
                 );
                 if self.stakers.is_empty() {
-                    //self.reset_staker_table(block.get_staking_treasury());
                     let (_res_spend, _res_unspend, _res_delete) =
-                        self.reset_staker_table(100_000_000);
+                        self.reset_staker_table(block.get_staking_treasury());
                 }
 
                 //
@@ -408,9 +406,8 @@ impl Staking {
                 // re-create staker table, if needed
                 //
                 if self.stakers.is_empty() {
-                    //self.reset_staker_table(block.get_staking_treasury());
                     let (_res_spend, _res_unspend, _res_delete) =
-                        self.reset_staker_table(100_000_000);
+                        self.reset_staker_table(block.get_staking_treasury());
                 }
 
             //
