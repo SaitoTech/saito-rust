@@ -6,6 +6,7 @@ use std::{
 };
 use crate::slip::{Slip, SlipType};
 use crate::crypto::{SaitoPublicKey};
+use crate::blockchain::{MAX_TOKEN_SUPPLY};
 
 use tokio::sync::RwLock;
 
@@ -14,6 +15,7 @@ use crate::{block::Block, blockchain::Blockchain, crypto::SaitoHash};
 pub const BLOCKS_DIR_PATH: &'static str = "./data/blocks/";
 pub const ISSUANCE_FILE_PATH: &'static str = "./data/issuance/issuance";
 pub const EARLYBIRDS_FILE_PATH: &'static str = "./data/issuance/earlybirds";
+pub const DEFAULT_FILE_PATH: &'static str = "./data/issuance/default";
 
 pub struct Storage {}
 
@@ -138,6 +140,7 @@ impl Storage {
     pub fn return_token_supply_slips_from_disk() -> Vec<Slip> {
 
 	let mut v : Vec<Slip> = vec![];
+	let mut tokens_issued = 0;
 
         if let Ok(lines) = Storage::read_lines_from_file(ISSUANCE_FILE_PATH) {
             for line in lines {
@@ -156,6 +159,19 @@ impl Storage {
             }
         }
 
+	for i in 0 .. v.len() { tokens_issued += v[i].get_amount(); }
+
+        if let Ok(lines) = Storage::read_lines_from_file(DEFAULT_FILE_PATH) {
+            for line in lines {
+                if let Ok(ip) = line {
+		    let mut s = Storage::convert_issuance_into_slip(ip);
+		    s.set_amount(MAX_TOKEN_SUPPLY-tokens_issued);
+println!("DEFA {}", s.get_amount());
+		    v.push(s);
+                }
+            }
+        }
+	
 	return v;
     }
 
@@ -164,8 +180,8 @@ impl Storage {
         Ok(io::BufReader::new(file).lines())
     }
 
-    pub fn convert_issuance_into_slip(line) -> Slip {
-        let mut iter = ip.split_whitespace();
+    pub fn convert_issuance_into_slip(line : std::string::String) -> Slip {
+        let mut iter = line.split_whitespace();
 	let tmp = iter.next().unwrap();
 	let tmp2 = iter.next().unwrap();
 	let typ = iter.next().unwrap();
