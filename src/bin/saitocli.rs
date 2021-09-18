@@ -167,7 +167,7 @@ pub async fn main() -> saito_rust::Result<()> {
         let password = matches.value_of("password");
 
         let mut wallet = Wallet::new();
-	wallet.load_keys(key_file, password);
+        wallet.load_keys(key_file, password);
 
         println!("public key : {}", hex::encode(wallet.get_publickey()));
         println!("private key : {}", hex::encode(wallet.get_privatekey()));

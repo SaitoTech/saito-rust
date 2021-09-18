@@ -7,8 +7,8 @@ use std::path::Path;
 
 use crate::block::Block;
 use crate::crypto::{
-    generate_keys, hash, generate_keypair_from_privatekey, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey,
-    SaitoSignature, SaitoUTXOSetKey,
+    generate_keypair_from_privatekey, generate_keys, hash, sign, SaitoHash, SaitoPrivateKey,
+    SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
 };
 use crate::golden_ticket::GoldenTicket;
 use crate::slip::{Slip, SlipType};
@@ -67,13 +67,11 @@ impl Wallet {
             decrypted_buffer = Wallet::read_key_file(&key_path, &password);
         }
 
-	let (publickey, privatekey) = generate_keypair_from_privatekey(&decrypted_buffer);
+        let (publickey, privatekey) = generate_keypair_from_privatekey(&decrypted_buffer);
 
-	self.set_publickey(publickey);
-	self.set_privatekey(privatekey);
-
+        self.set_publickey(publickey);
+        self.set_privatekey(privatekey);
     }
-
 
     fn create_key_file(key_file_path: &str, opts_password: &Option<&str>) -> Vec<u8> {
         let password: String;
@@ -217,11 +215,11 @@ impl Wallet {
         self.publickey
     }
 
-    pub fn set_privatekey(&mut self, privatekey : SaitoPrivateKey) {
+    pub fn set_privatekey(&mut self, privatekey: SaitoPrivateKey) {
         self.privatekey = privatekey;
     }
 
-    pub fn set_publickey(&mut self, publickey : SaitoPublicKey) {
+    pub fn set_publickey(&mut self, publickey: SaitoPublicKey) {
         self.publickey = publickey;
     }
 

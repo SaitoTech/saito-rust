@@ -996,7 +996,7 @@ mod tests {
     fn transaction_sign_test() {
         let mut tx = Transaction::new();
         let mut wallet = Wallet::new();
-	wallet.load_keys("test/testwallet", Some("asdf"));
+        wallet.load_keys("test/testwallet", Some("asdf"));
 
         tx.set_outputs(vec![Slip::new()]);
         tx.sign(wallet.get_privatekey());

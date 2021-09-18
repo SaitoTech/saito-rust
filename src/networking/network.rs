@@ -265,10 +265,10 @@ mod tests {
         settings.merge(config::File::with_name("config")).unwrap();
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-	{
-	    let mut wallet = wallet_lock.write().await;
-	    wallet.load_keys("test/testwallet", Some("asdf"));
-	}
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
@@ -353,10 +353,10 @@ mod tests {
         settings.merge(config::File::with_name("config")).unwrap();
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-	{
-	    let mut wallet = wallet_lock.write().await;
-	    wallet.load_keys("test/testwallet", Some("asdf"));
-	}
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
@@ -406,10 +406,10 @@ mod tests {
         settings.merge(config::File::with_name("config")).unwrap();
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-	{
-	    let mut wallet = wallet_lock.write().await;
-	    wallet.load_keys("test/testwallet", Some("asdf"));
-	}
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
@@ -453,10 +453,10 @@ mod tests {
         settings.merge(config::File::with_name("config")).unwrap();
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-	{
-	    let mut wallet = wallet_lock.write().await;
-	    wallet.load_keys("test/testwallet", Some("asdf"));
-	}
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let (blockchain_lock, _block_hashes) =
             make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;

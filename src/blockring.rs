@@ -358,10 +358,7 @@ mod test {
 
         blockring.on_chain_reorganization(mock_block.get_id(), mock_block.get_hash(), true);
         assert_eq!(0, blockring.get_longest_chain_block_id());
-        assert_eq!(
-            mock_block.get_hash(),
-            blockring.get_latest_block_hash()
-        );
+        assert_eq!(mock_block.get_hash(), blockring.get_latest_block_hash());
         assert_eq!(
             mock_block.get_hash(),
             blockring.get_longest_chain_block_hash_by_block_id(0)
@@ -372,10 +369,10 @@ mod test {
     async fn blockring_add_and_delete_block() {
         let mut blockring = BlockRing::new();
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-	{
+        {
             let mut wallet = wallet_lock.write().await;
-	    wallet.load_keys("test/testwallet", Some("asdf"));
-	}
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
 

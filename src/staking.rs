@@ -314,7 +314,8 @@ impl Staking {
             // reset stakers if necessary
             //
             if self.stakers.is_empty() {
-                let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(block.get_staking_treasury());
+                let (_res_spend, _res_unspend, _res_delete) =
+                    self.reset_staker_table(block.get_staking_treasury());
             }
         } else {
             //

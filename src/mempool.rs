@@ -254,7 +254,10 @@ impl Mempool {
         let blockchain = blockchain_lock.read().await;
         let previous_block_hash = blockchain.get_latest_block_hash();
 
-println!("We are generating the block with this block hash: {:?}", blockchain.get_latest_block_hash());
+        println!(
+            "We are generating the block with this block hash: {:?}",
+            blockchain.get_latest_block_hash()
+        );
 
         let block = Block::generate(
             &mut self.transactions,
@@ -426,7 +429,7 @@ mod tests {
     #[test]
     fn mempool_new_test() {
         let mut wallet = Wallet::new();
-	wallet.load_keys("test/testwallet", Some("asdf"));
+        wallet.load_keys("test/testwallet", Some("asdf"));
         let mempool = Mempool::new(Arc::new(RwLock::new(wallet)));
         assert_eq!(mempool.blocks_queue, VecDeque::new());
     }
@@ -434,7 +437,7 @@ mod tests {
     #[test]
     fn mempool_add_block_test() {
         let mut wallet = Wallet::new();
-	wallet.load_keys("test/testwallet", Some("asdf"));
+        wallet.load_keys("test/testwallet", Some("asdf"));
         let mut mempool = Mempool::new(Arc::new(RwLock::new(wallet)));
 
         let block = Block::new();
@@ -447,10 +450,10 @@ mod tests {
     #[tokio::test]
     async fn mempool_bundle_blocks_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-	{
+        {
             let mut wallet = wallet_lock.write().await;
-	    wallet.load_keys("test/testwallet", Some("asdf"));
-	}
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
@@ -520,10 +523,10 @@ mod tests {
     #[tokio::test]
     async fn mempool_bundle_and_process_blocks_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-	{
+        {
             let mut wallet = wallet_lock.write().await;
-	    wallet.load_keys("test/testwallet", Some("asdf"));
-	}
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;

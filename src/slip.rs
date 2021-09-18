@@ -305,10 +305,10 @@ mod tests {
     #[tokio::test]
     async fn slip_addition_and_removal_from_utxoset() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-	{
+        {
             let mut wallet = wallet_lock.write().await;
-	    wallet.load_keys("test/testwallet", Some("asdf"));
-	}
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut blockchain = blockchain_lock.write().await;
         let wallet = wallet_lock.write().await;
