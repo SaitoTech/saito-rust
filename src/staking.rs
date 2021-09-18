@@ -48,7 +48,7 @@ impl Staking {
     }
 
     pub fn find_winning_staker(&self, random_number: SaitoHash) -> Option<Slip> {
-        if self.stakers.len() == 0 {
+        if self.stakers.is_empty() {
             return None;
         }
 
@@ -64,7 +64,7 @@ impl Staking {
 
         let winning_slip = self.stakers[retrieve_from_pos as usize].clone();
 
-        return Some(winning_slip);
+        Some(winning_slip)
     }
 
     //
@@ -101,7 +101,7 @@ impl Staking {
         self.pending = vec![];
         self.deposits = vec![];
 
-        if self.stakers.len() == 0 {
+        if self.stakers.is_empty() {
             return (res_spend, res_unspend, res_delete);
         }
 
@@ -158,14 +158,14 @@ impl Staking {
             let (z, f) = nominator.overflowing_div(denominator);
 
             let mut staking_profit: u64 = 0;
-            if f != true {
+            if !f {
                 staking_profit = z.as_u64();
             }
 
             self.stakers[i].set_payout(staking_profit);
         }
 
-        return (res_spend, res_unspend, res_delete);
+        (res_spend, res_unspend, res_delete)
     }
 
     pub fn validate_slip_in_deposits(&self, slip: Slip) -> bool {
@@ -174,7 +174,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn validate_slip_in_stakers(&self, slip: Slip) -> bool {
@@ -183,7 +183,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn validate_slip_in_pending(&self, slip: Slip) -> bool {
@@ -192,7 +192,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn add_deposit(&mut self, slip: Slip) {
@@ -214,7 +214,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn remove_staker(&mut self, slip: Slip) -> bool {
@@ -224,7 +224,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn remove_pending(&mut self, slip: Slip) -> bool {
@@ -234,7 +234,7 @@ impl Staking {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     //
@@ -257,7 +257,7 @@ impl Staking {
         //
         // add/remove deposits
         //
-        for tx in &block.transactions {
+        for tx in block.get_transactions() {
             if tx.get_transaction_type() == TransactionType::StakerWithdrawal {
                 //
                 // someone has successfully withdrawn so we need to remove this slip
@@ -313,15 +313,15 @@ impl Staking {
             //
             // reset stakers if necessary
             //
-            if self.stakers.len() == 0 {
-                //self.reset_staker_table(block.get_staking_treasury());
-                let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(100_000_000);
+            if self.stakers.is_empty() {
+                let (_res_spend, _res_unspend, _res_delete) =
+                    self.reset_staker_table(block.get_staking_treasury());
             }
         } else {
             //
             // reset pending if necessary
             //
-            if self.pending.len() == 0 {
+            if self.pending.is_empty() {
                 self.pending = vec![];
                 self.deposits = vec![];
                 for i in 0..self.stakers.len() {
@@ -340,10 +340,11 @@ impl Staking {
         // update staking tables
         //
         if block.get_has_fee_transaction() && block.get_has_golden_ticket() {
-            let fee_transaction = &block.transactions[block.get_fee_transaction_idx() as usize];
+            let fee_transaction =
+                &block.get_transactions()[block.get_fee_transaction_idx() as usize];
 
             let golden_ticket_transaction =
-                &block.transactions[block.get_golden_ticket_idx() as usize];
+                &block.get_transactions()[block.get_golden_ticket_idx() as usize];
 
             //
             // grab random input from golden ticket
@@ -358,7 +359,7 @@ impl Staking {
             if fee_transaction.outputs.len() < 3 {
                 return (res_spend, res_unspend, res_delete);
             }
-            if fee_transaction.inputs.len() < 1 {
+            if fee_transaction.inputs.is_empty() {
                 return (res_spend, res_unspend, res_delete);
             }
 
@@ -382,10 +383,9 @@ impl Staking {
                     "Rolling forward and moving into pending: {}!",
                     self.stakers.len()
                 );
-                if self.stakers.len() == 0 {
-                    //self.reset_staker_table(block.get_staking_treasury());
+                if self.stakers.is_empty() {
                     let (_res_spend, _res_unspend, _res_delete) =
-                        self.reset_staker_table(100_000_000);
+                        self.reset_staker_table(block.get_staking_treasury());
                 }
 
                 //
@@ -406,10 +406,9 @@ impl Staking {
                 //
                 // re-create staker table, if needed
                 //
-                if self.stakers.len() == 0 {
-                    //self.reset_staker_table(block.get_staking_treasury());
+                if self.stakers.is_empty() {
                     let (_res_spend, _res_unspend, _res_delete) =
-                        self.reset_staker_table(100_000_000);
+                        self.reset_staker_table(block.get_staking_treasury());
                 }
 
             //
@@ -421,7 +420,7 @@ impl Staking {
                 //
                 // reset pending if necessary
                 //
-                if self.pending.len() == 0 {
+                if self.pending.is_empty() {
                     self.pending = vec![];
                     self.deposits = vec![];
                     for i in 0..self.stakers.len() {
@@ -450,7 +449,7 @@ impl Staking {
                 //
                 // reset pending if necessary
                 //
-                if self.pending.len() == 0 {
+                if self.pending.is_empty() {
                     self.pending = vec![];
                     self.deposits = vec![];
                     for i in 0..self.stakers.len() {
@@ -466,7 +465,7 @@ impl Staking {
             }
         }
 
-        return (res_spend, res_unspend, res_delete);
+        (res_spend, res_unspend, res_delete)
     }
 }
 
@@ -758,7 +757,8 @@ mod tests {
             println!("DEPOSIT 3: {:?}", blockchain.staking.deposits);
 
             //assert_eq!(blk.get_has_fee_transaction(), true);
-            //assert_eq!(blk.get_fee_transaction_idx(), 2); // normal tx, golden ticket, fee tx
+            //assert_eq!(blk.get_fee_transaction_idx(), 2);
+            // normal tx, golden ticket, fee tx
             //println!("{:?}", blk.transactions[2].get_outputs());
             //assert_eq!(blk.transactions[2].get_outputs()[2].get_slip_type(), SlipType::StakerOutput);
         }
@@ -902,7 +902,7 @@ mod tests {
         //
         {
             let mut blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(latest_block_hash).await;
+            let blk = blockchain.get_block(&latest_block_hash).await.unwrap();
             println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             println!("STAKERS: {:?}", blockchain.staking.stakers);
             println!("PENDING: {:?}", blockchain.staking.pending);

@@ -56,8 +56,8 @@ impl Wallet {
         let (publickey, privatekey) = Wallet::load_keys(key_path, password);
         println!("Loaded wallet {}", hex::encode(publickey));
         Wallet {
-            publickey: publickey,
-            privatekey: privatekey,
+            publickey,
+            privatekey,
             slips: vec![],
             staked_slips: vec![],
         }
@@ -138,7 +138,7 @@ impl Wallet {
         //
         // If a block is added in a fork all the inputs will be deleted and won't be recovered.
         // Also, outputs added will still be in the wallet even if they are not replayed on the longest chain(and are therefore unspendable)
-        for tx in &block.transactions {
+        for tx in block.get_transactions() {
             for input in tx.get_inputs() {
                 if input.get_slip_type() == SlipType::StakerDeposit
                     || input.get_slip_type() == SlipType::StakerOutput
@@ -170,7 +170,7 @@ impl Wallet {
     // removes all slips in block when pruned / deleted
     //
     pub fn delete_block(&mut self, block: &Block) {
-        for tx in &block.transactions {
+        for tx in block.get_transactions() {
             for input in tx.get_inputs() {
                 self.delete_slip(input);
             }
@@ -229,7 +229,7 @@ impl Wallet {
                 available_balance += slip.get_amount();
             }
         }
-        return available_balance;
+        available_balance
     }
 
     // the nolan_requested is omitted from the slips created - only the change
@@ -280,14 +280,14 @@ impl Wallet {
         //
         // ensure not empty
         //
-        if inputs.len() == 0 {
+        if inputs.is_empty() {
             let mut input = Slip::new();
             input.set_publickey(my_publickey);
             input.set_amount(0);
             input.set_uuid([0; 32]);
             inputs.push(input);
         }
-        if outputs.len() == 0 {
+        if outputs.is_empty() {
             let mut output = Slip::new();
             output.set_publickey(my_publickey);
             output.set_amount(0);
@@ -295,7 +295,7 @@ impl Wallet {
             outputs.push(output);
         }
 
-        return (inputs, outputs);
+        (inputs, outputs)
     }
 
     pub fn sign(&self, message_bytes: &[u8]) -> SaitoSignature {
@@ -384,7 +384,7 @@ impl Wallet {
         let mut transaction = Transaction::new();
         transaction.set_transaction_type(TransactionType::StakerWithdrawal);
 
-        if self.staked_slips.len() == 0 {
+        if self.staked_slips.is_empty() {
             return transaction;
         }
 
@@ -397,15 +397,10 @@ impl Wallet {
         input.set_slip_ordinal(slip.get_slip_ordinal());
         input.set_slip_type(SlipType::StakerWithdrawalStaking);
 
-        println!("SLIP TO VALIDATE: ");
-        println!("{:?}", input);
-
         if staking.validate_slip_in_stakers(input.clone()) {
-            println!("creating staking withdrawal transaction with slip in Staking");
             input.set_slip_type(SlipType::StakerWithdrawalStaking);
         }
         if staking.validate_slip_in_pending(input.clone()) {
-            println!("creating staking withdrawal transaction with slip in Pending");
             input.set_slip_type(SlipType::StakerWithdrawalPending);
         }
 
@@ -451,7 +446,7 @@ pub struct WalletSlip {
 }
 
 impl WalletSlip {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         WalletSlip {
             uuid: [0; 32],

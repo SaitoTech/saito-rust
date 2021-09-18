@@ -21,8 +21,7 @@ use tracing::{event, Level};
 
 #[tokio::main]
 pub async fn main() -> saito_rust::Result<()> {
-    //let args: Vec<String> = std::env::args().collect();
-
+    tracing_subscriber::fmt::init();
     let matches = App::new("Saito Runtime")
         .about("Runs a Saito Node")
         .arg(
@@ -63,18 +62,12 @@ pub async fn main() -> saito_rust::Result<()> {
         )
         .get_matches();
 
-    let config_name = match matches.value_of("config") {
-        Some(name) => name,
-        None => "config",
-    };
+    let config_name = matches.value_of("config").unwrap_or("config");
 
     let mut settings = config::Config::default();
     settings
         .merge(config::File::with_name(config_name))
         .unwrap();
-
-    // let key_path = matches.value_of("key_path").unwrap();
-    // let password = matches.value_of("password");
 
     let txs_to_generate: i32 = match matches.value_of("transactions") {
         Some(num) => num.parse::<i32>().unwrap(),
@@ -88,16 +81,6 @@ pub async fn main() -> saito_rust::Result<()> {
 
     let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-
-    // Load blocks from disk if configured
-    // let load_blocks_from_disk = match settings.get::<bool>("storage.load_blocks_from_disk") {
-    //     Ok(can_load) => can_load,
-    //     Err(_) => true,
-    // };
-
-    // if load_blocks_from_disk {
-    //     Storage::load_blocks_from_disk(blockchain_lock.clone()).await;
-    // }
 
     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
     let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
@@ -130,7 +113,6 @@ pub async fn main() -> saito_rust::Result<()> {
         event!(Level::INFO, "{:?}", server_transaction_url);
 
         loop {
-
             let mut transactions: Vec<Transaction> = vec![];
 
             event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
@@ -158,8 +140,7 @@ pub async fn main() -> saito_rust::Result<()> {
                     .add_hop_to_path(wallet_lock.clone(), publickey)
                     .await;
 
-
-//println!("TRANSACTION: {:?}", transaction);
+                //println!("TRANSACTION: {:?}", transaction);
 
                 transactions.push(transaction);
             }

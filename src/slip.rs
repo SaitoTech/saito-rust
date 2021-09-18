@@ -49,7 +49,7 @@ pub struct Slip {
 }
 
 impl Slip {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             publickey: [0; 33],
@@ -68,10 +68,10 @@ impl Slip {
             match utxoset.get(&self.utxoset_key) {
                 Some(value) => {
                     if *value == 1 {
-                        return true;
+                        true
                     } else {
                         //println!("value is {} at {:?}", *value, &self.utxoset_key);
-                        return false;
+                        false
                     }
                 }
                 None => {
@@ -83,11 +83,11 @@ impl Slip {
                         self.get_slip_ordinal(),
                         self.get_amount()
                     );
-                    return false;
+                    false
                 }
             }
         } else {
-            return true;
+            true
         }
     }
 

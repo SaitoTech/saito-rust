@@ -77,6 +77,7 @@ pub async fn generate_signed_tx(
 }
 
 pub async fn make_block_with_mempool(
+    mock_timestamp_generator: &mut MockTimestampGenerator,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     wallet_lock: Arc<RwLock<Wallet>>,
@@ -93,12 +94,11 @@ pub async fn make_block_with_mempool(
         assert_eq!(add_tx_result, AddTransactionResult::Accepted);
     }
 
-    let mut mock_timestamp_generator = MockTimestampGenerator::new();
     mock_timestamp_generator.advance(HEARTBEAT * 2);
     let block_option = crate::mempool::try_bundle_block(
         mempool_lock.clone(),
         blockchain_lock.clone(),
-        &mut mock_timestamp_generator,
+        mock_timestamp_generator,
     )
     .await;
     assert!(block_option.is_some());
@@ -312,7 +312,7 @@ pub async fn make_mock_block_with_info(
     }
 
     if golden_ticket {
-        let blk = blockchain.get_block(last_block_hash).await;
+        let blk = blockchain.get_block(&last_block_hash).await.unwrap();
         let last_block_difficulty = blk.get_difficulty();
         let golden_ticket: GoldenTicket = miner
             .mine_on_block_until_golden_ticket_found(last_block_hash, last_block_difficulty)
@@ -338,5 +338,5 @@ pub async fn make_mock_block_with_info(
     )
     .await;
 
-    return block;
+    block
 }

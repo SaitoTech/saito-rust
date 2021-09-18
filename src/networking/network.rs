@@ -91,7 +91,7 @@ impl Network {
                     while let Some(result) = read_stream.next().await {
                         match result {
                             Ok(message) => {
-                                if message.len() > 0 {
+                                if !message.is_empty() {
                                     let api_message = APIMessage::deserialize(&message.into_data());
                                     SaitoPeer::handle_peer_message(api_message, connection_id)
                                         .await;

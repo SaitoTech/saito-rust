@@ -171,9 +171,9 @@ impl SaitoPeer {
                 has_completed_handshake,
                 is_from_peer_list,
             },
-            connection_id: connection_id,
-            host: host,
-            port: port,
+            connection_id,
+            host,
+            port,
             publickey: None,
             request_count: 0,
             wallet_lock,
@@ -591,7 +591,7 @@ pub async fn handle_inbound_peer_connection(
                     break;
                 }
             };
-            if msg.as_bytes().len() > 0 {
+            if !msg.as_bytes().is_empty() {
                 let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());
                 SaitoPeer::handle_peer_message(api_message, connection_id).await;
             } else {
