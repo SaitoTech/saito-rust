@@ -12,8 +12,8 @@ impl APIMessage {
     pub fn new(message_name: &str, message_id: u32, message_data: Vec<u8>) -> APIMessage {
         APIMessage {
             message_name: String::from(message_name).as_bytes().try_into().unwrap(),
-            message_id: message_id,
-            message_data: message_data,
+            message_id,
+            message_data,
         }
     }
     pub fn new_from_string(
@@ -50,9 +50,9 @@ impl APIMessage {
         let message_id: u32 = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
         let message_data = bytes[12..].try_into().unwrap();
         APIMessage {
-            message_name: message_name,
-            message_id: message_id,
-            message_data: message_data,
+            message_name,
+            message_id,
+            message_data,
         }
     }
     pub fn serialize(&self) -> Vec<u8> {

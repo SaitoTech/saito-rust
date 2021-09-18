@@ -49,7 +49,7 @@ pub fn generate_random_bytes(len: u64) -> Vec<u8> {
         let x: Vec<u8> = vec![];
         return x;
     }
-    return (0..len).map(|_| rand::random::<u8>()).collect();
+    (0..len).map(|_| rand::random::<u8>()).collect()
 }
 
 pub fn hash(data: &Vec<u8>) -> SaitoHash {

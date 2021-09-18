@@ -18,7 +18,6 @@ use tracing::{event, Level};
 use async_recursion::async_recursion;
 
 use ahash::AHashMap;
-use rayon::prelude::*;
 use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
 
@@ -47,7 +46,7 @@ pub struct Blockchain {
 }
 
 impl Blockchain {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new(wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Blockchain {
             staking: Staking::new(),
@@ -74,12 +73,11 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, block: Block) {
-
+        event!(Level::INFO, "add_block {}", &hex::encode(&block.get_hash()));
         event!(
             Level::TRACE,
-            " ... blockchain.add_block start: {:?} txs: {} hash: {:?}, and id {}",
+            " ... blockchain.add_block start: {:?} hash: {:?}, and id {}",
             create_timestamp(),
-            block.transactions.len(),
             block.get_hash(),
             block.get_id()
         );
@@ -91,7 +89,7 @@ impl Blockchain {
         //
         let block_hash = block.get_hash();
         let block_id = block.get_id();
-        let previous_block_hash = self.blockring.get_longest_chain_block_hash();
+        let previous_block_hash = self.blockring.get_latest_block_hash();
 
 println!("blockring reports prev hash: {:?}", previous_block_hash);
 println!("block reports: {:?}", block.get_previous_block_hash());
@@ -269,7 +267,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
                     self.blocks.get_mut(&block_hash).unwrap().set_lc(true);
                 }
 
-                if !self.broadcast_channel_sender.is_none() {
+                if self.broadcast_channel_sender.is_some() {
                     self.broadcast_channel_sender
                         .as_ref()
                         .unwrap()
@@ -290,7 +288,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
             } else {
                 self.add_block_failure().await;
 
-                if !self.broadcast_channel_sender.is_none() {
+                if self.broadcast_channel_sender.is_some() {
                     self.broadcast_channel_sender
                         .as_ref()
                         .unwrap()
@@ -301,7 +299,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
         } else {
             self.add_block_failure().await;
 
-            if !self.broadcast_channel_sender.is_none() {
+            if self.broadcast_channel_sender.is_some() {
                 self.broadcast_channel_sender
                     .as_ref()
                     .unwrap()
@@ -313,7 +311,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
     pub async fn add_block_to_blockchain(blockchain_lock: Arc<RwLock<Blockchain>>, block: Block) {
         let mut blockchain = blockchain_lock.write().await;
         let res = blockchain.add_block(block).await;
-        return res;
+        res
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
@@ -329,14 +327,9 @@ println!("block reports: {:?}", block.get_previous_block_hash());
         //
         //let storage = Storage::new();
         {
-            let block = self.get_mut_block(block_hash).await;
+            let block = self.get_mut_block(&block_hash).await;
             block_id = block.get_id();
             Storage::write_block_to_disk(block);
-
-            //
-            // TMP - delete transactions
-            //
-            //block.transactions = vec![];
         }
 
         event!(
@@ -393,12 +386,8 @@ println!("block reports: {:?}", block.get_previous_block_hash());
             // to use to check the utxoset.
             //
             {
-                let pblock = self.get_mut_block(pruned_block_hash).await;
+                let pblock = self.get_mut_block(&pruned_block_hash).await;
                 pblock.upgrade_block_to_block_type(BlockType::Full).await;
-                let _transactions_pre_calculated = pblock
-                    .transactions
-                    .par_iter_mut()
-                    .all(|tx| tx.generate_metadata_hashes());
             }
         }
     }
@@ -414,7 +403,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
         //
         for i in 0..10 {
             if (current_block_id - i) % 10 == 0 {
-                current_block_id = current_block_id - i;
+                current_block_id -= i;
                 break;
             }
         }
@@ -678,16 +667,16 @@ println!("block reports: {:?}", block.get_previous_block_hash());
         //
         // no match? return 0 -- no shared ancestor
         //
-        return 0;
+        0
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
-        let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block_hash = self.blockring.get_latest_block_hash();
         self.blocks.get(&block_hash)
     }
 
     pub fn get_latest_block_hash(&self) -> SaitoHash {
-        self.blockring.get_longest_chain_block_hash()
+        self.blockring.get_latest_block_hash()
     }
 
     pub fn get_latest_block_id(&self) -> u64 {
@@ -697,13 +686,12 @@ println!("block reports: {:?}", block.get_previous_block_hash());
     pub fn get_block_sync(&self, block_hash: &SaitoHash) -> Option<&Block> {
         self.blocks.get(block_hash)
     }
-    pub async fn get_block(&self, block_hash: SaitoHash) -> &Block {
-        let block = self.blocks.get(&block_hash).unwrap();
-        block
+    pub async fn get_block(&self, block_hash: &SaitoHash) -> Option<&Block> {
+        self.blocks.get(block_hash)
     }
 
-    pub async fn get_mut_block(&mut self, block_hash: SaitoHash) -> &mut Block {
-        let block = self.blocks.get_mut(&block_hash).unwrap();
+    pub async fn get_mut_block(&mut self, block_hash: &SaitoHash) -> &mut Block {
+        let block = self.blocks.get_mut(block_hash).unwrap();
         block
     }
 
@@ -711,7 +699,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
         if self.blocks.contains_key(&block_hash) {
             return true;
         }
-        return false;
+        false
     }
 
     pub fn contains_block_hash_at_block_id(&self, block_id: u64, block_hash: SaitoHash) -> bool {
@@ -773,12 +761,12 @@ println!("block reports: {:?}", block.get_previous_block_hash());
             let res = self
                 .unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
                 .await;
-            return res;
+            res
         } else if !new_chain.is_empty() {
             let res = self
                 .wind_chain(&new_chain, &old_chain, new_chain.len() - 1, false)
                 .await;
-            return res;
+            res
         } else {
             true
         }
@@ -820,7 +808,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
         // means our wind attempt failed and we should move directly into
         // add_block_failure() by returning false.
         //
-        if wind_failure == true && new_chain.len() == 0 {
+        if wind_failure && new_chain.is_empty() {
             return false;
         }
 
@@ -836,7 +824,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
         // happen first.
         //
         {
-            let mut block = self.get_mut_block(new_chain[current_wind_index]).await;
+            let mut block = self.get_mut_block(&new_chain[current_wind_index]).await;
             block.generate_metadata();
 
             let latest_block_id = block.get_id();
@@ -854,7 +842,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
                 let previous_block_hash =
                     self.blockring.get_longest_chain_block_hash_by_block_id(bid);
                 if self.is_block_indexed(previous_block_hash) {
-                    block = self.get_mut_block(previous_block_hash).await;
+                    block = self.get_mut_block(&previous_block_hash).await;
                     block.upgrade_block_to_block_type(BlockType::Full).await;
                 }
             }
@@ -934,7 +922,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
             let res = self
                 .wind_chain(new_chain, old_chain, current_wind_index - 1, false)
                 .await;
-            return res;
+            res
         } else {
             //
             // we have had an error while winding the chain. this requires us to
@@ -971,7 +959,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
                 let res = self
                     .wind_chain(old_chain, new_chain, new_chain.len() - 1, true)
                     .await;
-                return res;
+                res
             } else {
                 let mut chain_to_unwind: Vec<[u8; 32]> = vec![];
 
@@ -996,7 +984,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
                 let res = self
                     .unwind_chain(old_chain, &chain_to_unwind, 0, true)
                     .await;
-                return res;
+                res
             }
         }
     }
@@ -1071,7 +1059,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
             let res = self
                 .wind_chain(new_chain, old_chain, new_chain.len() - 1, wind_failure)
                 .await;
-            return res;
+            res
         } else {
             //
             // continue unwinding,, which means
@@ -1082,7 +1070,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
             let res = self
                 .unwind_chain(new_chain, old_chain, current_unwind_index + 1, wind_failure)
                 .await;
-            return res;
+            res
         }
     }
 
@@ -1213,7 +1201,7 @@ println!("block reports: {:?}", block.get_previous_block_hash());
             // ask the block to remove its transactions
             //
             {
-                let pblock = self.get_mut_block(hash).await;
+                let pblock = self.get_mut_block(&hash).await;
                 pblock
                     .downgrade_block_to_block_type(BlockType::Pruned)
                     .await;
@@ -1241,20 +1229,6 @@ pub async fn run(
         let mut blockchain = blockchain_lock.write().await;
         blockchain.set_broadcast_channel_sender(broadcast_channel_sender.clone());
     }
-
-    //
-    // local broadcasting loop
-    //
-    //let test_sender = blockchain_channel_sender.clone();
-    //tokio::spawn(async move {
-    //    loop {
-    //test_sender
-    //    .send(MempoolMessage::TryBundleBlock)
-    //    .await
-    //    .expect("error: GenerateBlock message failed to send");
-    //        sleep(Duration::from_millis(1000));
-    //    }
-    //});
 
     //
     // receive broadcast messages

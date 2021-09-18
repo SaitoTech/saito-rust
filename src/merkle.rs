@@ -15,9 +15,9 @@ pub struct MerkleTreeLayer {
 impl MerkleTreeLayer {
     pub fn new(left: SaitoHash, right: SaitoHash, level: u8) -> MerkleTreeLayer {
         MerkleTreeLayer {
-            left: left,
-            right: right,
-            level: level,
+            left,
+            right,
+            level,
             hash: [0; 32],
         }
     }

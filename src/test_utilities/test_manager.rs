@@ -62,7 +62,7 @@ impl TestManager {
                 parent_hash,
             )
             .await;
-        return block;
+        block
     }
 
     //
@@ -77,7 +77,7 @@ impl TestManager {
         additional_txs: Vec<Transaction>,
         parent_hash: SaitoHash,
     ) {
-        let block = self
+        let mut block = self
             .generate_block(
                 parent_hash,
                 timestamp,
@@ -88,7 +88,15 @@ impl TestManager {
             )
             .await;
 
-        //println!("ADDING BLOCK! {}", block.get_id());
+        let privatekey: SaitoPrivateKey;
+        let publickey: SaitoPublicKey;
+
+        {
+            let wallet = self.wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+            privatekey = wallet.get_privatekey();
+        }
+        block.sign(publickey, privatekey);
 
         self.latest_block_hash = block.get_hash();
         Blockchain::add_block_to_blockchain(self.blockchain_lock.clone(), block).await;
@@ -144,7 +152,7 @@ impl TestManager {
         }
 
         if golden_ticket {
-            let blk = blockchain.get_block(parent_hash).await;
+            let blk = blockchain.get_block(&parent_hash).await.unwrap();
             let last_block_difficulty = blk.get_difficulty();
             let golden_ticket: GoldenTicket = miner
                 .mine_on_block_until_golden_ticket_found(parent_hash, last_block_difficulty)
@@ -161,7 +169,7 @@ impl TestManager {
         //
         // create block
         //
-        let mut block = Block::generate(
+        let block = Block::generate(
             &mut transactions,
             parent_hash,
             self.wallet_lock.clone(),
@@ -170,9 +178,7 @@ impl TestManager {
         )
         .await;
 
-        block.sign(publickey, privatekey);
-
-        return block;
+        block
     }
 
     //
@@ -208,9 +214,9 @@ impl TestManager {
             let block_hash = blockchain
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(i as u64);
-            let block = blockchain.get_block(block_hash).await;
-            for i in 0..block.transactions.len() {
-                block.transactions[i].on_chain_reorganization(&mut utxoset, true, i as u64);
+            let block = blockchain.get_block(&block_hash).await.unwrap();
+            for i in 0..block.get_transactions().len() {
+                block.get_transactions()[i].on_chain_reorganization(&mut utxoset, true, i as u64);
             }
         }
 
@@ -300,14 +306,11 @@ impl TestManager {
         let blockchain = self.blockchain_lock.read().await;
         let latest_block_id = blockchain.get_latest_block_id();
 
-        //
-        //
-        //
         for i in 1..=latest_block_id {
             let block_hash = blockchain
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(i as u64);
-            let block = blockchain.get_block(block_hash).await;
+            let block = blockchain.get_block(&block_hash).await.unwrap();
 
             block_inputs = 0;
             block_outputs = 0;
@@ -316,10 +319,7 @@ impl TestManager {
             previous_block_treasury = current_block_treasury;
             current_block_treasury = block.get_treasury();
 
-            //
-            //
-            //
-            for t in 0..block.transactions.len() {
+            for t in 0..block.get_transactions().len() {
                 //
                 // we ignore the inputs in staking / fee transactions as they have
                 // been pulled from the staking treasury and are already technically
@@ -327,15 +327,15 @@ impl TestManager {
                 // we only care about the difference in token supply represented by
                 // the difference in the staking_treasury.
                 //
-                if block.transactions[t].get_transaction_type() == TransactionType::Fee {
+                if block.get_transactions()[t].get_transaction_type() == TransactionType::Fee {
                     block_contains_fee_tx = 1;
                     block_fee_tx_idx = t as usize;
                 } else {
-                    for z in 0..block.transactions[t].inputs.len() {
-                        block_inputs += block.transactions[t].inputs[z].get_amount();
+                    for z in 0..block.get_transactions()[t].inputs.len() {
+                        block_inputs += block.get_transactions()[t].inputs[z].get_amount();
                     }
-                    for z in 0..block.transactions[t].outputs.len() {
-                        block_outputs += block.transactions[t].outputs[z].get_amount();
+                    for z in 0..block.get_transactions()[t].outputs.len() {
+                        block_outputs += block.get_transactions()[t].outputs[z].get_amount();
                     }
                 }
 
@@ -369,7 +369,7 @@ impl TestManager {
                         // calculate total amount paid
                         //
                         let mut total_fees_paid: u64 = 0;
-                        let fee_transaction = &block.transactions[block_fee_tx_idx];
+                        let fee_transaction = &block.get_transactions()[block_fee_tx_idx];
                         for output in fee_transaction.get_outputs() {
                             total_fees_paid += output.get_amount();
                         }
@@ -402,11 +402,64 @@ impl TestManager {
                     //
                     // we check that overall token supply has not changed
                     //
-                    println!("checking token supply in block {}", i);
                     assert_eq!(total_in_circulation, token_supply);
                 }
             }
         }
+    }
+    pub fn check_block_consistency(block: &Block) {
+        let serialized_block = block.serialize_for_net();
+
+        let deserialized_block = Block::deserialize_for_net(&serialized_block);
+
+        assert_eq!(block.get_id(), deserialized_block.get_id());
+        assert_eq!(block.get_timestamp(), deserialized_block.get_timestamp());
+        assert_eq!(
+            block.get_previous_block_hash(),
+            deserialized_block.get_previous_block_hash()
+        );
+        assert_eq!(block.get_creator(), deserialized_block.get_creator());
+        assert_eq!(
+            block.get_merkle_root(),
+            deserialized_block.get_merkle_root()
+        );
+        assert_eq!(block.get_signature(), deserialized_block.get_signature());
+        assert_eq!(block.get_treasury(), deserialized_block.get_treasury());
+        assert_eq!(block.get_burnfee(), deserialized_block.get_burnfee());
+        assert_eq!(block.get_difficulty(), deserialized_block.get_difficulty());
+        assert_eq!(
+            block.get_staking_treasury(),
+            deserialized_block.get_staking_treasury()
+        );
+        // assert_eq!(block.get_total_fees(), deserialized_block.get_total_fees());
+        assert_eq!(
+            block.get_routing_work_for_creator(),
+            deserialized_block.get_routing_work_for_creator()
+        );
+        // assert_eq!(block.get_lc(), deserialized_block.get_lc());
+        assert_eq!(
+            block.get_has_golden_ticket(),
+            deserialized_block.get_has_golden_ticket()
+        );
+        assert_eq!(
+            block.get_has_fee_transaction(),
+            deserialized_block.get_has_fee_transaction()
+        );
+        assert_eq!(
+            block.get_golden_ticket_idx(),
+            deserialized_block.get_golden_ticket_idx()
+        );
+        assert_eq!(
+            block.get_fee_transaction_idx(),
+            deserialized_block.get_fee_transaction_idx()
+        );
+        // assert_eq!(block.get_total_rebroadcast_slips(), deserialized_block.get_total_rebroadcast_slips());
+        // assert_eq!(block.get_total_rebroadcast_nolan(), deserialized_block.get_total_rebroadcast_nolan());
+        // assert_eq!(block.get_rebroadcast_hash(), deserialized_block.get_rebroadcast_hash());
+        assert_eq!(block.get_block_type(), deserialized_block.get_block_type());
+        // assert_eq!(block.slips_spent_this_block, deserialized_block.slips_spent_this_block);
+        assert_eq!(block.get_pre_hash(), deserialized_block.get_pre_hash());
+        assert_eq!(block.get_hash(), deserialized_block.get_hash());
     }
 }
 

@@ -22,7 +22,7 @@ pub struct TracingTimer {
 }
 impl TracingTimer {
     /// Create a new TracingTimer
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> TracingTimer {
         TracingTimer {
             prev_timestamp: create_timestamp(),
@@ -44,7 +44,7 @@ pub struct TracingAccumulator {
 /// A helper for tracing. Get the amount of time for a series of. Only for use in a single task/thread/future.
 impl TracingAccumulator {
     /// Create a new TracingAccumulator
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> TracingAccumulator {
         TracingAccumulator {
             prev_timestamp: create_timestamp(),

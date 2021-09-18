@@ -22,7 +22,7 @@ pub struct RingItem {
 }
 
 impl RingItem {
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             lc_pos: None,
@@ -94,7 +94,7 @@ pub struct BlockRing {
 
 impl BlockRing {
     /// Create new `BlockRing`
-    #[allow(clippy::clippy::new_without_default)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         //
         // initialize the block-ring
@@ -125,8 +125,7 @@ impl BlockRing {
 
     pub fn contains_block_hash_at_block_id(&self, block_id: u64, block_hash: SaitoHash) -> bool {
         let insert_pos = block_id % RING_BUFFER_LENGTH;
-        let res = self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash);
-        return res;
+        self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash)
     }
 
     pub fn add_block(&mut self, block: &Block) {
@@ -147,7 +146,7 @@ impl BlockRing {
                 v.push(self.block_ring[(insert_pos as usize)].block_hashes[i].clone());
             }
         }
-        return v;
+        v
     }
 
     pub fn on_chain_reorganization(&mut self, block_id: u64, hash: SaitoHash, lc: bool) -> bool {
@@ -204,7 +203,7 @@ impl BlockRing {
         }
     }
 
-    pub fn get_longest_chain_block_hash(&self) -> SaitoHash {
+    pub fn get_latest_block_hash(&self) -> SaitoHash {
         match self.block_ring_lc_pos {
             Some(block_ring_lc_pos) => match self.block_ring[block_ring_lc_pos].lc_pos {
                 Some(lc_pos) => self.block_ring[block_ring_lc_pos].block_hashes[lc_pos],
@@ -351,7 +350,7 @@ mod test {
 
         // TODO: These next 3 are also wrong, they should probably return None or panic
         assert_eq!(0, blockring.get_longest_chain_block_id());
-        assert_eq!([0; 32], blockring.get_longest_chain_block_hash());
+        assert_eq!([0; 32], blockring.get_latest_block_hash());
         assert_eq!(
             [0; 32],
             blockring.get_longest_chain_block_hash_by_block_id(0)
@@ -361,7 +360,7 @@ mod test {
         assert_eq!(0, blockring.get_longest_chain_block_id());
         assert_eq!(
             mock_block.get_hash(),
-            blockring.get_longest_chain_block_hash()
+            blockring.get_latest_block_hash()
         );
         assert_eq!(
             mock_block.get_hash(),
