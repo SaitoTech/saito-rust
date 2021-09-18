@@ -314,8 +314,7 @@ impl Staking {
             // reset stakers if necessary
             //
             if self.stakers.is_empty() {
-                //self.reset_staker_table(block.get_staking_treasury());
-                let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(100_000_000);
+                let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(block.get_staking_treasury());
             }
         } else {
             //
@@ -384,9 +383,8 @@ impl Staking {
                     self.stakers.len()
                 );
                 if self.stakers.is_empty() {
-                    //self.reset_staker_table(block.get_staking_treasury());
                     let (_res_spend, _res_unspend, _res_delete) =
-                        self.reset_staker_table(100_000_000);
+                        self.reset_staker_table(block.get_staking_treasury());
                 }
 
                 //
@@ -408,9 +406,8 @@ impl Staking {
                 // re-create staker table, if needed
                 //
                 if self.stakers.is_empty() {
-                    //self.reset_staker_table(block.get_staking_treasury());
                     let (_res_spend, _res_unspend, _res_delete) =
-                        self.reset_staker_table(100_000_000);
+                        self.reset_staker_table(block.get_staking_treasury());
                 }
 
             //
@@ -981,36 +978,6 @@ mod tests {
             publickey = wallet.get_publickey();
             println!("publickey: {:?}", publickey);
         }
-
-        //
-        // initialize blockchain staking table
-        //
-
-        //        {
-        //            let mut blockchain = blockchain_lock.write().await;
-
-        //            let mut slip1 = Slip::new();
-        //            slip1.set_amount(200_000_000);
-        //            slip1.set_slip_type(SlipType::StakerDeposit);
-
-        //            let mut slip2 = Slip::new();
-        //            slip2.set_amount(300_000_000);
-        //            slip2.set_slip_type(SlipType::StakerDeposit);
-
-        //            slip1.set_publickey(publickey);
-        //            slip2.set_publickey(publickey);
-
-        //            slip1.generate_utxoset_key();
-        //            slip2.generate_utxoset_key();
-
-        //            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
-        //            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
-
-        //            blockchain.staking.add_deposit(slip1);
-        //            blockchain.staking.add_deposit(slip2);
-
-        //            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
-        //        }
 
         //
         // BLOCK 1
