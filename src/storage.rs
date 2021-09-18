@@ -220,10 +220,13 @@ mod tests {
     fn read_issuance_file_test() {
 
 	let slips = Storage::return_token_supply_slips_from_disk();
+	let mut total_issuance = 0;
 
-println!("{:?}", slips);
+	for i in 0..slips.len() {
+	    total_issuance += slips[i].get_amount();
+	}
 
-assert_eq!(1, 2);
+	assert_eq!(total_issuance, MAX_TOKEN_SUPPLY);
 
     }
 
