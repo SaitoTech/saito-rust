@@ -1041,6 +1041,7 @@
 <span id="1041">1041</span>
 <span id="1042">1042</span>
 <span id="1043">1043</span>
+<span id="1044">1044</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TODO</span>
@@ -1358,7 +1359,8 @@
             <span class="comment">// reset stakers if necessary</span>
             <span class="comment">//</span>
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
-                <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="ident">block</span>.<span class="ident">get_staking_treasury</span>());
+                <span class="kw">let</span> (<span class="ident">_res_spend</span>, <span class="ident">_res_unspend</span>, <span class="ident">_res_delete</span>) <span class="op">=</span>
+                    <span class="self">self</span>.<span class="ident">reset_staker_table</span>(<span class="ident">block</span>.<span class="ident">get_staking_treasury</span>());
             }
         } <span class="kw">else</span> {
             <span class="comment">//</span>
@@ -1584,7 +1586,7 @@
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_roll_forward_staking_table_test</span>() {
-        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::default</span>()));
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">publickey</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">latest_block_hash</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>];
@@ -1809,7 +1811,7 @@
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_staking_deposits_test</span>() {
-        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::default</span>()));
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">publickey</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">latest_block_hash</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>];
@@ -2010,7 +2012,7 @@
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_roll_forward_staking_table_test_with_test_manager</span>() {
-        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::default</span>()));
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">test_manager</span> <span class="op">=</span> <span class="ident">TestManager::new</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
 
