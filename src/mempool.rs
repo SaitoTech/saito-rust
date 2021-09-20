@@ -618,20 +618,12 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 
-        let publickey;
-        let privatekey;
         let current_timestamp = create_timestamp();
         let block1_hash;
         let block2_hash;
         let block3_hash;
-
-        {
-            let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-            privatekey = wallet.get_privatekey();
-        }
 
         {
             let mut mempool = mempool_lock.write().await;
@@ -642,7 +634,7 @@ mod tests {
             mempool.add_block_to_queue(block1);
 
             let block2 = test_manager
-                .generate_block(block1_hash, current_timestamp + 120000, 0, 0, false, vec![])
+                .generate_block(block1_hash, current_timestamp + 240000, 0, 0, false, vec![])
                 .await;
             block2_hash = block2.get_hash();
             mempool.add_block_to_queue(block2);
@@ -681,6 +673,6 @@ mod tests {
             block3_hash
         );
 
-        assert_eq!(1, 2);
+        assert_eq!(blockchain.get_latest_block_hash(), block2_hash);
     }
 }
