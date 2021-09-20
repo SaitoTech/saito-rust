@@ -1265,25 +1265,6 @@ pub async fn run(
                             SaitoMessage::MempoolNewBlock { hash: _hash } => {
                                 println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
                             },
-
-        //
-        // TODO - delete - keeping as quick reference for multiple ways
-        // to broadcast messages.
-        //
-        //                    SaitoMessage::TestMessage => {
-        //             		println!("Blockchain GOT TEST MESSAGE!");
-        //			let blockchain = blockchain_lock.read().await;
-        //
-        //			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();
-        //
-        //		        if !blockchain.broadcast_channel_sender.is_none() {
-        //			    println!("blockchain broadcast channel sender exists!");
-        //
-        //	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()
-        //                        	.send(SaitoMessage::TestMessage3)
-        //                        	.expect("error: Mempool TryBundle Block message failed to send");
-        //        		}
-        //                    },
                             _ => {},
                         }
                     }

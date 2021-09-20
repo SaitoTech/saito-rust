@@ -30,3 +30,4 @@ pub async fn main() -> std::result::Result<(), Box<dyn std::error::Error + Send 
     tracing_subscriber::fmt::init();
     consensus::run().await
 }
+
