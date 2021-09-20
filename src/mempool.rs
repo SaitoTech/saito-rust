@@ -307,6 +307,11 @@ pub async fn process_blocks(
     mempool.currently_processing_block = true;
     let mut blockchain = blockchain_lock.write().await;
     while let Some(block) = mempool.blocks_queue.pop_front() {
+        println!(
+            "adding a block! {} -- {:?}",
+            block.get_id(),
+            block.get_hash()
+        );
         mempool.delete_transactions(&block.get_transactions());
         blockchain.add_block(block).await;
     }
@@ -416,12 +421,10 @@ mod tests {
     use super::*;
     use crate::{
         block::Block,
-        burnfee::HEARTBEAT,
         test_utilities::{
             mocks::{add_vip_block, make_block_with_mempool, MockTimestampGenerator},
             test_manager::TestManager,
         },
-        time::create_timestamp,
         wallet::Wallet,
     };
 
@@ -608,71 +611,5 @@ mod tests {
                 prev_block = blockchain.get_latest_block().unwrap().clone();
             }
         }
-    }
-
-    //
-    // tests
-    //
-    #[tokio::test]
-    async fn add_blocks_to_mempool_and_blockchain_updates_appropriately_based_on_heartbeat() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
-
-        let current_timestamp = create_timestamp();
-        let block1_hash;
-        let block2_hash;
-        let block3_hash;
-
-        {
-            let mut mempool = mempool_lock.write().await;
-            let block1 = test_manager
-                .generate_block([0; 32], current_timestamp + HEARTBEAT, 10, 0, false, vec![])
-                .await;
-            block1_hash = block1.get_hash();
-            mempool.add_block_to_queue(block1);
-
-            let block2 = test_manager
-                .generate_block(block1_hash, current_timestamp + 240000, 0, 0, false, vec![])
-                .await;
-            block2_hash = block2.get_hash();
-            mempool.add_block_to_queue(block2);
-
-            let block3 = test_manager
-                .generate_block(
-                    block2_hash,
-                    current_timestamp + HEARTBEAT + 200,
-                    0,
-                    0,
-                    false,
-                    vec![],
-                )
-                .await;
-            block3_hash = block3.get_hash();
-            mempool.add_block_to_queue(block3);
-        }
-
-        process_blocks(mempool_lock.clone(), blockchain_lock.clone()).await;
-
-        let blockchain = blockchain_lock.read().await;
-
-        println!(
-            "latest block 1 hash: {:?} vs {:?}",
-            blockchain.get_latest_block_hash(),
-            block1_hash
-        );
-        println!(
-            "latest block 2 hash: {:?} vs {:?}",
-            blockchain.get_latest_block_hash(),
-            block2_hash
-        );
-        println!(
-            "latest block 3 hash: {:?} vs {:?}",
-            blockchain.get_latest_block_hash(),
-            block3_hash
-        );
-
-        assert_eq!(blockchain.get_latest_block_hash(), block2_hash);
     }
 }
