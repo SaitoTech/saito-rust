@@ -534,6 +534,8 @@
 <span id="534">534</span>
 <span id="535">535</span>
 <span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage</span>::{<span class="ident">Persistable</span>, <span class="ident">Storage</span>};
 <span class="kw">use</span> <span class="ident">aes::Aes128</span>;
@@ -660,37 +662,39 @@
         (<span class="ident">key</span>, <span class="ident">iv</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>) {
-        <span class="comment">//</span>
-        <span class="comment">// TODO</span>
-        <span class="comment">//</span>
-        <span class="comment">// There are multiple bugs in this implementation.</span>
-        <span class="comment">//</span>
-        <span class="comment">// If a block is added in a fork all the inputs will be deleted and won&#39;t be recovered.</span>
-        <span class="comment">// Also, outputs added will still be in the wallet even if they are not replayed on the longest chain(and are therefore unspendable)</span>
-        <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">block</span>.<span class="ident">get_transactions</span>() {
-            <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_inputs</span>() {
-                <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span>
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span>
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalStaking</span>
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalPending</span>
-                {
-                    <span class="comment">//println!(</span>
-                    <span class="comment">//    &quot;deleting staker input  with slip uuid: {:?}&quot;,</span>
-                    <span class="comment">//    input.get_uuid()</span>
-                    <span class="comment">//);</span>
-                    <span class="self">self</span>.<span class="ident">delete_staked_slip</span>(<span class="ident">input</span>);
-                } <span class="kw">else</span> {
-                    <span class="comment">//println!(</span>
-                    <span class="comment">//    &quot;deleting normal input  with slip uuid: {:?}&quot;,</span>
-                    <span class="comment">//    input.get_uuid()</span>
-                    <span class="comment">//);</span>
-                    <span class="self">self</span>.<span class="ident">delete_slip</span>(<span class="ident">input</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>, <span class="ident">lc</span>: <span class="ident">bool</span>) {
+        <span class="kw">if</span> <span class="ident">lc</span> {
+            <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">block</span>.<span class="ident">get_transactions</span>() {
+                <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_inputs</span>() {
+                    <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">input</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
+                        <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span>
+                            <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span>
+                            <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalStaking</span>
+                            <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalPending</span>
+                        {
+                            <span class="self">self</span>.<span class="ident">delete_staked_slip</span>(<span class="ident">input</span>);
+                        } <span class="kw">else</span> {
+                            <span class="self">self</span>.<span class="ident">delete_slip</span>(<span class="ident">input</span>);
+                        }
+                    }
+                }
+                <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_outputs</span>() {
+                    <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">output</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
+                        <span class="self">self</span>.<span class="ident">add_slip</span>(<span class="ident">block</span>, <span class="ident">tx</span>, <span class="ident">output</span>, <span class="bool-val">true</span>);
+                    }
                 }
             }
-            <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_outputs</span>() {
-                <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">output</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
-                    <span class="self">self</span>.<span class="ident">add_slip</span>(<span class="ident">block</span>, <span class="ident">tx</span>, <span class="ident">output</span>, <span class="ident">block</span>.<span class="ident">get_lc</span>());
+        } <span class="kw">else</span> {
+            <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">block</span>.<span class="ident">get_transactions</span>() {
+                <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_inputs</span>() {
+                    <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">input</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
+                        <span class="self">self</span>.<span class="ident">add_slip</span>(<span class="ident">block</span>, <span class="ident">tx</span>, <span class="ident">input</span>, <span class="bool-val">true</span>);
+                    }
+                }
+                <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_outputs</span>() {
+                    <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">output</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
+                        <span class="self">self</span>.<span class="ident">delete_slip</span>(<span class="ident">output</span>);
+                    }
                 }
             }
         }

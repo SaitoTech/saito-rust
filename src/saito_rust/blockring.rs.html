@@ -416,6 +416,10 @@
 <span id="416">416</span>
 <span id="417">417</span>
 <span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::GENESIS_PERIOD</span>;
@@ -577,7 +581,11 @@
             <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span>);
         } <span class="kw">else</span> {
             <span class="comment">//</span>
-            <span class="comment">// only adjust longest_chain if this is it</span>
+            <span class="comment">// if we are unsetting the longest-chain, we automatically</span>
+            <span class="comment">// roll backwards and set the longest-chain to the previous</span>
+            <span class="comment">// position if available. this adds some complexity to unwinding</span>
+            <span class="comment">// the chain but should ensure that in most situations there is</span>
+            <span class="comment">// always a known longest-chain position.</span>
             <span class="comment">//</span>
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block_ring_lc_pos</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">block_ring_lc_pos</span> {
                 <span class="kw">if</span> <span class="ident">block_ring_lc_pos</span> <span class="op">=</span><span class="op">=</span> <span class="ident">insert_pos</span> <span class="kw">as</span> <span class="ident">usize</span> {

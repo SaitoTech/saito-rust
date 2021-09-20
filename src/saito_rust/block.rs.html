@@ -3930,18 +3930,18 @@
         <span class="comment">//}</span>
         <span class="comment">//true</span>
 
-                <span class="kw">let</span> <span class="ident">transactions_valid</span> <span class="op">=</span> <span class="self">self</span>
-                    .<span class="ident">transactions</span>
-                    .<span class="ident">par_iter</span>()
-                    .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>, <span class="ident">staking</span>));
+        <span class="kw">let</span> <span class="ident">transactions_valid</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">transactions</span>
+            .<span class="ident">par_iter</span>()
+            .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>, <span class="ident">staking</span>));
 
-                <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (done all)  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (done all)  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="comment">//</span>
         <span class="comment">// and if our transactions are valid, so is the block...</span>
         <span class="comment">//</span>
-                <span class="macro">println!</span>(<span class="string">&quot; ... are txs valid: {}&quot;</span>, <span class="ident">transactions_valid</span>);
-                <span class="ident">transactions_valid</span>
+        <span class="macro">println!</span>(<span class="string">&quot; ... are txs valid: {}&quot;</span>, <span class="ident">transactions_valid</span>);
+        <span class="ident">transactions_valid</span>
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">generate</span>(
