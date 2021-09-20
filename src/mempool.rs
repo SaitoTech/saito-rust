@@ -16,21 +16,7 @@ use tracing::{event, Level};
 #[derive(Clone, Debug)]
 pub enum MempoolMessage {
     TryBundleBlock,
-    // GenerateTransaction,
     ProcessBlocks,
-}
-
-#[derive(Clone, PartialEq)]
-pub enum AddBlockResult {
-    Accepted,
-    Exists,
-}
-#[derive(Debug, Clone, PartialEq)]
-pub enum AddTransactionResult {
-    Accepted,
-    Rejected,
-    Invalid,
-    Exists,
 }
 
 /// The `Mempool` holds unprocessed blocks and transactions and is in control of
@@ -77,23 +63,22 @@ impl Mempool {
         self.broadcast_channel_sender = Some(bcs);
     }
 
-    pub fn add_block_to_queue(&mut self, block: Block) -> AddBlockResult {
+    pub fn add_block_to_queue(&mut self, block: Block) {
         let hash_to_insert = block.get_hash();
         if self
             .blocks_queue
             .iter()
             .any(|block| block.get_hash() == hash_to_insert)
         {
-            AddBlockResult::Exists
+	    // do nothing
         } else {
             self.blocks_queue.push_back(block);
-            AddBlockResult::Accepted
         }
     }
 
     // this handles any transactions broadcast on the same system. it receives the transaction
     // directly and so does not validate against the UTXOset etc.
-    pub async fn add_transaction(&mut self, mut transaction: Transaction) -> AddTransactionResult {
+    pub async fn add_transaction(&mut self, mut transaction: Transaction) {
         event!(
             Level::INFO,
             "add_transaction {:?}",
@@ -121,11 +106,9 @@ impl Mempool {
             .iter()
             .any(|transaction| transaction.get_signature() == tx_sig_to_insert)
         {
-            AddTransactionResult::Exists
         } else {
             self.transactions.push(transaction);
             self.routing_work_in_mempool += routing_work_available_for_me;
-            AddTransactionResult::Accepted
         }
     }
 
@@ -166,7 +149,7 @@ impl Mempool {
     // in a transaction and then saves them in the mempool if they are targetting
     // the right block. this pushes the golden ticket indiscriminately into the
     // transaction array -- we can do a better job.
-    pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) -> AddTransactionResult {
+    pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) { 
         // convert into transaction
         let mut wallet = self.wallet_lock.write().await;
         // hash_for_signature generated in creating txs
@@ -177,11 +160,9 @@ impl Mempool {
             .iter()
             .any(|transaction| transaction.is_golden_ticket())
         {
-            AddTransactionResult::Exists
         } else {
             event!(Level::TRACE, "adding golden ticket to mempool...");
             self.transactions.push(transaction);
-            AddTransactionResult::Accepted
         }
     }
 
@@ -370,11 +351,8 @@ pub async fn run(
                             &mut SystemTimestampGenerator{},
                         ).await {
                             let mut mempool = mempool_lock.write().await;
-                            if AddBlockResult::Accepted == mempool.add_block_to_queue(block) {
-                                mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
-                            } else {
-                                panic!("Tried to make a block that already exists");
-                            }
+                            mempool.add_block_to_queue(block);
+                            mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                         }
 
                     },
