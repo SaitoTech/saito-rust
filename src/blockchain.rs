@@ -92,8 +92,8 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_latest_block_hash();
 
-        println!("blockring reports prev hash: {:?}", previous_block_hash);
-        println!("block reports: {:?}", block.get_previous_block_hash());
+        println!("blockring prev hash: {:?}", previous_block_hash);
+        println!("block     prev hash: {:?}", block.get_previous_block_hash());
 
         //
         // sanity checks
@@ -784,7 +784,6 @@ impl Blockchain {
             create_timestamp()
         );
 
-        println!("This is wind chain");
         //
         // if we are winding a non-existent chain with a wind_failure it
         // means our wind attempt failed and we should move directly into
@@ -837,8 +836,6 @@ impl Blockchain {
             create_timestamp()
         );
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
-
-        println!("DOES BV: {}", does_block_validate);
 
         event!(
             Level::TRACE,
