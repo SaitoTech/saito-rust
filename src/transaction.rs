@@ -39,6 +39,7 @@ pub enum TransactionType {
     StakerDeposit,
     StakerWithdrawal,
     Other,
+    Issuance,
 }
 
 #[serde_with::serde_as]
@@ -376,6 +377,10 @@ impl Transaction {
 
     pub fn is_golden_ticket(&self) -> bool {
         self.transaction_type == TransactionType::GoldenTicket
+    }
+
+    pub fn is_issuance_transaction(&self) -> bool {
+        self.transaction_type == TransactionType::Issuance
     }
 
     pub fn get_path(&self) -> &Vec<Hop> {
@@ -801,6 +806,7 @@ impl Transaction {
         if transaction_type != TransactionType::Fee
             && transaction_type != TransactionType::ATR
             && transaction_type != TransactionType::Vip
+            && transaction_type != TransactionType::Issuance
         {
             //
             // validate signature

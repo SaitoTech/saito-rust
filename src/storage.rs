@@ -1,6 +1,9 @@
+use crate::blockchain::MAX_TOKEN_SUPPLY;
+use crate::crypto::SaitoPublicKey;
+use crate::slip::{Slip, SlipType};
 use std::{
     fs::{self, File},
-    io::{self, Read, Write},
+    io::{self, BufRead, Read, Write},
     path::Path,
     sync::Arc,
 };
@@ -16,6 +19,10 @@ use crate::{
 lazy_static::lazy_static! {
     pub static ref BLOCKS_DIR_PATH: String = configure_storage();
 }
+
+pub const ISSUANCE_FILE_PATH: &'static str = "./data/issuance/issuance";
+pub const EARLYBIRDS_FILE_PATH: &'static str = "./data/issuance/earlybirds";
+pub const DEFAULT_FILE_PATH: &'static str = "./data/issuance/default";
 
 pub struct StorageConfigurer {}
 
@@ -127,6 +134,85 @@ impl Storage {
         let _res = std::fs::remove_file(filename);
         true
     }
+
+    //
+    // token issuance functions below
+    //
+    pub fn return_token_supply_slips_from_disk() -> Vec<Slip> {
+        let mut v: Vec<Slip> = vec![];
+        let mut tokens_issued = 0;
+
+        if let Ok(lines) = Storage::read_lines_from_file(ISSUANCE_FILE_PATH) {
+            for line in lines {
+                if let Ok(ip) = line {
+                    let s = Storage::convert_issuance_into_slip(ip);
+                    v.push(s);
+                }
+            }
+        }
+        if let Ok(lines) = Storage::read_lines_from_file(EARLYBIRDS_FILE_PATH) {
+            for line in lines {
+                if let Ok(ip) = line {
+                    let s = Storage::convert_issuance_into_slip(ip);
+                    v.push(s);
+                }
+            }
+        }
+
+        for i in 0..v.len() {
+            tokens_issued += v[i].get_amount();
+        }
+
+        if let Ok(lines) = Storage::read_lines_from_file(DEFAULT_FILE_PATH) {
+            for line in lines {
+                if let Ok(ip) = line {
+                    let mut s = Storage::convert_issuance_into_slip(ip);
+                    s.set_amount(MAX_TOKEN_SUPPLY - tokens_issued);
+                    v.push(s);
+                }
+            }
+        }
+
+        return v;
+    }
+
+    pub fn read_lines_from_file<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+    where
+        P: AsRef<Path>,
+    {
+        let file = File::open(filename)?;
+        Ok(io::BufReader::new(file).lines())
+    }
+
+    pub fn convert_issuance_into_slip(line: std::string::String) -> Slip {
+        let mut iter = line.split_whitespace();
+        let tmp = iter.next().unwrap();
+        let tmp2 = iter.next().unwrap();
+        let typ = iter.next().unwrap();
+
+        let amt: u64 = tmp.parse::<u64>().unwrap();
+        let tmp3 = tmp2.as_bytes();
+
+        let mut add: SaitoPublicKey = [0; 33];
+        for i in 0..33 {
+            add[i] = tmp3[i];
+        }
+
+        let mut slip = Slip::new();
+        slip.set_publickey(add);
+        slip.set_amount(amt);
+        if typ.eq("VipOutput") {
+            slip.set_slip_type(SlipType::VipOutput);
+        }
+        if typ.eq("StakerDeposit") {
+            slip.set_slip_type(SlipType::StakerDeposit);
+        }
+        if typ.eq("Normal") {
+            slip.set_slip_type(SlipType::Normal);
+        }
+
+        return slip;
+    }
 }
 
 pub trait Persistable {
@@ -155,5 +241,17 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn read_issuance_file_test() {
+        let slips = Storage::return_token_supply_slips_from_disk();
+        let mut total_issuance = 0;
+
+        for i in 0..slips.len() {
+            total_issuance += slips[i].get_amount();
+        }
+
+        assert_eq!(total_issuance, MAX_TOKEN_SUPPLY);
     }
 }
