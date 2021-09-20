@@ -20,7 +20,7 @@ pub enum MempoolMessage {
 }
 
 /// The `Mempool` holds unprocessed blocks and transactions and is in control of
-/// discerning when thenodeis allowed to create a block. It bundles the block and
+/// discerning when the node is allowed to create a block. It bundles the block and
 /// sends it to the `Blockchain` to be added to the longest-chain. New `Block`s
 /// received over the network are queued in the `Mempool` before being added to
 /// the `Blockchain`
@@ -31,7 +31,6 @@ pub struct Mempool {
     wallet_lock: Arc<RwLock<Wallet>>,
     currently_processing_block: bool,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
-
     mempool_publickey: SaitoPublicKey,
     mempool_privatekey: SaitoPrivateKey,
 }
@@ -63,7 +62,7 @@ impl Mempool {
         self.broadcast_channel_sender = Some(bcs);
     }
 
-    pub fn add_block_to_queue(&mut self, block: Block) {
+    pub fn add_block(&mut self, block: Block) {
         let hash_to_insert = block.get_hash();
         if self
             .blocks_queue
@@ -306,26 +305,27 @@ pub async fn run(
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
+
     //
-    // mempool gets global broadcast channel
+    // mempool gets global broadcast channel and signing keys
     //
     {
         let mut mempool = mempool_lock.write().await;
-        let publickey;
-        let privatekey;
-        mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
-        {
-            let wallet = mempool.wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-            privatekey = wallet.get_privatekey();
-        }
+        let wallet = mempool.wallet_lock.read().await;
+        let publickey = wallet.get_publickey();
+        let privatekey = wallet.get_privatekey();
 
+        mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
         mempool.set_mempool_publickey(publickey);
         mempool.set_mempool_privatekey(privatekey);
+
     }
 
-    // generate blocks 4000, w/ capacity of 4 fails
+    //
+    // mempool gets local broadcast channel
+    //
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
+    // send in clone - as thread takes ownership
     let generate_block_sender = mempool_channel_sender.clone();
     tokio::spawn(async move {
         loop {
@@ -337,13 +337,21 @@ pub async fn run(
         }
     });
 
+    //
+    // broadcast channel receivers
+    //
     loop {
         tokio::select! {
-           Some(message) = mempool_channel_receiver.recv() => {
-               match message {
 
-                   // TryBundleBlock makes periodic attempts to produce blocks and does so
-                   // if the mempool can bundle blocks....
+	    //
+ 	    // local broadcast channel receivers
+ 	    //
+            Some(message) = mempool_channel_receiver.recv() => {
+                match message {
+
+                   //
+		   // attempt to bundle block
+                   //
                    MempoolMessage::TryBundleBlock => {
                         if let Some(block) = try_bundle_block(
                             mempool_lock.clone(),
@@ -351,20 +359,26 @@ pub async fn run(
                             &mut SystemTimestampGenerator{},
                         ).await {
                             let mut mempool = mempool_lock.write().await;
-                            mempool.add_block_to_queue(block);
+                            mempool.add_block(block);
                             mempool_channel_sender.send(MempoolMessage::ProcessBlocks).await.expect("Failed to send ProcessBlocks message");
                         }
 
                     },
 
+		    //
+		    // attempt to send to blockchain
+		    //
                     // ProcessBlocks will add blocks FIFO from the queue into blockchain
                     MempoolMessage::ProcessBlocks => {
                         process_blocks(mempool_lock.clone(), blockchain_lock.clone()).await;
                     },
-               }
+                }
             }
 
 
+	    //
+ 	    // global broadcast channel receivers
+ 	    //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
                     // triggered when a block is received over the network and
@@ -425,7 +439,7 @@ mod tests {
 
         let block = Block::new();
 
-        mempool.add_block_to_queue(block.clone());
+        mempool.add_block(block.clone());
 
         assert_eq!(Some(block), mempool.blocks_queue.pop_front())
     }
@@ -550,7 +564,7 @@ mod tests {
                 let prev_hash_before = block.get_previous_block_hash();
                 {
                     let mut mempool = mempool_lock.write().await;
-                    mempool.add_block_to_queue(block);
+                    mempool.add_block(block);
                 }
                 process_blocks(mempool_lock.clone(), blockchain_lock.clone()).await;
                 let blockchain = blockchain_lock.read().await;

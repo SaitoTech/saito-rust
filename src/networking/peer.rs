@@ -489,14 +489,7 @@ impl SaitoPeer {
             "REQBLOCK" => {
                 let block = Block::deserialize_for_net(response_api_message.message_data());
                 let mut mempool = self.mempool_lock.write().await;
-                match mempool.add_block_to_queue(block) {
-                    AddBlockResult::Exists => {
-                        println!("The node appears to be requesting blocks which is already has in it's mempool queue, this should probably be fixed...");
-                    }
-                    AddBlockResult::Accepted => {
-                        // nothing to do
-                    }
-                }
+                mempool.add_block(block);
             }
             "REQBLKHD" => {
                 println!("IMPLEMENT REQBLKHD RESPONSE?!");
