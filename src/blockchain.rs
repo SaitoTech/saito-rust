@@ -91,8 +91,8 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_latest_block_hash();
 
-println!("blockring reports prev hash: {:?}", previous_block_hash);
-println!("block reports: {:?}", block.get_previous_block_hash());
+        println!("blockring reports prev hash: {:?}", previous_block_hash);
+        println!("block reports: {:?}", block.get_previous_block_hash());
 
         //
         // sanity checks
@@ -1315,7 +1315,11 @@ mod tests {
 
     #[tokio::test]
     async fn add_blocks_test_1() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
 
@@ -1437,7 +1441,11 @@ mod tests {
     #[tokio::test]
     async fn produce_four_blocks_test() {
         // There... are... four blocks!
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut miner = Miner::new(wallet_lock.clone());
 

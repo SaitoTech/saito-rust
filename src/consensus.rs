@@ -117,7 +117,11 @@ impl Consensus {
         // broadcast cross-system messages. See SaitoMessage ENUM above
         // for information on cross-system notifications.
         //
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new(key_path, password)));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys(key_path, password);
+        }
 
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         // Load blocks from disk if configured

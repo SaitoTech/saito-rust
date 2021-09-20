@@ -79,7 +79,11 @@ pub async fn main() -> saito_rust::Result<()> {
         None => 1024,
     };
 
-    let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+    let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+    {
+        let mut wallet = wallet_lock.write().await;
+        wallet.load_keys("test/testwallet", Some("asdf"));
+    }
     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
@@ -113,7 +117,6 @@ pub async fn main() -> saito_rust::Result<()> {
         event!(Level::INFO, "{:?}", server_transaction_url);
 
         loop {
-
             let mut transactions: Vec<Transaction> = vec![];
 
             event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
@@ -141,8 +144,7 @@ pub async fn main() -> saito_rust::Result<()> {
                     .add_hop_to_path(wallet_lock.clone(), publickey)
                     .await;
 
-
-//println!("TRANSACTION: {:?}", transaction);
+                //println!("TRANSACTION: {:?}", transaction);
 
                 transactions.push(transaction);
             }
