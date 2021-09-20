@@ -123,37 +123,39 @@ impl Wallet {
         (key, iv)
     }
 
-    pub fn add_block(&mut self, block: &Block) {
-        //
-        // TODO
-        //
-        // There are multiple bugs in this implementation.
-        //
-        // If a block is added in a fork all the inputs will be deleted and won't be recovered.
-        // Also, outputs added will still be in the wallet even if they are not replayed on the longest chain(and are therefore unspendable)
-        for tx in block.get_transactions() {
-            for input in tx.get_inputs() {
-                if input.get_slip_type() == SlipType::StakerDeposit
-                    || input.get_slip_type() == SlipType::StakerOutput
-                    || input.get_slip_type() == SlipType::StakerWithdrawalStaking
-                    || input.get_slip_type() == SlipType::StakerWithdrawalPending
-                {
-                    //println!(
-                    //    "deleting staker input  with slip uuid: {:?}",
-                    //    input.get_uuid()
-                    //);
-                    self.delete_staked_slip(input);
-                } else {
-                    //println!(
-                    //    "deleting normal input  with slip uuid: {:?}",
-                    //    input.get_uuid()
-                    //);
-                    self.delete_slip(input);
+    pub fn on_chain_reorganization(&mut self, block: &Block, lc: bool) {
+        if lc {
+            for tx in block.get_transactions() {
+                for input in tx.get_inputs() {
+                    if input.get_amount() > 0 && input.get_publickey() == self.get_publickey() {
+                        if input.get_slip_type() == SlipType::StakerDeposit
+                            || input.get_slip_type() == SlipType::StakerOutput
+                            || input.get_slip_type() == SlipType::StakerWithdrawalStaking
+                            || input.get_slip_type() == SlipType::StakerWithdrawalPending
+                        {
+                            self.delete_staked_slip(input);
+                        } else {
+                            self.delete_slip(input);
+                        }
+                    }
+                }
+                for output in tx.get_outputs() {
+                    if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
+                        self.add_slip(block, tx, output, true);
+                    }
                 }
             }
-            for output in tx.get_outputs() {
-                if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
-                    self.add_slip(block, tx, output, block.get_lc());
+        } else {
+            for tx in block.get_transactions() {
+                for input in tx.get_inputs() {
+                    if input.get_amount() > 0 && input.get_publickey() == self.get_publickey() {
+                        self.add_slip(block, tx, input, true);
+                    }
+                }
+                for output in tx.get_outputs() {
+                    if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
+                        self.delete_slip(output);
+                    }
                 }
             }
         }

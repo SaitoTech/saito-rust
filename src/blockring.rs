@@ -158,7 +158,11 @@ impl BlockRing {
             self.block_ring_lc_pos = Some(insert_pos as usize);
         } else {
             //
-            // only adjust longest_chain if this is it
+            // if we are unsetting the longest-chain, we automatically
+            // roll backwards and set the longest-chain to the previous
+            // position if available. this adds some complexity to unwinding
+            // the chain but should ensure that in most situations there is
+            // always a known longest-chain position.
             //
             if let Some(block_ring_lc_pos) = self.block_ring_lc_pos {
                 if block_ring_lc_pos == insert_pos as usize {
