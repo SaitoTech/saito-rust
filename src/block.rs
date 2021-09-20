@@ -1754,18 +1754,18 @@ impl Block {
         //}
         //true
 
-                let transactions_valid = self
-                    .transactions
-                    .par_iter()
-                    .all(|tx| tx.validate(utxoset, staking));
+        let transactions_valid = self
+            .transactions
+            .par_iter()
+            .all(|tx| tx.validate(utxoset, staking));
 
-                println!(" ... block.validate: (done all)  {:?}", create_timestamp());
+        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         //
         // and if our transactions are valid, so is the block...
         //
-                println!(" ... are txs valid: {}", transactions_valid);
-                transactions_valid
+        println!(" ... are txs valid: {}", transactions_valid);
+        transactions_valid
     }
 
     pub async fn generate(

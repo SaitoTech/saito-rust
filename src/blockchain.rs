@@ -340,26 +340,6 @@ impl Blockchain {
         );
 
         //
-        // TODO - this is merely for testing, we do not intend
-        // the routing client to process transactions in its
-        // wallet.
-        {
-            event!(
-                Level::TRACE,
-                " ... wallet processing start:    {}",
-                create_timestamp()
-            );
-            let mut wallet = self.wallet_lock.write().await;
-            let block = self.blocks.get(&block_hash).unwrap();
-            wallet.add_block(&block);
-            event!(
-                Level::TRACE,
-                " ... wallet processing stop:     {}",
-                create_timestamp()
-            );
-        }
-
-        //
         // update_genesis_period and prune old data
         //
         self.update_genesis_period().await;
@@ -804,6 +784,7 @@ impl Blockchain {
             create_timestamp()
         );
 
+        println!("This is wind chain");
         //
         // if we are winding a non-existent chain with a wind_failure it
         // means our wind attempt failed and we should move directly into
@@ -856,6 +837,9 @@ impl Blockchain {
             create_timestamp()
         );
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
+
+        println!("DOES BV: {}", does_block_validate);
+
         event!(
             Level::TRACE,
             " ... after block.validate:       {:?} {}",
@@ -885,6 +869,27 @@ impl Blockchain {
             // staking tables update
             let (res_spend, res_unspend, res_delete) =
                 self.staking.on_chain_reorganization(block, true);
+
+            //
+            // TODO - wallet update should be optional, as core routing nodes
+            // will not want to do the work of scrolling through the block and
+            // updating their wallets by default. wallet processing can be
+            // more efficiently handled by lite-nodes.
+            //
+            {
+                event!(
+                    Level::TRACE,
+                    " ... wallet processing start:    {}",
+                    create_timestamp()
+                );
+                let mut wallet = self.wallet_lock.write().await;
+                wallet.on_chain_reorganization(&block, true);
+                event!(
+                    Level::TRACE,
+                    " ... wallet processing stop:     {}",
+                    create_timestamp()
+                );
+            }
 
             //
             // we cannot pass the UTXOSet into the staking object to update as that would
@@ -1025,7 +1030,13 @@ impl Blockchain {
 
         // staking tables
         let (res_spend, res_unspend, res_delete) =
-            self.staking.on_chain_reorganization(block, true);
+            self.staking.on_chain_reorganization(block, false);
+
+        // wallet update
+        {
+            let mut wallet = self.wallet_lock.write().await;
+            wallet.on_chain_reorganization(&block, true);
+        }
 
         //
         // we cannot pass the UTXOSet into the staking object to update as that would
