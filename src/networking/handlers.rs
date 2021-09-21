@@ -74,14 +74,10 @@ pub async fn post_transaction_handler(
         let response = std::str::from_utf8(&tx.get_signature().to_base58().as_bytes())
             .unwrap()
             .to_string();
-
-println!("ADDING TX TO MEMPOOL 1");
         let mut mempool = mempool_lock.write().await;
-println!("ADDING TX TO MEMPOOL 2");
         mempool.add_transaction(tx).await;
 	Ok(Message { msg: response })
     } else {
-println!("WE HAVE AN ERROR WITH THIS TRANSACTION");
         Err(warp::reject::custom(Invalid))
     }
 }

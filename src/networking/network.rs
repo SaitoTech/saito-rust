@@ -188,6 +188,7 @@ impl Network {
             }
         }
     }
+/*****
     pub async fn spawn_reconnect_to_configured_peers_task(
         &self,
         wallet_lock: Arc<RwLock<Wallet>>,
@@ -221,10 +222,15 @@ impl Network {
         .expect("error: spawn_reconnect_to_configured_peers_task failed");
         Ok(())
     }
+*****/
+
 }
 
 
 
+//
+// Starts up the Server and Other Threads
+//
 pub async fn run(
     network_lock: Arc<RwLock<Network>>, 
     wallet_lock: Arc<RwLock<Wallet>>, 
@@ -235,26 +241,34 @@ pub async fn run(
 ) -> crate::Result<()> {
 
 
-
-    // network functions wrapped so we don't trap it
-println!("network run 1");
-println!("network run 2");
-
-println!("about to get write access to server!");
     let host: [u8; 4];
     let port: u16;
-println!("done getting write access -- running");
 
+    //
+    // get network settings from  configuation file
+    //
     {
         let network = network_lock.read().await;
-println!("done getting write access -- running 2");
         host = network.config_settings.get::<[u8; 4]>("network.host").unwrap();
-println!("done getting write access -- running 3");
         port = network.config_settings.get::<u16>("network.port").unwrap();
-println!("done getting write access -- running 4");
     }
-println!("Starting our server....");
 
+    //
+    // set global broadcast channel and connect to peers
+    // 
+    {
+        //
+        // set global broadcast channel and connect to peers
+        //
+        let mut network = network_lock.write().await;
+        network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+        network.connect_to_configured_peers().await;
+    }
+
+
+    //
+    // initialize routes for server
+    //
     let routes = get_block_route_filter()
         .or(post_transaction_route_filter(
             mempool_lock.clone(),
@@ -265,78 +279,29 @@ println!("Starting our server....");
             mempool_lock.clone(),
             blockchain_lock.clone(),
         ));
-println!("about to start the server!");
 
 
-{
-println!("requesting write access!");
-    let mut network = network_lock.write().await;
-println!("requesting done requesting write access!");
-
-    //
-    // set global broadcast channel and connect to peers
-    //
-    network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
-println!("network run 3");
-
-    network.connect_to_configured_peers().await;
-println!("network run 4");
-}
 
 
     //
-    // spawn reconnect to configured peers
+    // spawn loop to reconnect to peers
     //
-    let network_lock_clone = network_lock.clone();
-    tokio::spawn(async move {
-        loop {
-println!(" and in reconnect to peers looping...");
-            let peer_states: Vec<(SaitoHash, bool)>;
-            {
-                let peers_db_global = PEERS_DB_GLOBAL.clone();
-                let peers_db = peers_db_global.read().await;
-                peer_states = peers_db
-                    .keys()
-                    .map(|connection_id| {
-                        let peer = peers_db.get(connection_id).unwrap();
-                        let should_try_reconnect = peer.get_is_from_peer_list()
-                            && !peer.get_is_connected_or_connecting();
-                        (*connection_id, should_try_reconnect)
-                    })
-                    .collect::<Vec<(SaitoHash, bool)>>();
-            }
-            for (connection_id, should_try_reconnect) in peer_states {
-                if should_try_reconnect {
-                    println!("found disconnected peer in peer settings, connecting...");
-                    Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
-                }
-            }
-            sleep(Duration::from_millis(1000)).await;
-        }
-    });
+    //let network_lock_clone = network_lock.clone();
+    //tokio::spawn(async move {
+    //    loop {
+//	    reconnect_to_dropped_peers(wallet_lock.clone());
+//            sleep(Duration::from_millis(1000)).await;
+//        }
+//    });
 
 
-
-/***
-    	let _foo = network
-        .spawn_reconnect_to_configured_peers_task(wallet_lock.clone())
-        .await;
-            network_channel_sender_clone
-                .send(NetworkMessage::LocalNetworkMonitoring)
-                .await
-                .expect("error: LocalNetworkMonitor message failed to send");
-            sleep(Duration::from_millis(10000)).await;
-        }
-    });
-***/
 
     //
     // create local broadcast channel
     //
-println!("network run 5");
-println!("network run 6");
-
     let (network_channel_sender, mut network_channel_receiver) = mpsc::channel(4);
+
+
     //
     // local channel sending thread
     //
@@ -351,17 +316,15 @@ println!("network run 6");
         }
     });
 
-println!("network run 4");
-println!("host and port: {:?} {:?}", host, port);
-println!("SERVER IS STARTING NOW!");
-    warp::serve(routes).run((host, port)).await;
-println!("DONE RUNNING WARP SERVER");
+
+    //
+    // start the server (separate thread)
+    //
+    tokio::spawn(async move {
+        warp::serve(routes).run((host, port)).await;
+    });
 
 
-
-
-
-/****
 
 
     //
@@ -376,10 +339,10 @@ println!("DONE RUNNING WARP SERVER");
             Some(message) = network_channel_receiver.recv() => {
                 match message {
                     //
-                    // attempt to bundle block
+                    // reconnect to dropped peers
                     //
                     NetworkMessage::LocalNetworkMonitoring => {
-		        println!("Local Network Monitoring fired!");
+		        reconnect_to_dropped_peers(wallet_lock.clone()).await;
                     },
                 }
             }
@@ -389,9 +352,10 @@ println!("DONE RUNNING WARP SERVER");
             //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
+		    //
+		    // demonstration of global broadcast channels, track golden ticket production
+		    //
                     SaitoMessage::MinerNewGoldenTicket { ticket : _golden_ticket } => {
-                        // when miner produces golden ticket
-			println!("Network aware local Golden Ticket produced!");
                     },
                     _ => {},
                 }
@@ -399,83 +363,33 @@ println!("DONE RUNNING WARP SERVER");
         }
     }
 
-***/
-
-    Ok(())
-
 }
 
-pub async fn run_server(
-    network_lock: Arc<RwLock<Network>>, 
-    wallet_lock: Arc<RwLock<Wallet>>, 
-    mempool_lock: Arc<RwLock<Mempool>>, 
-    blockchain_lock: Arc<RwLock<Blockchain>>, 
-    _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
-    mut _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>
-) -> crate::Result<()> {
 
-/*****
-println!("about to get write access to server!");
-    let host: [u8; 4];
-    let port: u16;
-println!("done getting write access -- running");
-
+pub async fn reconnect_to_dropped_peers(
+    wallet_lock: Arc<RwLock<Wallet>>,
+) {
+    let peer_states: Vec<(SaitoHash, bool)>;
     {
-        let network = network_lock.read().await;
-println!("done getting write access -- running 2");
-        host = network.config_settings.get::<[u8; 4]>("network.host").unwrap();
-println!("done getting write access -- running 3");
-        port = network.config_settings.get::<u16>("network.port").unwrap();
-println!("done getting write access -- running 4");
+        let peers_db_global = PEERS_DB_GLOBAL.clone();
+        let peers_db = peers_db_global.read().await;
+        peer_states = peers_db
+            .keys()
+            .map(|connection_id| {
+                let peer = peers_db.get(connection_id).unwrap();
+                let should_try_reconnect = peer.get_is_from_peer_list() && !peer.get_is_connected_or_connecting();
+                (*connection_id, should_try_reconnect)
+            })
+            .collect::<Vec<(SaitoHash, bool)>>();
     }
-println!("Starting our server....");
 
-    let routes = get_block_route_filter()
-        .or(post_transaction_route_filter(
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
-        ))
-        .or(ws_upgrade_route_filter(
-            wallet_lock.clone(),
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
-        ));
-println!("about to start the server!");
-println!("host and port: {:?} {:?}", host, port);
-    warp::serve(routes).run((host, port)).await;
-println!("done running warp server");
-*****/
-    Ok(())
+    for (connection_id, should_try_reconnect) in peer_states {
+        if should_try_reconnect {
+            println!("found disconnected peer in peer settings, connecting...");
+            Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
+        }
+    }
 }
-
-
-
-
-/****
-        let host: [u8; 4] = self.config_settings.get::<[u8; 4]>("network.host").unwrap();
-        let port: u16 = self.config_settings.get::<u16>("network.port").unwrap();
-
-        let routes = get_block_route_filter()
-            .or(post_transaction_route_filter(
-                self.mempool_lock.clone(),
-                self.blockchain_lock.clone(),
-            ))
-            .or(ws_upgrade_route_filter(
-                self.wallet_lock.clone(),
-                self.mempool_lock.clone(),
-                self.blockchain_lock.clone(),
-            ));
-        warp::serve(routes).run((host, port)).await;
-        Ok(())
-    }
-    pub async fn run(&self) -> crate::Result<()> {
-        self.connect_to_configured_peers().await;
-        let _foo = self
-            .spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
-            .await;
-        Ok(())
-****/
-
 
 
 
