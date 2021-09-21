@@ -75,21 +75,9 @@ pub async fn post_transaction_handler(
             .unwrap()
             .to_string();
 
-        //let response = String::from("OK");
         let mut mempool = mempool_lock.write().await;
-        let add_tx_result = mempool.add_transaction(tx).await;
-        match add_tx_result {
-            crate::mempool::AddTransactionResult::Accepted => Ok(Message { msg: response }),
-            crate::mempool::AddTransactionResult::Exists => {
-                Err(warp::reject::custom(AlreadyExists))
-            }
-            crate::mempool::AddTransactionResult::Invalid => {
-                panic!("This appears unused, implement if needed");
-            }
-            crate::mempool::AddTransactionResult::Rejected => {
-                panic!("This appears unused, implement if needed");
-            }
-        }
+        mempool.add_transaction(tx).await;
+	Ok(Message { msg: response })
     } else {
         Err(warp::reject::custom(Invalid))
     }
