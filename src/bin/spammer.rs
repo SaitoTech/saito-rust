@@ -181,6 +181,7 @@ pub async fn run(
     network_lock: Arc<RwLock<Network>>,
 ) -> saito_rust::Result<()> {
     let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
+println!("about to start up the network 2!");
     tokio::select! {
         res = saito_rust::mempool::run(
             mempool_lock.clone(),

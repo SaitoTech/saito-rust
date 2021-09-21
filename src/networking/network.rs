@@ -232,13 +232,17 @@ pub async fn run(
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>
 ) -> crate::Result<()> {
 
+println!("network run 1");
     let mut network = network_lock.write().await;
+println!("network run 2");
 
     //
     // set global broadcast channel and connect to peers
     //
     network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+println!("network run 3");
     network.connect_to_configured_peers().await;
+println!("network run 4");
     let _foo = network
         .spawn_reconnect_to_configured_peers_task(wallet_lock.clone())
         .await;
@@ -247,9 +251,11 @@ pub async fn run(
     //
     // create local broadcast channel
     //
+println!("network run 5");
+println!("network run 6");
+
+/****
     let (network_channel_sender, mut network_channel_receiver) = mpsc::channel(4);
-
-
     //
     // local channel sending thread
     //
@@ -264,6 +270,8 @@ pub async fn run(
         }
     });
 
+println!("network run 4");
+***/
 
     //
     // global and local channel receivers
@@ -299,7 +307,9 @@ pub async fn run(
             }
         }
     }
+***/
 
+    Ok(())
 }
 
 pub async fn run_server(
@@ -316,6 +326,8 @@ pub async fn run_server(
     let host: [u8; 4] = network.config_settings.get::<[u8; 4]>("network.host").unwrap();
     let port: u16 = network.config_settings.get::<u16>("network.port").unwrap();
 
+println!("Starting our server....");
+
     let routes = get_block_route_filter()
         .or(post_transaction_route_filter(
             mempool_lock.clone(),
@@ -327,6 +339,7 @@ pub async fn run_server(
             blockchain_lock.clone(),
         ));
     warp::serve(routes).run((host, port)).await;
+println!("done running warp server");
     Ok(())
 }
 
