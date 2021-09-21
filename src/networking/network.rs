@@ -1,5 +1,6 @@
 use crate::blockchain::Blockchain;
 use crate::crypto::{hash, SaitoHash, SaitoPublicKey};
+use crate::consensus::{SaitoMessage};
 use crate::mempool::Mempool;
 use crate::networking::api_message::APIMessage;
 use crate::networking::filters::{
@@ -11,7 +12,7 @@ use crate::util::format_url_string;
 use crate::wallet::Wallet;
 use futures::StreamExt;
 use secp256k1::PublicKey;
-use tokio::sync::RwLock;
+use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 use uuid::Uuid;
@@ -29,14 +30,29 @@ pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
 pub type Result<T> = std::result::Result<T, Rejection>;
 
+
+//
+// In addition to responding to global broadcast messages, the
+// network has a local broadcast channel it uses to coordinate
+// attempts to check that connections are stable and clean up
+// problematic peers.
+//
+#[derive(Clone, Debug)]
+pub enum NetworkMessage {
+    LocalNetworkMonitoring,
+}
+
+
 pub struct Network {
     config_settings: Config,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
+    broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
 }
 
 impl Network {
+
     pub fn new(
         config_settings: Config,
         wallet_lock: Arc<RwLock<Wallet>>,
@@ -48,8 +64,14 @@ impl Network {
             wallet_lock,
             mempool_lock,
             blockchain_lock,
+            broadcast_channel_sender: None,
         }
     }
+
+    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
+        self.broadcast_channel_sender = Some(bcs);
+    }
+
     pub async fn connect_to_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let peer_url;
@@ -199,31 +221,116 @@ impl Network {
         .expect("error: spawn_reconnect_to_configured_peers_task failed");
         Ok(())
     }
-    pub async fn run_server(&self) -> crate::Result<()> {
-        let host: [u8; 4] = self.config_settings.get::<[u8; 4]>("network.host").unwrap();
-        let port: u16 = self.config_settings.get::<u16>("network.port").unwrap();
-
-        let routes = get_block_route_filter()
-            .or(post_transaction_route_filter(
-                self.mempool_lock.clone(),
-                self.blockchain_lock.clone(),
-            ))
-            .or(ws_upgrade_route_filter(
-                self.wallet_lock.clone(),
-                self.mempool_lock.clone(),
-                self.blockchain_lock.clone(),
-            ));
-        warp::serve(routes).run((host, port)).await;
-        Ok(())
-    }
-    pub async fn run(&self) -> crate::Result<()> {
-        self.connect_to_configured_peers().await;
-        let _foo = self
-            .spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
-            .await;
-        Ok(())
-    }
 }
+
+
+
+pub async fn run(
+    network_lock: Arc<RwLock<Network>>, 
+    wallet_lock: Arc<RwLock<Wallet>>, 
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>
+) -> crate::Result<()> {
+
+    let mut network = network_lock.write().await;
+
+    //
+    // set global broadcast channel and connect to peers
+    //
+    network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+    network.connect_to_configured_peers().await;
+    let _foo = network
+        .spawn_reconnect_to_configured_peers_task(wallet_lock.clone())
+        .await;
+
+
+    //
+    // create local broadcast channel
+    //
+    let (network_channel_sender, mut network_channel_receiver) = mpsc::channel(4);
+
+
+    //
+    // local channel sending thread
+    //
+    let network_channel_sender_clone = network_channel_sender.clone();
+    tokio::spawn(async move {
+        loop {
+            network_channel_sender_clone
+                .send(NetworkMessage::LocalNetworkMonitoring)
+                .await
+                .expect("error: LocalNetworkMonitor message failed to send");
+            sleep(Duration::from_millis(10000)).await;
+        }
+    });
+
+
+    //
+    // global and local channel receivers
+    //
+    loop {
+        tokio::select! {
+
+            //
+            // local broadcast channel receivers
+            //
+            Some(message) = network_channel_receiver.recv() => {
+                match message {
+                    //
+                    // attempt to bundle block
+                    //
+                    NetworkMessage::LocalNetworkMonitoring => {
+		        println!("Local Network Monitoring fired!");
+                    },
+                }
+            }
+
+            //
+            // global broadcast channel receivers
+            //
+            Ok(message) = broadcast_channel_receiver.recv() => {
+                match message {
+                    SaitoMessage::MinerNewGoldenTicket { ticket : _golden_ticket } => {
+                        // when miner produces golden ticket
+			println!("Network aware local Golden Ticket produced!");
+                    },
+                    _ => {},
+                }
+            }
+        }
+    }
+
+}
+
+pub async fn run_server(
+    network_lock: Arc<RwLock<Network>>, 
+    wallet_lock: Arc<RwLock<Wallet>>, 
+    mempool_lock: Arc<RwLock<Mempool>>, 
+    blockchain_lock: Arc<RwLock<Blockchain>>, 
+    _broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    mut _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>
+) -> crate::Result<()> {
+
+    let network = network_lock.write().await;
+
+    let host: [u8; 4] = network.config_settings.get::<[u8; 4]>("network.host").unwrap();
+    let port: u16 = network.config_settings.get::<u16>("network.port").unwrap();
+
+    let routes = get_block_route_filter()
+        .or(post_transaction_route_filter(
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        ))
+        .or(ws_upgrade_route_filter(
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        ));
+    warp::serve(routes).run((host, port)).await;
+    Ok(())
+}
+
+
 
 #[cfg(test)]
 mod tests {

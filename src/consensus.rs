@@ -16,10 +16,6 @@ use tokio::sync::{broadcast, mpsc};
 /// over the main broadcast channel. Convention has the message begin with the 
 /// class that is broadcasting.
 ///
-/// TODO - MempoolNewBlock and MempoolNewTransaction are not used at present in
-/// network design, and are misnamed according to convention as Mempool is the 
-/// receiving class not the emitting class. 
-///
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {
     // broadcast when the longest chain block changes
@@ -31,9 +27,9 @@ pub enum SaitoMessage {
     // broadcast when the miner finds a golden ticket
     MinerNewGoldenTicket { ticket: GoldenTicket },
     // broadcast when the mempool produces a new block
-    MempoolNewBlock { hash: SaitoHash },
+    NetworkNewBlock { hash: SaitoHash },
     // broadcast when the mempool adds a new transaction
-    MempoolNewTransaction { transaction: Transaction },
+    NetworkNewTransaction { transaction: Transaction },
 }
 
 
@@ -173,12 +169,12 @@ impl Consensus {
         //
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-        let network = Network::new(
+        let network_lock = Arc::new(RwLock::new(Network::new(
             settings,
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
-        );
+        )));
 
 	//
         // initialize core classes.
@@ -236,12 +232,24 @@ impl Consensus {
 	    //
 	    // Network
 	    //
-            res = network.run() => {
+            res = crate::networking::network::run(
+		network_lock.clone(),
+		wallet_lock.clone(),
+                broadcast_channel_sender.clone(),
+                broadcast_channel_sender.subscribe()
+	    ) => {
                 if let Err(err) = res {
                     eprintln!("network err {:?}", err)
                 }
             },
-            res = network.run_server() => {
+            res = crate::networking::network::run_server(
+		network_lock.clone(),
+		wallet_lock.clone(),
+		mempool_lock.clone(),
+		blockchain_lock.clone(),
+                broadcast_channel_sender.clone(),
+                broadcast_channel_sender.subscribe()
+	    ) => {
                 if let Err(err) = res {
                     eprintln!("run_server err {:?}", err)
                 }

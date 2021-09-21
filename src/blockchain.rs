@@ -1259,8 +1259,8 @@ pub async fn run(
                 //
                     Ok(message) = broadcast_channel_receiver.recv() => {
                         match message {
-                            SaitoMessage::MempoolNewBlock { hash: _hash } => {
-                                println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
+                            SaitoMessage::NetworkNewBlock { hash: _hash } => {
+                                println!("Blockchain aware network has received new block! -- we might use for this congestion tracking");
                             },
                             _ => {},
                         }
