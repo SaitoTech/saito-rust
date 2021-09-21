@@ -35,7 +35,7 @@ pub struct Mempool {
     pub transactions: Vec<Transaction>, // vector so we just copy it over
     routing_work_in_mempool: u64,
     wallet_lock: Arc<RwLock<Wallet>>,
-    currently_processing_block: bool,
+    currently_bundling_block: bool,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
     mempool_publickey: SaitoPublicKey,
     mempool_privatekey: SaitoPrivateKey,
@@ -49,7 +49,7 @@ impl Mempool {
             transactions: vec![],
             routing_work_in_mempool: 0,
             wallet_lock,
-            currently_processing_block: false,
+            currently_bundling_block: false,
             broadcast_channel_sender: None,
             mempool_publickey: [0; 33],
             mempool_privatekey: [0; 32],
@@ -147,7 +147,7 @@ impl Mempool {
         blockchain_lock: Arc<RwLock<Blockchain>>,
         current_timestamp: u64,
     ) -> bool {
-        if self.currently_processing_block {
+        if self.currently_bundling_block {
             return false;
         }
         if self.transactions.is_empty() {
@@ -266,18 +266,13 @@ pub async fn send_blocks_to_blockchain(
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) {
     let mut mempool = mempool_lock.write().await;
-    mempool.currently_processing_block = true;
+    mempool.currently_bundling_block = true;
     let mut blockchain = blockchain_lock.write().await;
     while let Some(block) = mempool.blocks_queue.pop_front() {
-        println!(
-            "adding a block! {} -- {:?}",
-            block.get_id(),
-            block.get_hash()
-        );
         mempool.delete_transactions(&block.get_transactions());
         blockchain.add_block(block).await;
     }
-    mempool.currently_processing_block = false;
+    mempool.currently_bundling_block = false;
 }
 
 //

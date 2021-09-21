@@ -146,8 +146,6 @@ pub async fn main() -> saito_rust::Result<()> {
                     .add_hop_to_path(wallet_lock_clone.clone(), publickey)
                     .await;
 
-                //println!("TRANSACTION: {:?}", transaction);
-
                 transactions.push(transaction);
             }
 
@@ -159,8 +157,8 @@ pub async fn main() -> saito_rust::Result<()> {
                     .send()
                     .await;
                 match result {
-                    Ok(response) => {
-                        println!("response {:?}", response);
+                    Ok(_response) => {
+                        //println!("response {:?}", response);
                     }
                     Err(error) => {
                         println!("Error sending tx to node: {}", error);
