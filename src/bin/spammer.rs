@@ -118,17 +118,10 @@ pub async fn main() -> saito_rust::Result<()> {
 
         event!(Level::INFO, "{:?}", server_transaction_url);
 
-println!("about to start creating transactions");
-
         loop {
-println!("looping in creating txs");
             let mut transactions: Vec<Transaction> = vec![];
 
-println!("txs to generate: {}", txs_to_generate);
-
             event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
-
-println!("txs to generate 2: {}", txs_to_generate);
 
             for _i in 0..txs_to_generate {
                 let mut transaction =
@@ -158,11 +151,8 @@ println!("txs to generate 2: {}", txs_to_generate);
                 transactions.push(transaction);
             }
 
-println!("looping through txs and submitting to server!");
-
             for tx in transactions {
                 let bytes: Vec<u8> = tx.serialize_for_net();
-println!("sending to {}", &server_transaction_url[..]);
                 let result = client
                     .post(&server_transaction_url[..])
                     .body(bytes)
@@ -177,18 +167,11 @@ println!("sending to {}", &server_transaction_url[..]);
                     }
                 }
             }
-println!("and spammer loop going to sleep....");
             sleep(Duration::from_millis(4000));
         }
     });
 
-println!("-----------------------------");
-println!("About to run the spammer CODE");
-println!("-----------------------------");
     run(mempool_lock.clone(), wallet_lock.clone(), blockchain_lock.clone(), miner_lock.clone(), network_lock.clone()).await?;
-println!("-----------------------------");
-println!("DONE running the spammer CODE");
-println!("-----------------------------");
 
     Ok(())
 }
@@ -201,7 +184,6 @@ pub async fn run(
     network_lock: Arc<RwLock<Network>>,
 ) -> saito_rust::Result<()> {
     let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
-println!("about to start up the network 2!");
     tokio::select! {
         res = saito_rust::mempool::run(
             mempool_lock.clone(),
@@ -244,6 +226,5 @@ println!("about to start up the network 2!");
             }
         },
     }
-    println!("exiting..?");
     Ok(())
 }
