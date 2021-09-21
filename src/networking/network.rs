@@ -188,42 +188,6 @@ impl Network {
             }
         }
     }
-/*****
-    pub async fn spawn_reconnect_to_configured_peers_task(
-        &self,
-        wallet_lock: Arc<RwLock<Wallet>>,
-    ) -> crate::Result<()> {
-        let _foo = tokio::spawn(async move {
-            loop {
-                let peer_states: Vec<(SaitoHash, bool)>;
-                {
-                    let peers_db_global = PEERS_DB_GLOBAL.clone();
-                    let peers_db = peers_db_global.read().await;
-                    peer_states = peers_db
-                        .keys()
-                        .map(|connection_id| {
-                            let peer = peers_db.get(connection_id).unwrap();
-                            let should_try_reconnect = peer.get_is_from_peer_list()
-                                && !peer.get_is_connected_or_connecting();
-                            (*connection_id, should_try_reconnect)
-                        })
-                        .collect::<Vec<(SaitoHash, bool)>>();
-                }
-                for (connection_id, should_try_reconnect) in peer_states {
-                    if should_try_reconnect {
-                        println!("found disconnected peer in peer settings, connecting...");
-                        Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
-                    }
-                }
-                sleep(Duration::from_millis(1000));
-            }
-        })
-        .await
-        .expect("error: spawn_reconnect_to_configured_peers_task failed");
-        Ok(())
-    }
-*****/
-
 }
 
 
@@ -281,21 +245,6 @@ pub async fn run(
         ));
 
 
-
-
-    //
-    // spawn loop to reconnect to peers
-    //
-    //let network_lock_clone = network_lock.clone();
-    //tokio::spawn(async move {
-    //    loop {
-//	    reconnect_to_dropped_peers(wallet_lock.clone());
-//            sleep(Duration::from_millis(1000)).await;
-//        }
-//    });
-
-
-
     //
     // create local broadcast channel
     //
@@ -317,14 +266,13 @@ pub async fn run(
     });
 
 
+
     //
     // start the server (separate thread)
     //
     tokio::spawn(async move {
         warp::serve(routes).run((host, port)).await;
     });
-
-
 
 
     //
@@ -352,11 +300,6 @@ pub async fn run(
             //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
-		    //
-		    // demonstration of global broadcast channels, track golden ticket production
-		    //
-                    SaitoMessage::MinerNewGoldenTicket { ticket : _golden_ticket } => {
-                    },
                     _ => {},
                 }
             }
