@@ -104,7 +104,10 @@ pub async fn main() -> saito_rust::Result<()> {
     }
 
     let wallet_lock_clone = wallet_lock.clone();
+
+
     tokio::spawn(async move {
+
         let client = reqwest::Client::new();
 
         let host: [u8; 4] = settings.get::<[u8; 4]>("network.host").unwrap();
@@ -115,10 +118,17 @@ pub async fn main() -> saito_rust::Result<()> {
 
         event!(Level::INFO, "{:?}", server_transaction_url);
 
+println!("about to start creating transactions");
+
         loop {
+println!("looping in creating txs");
             let mut transactions: Vec<Transaction> = vec![];
 
+println!("txs to generate: {}", txs_to_generate);
+
             event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
+
+println!("txs to generate 2: {}", txs_to_generate);
 
             for _i in 0..txs_to_generate {
                 let mut transaction =
@@ -148,27 +158,37 @@ pub async fn main() -> saito_rust::Result<()> {
                 transactions.push(transaction);
             }
 
+println!("looping through txs and submitting to server!");
+
             for tx in transactions {
                 let bytes: Vec<u8> = tx.serialize_for_net();
+println!("sending to {}", &server_transaction_url[..]);
                 let result = client
                     .post(&server_transaction_url[..])
                     .body(bytes)
                     .send()
                     .await;
                 match result {
-                    Ok(_response) => {
-                        // println!("response {:?}", response);
+                    Ok(response) => {
+                        println!("response {:?}", response);
                     }
                     Err(error) => {
                         println!("Error sending tx to node: {}", error);
                     }
                 }
             }
+println!("and spammer loop going to sleep....");
             sleep(Duration::from_millis(4000));
         }
     });
 
+println!("-----------------------------");
+println!("About to run the spammer CODE");
+println!("-----------------------------");
     run(mempool_lock.clone(), wallet_lock.clone(), blockchain_lock.clone(), miner_lock.clone(), network_lock.clone()).await?;
+println!("-----------------------------");
+println!("DONE running the spammer CODE");
+println!("-----------------------------");
 
     Ok(())
 }
@@ -214,6 +234,8 @@ println!("about to start up the network 2!");
         res = saito_rust::networking::network::run(
             network_lock.clone(),
             wallet_lock.clone(),
+	    mempool_lock.clone(),
+	    blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
             broadcast_channel_sender.subscribe()
         ) => {
@@ -221,6 +243,7 @@ println!("about to start up the network 2!");
                 eprintln!("network err {:?}", err)
             }
         },
+/****
         res = saito_rust::networking::network::run_server(
             network_lock.clone(),
             wallet_lock.clone(),
@@ -233,6 +256,7 @@ println!("about to start up the network 2!");
                 eprintln!("run_server err {:?}", err)
             }
         },
+***/
     }
     println!("exiting..?");
     Ok(())

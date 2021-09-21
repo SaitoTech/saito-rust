@@ -235,6 +235,8 @@ impl Consensus {
             res = crate::networking::network::run(
 		network_lock.clone(),
 		wallet_lock.clone(),
+		mempool_lock.clone(),
+		blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
 	    ) => {
@@ -242,6 +244,7 @@ impl Consensus {
                     eprintln!("network err {:?}", err)
                 }
             },
+/****
             res = crate::networking::network::run_server(
 		network_lock.clone(),
 		wallet_lock.clone(),
@@ -254,7 +257,7 @@ impl Consensus {
                     eprintln!("run_server err {:?}", err)
                 }
             },
-
+****/
 	    //
 	    // Other
 	    //

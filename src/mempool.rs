@@ -295,17 +295,20 @@ pub async fn run(
     //
     // mempool gets global broadcast channel and keypair
     //
-    let mut mempool = mempool_lock.write().await;
-    let publickey;
-    let privatekey;
     {
-        let wallet = mempool.wallet_lock.read().await;
-        publickey = wallet.get_publickey();
-        privatekey = wallet.get_privatekey();
+	// do not seize mempool write access
+        let mut mempool = mempool_lock.write().await;
+        let publickey;
+        let privatekey;
+        {
+            let wallet = mempool.wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+            privatekey = wallet.get_privatekey();
+        }
+        mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+        mempool.set_mempool_publickey(publickey);
+        mempool.set_mempool_privatekey(privatekey);
     }
-    mempool.set_broadcast_channel_sender(broadcast_channel_sender.clone());
-    mempool.set_mempool_publickey(publickey);
-    mempool.set_mempool_privatekey(privatekey);
 
 
     //

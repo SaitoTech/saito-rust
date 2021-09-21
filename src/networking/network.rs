@@ -214,7 +214,7 @@ impl Network {
                         Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
                     }
                 }
-                sleep(Duration::from_millis(1000)).await;
+                sleep(Duration::from_millis(1000));
             }
         })
         .await
@@ -228,25 +228,107 @@ impl Network {
 pub async fn run(
     network_lock: Arc<RwLock<Network>>, 
     wallet_lock: Arc<RwLock<Wallet>>, 
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>
 ) -> crate::Result<()> {
 
+
+
+    // network functions wrapped so we don't trap it
 println!("network run 1");
-    let mut network = network_lock.write().await;
 println!("network run 2");
+
+println!("about to get write access to server!");
+    let host: [u8; 4];
+    let port: u16;
+println!("done getting write access -- running");
+
+    {
+        let network = network_lock.read().await;
+println!("done getting write access -- running 2");
+        host = network.config_settings.get::<[u8; 4]>("network.host").unwrap();
+println!("done getting write access -- running 3");
+        port = network.config_settings.get::<u16>("network.port").unwrap();
+println!("done getting write access -- running 4");
+    }
+println!("Starting our server....");
+
+    let routes = get_block_route_filter()
+        .or(post_transaction_route_filter(
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        ))
+        .or(ws_upgrade_route_filter(
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        ));
+println!("about to start the server!");
+
+
+{
+println!("requesting write access!");
+    let mut network = network_lock.write().await;
+println!("requesting done requesting write access!");
 
     //
     // set global broadcast channel and connect to peers
     //
     network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
 println!("network run 3");
+
     network.connect_to_configured_peers().await;
 println!("network run 4");
-    let _foo = network
+}
+
+
+    //
+    // spawn reconnect to configured peers
+    //
+    let network_lock_clone = network_lock.clone();
+    tokio::spawn(async move {
+        loop {
+println!(" and in reconnect to peers looping...");
+            let peer_states: Vec<(SaitoHash, bool)>;
+            {
+                let peers_db_global = PEERS_DB_GLOBAL.clone();
+                let peers_db = peers_db_global.read().await;
+                peer_states = peers_db
+                    .keys()
+                    .map(|connection_id| {
+                        let peer = peers_db.get(connection_id).unwrap();
+                        let should_try_reconnect = peer.get_is_from_peer_list()
+                            && !peer.get_is_connected_or_connecting();
+                        (*connection_id, should_try_reconnect)
+                    })
+                    .collect::<Vec<(SaitoHash, bool)>>();
+            }
+            for (connection_id, should_try_reconnect) in peer_states {
+                if should_try_reconnect {
+                    println!("found disconnected peer in peer settings, connecting...");
+                    Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
+                }
+            }
+            sleep(Duration::from_millis(1000)).await;
+        }
+    });
+
+
+
+/***
+    	let _foo = network
         .spawn_reconnect_to_configured_peers_task(wallet_lock.clone())
         .await;
-
+            network_channel_sender_clone
+                .send(NetworkMessage::LocalNetworkMonitoring)
+                .await
+                .expect("error: LocalNetworkMonitor message failed to send");
+            sleep(Duration::from_millis(10000)).await;
+        }
+    });
+***/
 
     //
     // create local broadcast channel
@@ -254,7 +336,6 @@ println!("network run 4");
 println!("network run 5");
 println!("network run 6");
 
-/****
     let (network_channel_sender, mut network_channel_receiver) = mpsc::channel(4);
     //
     // local channel sending thread
@@ -271,7 +352,17 @@ println!("network run 6");
     });
 
 println!("network run 4");
-***/
+println!("host and port: {:?} {:?}", host, port);
+println!("SERVER IS STARTING NOW!");
+    warp::serve(routes).run((host, port)).await;
+println!("DONE RUNNING WARP SERVER");
+
+
+
+
+
+/****
+
 
     //
     // global and local channel receivers
@@ -307,9 +398,11 @@ println!("network run 4");
             }
         }
     }
+
 ***/
 
     Ok(())
+
 }
 
 pub async fn run_server(
@@ -321,11 +414,20 @@ pub async fn run_server(
     mut _broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>
 ) -> crate::Result<()> {
 
-    let network = network_lock.write().await;
+/*****
+println!("about to get write access to server!");
+    let host: [u8; 4];
+    let port: u16;
+println!("done getting write access -- running");
 
-    let host: [u8; 4] = network.config_settings.get::<[u8; 4]>("network.host").unwrap();
-    let port: u16 = network.config_settings.get::<u16>("network.port").unwrap();
-
+    {
+        let network = network_lock.read().await;
+println!("done getting write access -- running 2");
+        host = network.config_settings.get::<[u8; 4]>("network.host").unwrap();
+println!("done getting write access -- running 3");
+        port = network.config_settings.get::<u16>("network.port").unwrap();
+println!("done getting write access -- running 4");
+    }
 println!("Starting our server....");
 
     let routes = get_block_route_filter()
@@ -338,10 +440,44 @@ println!("Starting our server....");
             mempool_lock.clone(),
             blockchain_lock.clone(),
         ));
+println!("about to start the server!");
+println!("host and port: {:?} {:?}", host, port);
     warp::serve(routes).run((host, port)).await;
 println!("done running warp server");
+*****/
     Ok(())
 }
+
+
+
+
+/****
+        let host: [u8; 4] = self.config_settings.get::<[u8; 4]>("network.host").unwrap();
+        let port: u16 = self.config_settings.get::<u16>("network.port").unwrap();
+
+        let routes = get_block_route_filter()
+            .or(post_transaction_route_filter(
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ))
+            .or(ws_upgrade_route_filter(
+                self.wallet_lock.clone(),
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ));
+        warp::serve(routes).run((host, port)).await;
+        Ok(())
+    }
+    pub async fn run(&self) -> crate::Result<()> {
+        self.connect_to_configured_peers().await;
+        let _foo = self
+            .spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
+            .await;
+        Ok(())
+****/
+
+
+
 
 
 
