@@ -478,6 +478,11 @@ impl Block {
         }
 
         //
+        // TODO - if the block does not exist on disk, we have to
+        // attempt a remote fetch.
+        //
+
+        //
         // if the block type needed is full and we are not,
         // load the block if it exists on disk.
         //
@@ -698,8 +703,10 @@ impl Block {
         block.set_burnfee(burnfee);
         block.set_difficulty(difficulty);
         block.set_staking_treasury(staking_treasury);
-
         block.set_transactions(&mut transactions);
+        if transactions_len == 0 {
+            block.set_block_type(BlockType::Header);
+        }
         block.generate_hashes();
         block
     }
