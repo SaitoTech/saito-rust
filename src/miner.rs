@@ -85,9 +85,8 @@ impl Miner {
         }
 
         let vote = 0;
-        let golden_ticket = GoldenTicket::new(vote, self.target, random_bytes, publickey);
 
-        golden_ticket
+        GoldenTicket::new(vote, self.target, random_bytes, publickey)
     }
 
     pub fn set_is_active(&mut self, is_active: bool) {
