@@ -1245,27 +1245,27 @@ pub async fn run(
     loop {
         tokio::select! {
 
-                //
-                // local broadcast messages
-                //
-                    Some(message) = blockchain_channel_receiver.recv() => {
-                        match message {
-                            _ => {},
-                        }
-                    }
-
-                //
-                // global broadcast messages
-                //
-                    Ok(message) = broadcast_channel_receiver.recv() => {
-                        match message {
-                            SaitoMessage::NetworkNewBlock { hash: _hash } => {
-                                println!("Blockchain aware network has received new block! -- we might use for this congestion tracking");
-                            },
-                            _ => {},
-                        }
-                    }
+        //
+        // local broadcast messages
+        //
+            Some(message) = blockchain_channel_receiver.recv() => {
+                match message {
+                    _ => {},
                 }
+            }
+
+        //
+        // global broadcast messages
+        //
+            Ok(message) = broadcast_channel_receiver.recv() => {
+                match message {
+                    SaitoMessage::NetworkNewBlock { hash: _hash } => {
+                        println!("Blockchain aware network has received new block! -- we might use for this congestion tracking");
+                    },
+                    _ => {},
+                }
+            }
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::blockchain::Blockchain;
+use crate::consensus::SaitoMessage;
 use crate::crypto::{hash, SaitoHash, SaitoPublicKey};
-use crate::consensus::{SaitoMessage};
 use crate::mempool::Mempool;
 use crate::networking::api_message::APIMessage;
 use crate::networking::filters::{
@@ -30,7 +30,6 @@ pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
 pub type Result<T> = std::result::Result<T, Rejection>;
 
-
 //
 // In addition to responding to global broadcast messages, the
 // network has a local broadcast channel it uses to coordinate
@@ -42,7 +41,6 @@ pub enum NetworkMessage {
     LocalNetworkMonitoring,
 }
 
-
 pub struct Network {
     config_settings: Config,
     wallet_lock: Arc<RwLock<Wallet>>,
@@ -52,7 +50,6 @@ pub struct Network {
 }
 
 impl Network {
-
     pub fn new(
         config_settings: Config,
         wallet_lock: Arc<RwLock<Wallet>>,
@@ -190,21 +187,17 @@ impl Network {
     }
 }
 
-
-
 //
 // Starts up the Server and Other Threads
 //
 pub async fn run(
-    network_lock: Arc<RwLock<Network>>, 
-    wallet_lock: Arc<RwLock<Wallet>>, 
+    network_lock: Arc<RwLock<Network>>,
+    wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
-    mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>
+    mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-
-
     let host: [u8; 4];
     let port: u16;
 
@@ -213,13 +206,16 @@ pub async fn run(
     //
     {
         let network = network_lock.read().await;
-        host = network.config_settings.get::<[u8; 4]>("network.host").unwrap();
+        host = network
+            .config_settings
+            .get::<[u8; 4]>("network.host")
+            .unwrap();
         port = network.config_settings.get::<u16>("network.port").unwrap();
     }
 
     //
     // set global broadcast channel and connect to peers
-    // 
+    //
     {
         //
         // set global broadcast channel and connect to peers
@@ -228,7 +224,6 @@ pub async fn run(
         network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
         network.connect_to_configured_peers().await;
     }
-
 
     //
     // initialize routes for server
@@ -244,12 +239,10 @@ pub async fn run(
             blockchain_lock.clone(),
         ));
 
-
     //
     // create local broadcast channel
     //
     let (network_channel_sender, mut network_channel_receiver) = mpsc::channel(4);
-
 
     //
     // local channel sending thread
@@ -265,15 +258,12 @@ pub async fn run(
         }
     });
 
-
-
     //
     // start the server (separate thread)
     //
     tokio::spawn(async move {
         warp::serve(routes).run((host, port)).await;
     });
-
 
     //
     // global and local channel receivers
@@ -290,7 +280,7 @@ pub async fn run(
                     // reconnect to dropped peers
                     //
                     NetworkMessage::LocalNetworkMonitoring => {
-		        reconnect_to_dropped_peers(wallet_lock.clone()).await;
+                reconnect_to_dropped_peers(wallet_lock.clone()).await;
                     },
                 }
             }
@@ -305,13 +295,9 @@ pub async fn run(
             }
         }
     }
-
 }
 
-
-pub async fn reconnect_to_dropped_peers(
-    wallet_lock: Arc<RwLock<Wallet>>,
-) {
+pub async fn reconnect_to_dropped_peers(wallet_lock: Arc<RwLock<Wallet>>) {
     let peer_states: Vec<(SaitoHash, bool)>;
     {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
@@ -320,7 +306,8 @@ pub async fn reconnect_to_dropped_peers(
             .keys()
             .map(|connection_id| {
                 let peer = peers_db.get(connection_id).unwrap();
-                let should_try_reconnect = peer.get_is_from_peer_list() && !peer.get_is_connected_or_connecting();
+                let should_try_reconnect =
+                    peer.get_is_from_peer_list() && !peer.get_is_connected_or_connecting();
                 (*connection_id, should_try_reconnect)
             })
             .collect::<Vec<(SaitoHash, bool)>>();
@@ -333,10 +320,6 @@ pub async fn reconnect_to_dropped_peers(
         }
     }
 }
-
-
-
-
 
 #[cfg(test)]
 mod tests {

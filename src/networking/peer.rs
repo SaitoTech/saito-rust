@@ -375,8 +375,9 @@ impl SaitoPeer {
                 if let Some(tx) = socket_receive_transaction(api_message.clone()) {
                     let mut mempool = mempool_lock.write().await;
                     mempool.add_transaction(tx).await;
-                    peer.send_response_from_str(api_message.message_id, "OK").await;
-		    // in event of error
+                    peer.send_response_from_str(api_message.message_id, "OK")
+                        .await;
+                    // in event of error
                     //peer.send_error_response(
                     //            api_message.message_id,
                     //            String::from("Invalid").as_bytes().try_into().unwrap(),

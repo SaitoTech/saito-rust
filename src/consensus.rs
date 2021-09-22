@@ -13,7 +13,7 @@ use tokio::sync::{broadcast, mpsc};
 
 ///
 /// Saito has the following system-wide messages which may be sent and received
-/// over the main broadcast channel. Convention has the message begin with the 
+/// over the main broadcast channel. Convention has the message begin with the
 /// class that is broadcasting.
 ///
 #[derive(Clone, Debug)]
@@ -32,12 +32,10 @@ pub enum SaitoMessage {
     NetworkNewTransaction { transaction: Transaction },
 }
 
-
 ///
 /// The entry point to the Saito consensus runtime
 ///
 pub async fn run() -> crate::Result<()> {
-
     //
     // handle shutdown messages w/ broadcast channel
     //
@@ -66,7 +64,6 @@ pub async fn run() -> crate::Result<()> {
     Ok(())
 }
 
-
 //
 // The consensus state exposes a run method that main
 // calls to initialize Saito state and prepare for
@@ -83,19 +80,18 @@ impl Consensus {
     // Run consensus
     //
     async fn run(&mut self) -> crate::Result<()> {
-
         //
         // create main broadcast channel
         //
-	// all major classes have send/receive access to the main broadcast
-	// channel, and can communicate by sending the events listed in the
-	// SaitoMessage list above.
-	//
+        // all major classes have send/receive access to the main broadcast
+        // channel, and can communicate by sending the events listed in the
+        // SaitoMessage list above.
+        //
         let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
 
-	//
-	// handle command-line arguments
-	//
+        //
+        // handle command-line arguments
+        //
         let matches = App::new("Saito Runtime")
             .about("Runs a Saito Node")
             .arg(
@@ -135,20 +131,18 @@ impl Consensus {
         let key_path = matches.value_of("key_path").unwrap();
         let password = matches.value_of("password");
 
-
-
-	//
-	// generate/load the wallet
-	//
+        //
+        // generate/load the wallet
+        //
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         {
             let mut wallet = wallet_lock.write().await;
             wallet.load_keys(key_path, password);
         }
 
-	//
-	// load blocks from disk 
-	//
+        //
+        // load blocks from disk
+        //
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let load_blocks_from_disk = match settings.get::<bool>("storage.load_blocks_from_disk") {
             Ok(can_load) => can_load,
@@ -158,14 +152,13 @@ impl Consensus {
             Storage::load_blocks_from_disk(blockchain_lock.clone()).await;
         }
 
-
-	//
-	// instantiate core classes
-	//
+        //
+        // instantiate core classes
+        //
         // all major classes which require multithread read / write access are
-        // wrapped in Tokio::RwLock for read().await / write().await access. 
-	// we will send a clone of this RwLock object in any object that will
-	// require direct access when initializing the object below.
+        // wrapped in Tokio::RwLock for read().await / write().await access.
+        // we will send a clone of this RwLock object in any object that will
+        // require direct access when initializing the object below.
         //
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
@@ -176,22 +169,22 @@ impl Consensus {
             blockchain_lock.clone(),
         )));
 
-	//
+        //
         // initialize core classes.
-	//
+        //
         // all major classes get a clone of the broadcast channel sender and
-	// broadcast channel receiver. They must receive this clone and assign
-	// it to a local object so they have read/write access to cross-system
-	// messages.
-	//
+        // broadcast channel receiver. They must receive this clone and assign
+        // it to a local object so they have read/write access to cross-system
+        // messages.
+        //
         // The SaitoMessage ENUM above contains a list of all cross-
-	// system notifications.
+        // system notifications.
         //
         tokio::select! {
 
-	    //
-	    // Mempool
-	    //
+        //
+        // Mempool
+        //
             res = crate::mempool::run(
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
@@ -203,9 +196,9 @@ impl Consensus {
                 }
             },
 
-	    //
-	    // Blockchain
-	    //
+        //
+        // Blockchain
+        //
             res = crate::blockchain::run(
                 blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
@@ -216,9 +209,9 @@ impl Consensus {
                 }
             },
 
-	    //
-	    // Miner
-	    //
+        //
+        // Miner
+        //
             res = crate::miner::run(
                 miner_lock.clone(),
                 broadcast_channel_sender.clone(),
@@ -229,25 +222,25 @@ impl Consensus {
                 }
             },
 
-	    //
-	    // Network
-	    //
+        //
+        // Network
+        //
             res = crate::networking::network::run(
-		network_lock.clone(),
-		wallet_lock.clone(),
-		mempool_lock.clone(),
-		blockchain_lock.clone(),
+        network_lock.clone(),
+        wallet_lock.clone(),
+        mempool_lock.clone(),
+        blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
-	    ) => {
+        ) => {
                 if let Err(err) = res {
                     eprintln!("network err {:?}", err)
                 }
             },
 
-	    //
-	    // Other
-	    //
+        //
+        // Other
+        //
             _ = self._shutdown_complete_tx.closed() => {
                 println!("Shutdown message complete")
             }

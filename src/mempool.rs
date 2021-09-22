@@ -14,7 +14,7 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 use tracing::{event, Level};
 
 //
-// In addition to responding to global broadcast messages, the 
+// In addition to responding to global broadcast messages, the
 // mempool has a local broadcast channel it uses to coordinate
 // attempts to bundle blocks and notify itself when a block has
 // been produced.
@@ -63,14 +63,13 @@ impl Mempool {
             .iter()
             .any(|block| block.get_hash() == hash_to_insert)
         {
-	    // do nothing
+            // do nothing
         } else {
             self.blocks_queue.push_back(block);
         }
     }
 
-    pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) { 
-
+    pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) {
         let mut wallet = self.wallet_lock.write().await;
         let transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
 
@@ -124,7 +123,6 @@ impl Mempool {
         blockchain_lock: Arc<RwLock<Blockchain>>,
         timestamp_generator: Box<&mut dyn TimestampGenerator>,
     ) -> Block {
-
         let blockchain = blockchain_lock.read().await;
         let previous_block_hash = blockchain.get_latest_block_hash();
 
@@ -174,7 +172,6 @@ impl Mempool {
     }
 
     pub fn delete_transactions(&mut self, transactions: &Vec<Transaction>) {
-
         let mut tx_hashmap = HashMap::new();
         for transaction in transactions {
             let hash = transaction.get_hash_for_signature();
@@ -218,7 +215,6 @@ impl Mempool {
         work_needed
     }
 
-
     pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
         self.broadcast_channel_sender = Some(bcs);
     }
@@ -230,10 +226,7 @@ impl Mempool {
     pub fn set_mempool_privatekey(&mut self, privatekey: SaitoPrivateKey) {
         self.mempool_privatekey = privatekey;
     }
-
-
 }
-
 
 pub async fn try_bundle_block(
     mempool_lock: Arc<RwLock<Mempool>>,
@@ -260,7 +253,6 @@ pub async fn try_bundle_block(
     }
 }
 
-
 pub async fn send_blocks_to_blockchain(
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -286,12 +278,11 @@ pub async fn run(
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-
     //
     // mempool gets global broadcast channel and keypair
     //
     {
-	// do not seize mempool write access
+        // do not seize mempool write access
         let mut mempool = mempool_lock.write().await;
         let publickey;
         let privatekey;
@@ -305,12 +296,10 @@ pub async fn run(
         mempool.set_mempool_privatekey(privatekey);
     }
 
-
     //
     // create local broadcast channel
     //
     let (mempool_channel_sender, mut mempool_channel_receiver) = mpsc::channel(4);
-
 
     //
     // local channel sender -- send in clone as thread takes ownership
@@ -332,14 +321,14 @@ pub async fn run(
     loop {
         tokio::select! {
 
-	    //
- 	    // local broadcast channel receivers
- 	    //
+        //
+         // local broadcast channel receivers
+         //
             Some(message) = mempool_channel_receiver.recv() => {
                 match message {
 
                    //
-		   // attempt to bundle block
+           // attempt to bundle block
                    //
                    MempoolMessage::LocalTryBundleBlock => {
                         if let Some(block) = try_bundle_block(
@@ -354,9 +343,9 @@ pub async fn run(
 
                     },
 
-		    //
-		    // attempt to send to blockchain
-		    //
+            //
+            // attempt to send to blockchain
+            //
                     // ProcessBlocks will add blocks FIFO from the queue into blockchain
                     MempoolMessage::LocalNewBlock => {
                         send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
@@ -365,19 +354,19 @@ pub async fn run(
             }
 
 
-	    //
- 	    // global broadcast channel receivers
- 	    //
+        //
+         // global broadcast channel receivers
+         //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
                     //SaitoMessage::NetworkNewBlock { hash: _hash } => {
-                        // when network receives a new block 
+                        // when network receives a new block
                     //}
                     //SaitoMessage::NetworkNewTransaction { transaction } => {
                         // when network receives a new transaction
                     //},
                     SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
-			// when miner produces golden ticket
+            // when miner produces golden ticket
                         let mut mempool = mempool_lock.write().await;
                         mempool.add_golden_ticket(golden_ticket).await;
                     },

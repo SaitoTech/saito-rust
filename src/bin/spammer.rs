@@ -105,9 +105,7 @@ pub async fn main() -> saito_rust::Result<()> {
 
     let wallet_lock_clone = wallet_lock.clone();
 
-
     tokio::spawn(async move {
-
         let client = reqwest::Client::new();
 
         let host: [u8; 4] = settings.get::<[u8; 4]>("network.host").unwrap();
@@ -124,9 +122,13 @@ pub async fn main() -> saito_rust::Result<()> {
             event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
 
             for _i in 0..txs_to_generate {
-                let mut transaction =
-                    Transaction::generate_transaction(wallet_lock_clone.clone(), publickey, 5000, 5000)
-                        .await;
+                let mut transaction = Transaction::generate_transaction(
+                    wallet_lock_clone.clone(),
+                    publickey,
+                    5000,
+                    5000,
+                )
+                .await;
                 transaction.set_message(
                     (0..bytes_per_tx)
                         .into_par_iter()
@@ -169,7 +171,14 @@ pub async fn main() -> saito_rust::Result<()> {
         }
     });
 
-    run(mempool_lock.clone(), wallet_lock.clone(), blockchain_lock.clone(), miner_lock.clone(), network_lock.clone()).await?;
+    run(
+        mempool_lock.clone(),
+        wallet_lock.clone(),
+        blockchain_lock.clone(),
+        miner_lock.clone(),
+        network_lock.clone(),
+    )
+    .await?;
 
     Ok(())
 }
@@ -214,8 +223,8 @@ pub async fn run(
         res = saito_rust::networking::network::run(
             network_lock.clone(),
             wallet_lock.clone(),
-	    mempool_lock.clone(),
-	    blockchain_lock.clone(),
+        mempool_lock.clone(),
+        blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
             broadcast_channel_sender.subscribe()
         ) => {

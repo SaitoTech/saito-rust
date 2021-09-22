@@ -76,7 +76,7 @@ pub async fn post_transaction_handler(
             .to_string();
         let mut mempool = mempool_lock.write().await;
         mempool.add_transaction(tx).await;
-	Ok(Message { msg: response })
+        Ok(Message { msg: response })
     } else {
         Err(warp::reject::custom(Invalid))
     }
@@ -99,9 +99,7 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
 
     match Storage::stream_block_from_disk(block_hash).await {
         Ok(block_bytes) => Ok(block_bytes),
-        Err(_err) => {
-            Err(warp::reject())
-        }
+        Err(_err) => Err(warp::reject()),
     }
 }
 
