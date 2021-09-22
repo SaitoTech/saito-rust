@@ -769,32 +769,13 @@
 <span id="769">769</span>
 <span id="770">770</span>
 <span id="771">771</span>
-<span id="772">772</span>
-<span id="773">773</span>
-<span id="774">774</span>
-<span id="775">775</span>
-<span id="776">776</span>
-<span id="777">777</span>
-<span id="778">778</span>
-<span id="779">779</span>
-<span id="780">780</span>
-<span id="781">781</span>
-<span id="782">782</span>
-<span id="783">783</span>
-<span id="784">784</span>
-<span id="785">785</span>
-<span id="786">786</span>
-<span id="787">787</span>
-<span id="788">788</span>
-<span id="789">789</span>
-<span id="790">790</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::api_message::APIMessage</span>;
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::network::CHALLENGE_EXPIRATION_TIME</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">hash</span>, <span class="ident">sign_blob</span>, <span class="ident">verify</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>};
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool</span>::{<span class="ident">AddBlockResult</span>, <span class="ident">AddTransactionResult</span>, <span class="ident">Mempool</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool::Mempool</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::message_types::handshake_challenge::HandshakeChallenge</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::message_types::request_block_message::RequestBlockMessage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::message_types::request_blockchain_message::RequestBlockchainMessage</span>;
@@ -1165,27 +1146,15 @@
             <span class="string">&quot;SNDTRANS&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">tx</span>) <span class="op">=</span> <span class="ident">socket_receive_transaction</span>(<span class="ident">api_message</span>.<span class="ident">clone</span>()) {
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                    <span class="kw">match</span> <span class="ident">mempool</span>.<span class="ident">add_transaction</span>(<span class="ident">tx</span>).<span class="kw">await</span> {
-                        <span class="ident">AddTransactionResult::Accepted</span> <span class="op">|</span> <span class="ident">AddTransactionResult::Exists</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="comment">// TODO The tx is accepted, propagate it to all available peers</span>
-                            <span class="ident">peer</span>.<span class="ident">send_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;OK&quot;</span>)
-                                .<span class="kw">await</span>;
-                        }
-                        <span class="ident">AddTransactionResult::Invalid</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">peer</span>.<span class="ident">send_error_response</span>(
-                                <span class="ident">api_message</span>.<span class="ident">message_id</span>,
-                                <span class="ident">String::from</span>(<span class="string">&quot;Invalid&quot;</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(),
-                            )
-                            .<span class="kw">await</span>;
-                        }
-                        <span class="ident">AddTransactionResult::Rejected</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">peer</span>.<span class="ident">send_error_response</span>(
-                                <span class="ident">api_message</span>.<span class="ident">message_id</span>,
-                                <span class="ident">String::from</span>(<span class="string">&quot;Invalid&quot;</span>).<span class="ident">as_bytes</span>().<span class="ident">try_into</span>().<span class="ident">unwrap</span>(),
-                            )
-                            .<span class="kw">await</span>;
-                        }
-                    }
+                    <span class="ident">mempool</span>.<span class="ident">add_transaction</span>(<span class="ident">tx</span>).<span class="kw">await</span>;
+                    <span class="ident">peer</span>.<span class="ident">send_response_from_str</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="string">&quot;OK&quot;</span>)
+                        .<span class="kw">await</span>;
+                    <span class="comment">// in event of error</span>
+                    <span class="comment">//peer.send_error_response(</span>
+                    <span class="comment">//            api_message.message_id,</span>
+                    <span class="comment">//            String::from(&quot;Invalid&quot;).as_bytes().try_into().unwrap(),</span>
+                    <span class="comment">//        )</span>
+                    <span class="comment">//        .await;</span>
                 }
             }
             <span class="string">&quot;SNDCHAIN&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
@@ -1280,14 +1249,7 @@
             <span class="string">&quot;REQBLOCK&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="ident">response_api_message</span>.<span class="ident">message_data</span>());
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                <span class="kw">match</span> <span class="ident">mempool</span>.<span class="ident">add_block_to_queue</span>(<span class="ident">block</span>) {
-                    <span class="ident">AddBlockResult::Exists</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="macro">println!</span>(<span class="string">&quot;The node appears to be requesting blocks which is already has in it&#39;s mempool queue, this should probably be fixed...&quot;</span>);
-                    }
-                    <span class="ident">AddBlockResult::Accepted</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="comment">// nothing to do</span>
-                    }
-                }
+                <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>);
             }
             <span class="string">&quot;REQBLKHD&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="macro">println!</span>(<span class="string">&quot;IMPLEMENT REQBLKHD RESPONSE?!&quot;</span>);

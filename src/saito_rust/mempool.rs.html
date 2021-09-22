@@ -575,44 +575,6 @@
 <span id="575">575</span>
 <span id="576">576</span>
 <span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -629,28 +591,20 @@
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
+<span class="comment">//</span>
+<span class="comment">// In addition to responding to global broadcast messages, the</span>
+<span class="comment">// mempool has a local broadcast channel it uses to coordinate</span>
+<span class="comment">// attempts to bundle blocks and notify itself when a block has</span>
+<span class="comment">// been produced.</span>
+<span class="comment">//</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MempoolMessage</span> {
-    <span class="ident">TryBundleBlock</span>,
-    <span class="comment">// GenerateTransaction,</span>
-    <span class="ident">ProcessBlocks</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AddBlockResult</span> {
-    <span class="ident">Accepted</span>,
-    <span class="ident">Exists</span>,
-}
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AddTransactionResult</span> {
-    <span class="ident">Accepted</span>,
-    <span class="ident">Rejected</span>,
-    <span class="ident">Invalid</span>,
-    <span class="ident">Exists</span>,
+    <span class="ident">LocalTryBundleBlock</span>,
+    <span class="ident">LocalNewBlock</span>,
 }
 
 <span class="doccomment">/// The `Mempool` holds unprocessed blocks and transactions and is in control of</span>
-<span class="doccomment">/// discerning when thenodeis allowed to create a block. It bundles the block and</span>
+<span class="doccomment">/// discerning when the node is allowed to create a block. It bundles the block and</span>
 <span class="doccomment">/// sends it to the `Blockchain` to be added to the longest-chain. New `Block`s</span>
 <span class="doccomment">/// received over the network are queued in the `Mempool` before being added to</span>
 <span class="doccomment">/// the `Blockchain`</span>
@@ -659,9 +613,8 @@
     <span class="kw">pub</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>, <span class="comment">// vector so we just copy it over</span>
     <span class="ident">routing_work_in_mempool</span>: <span class="ident">u64</span>,
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">currently_processing_block</span>: <span class="ident">bool</span>,
+    <span class="ident">currently_bundling_block</span>: <span class="ident">bool</span>,
     <span class="ident">broadcast_channel_sender</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-
     <span class="ident">mempool_publickey</span>: <span class="ident">SaitoPublicKey</span>,
     <span class="ident">mempool_privatekey</span>: <span class="ident">SaitoPrivateKey</span>,
 }
@@ -674,42 +627,42 @@
             <span class="ident">transactions</span>: <span class="macro">vec!</span>[],
             <span class="ident">routing_work_in_mempool</span>: <span class="number">0</span>,
             <span class="ident">wallet_lock</span>,
-            <span class="ident">currently_processing_block</span>: <span class="bool-val">false</span>,
+            <span class="ident">currently_bundling_block</span>: <span class="bool-val">false</span>,
             <span class="ident">broadcast_channel_sender</span>: <span class="prelude-val">None</span>,
             <span class="ident">mempool_publickey</span>: [<span class="number">0</span>; <span class="number">33</span>],
             <span class="ident">mempool_privatekey</span>: [<span class="number">0</span>; <span class="number">32</span>],
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_mempool_publickey</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>) {
-        <span class="self">self</span>.<span class="ident">mempool_publickey</span> <span class="op">=</span> <span class="ident">publickey</span>;
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_mempool_privatekey</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) {
-        <span class="self">self</span>.<span class="ident">mempool_privatekey</span> <span class="op">=</span> <span class="ident">privatekey</span>;
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_broadcast_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bcs</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bcs</span>);
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_block_to_queue</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddBlockResult</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {
         <span class="kw">let</span> <span class="ident">hash_to_insert</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
         <span class="kw">if</span> <span class="self">self</span>
             .<span class="ident">blocks_queue</span>
             .<span class="ident">iter</span>()
             .<span class="ident">any</span>(<span class="op">|</span><span class="ident">block</span><span class="op">|</span> <span class="ident">block</span>.<span class="ident">get_hash</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">hash_to_insert</span>)
         {
-            <span class="ident">AddBlockResult::Exists</span>
+            <span class="comment">// do nothing</span>
         } <span class="kw">else</span> {
             <span class="self">self</span>.<span class="ident">blocks_queue</span>.<span class="ident">push_back</span>(<span class="ident">block</span>);
-            <span class="ident">AddBlockResult::Accepted</span>
         }
     }
 
-    <span class="comment">// this handles any transactions broadcast on the same system. it receives the transaction</span>
-    <span class="comment">// directly and so does not validate against the UTXOset etc.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">transaction</span>: <span class="ident">Transaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddTransactionResult</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_golden_ticket</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">create_golden_ticket_transaction</span>(<span class="ident">golden_ticket</span>).<span class="kw">await</span>;
+
+        <span class="kw">if</span> <span class="self">self</span>
+            .<span class="ident">transactions</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> <span class="ident">transaction</span>.<span class="ident">is_golden_ticket</span>())
+        {
+        } <span class="kw">else</span> {
+            <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;adding golden ticket to mempool...&quot;</span>);
+            <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
+        }
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">transaction</span>: <span class="ident">Transaction</span>) {
         <span class="macro">event!</span>(
             <span class="ident">Level::INFO</span>,
             <span class="string">&quot;add_transaction {:?}&quot;</span>,
@@ -737,143 +690,19 @@
             .<span class="ident">iter</span>()
             .<span class="ident">any</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> <span class="ident">transaction</span>.<span class="ident">get_signature</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">tx_sig_to_insert</span>)
         {
-            <span class="ident">AddTransactionResult::Exists</span>
         } <span class="kw">else</span> {
             <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
             <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">+</span><span class="op">=</span> <span class="ident">routing_work_available_for_me</span>;
-            <span class="ident">AddTransactionResult::Accepted</span>
         }
     }
 
-    <span class="comment">//</span>
-    <span class="comment">// when we generate a block ourselves, we automatically prune the mempool but</span>
-    <span class="comment">// when we accept a block produced by others this may not be the case. So we</span>
-    <span class="comment">// have this function to manually remove the transactions in the blocks we</span>
-    <span class="comment">// are adding if their hash_for_signature matches.</span>
-    <span class="comment">//</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">transactions</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx_hashmap</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
-
-        <span class="kw">for</span> <span class="ident">transaction</span> <span class="kw">in</span> <span class="ident">transactions</span> {
-            <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">get_hash_for_signature</span>();
-            <span class="ident">tx_hashmap</span>.<span class="ident">entry</span>(<span class="ident">hash</span>).<span class="ident">or_insert</span>(<span class="bool-val">true</span>);
-        }
-
-        <span class="comment">//</span>
-        <span class="comment">// TODO</span>
-        <span class="comment">//</span>
-        <span class="comment">// reorder the transactions vector so that all of the</span>
-        <span class="comment">// elements we want to delete are at the front, then</span>
-        <span class="comment">// sweep them out in a single operation.</span>
-        <span class="comment">//</span>
-        <span class="comment">// for now just delete</span>
-        <span class="comment">//</span>
-        <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">=</span> <span class="number">0</span>;
-        <span class="self">self</span>.<span class="ident">transactions</span>
-            .<span class="ident">retain</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">tx_hashmap</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="ident">get_hash_for_signature</span>()) <span class="op">!</span><span class="op">=</span> <span class="bool-val">true</span>);
-
-        <span class="kw">for</span> <span class="ident">transaction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span> {
-            <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">+</span><span class="op">=</span>
-                <span class="ident">transaction</span>.<span class="ident">get_routing_work_for_publickey</span>(<span class="self">self</span>.<span class="ident">mempool_publickey</span>);
-        }
-    }
-
-    <span class="comment">// this handles golden tickets broadcast on the same system. it wraps them</span>
-    <span class="comment">// in a transaction and then saves them in the mempool if they are targetting</span>
-    <span class="comment">// the right block. this pushes the golden ticket indiscriminately into the</span>
-    <span class="comment">// transaction array -- we can do a better job.</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_golden_ticket</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddTransactionResult</span> {
-        <span class="comment">// convert into transaction</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="comment">// hash_for_signature generated in creating txs</span>
-        <span class="kw">let</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">create_golden_ticket_transaction</span>(<span class="ident">golden_ticket</span>).<span class="kw">await</span>;
-
-        <span class="kw">if</span> <span class="self">self</span>
-            .<span class="ident">transactions</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> <span class="ident">transaction</span>.<span class="ident">is_golden_ticket</span>())
-        {
-            <span class="ident">AddTransactionResult::Exists</span>
-        } <span class="kw">else</span> {
-            <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;adding golden ticket to mempool...&quot;</span>);
-            <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
-            <span class="ident">AddTransactionResult::Accepted</span>
-        }
-    }
-
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Calculates the work available in mempool to produce a block</span>
-    <span class="doccomment">///</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">calculate_work_available</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">&gt;</span> <span class="number">0</span> {
-            <span class="kw">return</span> <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span>;
-        }
-        <span class="number">0</span>
-    }
-
-    <span class="comment">//</span>
-    <span class="comment">// Return work needed in Nolan</span>
-    <span class="comment">//</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">calculate_work_needed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">previous_block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>, <span class="ident">current_timestamp</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="kw">let</span> <span class="ident">previous_block_timestamp</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_timestamp</span>();
-        <span class="kw">let</span> <span class="ident">previous_block_burnfee</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_burnfee</span>();
-
-        <span class="kw">let</span> <span class="ident">work_needed</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">BurnFee::return_routing_work_needed_to_produce_block_in_nolan</span>(
-            <span class="ident">previous_block_burnfee</span>,
-            <span class="ident">current_timestamp</span>,
-            <span class="ident">previous_block_timestamp</span>,
-        );
-
-        <span class="ident">work_needed</span>
-    }
-
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Check to see if the `Mempool` has enough work to bundle a block</span>
-    <span class="doccomment">///</span>
-
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">can_bundle_block</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">current_timestamp</span>: <span class="ident">u64</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">currently_processing_block</span> {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
-        }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">return</span> <span class="bool-val">false</span>;
-        }
-
-        <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">previous_block</span>) <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>() {
-            <span class="kw">let</span> <span class="ident">work_available</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">calculate_work_available</span>();
-            <span class="kw">let</span> <span class="ident">work_needed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">calculate_work_needed</span>(<span class="ident">previous_block</span>, <span class="ident">current_timestamp</span>);
-            <span class="kw">let</span> <span class="ident">time_elapsed</span> <span class="op">=</span> <span class="ident">current_timestamp</span> <span class="op">-</span> <span class="ident">previous_block</span>.<span class="ident">get_timestamp</span>();
-            <span class="macro">event!</span>(
-                <span class="ident">Level::INFO</span>,
-                <span class="string">&quot;can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} &quot;</span>,
-                <span class="ident">work_available</span>,
-                <span class="ident">work_needed</span>,
-                <span class="ident">time_elapsed</span>
-            );
-            <span class="ident">work_available</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">work_needed</span>
-        } <span class="kw">else</span> {
-            <span class="bool-val">true</span>
-        }
-    }
-
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">generate_block</span>(
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">bundle_block</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">timestamp_generator</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">TimestampGenerator</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
-
-        <span class="macro">println!</span>(
-            <span class="string">&quot;We are generating the block with this block hash: {:?}&quot;</span>,
-            <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>()
-        );
 
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">transactions</span>,
@@ -888,6 +717,93 @@
 
         <span class="ident">block</span>
     }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">can_bundle_block</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">current_timestamp</span>: <span class="ident">u64</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">currently_bundling_block</span> {
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">is_empty</span>() {
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
+
+        <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">previous_block</span>) <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>() {
+            <span class="kw">let</span> <span class="ident">work_available</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_routing_work_available</span>();
+            <span class="kw">let</span> <span class="ident">work_needed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_routing_work_needed</span>(<span class="ident">previous_block</span>, <span class="ident">current_timestamp</span>);
+            <span class="kw">let</span> <span class="ident">time_elapsed</span> <span class="op">=</span> <span class="ident">current_timestamp</span> <span class="op">-</span> <span class="ident">previous_block</span>.<span class="ident">get_timestamp</span>();
+            <span class="macro">event!</span>(
+                <span class="ident">Level::INFO</span>,
+                <span class="string">&quot;can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} &quot;</span>,
+                <span class="ident">work_available</span>,
+                <span class="ident">work_needed</span>,
+                <span class="ident">time_elapsed</span>
+            );
+            <span class="ident">work_available</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">work_needed</span>
+        } <span class="kw">else</span> {
+            <span class="bool-val">true</span>
+        }
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">transactions</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx_hashmap</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
+        <span class="kw">for</span> <span class="ident">transaction</span> <span class="kw">in</span> <span class="ident">transactions</span> {
+            <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">get_hash_for_signature</span>();
+            <span class="ident">tx_hashmap</span>.<span class="ident">entry</span>(<span class="ident">hash</span>).<span class="ident">or_insert</span>(<span class="bool-val">true</span>);
+        }
+
+        <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">=</span> <span class="number">0</span>;
+
+        <span class="self">self</span>.<span class="ident">transactions</span>
+            .<span class="ident">retain</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">tx_hashmap</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="ident">get_hash_for_signature</span>()) <span class="op">!</span><span class="op">=</span> <span class="bool-val">true</span>);
+
+        <span class="kw">for</span> <span class="ident">transaction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">transactions</span> {
+            <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">+</span><span class="op">=</span>
+                <span class="ident">transaction</span>.<span class="ident">get_routing_work_for_publickey</span>(<span class="self">self</span>.<span class="ident">mempool_publickey</span>);
+        }
+    }
+
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Calculates the work available in mempool to produce a block</span>
+    <span class="doccomment">///</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_routing_work_available</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">&gt;</span> <span class="number">0</span> {
+            <span class="kw">return</span> <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span>;
+        }
+        <span class="number">0</span>
+    }
+
+    <span class="comment">//</span>
+    <span class="comment">// Return work needed in Nolan</span>
+    <span class="comment">//</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_routing_work_needed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">previous_block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>, <span class="ident">current_timestamp</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+        <span class="kw">let</span> <span class="ident">previous_block_timestamp</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_timestamp</span>();
+        <span class="kw">let</span> <span class="ident">previous_block_burnfee</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_burnfee</span>();
+
+        <span class="kw">let</span> <span class="ident">work_needed</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">BurnFee::return_routing_work_needed_to_produce_block_in_nolan</span>(
+            <span class="ident">previous_block_burnfee</span>,
+            <span class="ident">current_timestamp</span>,
+            <span class="ident">previous_block_timestamp</span>,
+        );
+
+        <span class="ident">work_needed</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_broadcast_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bcs</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bcs</span>);
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_mempool_publickey</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>) {
+        <span class="self">self</span>.<span class="ident">mempool_publickey</span> <span class="op">=</span> <span class="ident">publickey</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_mempool_privatekey</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) {
+        <span class="self">self</span>.<span class="ident">mempool_privatekey</span> <span class="op">=</span> <span class="ident">privatekey</span>;
+    }
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">try_bundle_block</span>(
@@ -895,7 +811,7 @@
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">timestamp_generator</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">impl</span> <span class="ident">TimestampGenerator</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span> {
-    <span class="comment">// We use a boolean here so we can avoid taking the write lock most of the time</span>
+    <span class="comment">// use boolean to avoid monopolizing write lock</span>
     <span class="kw">let</span> <span class="ident">can_bundle</span>;
     {
         <span class="kw">let</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
@@ -907,7 +823,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
         <span class="prelude-val">Some</span>(
             <span class="ident">mempool</span>
-                .<span class="ident">generate_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">Box::new</span>(<span class="ident">timestamp_generator</span>))
+                .<span class="ident">bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">Box::new</span>(<span class="ident">timestamp_generator</span>))
                 .<span class="kw">await</span>,
         )
     } <span class="kw">else</span> {
@@ -915,26 +831,25 @@
     }
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">process_blocks</span>(
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_blocks_to_blockchain</span>(
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-    <span class="ident">mempool</span>.<span class="ident">currently_processing_block</span> <span class="op">=</span> <span class="bool-val">true</span>;
+    <span class="ident">mempool</span>.<span class="ident">currently_bundling_block</span> <span class="op">=</span> <span class="bool-val">true</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">blocks_queue</span>.<span class="ident">pop_front</span>() {
-        <span class="macro">println!</span>(
-            <span class="string">&quot;adding a block! {} -- {:?}&quot;</span>,
-            <span class="ident">block</span>.<span class="ident">get_id</span>(),
-            <span class="ident">block</span>.<span class="ident">get_hash</span>()
-        );
         <span class="ident">mempool</span>.<span class="ident">delete_transactions</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_transactions</span>());
         <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
     }
-    <span class="ident">mempool</span>.<span class="ident">currently_processing_block</span> <span class="op">=</span> <span class="bool-val">false</span>;
+    <span class="ident">mempool</span>.<span class="ident">currently_bundling_block</span> <span class="op">=</span> <span class="bool-val">false</span>;
 }
-<span class="comment">// This function is called on initialization to setup the sending</span>
-<span class="comment">// and receiving channels for asynchronous loops or message checks</span>
+
+<span class="comment">//</span>
+<span class="comment">// This initialization function starts a dedicated thread that listens</span>
+<span class="comment">// for local and global broadcast messages and triggers the necessary</span>
+<span class="comment">// responses.</span>
+<span class="comment">//</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -942,85 +857,94 @@
     <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="comment">//</span>
-    <span class="comment">// mempool gets global broadcast channel</span>
+    <span class="comment">// mempool gets global broadcast channel and keypair</span>
     <span class="comment">//</span>
     {
+        <span class="comment">// do not seize mempool write access</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">publickey</span>;
         <span class="kw">let</span> <span class="ident">privatekey</span>;
-        <span class="ident">mempool</span>.<span class="ident">set_broadcast_channel_sender</span>(<span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>());
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
             <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
         }
-
+        <span class="ident">mempool</span>.<span class="ident">set_broadcast_channel_sender</span>(<span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>());
         <span class="ident">mempool</span>.<span class="ident">set_mempool_publickey</span>(<span class="ident">publickey</span>);
         <span class="ident">mempool</span>.<span class="ident">set_mempool_privatekey</span>(<span class="ident">privatekey</span>);
     }
 
-    <span class="comment">// generate blocks 4000, w/ capacity of 4 fails</span>
+    <span class="comment">//</span>
+    <span class="comment">// create local broadcast channel</span>
+    <span class="comment">//</span>
     <span class="kw">let</span> (<span class="ident">mempool_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">mempool_channel_receiver</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
-    <span class="kw">let</span> <span class="ident">generate_block_sender</span> <span class="op">=</span> <span class="ident">mempool_channel_sender</span>.<span class="ident">clone</span>();
+
+    <span class="comment">//</span>
+    <span class="comment">// local channel sender -- send in clone as thread takes ownership</span>
+    <span class="comment">//</span>
+    <span class="kw">let</span> <span class="ident">bundle_block_sender</span> <span class="op">=</span> <span class="ident">mempool_channel_sender</span>.<span class="ident">clone</span>();
     <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">loop</span> {
-            <span class="ident">generate_block_sender</span>
-                .<span class="ident">send</span>(<span class="ident">MempoolMessage::TryBundleBlock</span>)
+            <span class="ident">bundle_block_sender</span>
+                .<span class="ident">send</span>(<span class="ident">MempoolMessage::LocalTryBundleBlock</span>)
                 .<span class="kw">await</span>
-                .<span class="ident">expect</span>(<span class="string">&quot;error: TryBundleBlock message failed to send&quot;</span>);
+                .<span class="ident">expect</span>(<span class="string">&quot;error: LocalTryBundleBlock message failed to send&quot;</span>);
             <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">1000</span>));
         }
     });
 
+    <span class="comment">//</span>
+    <span class="comment">// global and local channel receivers</span>
+    <span class="comment">//</span>
     <span class="kw">loop</span> {
         <span class="macro">tokio::select!</span> {
-           <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">mempool_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
-               <span class="kw">match</span> <span class="ident">message</span> {
 
-                   <span class="comment">// TryBundleBlock makes periodic attempts to produce blocks and does so</span>
-                   <span class="comment">// if the mempool can bundle blocks....</span>
-                   <span class="ident">MempoolMessage::TryBundleBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="comment">//</span>
+         <span class="comment">// local broadcast channel receivers</span>
+         <span class="comment">//</span>
+            <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">mempool_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">match</span> <span class="ident">message</span> {
+
+                   <span class="comment">//</span>
+           <span class="comment">// attempt to bundle block</span>
+                   <span class="comment">//</span>
+                   <span class="ident">MempoolMessage::LocalTryBundleBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">try_bundle_block</span>(
                             <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                             <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SystemTimestampGenerator</span>{},
                         ).<span class="kw">await</span> {
                             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                            <span class="kw">if</span> <span class="ident">AddBlockResult::Accepted</span> <span class="op">=</span><span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">add_block_to_queue</span>(<span class="ident">block</span>) {
-                                <span class="ident">mempool_channel_sender</span>.<span class="ident">send</span>(<span class="ident">MempoolMessage::ProcessBlocks</span>).<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to send ProcessBlocks message&quot;</span>);
-                            } <span class="kw">else</span> {
-                                <span class="macro">panic!</span>(<span class="string">&quot;Tried to make a block that already exists&quot;</span>);
-                            }
+                            <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>);
+                            <span class="ident">mempool_channel_sender</span>.<span class="ident">send</span>(<span class="ident">MempoolMessage::LocalNewBlock</span>).<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to send LocalNewBlock message&quot;</span>);
                         }
 
                     },
 
+            <span class="comment">//</span>
+            <span class="comment">// attempt to send to blockchain</span>
+            <span class="comment">//</span>
                     <span class="comment">// ProcessBlocks will add blocks FIFO from the queue into blockchain</span>
-                    <span class="ident">MempoolMessage::ProcessBlocks</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">process_blocks</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+                    <span class="ident">MempoolMessage::LocalNewBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">send_blocks_to_blockchain</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
                     },
-               }
+                }
             }
 
 
+        <span class="comment">//</span>
+         <span class="comment">// global broadcast channel receivers</span>
+         <span class="comment">//</span>
             <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">match</span> <span class="ident">message</span> {
-                    <span class="comment">// triggered when a block is received over the network and</span>
-                    <span class="comment">// will be added to the `Blockchain`</span>
-                    <span class="ident">SaitoMessage::MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="comment">// TODO: there is still an open question about how blocks</span>
-                        <span class="comment">// over the network will be placed into the mempool queue</span>
-                        <span class="comment">//</span>
-                        <span class="comment">// For now, let&#39;s assume that the network has a reference</span>
-                        <span class="comment">// to mempool and is adding the block through that reference</span>
-                        <span class="comment">// then calls mempool to process the blocks in the queue</span>
-                        <span class="ident">mempool_channel_sender</span>.<span class="ident">send</span>(<span class="ident">MempoolMessage::ProcessBlocks</span>).<span class="kw">await</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to send ProcessBlocks message&quot;</span>);
-                    }
-                    <span class="ident">SaitoMessage::MempoolNewTransaction</span> { <span class="ident">transaction</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                        <span class="ident">mempool</span>.<span class="ident">add_transaction</span>(<span class="ident">transaction</span>).<span class="kw">await</span>;
-                    },
+                    <span class="comment">//SaitoMessage::NetworkNewBlock { hash: _hash } =&gt; {</span>
+                        <span class="comment">// when network receives a new block</span>
+                    <span class="comment">//}</span>
+                    <span class="comment">//SaitoMessage::NetworkNewTransaction { transaction } =&gt; {</span>
+                        <span class="comment">// when network receives a new transaction</span>
+                    <span class="comment">//},</span>
                     <span class="ident">SaitoMessage::MinerNewGoldenTicket</span> { <span class="ident">ticket</span> : <span class="ident">golden_ticket</span> } <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="comment">// when miner produces golden ticket</span>
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                         <span class="ident">mempool</span>.<span class="ident">add_golden_ticket</span>(<span class="ident">golden_ticket</span>).<span class="kw">await</span>;
                     },
@@ -1063,7 +987,7 @@
 
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
 
-        <span class="ident">mempool</span>.<span class="ident">add_block_to_queue</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
+        <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
 
         <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(<span class="ident">block</span>), <span class="ident">mempool</span>.<span class="ident">blocks_queue</span>.<span class="ident">pop_front</span>())
     }
@@ -1142,7 +1066,7 @@
         }
     }
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mempool_bundle_and_process_blocks_test</span>() {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mempool_bundle_and_send_blocks_to_blockchain_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
@@ -1188,9 +1112,9 @@
                 <span class="kw">let</span> <span class="ident">prev_hash_before</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>();
                 {
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                    <span class="ident">mempool</span>.<span class="ident">add_block_to_queue</span>(<span class="ident">block</span>);
+                    <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>);
                 }
-                <span class="ident">process_blocks</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+                <span class="ident">send_blocks_to_blockchain</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
                 <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
                 <span class="kw">let</span> <span class="ident">latest_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>().<span class="ident">unwrap</span>();
 

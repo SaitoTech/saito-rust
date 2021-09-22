@@ -224,6 +224,17 @@
 <span id="224">224</span>
 <span id="225">225</span>
 <span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 # Saito Transaction Spammer
@@ -312,16 +323,14 @@ TODO: Fill in these docs
         <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
     }
     <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-
     <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
     <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-
-    <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(
+    <span class="kw">let</span> <span class="ident">network_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Network::new</span>(
         <span class="ident">settings</span>.<span class="ident">clone</span>(),
         <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
         <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
         <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-    );
+    )));
 
     <span class="kw">let</span> <span class="ident">publickey</span>;
     <span class="kw">let</span> <span class="ident">privatekey</span>;
@@ -331,6 +340,8 @@ TODO: Fill in these docs
         <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
         <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
     }
+
+    <span class="kw">let</span> <span class="ident">wallet_lock_clone</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">clone</span>();
 
     <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
         <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">reqwest::Client::new</span>();
@@ -349,9 +360,13 @@ TODO: Fill in these docs
             <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;TXS TO GENERATE: {:?}&quot;</span>, <span class="ident">txs_to_generate</span>);
 
             <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">txs_to_generate</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span>
-                    <span class="ident">Transaction::generate_transaction</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>, <span class="number">5000</span>, <span class="number">5000</span>)
-                        .<span class="kw">await</span>;
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::generate_transaction</span>(
+                    <span class="ident">wallet_lock_clone</span>.<span class="ident">clone</span>(),
+                    <span class="ident">publickey</span>,
+                    <span class="number">5000</span>,
+                    <span class="number">5000</span>,
+                )
+                .<span class="kw">await</span>;
                 <span class="ident">transaction</span>.<span class="ident">set_message</span>(
                     (<span class="number">0</span>..<span class="ident">bytes_per_tx</span>)
                         .<span class="ident">into_par_iter</span>()
@@ -365,13 +380,11 @@ TODO: Fill in these docs
 
                 <span class="comment">// add some test hops ...</span>
                 <span class="ident">transaction</span>
-                    .<span class="ident">add_hop_to_path</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>)
+                    .<span class="ident">add_hop_to_path</span>(<span class="ident">wallet_lock_clone</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>)
                     .<span class="kw">await</span>;
                 <span class="ident">transaction</span>
-                    .<span class="ident">add_hop_to_path</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>)
+                    .<span class="ident">add_hop_to_path</span>(<span class="ident">wallet_lock_clone</span>.<span class="ident">clone</span>(), <span class="ident">publickey</span>)
                     .<span class="kw">await</span>;
-
-                <span class="comment">//println!(&quot;TRANSACTION: {:?}&quot;, transaction);</span>
 
                 <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
             }
@@ -385,7 +398,7 @@ TODO: Fill in these docs
                     .<span class="kw">await</span>;
                 <span class="kw">match</span> <span class="ident">result</span> {
                     <span class="prelude-val">Ok</span>(<span class="ident">_response</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="comment">// println!(&quot;response {:?}&quot;, response);</span>
+                        <span class="comment">//println!(&quot;response {:?}&quot;, response);</span>
                     }
                     <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="macro">println!</span>(<span class="string">&quot;Error sending tx to node: {}&quot;</span>, <span class="ident">error</span>);
@@ -396,16 +409,24 @@ TODO: Fill in these docs
         }
     });
 
-    <span class="ident">run</span>(<span class="ident">mempool_lock</span>, <span class="ident">blockchain_lock</span>, <span class="ident">miner_lock</span>, <span class="ident">network</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="ident">run</span>(
+        <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">miner_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">network_lock</span>.<span class="ident">clone</span>(),
+    )
+    .<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">miner_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Miner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">network</span>: <span class="ident">Network</span>,
+    <span class="ident">network_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Network</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">saito_rust::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="kw">let</span> (<span class="ident">broadcast_channel_sender</span>, <span class="ident">broadcast_channel_receiver</span>) <span class="op">=</span> <span class="ident">broadcast::channel</span>(<span class="number">32</span>);
     <span class="macro">tokio::select!</span> {
@@ -437,18 +458,19 @@ TODO: Fill in these docs
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
             }
         },
-        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run_server</span>() <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">res</span> <span class="op">=</span> <span class="ident">saito_rust::networking::network::run</span>(
+            <span class="ident">network_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
+            <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
+        ) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
-            }
-        },
-        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>() <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>)
+                <span class="macro">eprintln!</span>(<span class="string">&quot;network err {:?}&quot;</span>, <span class="ident">err</span>)
             }
         },
     }
-    <span class="macro">println!</span>(<span class="string">&quot;exiting..?&quot;</span>);
     <span class="prelude-val">Ok</span>(())
 }
 </pre></div>

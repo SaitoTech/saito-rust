@@ -188,6 +188,66 @@
 <span id="188">188</span>
 <span id="189">189</span>
 <span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
@@ -201,33 +261,34 @@
 <span class="kw">use</span> <span class="ident">tokio::signal</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>};
-<span class="doccomment">/// The consensus state which exposes a run method</span>
-<span class="doccomment">/// initializes Saito state</span>
-<span class="kw">struct</span> <span class="ident">Consensus</span> {
-    <span class="ident">_notify_shutdown</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
-    <span class="ident">_shutdown_complete_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
-    <span class="ident">_shutdown_complete_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
-}
 
-<span class="doccomment">/// The types of messages broadcast over the main</span>
-<span class="doccomment">/// broadcast channel in normal operations.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Saito has the following system-wide messages which may be sent and received</span>
+<span class="doccomment">/// over the main broadcast channel. Convention has the message begin with the</span>
+<span class="doccomment">/// class that is broadcasting.</span>
+<span class="doccomment">///</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SaitoMessage</span> {
-    <span class="ident">TestMessage</span>,
-    <span class="ident">TestMessage2</span>,
-    <span class="ident">TestMessage3</span>,
+    <span class="comment">// broadcast when the longest chain block changes</span>
     <span class="ident">BlockchainNewLongestChainBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">difficulty</span>: <span class="ident">u64</span> },
+    <span class="comment">// broadcast when a block is successfully added</span>
     <span class="ident">BlockchainAddBlockSuccess</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
+    <span class="comment">// broadcast when a block is unsuccessful at being added</span>
     <span class="ident">BlockchainAddBlockFailure</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
+    <span class="comment">// broadcast when the miner finds a golden ticket</span>
     <span class="ident">MinerNewGoldenTicket</span> { <span class="ident">ticket</span>: <span class="ident">GoldenTicket</span> },
-    <span class="ident">MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
-    <span class="ident">MempoolNewTransaction</span> { <span class="ident">transaction</span>: <span class="ident">Transaction</span> },
+    <span class="comment">// broadcast when the mempool produces a new block</span>
+    <span class="ident">NetworkNewBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
+    <span class="comment">// broadcast when the mempool adds a new transaction</span>
+    <span class="ident">NetworkNewTransaction</span> { <span class="ident">transaction</span>: <span class="ident">Transaction</span> },
 }
 
-<span class="doccomment">/// Run the Saito consensus runtime</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// The entry point to the Saito consensus runtime</span>
+<span class="doccomment">///</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="comment">//</span>
-    <span class="comment">// handle shutdown messages using broadcast channel</span>
+    <span class="comment">// handle shutdown messages w/ broadcast channel</span>
     <span class="comment">//</span>
     <span class="kw">let</span> (<span class="ident">notify_shutdown</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">broadcast::channel</span>(<span class="number">1</span>);
     <span class="kw">let</span> (<span class="ident">shutdown_complete_tx</span>, <span class="ident">shutdown_complete_rx</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">1</span>);
@@ -237,6 +298,9 @@
         <span class="ident">_shutdown_complete_rx</span>: <span class="ident">shutdown_complete_rx</span>,
     };
 
+    <span class="comment">//</span>
+    <span class="comment">// initiate runtime and handle results</span>
+    <span class="comment">//</span>
     <span class="macro">tokio::select!</span> {
         <span class="ident">res</span> <span class="op">=</span> <span class="ident">consensus</span>.<span class="ident">run</span>() <span class="op">=</span><span class="op">&gt;</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
@@ -251,14 +315,34 @@
     <span class="prelude-val">Ok</span>(())
 }
 
+<span class="comment">//</span>
+<span class="comment">// The consensus state exposes a run method that main</span>
+<span class="comment">// calls to initialize Saito state and prepare for</span>
+<span class="comment">// shutdown.</span>
+<span class="comment">//</span>
+<span class="kw">struct</span> <span class="ident">Consensus</span> {
+    <span class="ident">_notify_shutdown</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+    <span class="ident">_shutdown_complete_rx</span>: <span class="ident">mpsc::Receiver</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+    <span class="ident">_shutdown_complete_tx</span>: <span class="ident">mpsc::Sender</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+}
+
 <span class="kw">impl</span> <span class="ident">Consensus</span> {
-    <span class="doccomment">/// Run consensus</span>
+    <span class="comment">//</span>
+    <span class="comment">// Run consensus</span>
+    <span class="comment">//</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="comment">//</span>
-        <span class="comment">// create inter-module broadcast channels</span>
+        <span class="comment">// create main broadcast channel</span>
+        <span class="comment">//</span>
+        <span class="comment">// all major classes have send/receive access to the main broadcast</span>
+        <span class="comment">// channel, and can communicate by sending the events listed in the</span>
+        <span class="comment">// SaitoMessage list above.</span>
         <span class="comment">//</span>
         <span class="kw">let</span> (<span class="ident">broadcast_channel_sender</span>, <span class="ident">broadcast_channel_receiver</span>) <span class="op">=</span> <span class="ident">broadcast::channel</span>(<span class="number">32</span>);
 
+        <span class="comment">//</span>
+        <span class="comment">// handle command-line arguments</span>
+        <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">matches</span> <span class="op">=</span> <span class="ident">App::new</span>(<span class="string">&quot;Saito Runtime&quot;</span>)
             .<span class="ident">about</span>(<span class="string">&quot;Runs a Saito Node&quot;</span>)
             .<span class="ident">arg</span>(
@@ -297,16 +381,9 @@
 
         <span class="kw">let</span> <span class="ident">key_path</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;key_path&quot;</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;password&quot;</span>);
+
         <span class="comment">//</span>
-        <span class="comment">// all objects requiring multithread read / write access are</span>
-        <span class="comment">// wrapped in Tokio::RwLock for read().await / write().await</span>
-        <span class="comment">// access. This requires cloning the lock and that clone</span>
-        <span class="comment">// being sent into the async threads rather than the original</span>
-        <span class="comment">//</span>
-        <span class="comment">// major classes get a clone of the broadcast channel sender</span>
-        <span class="comment">// which is assigned to them on Object::run so they can</span>
-        <span class="comment">// broadcast cross-system messages. See SaitoMessage ENUM above</span>
-        <span class="comment">// for information on cross-system notifications.</span>
+        <span class="comment">// generate/load the wallet</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         {
@@ -314,26 +391,51 @@
             <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="ident">key_path</span>, <span class="ident">password</span>);
         }
 
+        <span class="comment">//</span>
+        <span class="comment">// load blocks from disk</span>
+        <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="comment">// Load blocks from disk if configured</span>
         <span class="kw">let</span> <span class="ident">load_blocks_from_disk</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>(<span class="string">&quot;storage.load_blocks_from_disk&quot;</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">can_load</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">can_load</span>,
-            <span class="comment">// we load by default</span>
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
         };
-
         <span class="kw">if</span> <span class="ident">load_blocks_from_disk</span> {
             <span class="ident">Storage::load_blocks_from_disk</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
         }
+
+        <span class="comment">//</span>
+        <span class="comment">// instantiate core classes</span>
+        <span class="comment">//</span>
+        <span class="comment">// all major classes which require multithread read / write access are</span>
+        <span class="comment">// wrapped in Tokio::RwLock for read().await / write().await access.</span>
+        <span class="comment">// we will send a clone of this RwLock object in any object that will</span>
+        <span class="comment">// require direct access when initializing the object below.</span>
+        <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(
+        <span class="kw">let</span> <span class="ident">network_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Network::new</span>(
             <span class="ident">settings</span>,
             <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
             <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
             <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-        );
+        )));
+
+        <span class="comment">//</span>
+        <span class="comment">// initialize core classes.</span>
+        <span class="comment">//</span>
+        <span class="comment">// all major classes get a clone of the broadcast channel sender and</span>
+        <span class="comment">// broadcast channel receiver. They must receive this clone and assign</span>
+        <span class="comment">// it to a local object so they have read/write access to cross-system</span>
+        <span class="comment">// messages.</span>
+        <span class="comment">//</span>
+        <span class="comment">// The SaitoMessage ENUM above contains a list of all cross-</span>
+        <span class="comment">// system notifications.</span>
+        <span class="comment">//</span>
         <span class="macro">tokio::select!</span> {
+
+        <span class="comment">//</span>
+        <span class="comment">// Mempool</span>
+        <span class="comment">//</span>
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::mempool::run</span>(
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
@@ -344,6 +446,10 @@
                     <span class="macro">eprintln!</span>(<span class="string">&quot;mempool err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
             },
+
+        <span class="comment">//</span>
+        <span class="comment">// Blockchain</span>
+        <span class="comment">//</span>
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::blockchain::run</span>(
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
@@ -353,6 +459,10 @@
                     <span class="macro">eprintln!</span>(<span class="string">&quot;blockchain err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
             },
+
+        <span class="comment">//</span>
+        <span class="comment">// Miner</span>
+        <span class="comment">//</span>
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::miner::run</span>(
                 <span class="ident">miner_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
@@ -362,16 +472,26 @@
                     <span class="macro">eprintln!</span>(<span class="string">&quot;miner err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
             },
-            <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run</span>() <span class="op">=</span><span class="op">&gt;</span> {
+
+        <span class="comment">//</span>
+        <span class="comment">// Network</span>
+        <span class="comment">//</span>
+            <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::networking::network::run</span>(
+        <span class="ident">network_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
+                <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
+        ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;network err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
             },
-            <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run_server</span>() <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;run_server err {:?}&quot;</span>, <span class="ident">err</span>)
-                }
-            },
+
+        <span class="comment">//</span>
+        <span class="comment">// Other</span>
+        <span class="comment">//</span>
             <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">_shutdown_complete_tx</span>.<span class="ident">closed</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="macro">println!</span>(<span class="string">&quot;Shutdown message complete&quot;</span>)
             }

@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["SaitoMessage","The types of messages broadcast over the main broadcast channel in normal operations."]],"fn":[["run","Run the Saito consensus runtime"]]});
+initSidebarItems({"enum":[["SaitoMessage","Saito has the following system-wide messages which may be sent and received over the main broadcast channel. Convention has the message begin with the class that is broadcasting."]],"fn":[["run","The entry point to the Saito consensus runtime"]]});

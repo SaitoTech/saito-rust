@@ -1546,28 +1546,6 @@
 <span id="1546">1546</span>
 <span id="1547">1547</span>
 <span id="1548">1548</span>
-<span id="1549">1549</span>
-<span id="1550">1550</span>
-<span id="1551">1551</span>
-<span id="1552">1552</span>
-<span id="1553">1553</span>
-<span id="1554">1554</span>
-<span id="1555">1555</span>
-<span id="1556">1556</span>
-<span id="1557">1557</span>
-<span id="1558">1558</span>
-<span id="1559">1559</span>
-<span id="1560">1560</span>
-<span id="1561">1561</span>
-<span id="1562">1562</span>
-<span id="1563">1563</span>
-<span id="1564">1564</span>
-<span id="1565">1565</span>
-<span id="1566">1566</span>
-<span id="1567">1567</span>
-<span id="1568">1568</span>
-<span id="1569">1569</span>
-<span id="1570">1570</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -1663,8 +1641,8 @@
         <span class="kw">let</span> <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
         <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_latest_block_hash</span>();
 
-        <span class="macro">println!</span>(<span class="string">&quot;blockring reports prev hash: {:?}&quot;</span>, <span class="ident">previous_block_hash</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;block reports: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>());
+        <span class="macro">println!</span>(<span class="string">&quot;blockring prev hash: {:?}&quot;</span>, <span class="ident">previous_block_hash</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;block     prev hash: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>());
 
         <span class="comment">//</span>
         <span class="comment">// sanity checks</span>
@@ -2355,7 +2333,6 @@
             <span class="ident">create_timestamp</span>()
         );
 
-        <span class="macro">println!</span>(<span class="string">&quot;This is wind chain&quot;</span>);
         <span class="comment">//</span>
         <span class="comment">// if we are winding a non-existent chain with a wind_failure it</span>
         <span class="comment">// means our wind attempt failed and we should move directly into</span>
@@ -2408,8 +2385,6 @@
             <span class="ident">create_timestamp</span>()
         );
         <span class="kw">let</span> <span class="ident">does_block_validate</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">staking</span>).<span class="kw">await</span>;
-
-        <span class="macro">println!</span>(<span class="string">&quot;DOES BV: {}&quot;</span>, <span class="ident">does_block_validate</span>);
 
         <span class="macro">event!</span>(
             <span class="ident">Level::TRACE</span>,
@@ -2819,46 +2794,27 @@
     <span class="kw">loop</span> {
         <span class="macro">tokio::select!</span> {
 
-                <span class="comment">//</span>
-                <span class="comment">// local broadcast messages</span>
-                <span class="comment">//</span>
-                    <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">blockchain_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="kw">match</span> <span class="ident">message</span> {
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
-                        }
-                    }
-
-                <span class="comment">//</span>
-                <span class="comment">// global broadcast messages</span>
-                <span class="comment">//</span>
-                    <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="kw">match</span> <span class="ident">message</span> {
-                            <span class="ident">SaitoMessage::MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                                <span class="macro">println!</span>(<span class="string">&quot;Blockchain aware of new block in mempool! -- we might use for this congestion tracking&quot;</span>);
-                            },
-
         <span class="comment">//</span>
-        <span class="comment">// TODO - delete - keeping as quick reference for multiple ways</span>
-        <span class="comment">// to broadcast messages.</span>
+        <span class="comment">// local broadcast messages</span>
         <span class="comment">//</span>
-        <span class="comment">//                    SaitoMessage::TestMessage =&gt; {</span>
-        <span class="comment">//             		println!(&quot;Blockchain GOT TEST MESSAGE!&quot;);</span>
-        <span class="comment">//			let blockchain = blockchain_lock.read().await;</span>
-        <span class="comment">//</span>
-        <span class="comment">//			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();</span>
-        <span class="comment">//</span>
-        <span class="comment">//		        if !blockchain.broadcast_channel_sender.is_none() {</span>
-        <span class="comment">//			    println!(&quot;blockchain broadcast channel sender exists!&quot;);</span>
-        <span class="comment">//</span>
-        <span class="comment">//	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()</span>
-        <span class="comment">//                        	.send(SaitoMessage::TestMessage3)</span>
-        <span class="comment">//                        	.expect(&quot;error: Mempool TryBundle Block message failed to send&quot;);</span>
-        <span class="comment">//        		}</span>
-        <span class="comment">//                    },</span>
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
-                        }
-                    }
+            <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">blockchain_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">match</span> <span class="ident">message</span> {
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
                 }
+            }
+
+        <span class="comment">//</span>
+        <span class="comment">// global broadcast messages</span>
+        <span class="comment">//</span>
+            <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">match</span> <span class="ident">message</span> {
+                    <span class="ident">SaitoMessage::NetworkNewBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">println!</span>(<span class="string">&quot;Blockchain aware network has received new block! -- we might use for this congestion tracking&quot;</span>);
+                    },
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
+                }
+            }
+        }
     }
 }
 

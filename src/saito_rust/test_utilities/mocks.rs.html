@@ -340,14 +340,13 @@
 <span id="340">340</span>
 <span id="341">341</span>
 <span id="342">342</span>
-<span id="343">343</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::burnfee</span>::{<span class="ident">BurnFee</span>, <span class="ident">HEARTBEAT</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">generate_random_bytes</span>, <span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool</span>::{<span class="ident">AddTransactionResult</span>, <span class="ident">Mempool</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool::Mempool</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipType</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time</span>::{<span class="ident">create_timestamp</span>, <span class="ident">TimestampGenerator</span>};
@@ -434,8 +433,7 @@
     <span class="kw">let</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">generate_signed_tx</span>(<span class="ident">public_key</span>, <span class="number">1</span>, <span class="number">100000</span>, <span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
     {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">add_tx_result</span> <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">add_transaction</span>(<span class="ident">transaction</span>).<span class="kw">await</span>;
-        <span class="macro">assert_eq!</span>(<span class="ident">add_tx_result</span>, <span class="ident">AddTransactionResult::Accepted</span>);
+        <span class="ident">mempool</span>.<span class="ident">add_transaction</span>(<span class="ident">transaction</span>).<span class="kw">await</span>;
     }
 
     <span class="ident">mock_timestamp_generator</span>.<span class="ident">advance</span>(<span class="ident">HEARTBEAT</span> <span class="op">*</span> <span class="number">2</span>);
