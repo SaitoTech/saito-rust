@@ -4,7 +4,14 @@ pub const GENESIS_PERIOD: u64 = 10;
 pub const PRUNE_AFTER_BLOCKS: u64 = 10;
 // max recursion when paying stakers
 pub const MAX_STAKER_RECURSION: u64 = 2;
+// max token supply - used in validating block #1
 pub const MAX_TOKEN_SUPPLY: u64 = 1_000_000_000_000_000_000;
+// minimum golden tickets required ( NUMBER_OF_TICKETS / number of preceding blocks )
+pub const MIN_GOLDEN_TICKETS_NUMERATOR: u64 = 2;
+// minimum golden tickets required ( number of tickets / NUMBER_OF_PRECEDING_BLOCKS )
+pub const MIN_GOLDEN_TICKETS_DENOMINATOR: u64 = 6;
+
+
 
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
@@ -236,10 +243,6 @@ impl Blockchain {
         // find out whether this new block is claiming to require chain-validation
         //
         let am_i_the_longest_chain = self.is_new_chain_the_longest_chain(&new_chain, &old_chain);
-
-        //
-        // if this is a potential longest-chain candidate, validate
-        //
 
         //
         // validate
@@ -738,6 +741,38 @@ impl Blockchain {
     // in opposite directions.
     //
     pub async fn validate(&mut self, new_chain: Vec<[u8; 32]>, old_chain: Vec<[u8; 32]>) -> bool {
+
+        //
+        // ensure new chain has adequate mining support to be considered as
+	// a viable chain. we handle this check here as opposed to handling
+	// it in wind_chain as we only need to check once for the entire chain
+        //
+	let mut golden_tickets_found = 0;
+	let mut search_depth_idx = 0;
+	let mut latest_block_hash = new_chain[0];
+
+        for i in 0..MIN_GOLDEN_TICKETS_DENOMINATOR {
+
+   	    search_depth_idx += 1;
+
+	    if let Some(block) = self.get_block_sync(&latest_block_hash) {
+	        if i == 0 {
+		    if block.get_id() < MIN_GOLDEN_TICKETS_DENOMINATOR { break; }
+		}
+
+		if block.get_has_golden_ticket() { golden_tickets_found += 1; }
+		latest_block_hash = block.get_previous_block_hash();
+
+	    } else {
+	        break;
+	    }
+
+	}
+        if golden_tickets_found < MIN_GOLDEN_TICKETS_NUMERATOR && search_depth_idx >= MIN_GOLDEN_TICKETS_DENOMINATOR {
+	    return false;
+	}
+
+
         if !old_chain.is_empty() {
             let res = self
                 .unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
@@ -784,7 +819,6 @@ impl Blockchain {
             create_timestamp()
         );
 
-        println!("This is wind chain");
         //
         // if we are winding a non-existent chain with a wind_failure it
         // means our wind attempt failed and we should move directly into
