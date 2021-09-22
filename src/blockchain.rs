@@ -92,8 +92,8 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_latest_block_hash();
 
-        println!("blockring reports prev hash: {:?}", previous_block_hash);
-        println!("block reports: {:?}", block.get_previous_block_hash());
+        println!("blockring prev hash: {:?}", previous_block_hash);
+        println!("block     prev hash: {:?}", block.get_previous_block_hash());
 
         //
         // sanity checks
@@ -784,7 +784,6 @@ impl Blockchain {
             create_timestamp()
         );
 
-        println!("This is wind chain");
         //
         // if we are winding a non-existent chain with a wind_failure it
         // means our wind attempt failed and we should move directly into
@@ -837,8 +836,6 @@ impl Blockchain {
             create_timestamp()
         );
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
-
-        println!("DOES BV: {}", does_block_validate);
 
         event!(
             Level::TRACE,
@@ -1248,46 +1245,27 @@ pub async fn run(
     loop {
         tokio::select! {
 
-                //
-                // local broadcast messages
-                //
-                    Some(message) = blockchain_channel_receiver.recv() => {
-                        match message {
-                            _ => {},
-                        }
-                    }
-
-                //
-                // global broadcast messages
-                //
-                    Ok(message) = broadcast_channel_receiver.recv() => {
-                        match message {
-                            SaitoMessage::MempoolNewBlock { hash: _hash } => {
-                                println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
-                            },
-
         //
-        // TODO - delete - keeping as quick reference for multiple ways
-        // to broadcast messages.
+        // local broadcast messages
         //
-        //                    SaitoMessage::TestMessage => {
-        //             		println!("Blockchain GOT TEST MESSAGE!");
-        //			let blockchain = blockchain_lock.read().await;
-        //
-        //			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();
-        //
-        //		        if !blockchain.broadcast_channel_sender.is_none() {
-        //			    println!("blockchain broadcast channel sender exists!");
-        //
-        //	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()
-        //                        	.send(SaitoMessage::TestMessage3)
-        //                        	.expect("error: Mempool TryBundle Block message failed to send");
-        //        		}
-        //                    },
-                            _ => {},
-                        }
-                    }
+            Some(message) = blockchain_channel_receiver.recv() => {
+                match message {
+                    _ => {},
                 }
+            }
+
+        //
+        // global broadcast messages
+        //
+            Ok(message) = broadcast_channel_receiver.recv() => {
+                match message {
+                    SaitoMessage::NetworkNewBlock { hash: _hash } => {
+                        println!("Blockchain aware network has received new block! -- we might use for this congestion tracking");
+                    },
+                    _ => {},
+                }
+            }
+        }
     }
 }
 

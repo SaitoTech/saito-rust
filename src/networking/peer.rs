@@ -3,7 +3,7 @@ use super::network::CHALLENGE_EXPIRATION_TIME;
 use crate::block::Block;
 use crate::blockchain::{Blockchain, GENESIS_PERIOD};
 use crate::crypto::{hash, sign_blob, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
-use crate::mempool::{AddBlockResult, AddTransactionResult, Mempool};
+use crate::mempool::Mempool;
 use crate::networking::message_types::handshake_challenge::HandshakeChallenge;
 use crate::networking::message_types::request_block_message::RequestBlockMessage;
 use crate::networking::message_types::request_blockchain_message::RequestBlockchainMessage;
@@ -374,27 +374,15 @@ impl SaitoPeer {
             "SNDTRANS" => {
                 if let Some(tx) = socket_receive_transaction(api_message.clone()) {
                     let mut mempool = mempool_lock.write().await;
-                    match mempool.add_transaction(tx).await {
-                        AddTransactionResult::Accepted | AddTransactionResult::Exists => {
-                            // TODO The tx is accepted, propagate it to all available peers
-                            peer.send_response_from_str(api_message.message_id, "OK")
-                                .await;
-                        }
-                        AddTransactionResult::Invalid => {
-                            peer.send_error_response(
-                                api_message.message_id,
-                                String::from("Invalid").as_bytes().try_into().unwrap(),
-                            )
-                            .await;
-                        }
-                        AddTransactionResult::Rejected => {
-                            peer.send_error_response(
-                                api_message.message_id,
-                                String::from("Invalid").as_bytes().try_into().unwrap(),
-                            )
-                            .await;
-                        }
-                    }
+                    mempool.add_transaction(tx).await;
+                    peer.send_response_from_str(api_message.message_id, "OK")
+                        .await;
+                    // in event of error
+                    //peer.send_error_response(
+                    //            api_message.message_id,
+                    //            String::from("Invalid").as_bytes().try_into().unwrap(),
+                    //        )
+                    //        .await;
                 }
             }
             "SNDCHAIN" => {
@@ -489,14 +477,7 @@ impl SaitoPeer {
             "REQBLOCK" => {
                 let block = Block::deserialize_for_net(response_api_message.message_data());
                 let mut mempool = self.mempool_lock.write().await;
-                match mempool.add_block_to_queue(block) {
-                    AddBlockResult::Exists => {
-                        println!("The node appears to be requesting blocks which is already has in it's mempool queue, this should probably be fixed...");
-                    }
-                    AddBlockResult::Accepted => {
-                        // nothing to do
-                    }
-                }
+                mempool.add_block(block);
             }
             "REQBLKHD" => {
                 println!("IMPLEMENT REQBLKHD RESPONSE?!");
