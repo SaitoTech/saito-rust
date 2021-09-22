@@ -3,7 +3,7 @@ use crate::blockchain::Blockchain;
 use crate::burnfee::{BurnFee, HEARTBEAT};
 use crate::crypto::{generate_random_bytes, hash, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::golden_ticket::GoldenTicket;
-use crate::mempool::{AddTransactionResult, Mempool};
+use crate::mempool::Mempool;
 use crate::miner::Miner;
 use crate::slip::{Slip, SlipType};
 use crate::time::{create_timestamp, TimestampGenerator};
@@ -90,8 +90,7 @@ pub async fn make_block_with_mempool(
     let transaction = generate_signed_tx(public_key, 1, 100000, wallet_lock.clone()).await;
     {
         let mut mempool = mempool_lock.write().await;
-        let add_tx_result = mempool.add_transaction(transaction).await;
-        assert_eq!(add_tx_result, AddTransactionResult::Accepted);
+        mempool.add_transaction(transaction).await;
     }
 
     mock_timestamp_generator.advance(HEARTBEAT * 2);
@@ -209,7 +208,8 @@ pub fn make_mock_block(
         timestamp,
         prev_timestamp,
     );
-    let wallet = Wallet::new("test/testwallet", Some("asdf"));
+    let mut wallet = Wallet::new();
+    wallet.load_keys("test/testwallet", Some("asdf"));
     let mut mock_input = Slip::new();
     mock_input.set_publickey(wallet.get_publickey());
     mock_input.set_uuid([0; 32]);

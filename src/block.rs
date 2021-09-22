@@ -34,6 +34,10 @@ pub const BLOCK_HEADER_SIZE: usize = 213;
 pub struct ConsensusValues {
     // expected transaction containing outbound payments
     pub fee_transaction: Option<Transaction>,
+    // number of issuance transactions if exists
+    pub it_num: u8,
+    // index of issuance transactions if exists
+    pub it_idx: Option<usize>,
     // number of FEE in transactions if exists
     pub ft_num: u8,
     // index of FEE in transactions if exists
@@ -68,6 +72,8 @@ impl ConsensusValues {
     pub fn new() -> ConsensusValues {
         ConsensusValues {
             fee_transaction: None,
+            it_num: 0,
+            it_idx: None,
             ft_num: 0,
             ft_idx: None,
             gt_num: 0,
@@ -275,7 +281,11 @@ pub struct Block {
     /// Is Block on longest chain
     lc: bool,
     // has golden ticket
-    has_golden_ticket: bool,
+    pub has_golden_ticket: bool,
+    // has issuance transaction
+    pub has_issuance_transaction: bool,
+    // issuance transaction index
+    pub issuance_transaction_idx: u64,
     // has fee transaction
     has_fee_transaction: bool,
     // golden ticket index
@@ -319,6 +329,8 @@ impl Block {
             lc: false,
             has_golden_ticket: false,
             has_fee_transaction: false,
+            has_issuance_transaction: false,
+            issuance_transaction_idx: 0,
             golden_ticket_idx: 0,
             fee_transaction_idx: 0,
             total_rebroadcast_slips: 0,
@@ -407,12 +419,20 @@ impl Block {
         self.has_golden_ticket
     }
 
+    pub fn get_has_issuance_transaction(&self) -> bool {
+        self.has_issuance_transaction
+    }
+
     pub fn get_has_fee_transaction(&self) -> bool {
         self.has_fee_transaction
     }
 
     pub fn get_golden_ticket_idx(&self) -> u64 {
         self.golden_ticket_idx
+    }
+
+    pub fn get_issuance_transaction_idx(&self) -> u64 {
+        self.issuance_transaction_idx
     }
 
     pub fn get_fee_transaction_idx(&self) -> u64 {
@@ -435,12 +455,20 @@ impl Block {
         self.routing_work_for_creator = routing_work_for_creator;
     }
 
+    pub fn set_has_issuance_transaction(&mut self, hit: bool) {
+        self.has_issuance_transaction = hit;
+    }
+
     pub fn set_has_golden_ticket(&mut self, hgt: bool) {
         self.has_golden_ticket = hgt;
     }
 
     pub fn set_has_fee_transaction(&mut self, hft: bool) {
         self.has_fee_transaction = hft;
+    }
+
+    pub fn set_issuance_transaction_idx(&mut self, idx: u64) {
+        self.issuance_transaction_idx = idx;
     }
 
     pub fn set_golden_ticket_idx(&mut self, idx: u64) {
@@ -845,7 +873,7 @@ impl Block {
         //
         // calculate total fees
         //
-        // calculate fee and golden ticket indices
+        // calculate fee and golden ticket and issuance (block 1) indices
         //
         let mut idx: usize = 0;
         for transaction in &self.transactions {
@@ -858,6 +886,10 @@ impl Block {
             if transaction.is_golden_ticket() {
                 cv.gt_num += 1;
                 cv.gt_idx = Some(idx);
+            }
+            if transaction.is_issuance_transaction() {
+                cv.it_num += 1;
+                cv.it_idx = Some(idx);
             }
             idx += 1;
         }
@@ -1271,6 +1303,8 @@ impl Block {
 
         let mut has_golden_ticket = false;
         let mut has_fee_transaction = false;
+        let mut has_issuance_transaction = false;
+        let mut issuance_transaction_idx = 0;
         let mut golden_ticket_idx = 0;
         let mut fee_transaction_idx = 0;
 
@@ -1319,6 +1353,10 @@ impl Block {
             // also check the transactions for golden ticket and fees
             //
             match transaction.get_transaction_type() {
+                TransactionType::Issuance => {
+                    has_issuance_transaction = true;
+                    issuance_transaction_idx = i as u64;
+                }
                 TransactionType::Fee => {
                     has_fee_transaction = true;
                     fee_transaction_idx = i as u64;
@@ -1343,8 +1381,10 @@ impl Block {
         }
         self.set_has_fee_transaction(has_fee_transaction);
         self.set_has_golden_ticket(has_golden_ticket);
+        self.set_has_issuance_transaction(has_issuance_transaction);
         self.set_fee_transaction_idx(fee_transaction_idx);
         self.set_golden_ticket_idx(golden_ticket_idx);
+        self.set_issuance_transaction_idx(issuance_transaction_idx);
 
         //
         // update block with total fees
@@ -1402,6 +1442,17 @@ impl Block {
         let cv = self.generate_consensus_values(&blockchain).await;
 
         //
+        // only block #1 can have an issuance transaction
+        //
+        if cv.it_num > 0 && self.get_id() > 1 {
+            event!(
+                Level::ERROR,
+                "ERROR: blockchain contains issuance after block 1 in chain",
+            );
+            return false;
+        }
+
+        //
         // Previous Block
         //
         // many kinds of validation like the burn fee and the golden ticket solution
@@ -1416,9 +1467,6 @@ impl Block {
             // validate treasury
             //
             if self.get_treasury() != previous_block.get_treasury() + cv.nolan_falling_off_chain {
-                //     "ERROR: treasury does not validate: {} expected versus {} found",
-                //     (previous_block.get_treasury() + cv.nolan_falling_off_chain),
-                //     self.get_treasury(),
                 event!(
                     Level::ERROR,
                     "ERROR: treasury does not validate: {} expected versus {} found",
@@ -1697,26 +1745,27 @@ impl Block {
         // parallel processing can make it difficult to find out exactly what the
         // problem is. ergo this code that tries to do them on the main thread so
         // debugging output works.
-        for i in 0..self.transactions.len() {
-            let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
-            if !transactions_valid2 {
-                println!("TType: {:?}", self.transactions[i].get_transaction_type());
-            }
-        }
-        true
+        //
+        //for i in 0..self.transactions.len() {
+        //    let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
+        //    if !transactions_valid2 {
+        //        println!("TType: {:?}", self.transactions[i].get_transaction_type());
+        //    }
+        //}
+        //true
 
-        //        let transactions_valid = self
-        //            .transactions
-        //            .par_iter()
-        //            .all(|tx| tx.validate(utxoset, staking));
+        let transactions_valid = self
+            .transactions
+            .par_iter()
+            .all(|tx| tx.validate(utxoset, staking));
 
-        //        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
+        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         //
         // and if our transactions are valid, so is the block...
         //
-        //        println!(" ... are txs valid: {}", transactions_valid);
-        //        transactions_valid
+        println!(" ... are txs valid: {}", transactions_valid);
+        transactions_valid
     }
 
     pub async fn generate(
@@ -1806,6 +1855,19 @@ impl Block {
         // for testing create some VIP transactions
         //
         if previous_block_id == 0 {
+            {
+                let initial_token_allocation_slips = Storage::return_token_supply_slips_from_disk();
+                //println!("{:?}", initial_token_allocation_slips);
+
+                let mut transaction = Transaction::new();
+                for i in 0..initial_token_allocation_slips.len() {
+                    transaction.add_output(initial_token_allocation_slips[i].clone());
+                }
+                transaction.set_transaction_type(TransactionType::Issuance);
+                transaction.sign(privatekey);
+                block.add_transaction(transaction);
+            }
+
             for _i in 0..10 as i32 {
                 let mut transaction =
                     Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 100000)
@@ -1959,7 +2021,8 @@ mod tests {
 
     #[test]
     fn block_sign_test() {
-        let wallet = Wallet::new("test/testwallet", Some("asdf"));
+        let mut wallet = Wallet::new();
+        wallet.load_keys("test/testwallet", Some("asdf"));
         let mut block = Block::new();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
@@ -2034,7 +2097,8 @@ mod tests {
     #[test]
     fn block_merkle_root_test() {
         let mut block = Block::new();
-        let wallet = Wallet::new("test/testwallet", Some("asdf"));
+        let mut wallet = Wallet::new();
+        wallet.load_keys("test/testwallet", Some("asdf"));
 
         let mut transactions = (0..5)
             .into_iter()
@@ -2053,7 +2117,8 @@ mod tests {
     #[tokio::test]
     async fn block_downgrade_test() {
         let mut block = Block::new();
-        let wallet = Wallet::new("test/testwallet", Some("asdf"));
+        let mut wallet = Wallet::new();
+        wallet.load_keys("test/testwallet", Some("asdf"));
         let mut transactions = (0..5)
             .into_iter()
             .map(|_| {
@@ -2075,7 +2140,7 @@ mod tests {
 
     #[tokio::test]
     async fn block_serialization_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 

@@ -7,8 +7,8 @@ use std::path::Path;
 
 use crate::block::Block;
 use crate::crypto::{
-    generate_keys, hash, keys_from_slice, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey,
-    SaitoSignature, SaitoUTXOSetKey,
+    generate_keypair_from_privatekey, generate_keys, hash, sign, SaitoHash, SaitoPrivateKey,
+    SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
 };
 use crate::golden_ticket::GoldenTicket;
 use crate::slip::{Slip, SlipType};
@@ -43,7 +43,7 @@ impl EncryptedWallet {
     }
 }
 impl Wallet {
-    pub fn default() -> Self {
+    pub fn new() -> Wallet {
         let (publickey, privatekey) = generate_keys();
         Wallet {
             publickey,
@@ -52,18 +52,8 @@ impl Wallet {
             staked_slips: vec![],
         }
     }
-    pub fn new(key_path: &str, password: Option<&str>) -> Self {
-        let (publickey, privatekey) = Wallet::load_keys(key_path, password);
-        println!("Loaded wallet {}", hex::encode(publickey));
-        Wallet {
-            publickey,
-            privatekey,
-            slips: vec![],
-            staked_slips: vec![],
-        }
-    }
 
-    pub fn load_keys(key_path: &str, password: Option<&str>) -> ([u8; 33], [u8; 32]) {
+    pub fn load_keys(&mut self, key_path: &str, password: Option<&str>) {
         let mut filename = String::from("data/");
         filename.push_str(key_path);
         let path = Path::new(&filename);
@@ -77,7 +67,10 @@ impl Wallet {
             decrypted_buffer = Wallet::read_key_file(&key_path, &password);
         }
 
-        keys_from_slice(&decrypted_buffer)
+        let (publickey, privatekey) = generate_keypair_from_privatekey(&decrypted_buffer);
+
+        self.set_publickey(publickey);
+        self.set_privatekey(privatekey);
     }
 
     fn create_key_file(key_file_path: &str, opts_password: &Option<&str>) -> Vec<u8> {
@@ -130,37 +123,39 @@ impl Wallet {
         (key, iv)
     }
 
-    pub fn add_block(&mut self, block: &Block) {
-        //
-        // TODO
-        //
-        // There are multiple bugs in this implementation.
-        //
-        // If a block is added in a fork all the inputs will be deleted and won't be recovered.
-        // Also, outputs added will still be in the wallet even if they are not replayed on the longest chain(and are therefore unspendable)
-        for tx in block.get_transactions() {
-            for input in tx.get_inputs() {
-                if input.get_slip_type() == SlipType::StakerDeposit
-                    || input.get_slip_type() == SlipType::StakerOutput
-                    || input.get_slip_type() == SlipType::StakerWithdrawalStaking
-                    || input.get_slip_type() == SlipType::StakerWithdrawalPending
-                {
-                    //println!(
-                    //    "deleting staker input  with slip uuid: {:?}",
-                    //    input.get_uuid()
-                    //);
-                    self.delete_staked_slip(input);
-                } else {
-                    //println!(
-                    //    "deleting normal input  with slip uuid: {:?}",
-                    //    input.get_uuid()
-                    //);
-                    self.delete_slip(input);
+    pub fn on_chain_reorganization(&mut self, block: &Block, lc: bool) {
+        if lc {
+            for tx in block.get_transactions() {
+                for input in tx.get_inputs() {
+                    if input.get_amount() > 0 && input.get_publickey() == self.get_publickey() {
+                        if input.get_slip_type() == SlipType::StakerDeposit
+                            || input.get_slip_type() == SlipType::StakerOutput
+                            || input.get_slip_type() == SlipType::StakerWithdrawalStaking
+                            || input.get_slip_type() == SlipType::StakerWithdrawalPending
+                        {
+                            self.delete_staked_slip(input);
+                        } else {
+                            self.delete_slip(input);
+                        }
+                    }
+                }
+                for output in tx.get_outputs() {
+                    if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
+                        self.add_slip(block, tx, output, true);
+                    }
                 }
             }
-            for output in tx.get_outputs() {
-                if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
-                    self.add_slip(block, tx, output, block.get_lc());
+        } else {
+            for tx in block.get_transactions() {
+                for input in tx.get_inputs() {
+                    if input.get_amount() > 0 && input.get_publickey() == self.get_publickey() {
+                        self.add_slip(block, tx, input, true);
+                    }
+                }
+                for output in tx.get_outputs() {
+                    if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
+                        self.delete_slip(output);
+                    }
                 }
             }
         }
@@ -220,6 +215,14 @@ impl Wallet {
 
     pub fn get_publickey(&self) -> SaitoPublicKey {
         self.publickey
+    }
+
+    pub fn set_privatekey(&mut self, privatekey: SaitoPrivateKey) {
+        self.privatekey = privatekey;
+    }
+
+    pub fn set_publickey(&mut self, publickey: SaitoPublicKey) {
+        self.publickey = publickey;
     }
 
     pub fn get_available_balance(&self) -> u64 {

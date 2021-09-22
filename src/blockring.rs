@@ -158,7 +158,11 @@ impl BlockRing {
             self.block_ring_lc_pos = Some(insert_pos as usize);
         } else {
             //
-            // only adjust longest_chain if this is it
+            // if we are unsetting the longest-chain, we automatically
+            // roll backwards and set the longest-chain to the previous
+            // position if available. this adds some complexity to unwinding
+            // the chain but should ensure that in most situations there is
+            // always a known longest-chain position.
             //
             if let Some(block_ring_lc_pos) = self.block_ring_lc_pos {
                 if block_ring_lc_pos == insert_pos as usize {
@@ -203,7 +207,7 @@ impl BlockRing {
         }
     }
 
-    pub fn get_longest_chain_block_hash(&self) -> SaitoHash {
+    pub fn get_latest_block_hash(&self) -> SaitoHash {
         match self.block_ring_lc_pos {
             Some(block_ring_lc_pos) => match self.block_ring[block_ring_lc_pos].lc_pos {
                 Some(lc_pos) => self.block_ring[block_ring_lc_pos].block_hashes[lc_pos],
@@ -350,7 +354,7 @@ mod test {
 
         // TODO: These next 3 are also wrong, they should probably return None or panic
         assert_eq!(0, blockring.get_longest_chain_block_id());
-        assert_eq!([0; 32], blockring.get_longest_chain_block_hash());
+        assert_eq!([0; 32], blockring.get_latest_block_hash());
         assert_eq!(
             [0; 32],
             blockring.get_longest_chain_block_hash_by_block_id(0)
@@ -358,10 +362,7 @@ mod test {
 
         blockring.on_chain_reorganization(mock_block.get_id(), mock_block.get_hash(), true);
         assert_eq!(0, blockring.get_longest_chain_block_id());
-        assert_eq!(
-            mock_block.get_hash(),
-            blockring.get_longest_chain_block_hash()
-        );
+        assert_eq!(mock_block.get_hash(), blockring.get_latest_block_hash());
         assert_eq!(
             mock_block.get_hash(),
             blockring.get_longest_chain_block_hash_by_block_id(0)
@@ -371,7 +372,11 @@ mod test {
     #[tokio::test]
     async fn blockring_add_and_delete_block() {
         let mut blockring = BlockRing::new();
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
 

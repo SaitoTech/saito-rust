@@ -79,18 +79,20 @@ pub async fn main() -> saito_rust::Result<()> {
         None => 1024,
     };
 
-    let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+    let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+    {
+        let mut wallet = wallet_lock.write().await;
+        wallet.load_keys("test/testwallet", Some("asdf"));
+    }
     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-
     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
     let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-
-    let network = Network::new(
+    let network_lock = Arc::new(RwLock::new(Network::new(
         settings.clone(),
         wallet_lock.clone(),
         mempool_lock.clone(),
         blockchain_lock.clone(),
-    );
+    )));
 
     let publickey;
     let privatekey;
@@ -100,6 +102,8 @@ pub async fn main() -> saito_rust::Result<()> {
         publickey = wallet.get_publickey();
         privatekey = wallet.get_privatekey();
     }
+
+    let wallet_lock_clone = wallet_lock.clone();
 
     tokio::spawn(async move {
         let client = reqwest::Client::new();
@@ -118,9 +122,13 @@ pub async fn main() -> saito_rust::Result<()> {
             event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
 
             for _i in 0..txs_to_generate {
-                let mut transaction =
-                    Transaction::generate_transaction(wallet_lock.clone(), publickey, 5000, 5000)
-                        .await;
+                let mut transaction = Transaction::generate_transaction(
+                    wallet_lock_clone.clone(),
+                    publickey,
+                    5000,
+                    5000,
+                )
+                .await;
                 transaction.set_message(
                     (0..bytes_per_tx)
                         .into_par_iter()
@@ -129,14 +137,15 @@ pub async fn main() -> saito_rust::Result<()> {
                 );
 
                 // sign ...
+                //transaction.generate_metadata();
                 transaction.sign(privatekey);
 
                 // add some test hops ...
                 transaction
-                    .add_hop_to_path(wallet_lock.clone(), publickey)
+                    .add_hop_to_path(wallet_lock_clone.clone(), publickey)
                     .await;
                 transaction
-                    .add_hop_to_path(wallet_lock.clone(), publickey)
+                    .add_hop_to_path(wallet_lock_clone.clone(), publickey)
                     .await;
 
                 transactions.push(transaction);
@@ -151,27 +160,35 @@ pub async fn main() -> saito_rust::Result<()> {
                     .await;
                 match result {
                     Ok(_response) => {
-                        // println!("response {:?}", response);
+                        //println!("response {:?}", response);
                     }
                     Err(error) => {
                         println!("Error sending tx to node: {}", error);
                     }
                 }
             }
-            sleep(Duration::from_millis(2000));
+            sleep(Duration::from_millis(4000));
         }
     });
 
-    run(mempool_lock, blockchain_lock, miner_lock, network).await?;
+    run(
+        mempool_lock.clone(),
+        wallet_lock.clone(),
+        blockchain_lock.clone(),
+        miner_lock.clone(),
+        network_lock.clone(),
+    )
+    .await?;
 
     Ok(())
 }
 
 pub async fn run(
     mempool_lock: Arc<RwLock<Mempool>>,
+    wallet_lock: Arc<RwLock<Wallet>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     miner_lock: Arc<RwLock<Miner>>,
-    network: Network,
+    network_lock: Arc<RwLock<Network>>,
 ) -> saito_rust::Result<()> {
     let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
     tokio::select! {
@@ -203,17 +220,18 @@ pub async fn run(
                 eprintln!("{:?}", err)
             }
         },
-        res = network.run_server() => {
+        res = saito_rust::networking::network::run(
+            network_lock.clone(),
+            wallet_lock.clone(),
+        mempool_lock.clone(),
+        blockchain_lock.clone(),
+            broadcast_channel_sender.clone(),
+            broadcast_channel_sender.subscribe()
+        ) => {
             if let Err(err) = res {
-                eprintln!("{:?}", err)
-            }
-        },
-        res = network.run() => {
-            if let Err(err) = res {
-                eprintln!("{:?}", err)
+                eprintln!("network err {:?}", err)
             }
         },
     }
-    println!("exiting..?");
     Ok(())
 }

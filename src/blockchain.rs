@@ -4,6 +4,7 @@ pub const GENESIS_PERIOD: u64 = 10;
 pub const PRUNE_AFTER_BLOCKS: u64 = 10;
 // max recursion when paying stakers
 pub const MAX_STAKER_RECURSION: u64 = 2;
+pub const MAX_TOKEN_SUPPLY: u64 = 1_000_000_000_000_000_000;
 
 use crate::block::{Block, BlockType};
 use crate::blockring::BlockRing;
@@ -76,9 +77,10 @@ impl Blockchain {
         event!(Level::INFO, "add_block {}", &hex::encode(&block.get_hash()));
         event!(
             Level::TRACE,
-            " ... blockchain.add_block start: {:?} txs: {}",
+            " ... blockchain.add_block start: {:?} hash: {:?}, and id {}",
             create_timestamp(),
-            block.get_transactions().len()
+            block.get_hash(),
+            block.get_id()
         );
 
         //
@@ -88,7 +90,10 @@ impl Blockchain {
         //
         let block_hash = block.get_hash();
         let block_id = block.get_id();
-        let previous_block_hash = self.blockring.get_longest_chain_block_hash();
+        let previous_block_hash = self.blockring.get_latest_block_hash();
+
+        println!("blockring prev hash: {:?}", previous_block_hash);
+        println!("block     prev hash: {:?}", block.get_previous_block_hash());
 
         //
         // sanity checks
@@ -333,26 +338,6 @@ impl Blockchain {
             " ... block save done:            {:?}",
             create_timestamp()
         );
-
-        //
-        // TODO - this is merely for testing, we do not intend
-        // the routing client to process transactions in its
-        // wallet.
-        {
-            event!(
-                Level::TRACE,
-                " ... wallet processing start:    {}",
-                create_timestamp()
-            );
-            let mut wallet = self.wallet_lock.write().await;
-            let block = self.blocks.get(&block_hash).unwrap();
-            wallet.add_block(&block);
-            event!(
-                Level::TRACE,
-                " ... wallet processing stop:     {}",
-                create_timestamp()
-            );
-        }
 
         //
         // update_genesis_period and prune old data
@@ -667,12 +652,12 @@ impl Blockchain {
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
-        let block_hash = self.blockring.get_longest_chain_block_hash();
+        let block_hash = self.blockring.get_latest_block_hash();
         self.blocks.get(&block_hash)
     }
 
     pub fn get_latest_block_hash(&self) -> SaitoHash {
-        self.blockring.get_longest_chain_block_hash()
+        self.blockring.get_latest_block_hash()
     }
 
     pub fn get_latest_block_id(&self) -> u64 {
@@ -851,6 +836,7 @@ impl Blockchain {
             create_timestamp()
         );
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
+
         event!(
             Level::TRACE,
             " ... after block.validate:       {:?} {}",
@@ -880,6 +866,27 @@ impl Blockchain {
             // staking tables update
             let (res_spend, res_unspend, res_delete) =
                 self.staking.on_chain_reorganization(block, true);
+
+            //
+            // TODO - wallet update should be optional, as core routing nodes
+            // will not want to do the work of scrolling through the block and
+            // updating their wallets by default. wallet processing can be
+            // more efficiently handled by lite-nodes.
+            //
+            {
+                event!(
+                    Level::TRACE,
+                    " ... wallet processing start:    {}",
+                    create_timestamp()
+                );
+                let mut wallet = self.wallet_lock.write().await;
+                wallet.on_chain_reorganization(&block, true);
+                event!(
+                    Level::TRACE,
+                    " ... wallet processing stop:     {}",
+                    create_timestamp()
+                );
+            }
 
             //
             // we cannot pass the UTXOSet into the staking object to update as that would
@@ -1020,7 +1027,13 @@ impl Blockchain {
 
         // staking tables
         let (res_spend, res_unspend, res_delete) =
-            self.staking.on_chain_reorganization(block, true);
+            self.staking.on_chain_reorganization(block, false);
+
+        // wallet update
+        {
+            let mut wallet = self.wallet_lock.write().await;
+            wallet.on_chain_reorganization(&block, true);
+        }
 
         //
         // we cannot pass the UTXOSet into the staking object to update as that would
@@ -1232,46 +1245,27 @@ pub async fn run(
     loop {
         tokio::select! {
 
-                //
-                // local broadcast messages
-                //
-                    Some(message) = blockchain_channel_receiver.recv() => {
-                        match message {
-                            _ => {},
-                        }
-                    }
-
-                //
-                // global broadcast messages
-                //
-                    Ok(message) = broadcast_channel_receiver.recv() => {
-                        match message {
-                            SaitoMessage::MempoolNewBlock { hash: _hash } => {
-                                println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
-                            },
-
         //
-        // TODO - delete - keeping as quick reference for multiple ways
-        // to broadcast messages.
+        // local broadcast messages
         //
-        //                    SaitoMessage::TestMessage => {
-        //             		println!("Blockchain GOT TEST MESSAGE!");
-        //			let blockchain = blockchain_lock.read().await;
-        //
-        //			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();
-        //
-        //		        if !blockchain.broadcast_channel_sender.is_none() {
-        //			    println!("blockchain broadcast channel sender exists!");
-        //
-        //	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()
-        //                        	.send(SaitoMessage::TestMessage3)
-        //                        	.expect("error: Mempool TryBundle Block message failed to send");
-        //        		}
-        //                    },
-                            _ => {},
-                        }
-                    }
+            Some(message) = blockchain_channel_receiver.recv() => {
+                match message {
+                    _ => {},
                 }
+            }
+
+        //
+        // global broadcast messages
+        //
+            Ok(message) = broadcast_channel_receiver.recv() => {
+                match message {
+                    SaitoMessage::NetworkNewBlock { hash: _hash } => {
+                        println!("Blockchain aware network has received new block! -- we might use for this congestion tracking");
+                    },
+                    _ => {},
+                }
+            }
+        }
     }
 }
 
@@ -1311,7 +1305,11 @@ mod tests {
 
     #[tokio::test]
     async fn add_blocks_test_1() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
 
@@ -1433,7 +1431,11 @@ mod tests {
     #[tokio::test]
     async fn produce_four_blocks_test() {
         // There... are... four blocks!
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new("test/testwallet", Some("asdf"))));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        {
+            let mut wallet = wallet_lock.write().await;
+            wallet.load_keys("test/testwallet", Some("asdf"));
+        }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut miner = Miner::new(wallet_lock.clone());
 
