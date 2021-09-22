@@ -19,7 +19,7 @@ use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::staking::Staking;
 use crate::storage::Storage;
-use crate::transaction::{Transaction, TransactionType};
+use crate::transaction::{TransactionType};
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
 use tracing::{event, Level};
@@ -776,16 +776,12 @@ impl Blockchain {
 
 	}
 
-println!("golden tix found: {}", golden_tickets_found);
-println!("search depth: {}", search_depth_idx);
-
         if golden_tickets_found < MIN_GOLDEN_TICKETS_NUMERATOR && search_depth_idx >= MIN_GOLDEN_TICKETS_DENOMINATOR {
 	    let mut return_value = false;
 	    if let Some(block) = self.get_block_sync(&new_chain[0]) {
 	        for transaction in block.get_transactions() {
 		    if transaction.get_transaction_type() == TransactionType::GoldenTicket {
 			return_value = true;
-println!("found gt: {}", search_depth_idx);
 			break;
 		    }
 		}
@@ -894,8 +890,6 @@ println!("found gt: {}", search_depth_idx);
             create_timestamp()
         );
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
-
-        println!("DOES BV: {}", does_block_validate);
 
         event!(
             Level::TRACE,
@@ -1323,24 +1317,6 @@ pub async fn run(
                                 println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
                             },
 
-        //
-        // TODO - delete - keeping as quick reference for multiple ways
-        // to broadcast messages.
-        //
-        //                    SaitoMessage::TestMessage => {
-        //             		println!("Blockchain GOT TEST MESSAGE!");
-        //			let blockchain = blockchain_lock.read().await;
-        //
-        //			broadcast_channel_sender.send(SaitoMessage::TestMessage2).unwrap();
-        //
-        //		        if !blockchain.broadcast_channel_sender.is_none() {
-        //			    println!("blockchain broadcast channel sender exists!");
-        //
-        //	      		    blockchain.broadcast_channel_sender.as_ref().unwrap()
-        //                        	.send(SaitoMessage::TestMessage3)
-        //                        	.expect("error: Mempool TryBundle Block message failed to send");
-        //        		}
-        //                    },
                             _ => {},
                         }
                     }
@@ -1383,7 +1359,9 @@ mod tests {
     }
 
     #[tokio::test]
-    // this tests we can produce five blocks in a row
+    //
+    // test we can produce five blocks in a row
+    //
     async fn add_five_good_blocks() {
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
@@ -1424,8 +1402,10 @@ mod tests {
     }
 
 
-    // this tests that we stop adding blocks 6 and 7 because of insuffient golden tickets
     #[tokio::test]
+    //
+    // test we do not add blocks 6 and 7 because of insuffient mining
+    //
     async fn add_seven_good_blocks_but_no_golden_tickets() {
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
@@ -1477,8 +1457,10 @@ mod tests {
     }
 
 
-    // this tests that adding 2 golden tickets permits block 7 to be longest-chain
     #[tokio::test]
+    //
+    // test we add blocks 6 and 7 because of suffient mining
+    //
     async fn add_seven_good_blocks_and_two_golden_tickets() {
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
@@ -1530,123 +1512,153 @@ mod tests {
     }
 
 
-
-
     #[tokio::test]
-    async fn produce_four_blocks_test() {
-        // There... are... four blocks!
+    //
+    // add 10 blocks including chain reorganization and sufficient mining
+    //
+    async fn add_ten_blocks_including_five_block_chain_reorg() {
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        {
-            let mut wallet = wallet_lock.write().await;
-            wallet.load_keys("test/testwallet", Some("asdf"));
-        }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let mut miner = Miner::new(wallet_lock.clone());
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 
-        let current_block_hash = [0; 32];
-        let mut transactions: Vec<Transaction>;
-        let mut last_block_hash: SaitoHash = [0; 32];
-        let mut last_block_difficulty: u64 = 0;
-        let mut prev_block_hash: SaitoHash = [0; 32];
-        let publickey;
+        let current_timestamp = create_timestamp();
+	let block5_hash;
+	let block9_hash;
 
-        let mut test_block_hash: SaitoHash;
-        let mut test_block_id: u64;
+        // BLOCK 1
+        test_manager
+            .add_block(current_timestamp, 3, 0, false, vec![])
+            .await;
 
-        {
-            let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-        }
+        // BLOCK 2
+        test_manager
+            .add_block(current_timestamp + 120000, 0, 1, false, vec![])
+            .await;
 
-        for i in 0..3 {
-            transactions = vec![];
-            let block: Block;
+        // BLOCK 3
+        test_manager
+            .add_block(current_timestamp + 240000, 0, 1, true, vec![])
+            .await;
 
-            //
-            // first block
-            //
-            if i == 0 {
-                let mut tx = Transaction::generate_vip_transaction(
-                    wallet_lock.clone(),
-                    publickey,
-                    10_000_000,
-                )
-                .await;
-                tx.generate_metadata(publickey);
-                transactions.push(tx);
+        // BLOCK 4
+        test_manager
+            .add_block(current_timestamp + 360000, 0, 1, false, vec![])
+            .await;
 
-                block = Block::generate(
-                    &mut transactions,
-                    current_block_hash,
-                    wallet_lock.clone(),
-                    blockchain_lock.clone(),
-                    create_timestamp(),
-                )
-                .await;
+        // BLOCK 5
+	// note - we set GT to true so that the staking payout won't regress
+	// since the test_manager produces from known state of wallet rather
+	// that the state at block 5.
+        test_manager
+            .add_block(current_timestamp + 480000, 0, 1, true, vec![])
+            .await;
 
-                last_block_hash = block.get_hash();
-                last_block_difficulty = block.get_difficulty();
+	{
+	    // check that block 5 is indeed the latest block
+	    let blockchain = blockchain_lock.read().await;
+            assert_eq!(5, blockchain.get_latest_block_id());
+	    block5_hash = blockchain.get_latest_block_hash();
+	}
 
-            //test_block_hash = block.get_hash();
-            //test_block_id = block.get_id();
+	//
+	// produce the next four blocks, which we will reorg eventually
+	//
 
-            //
-            // second block
-            //
-            } else {
-                // generate golden ticket
-                let golden_ticket: GoldenTicket = miner
-                    .mine_on_block_until_golden_ticket_found(last_block_hash, last_block_difficulty)
-                    .await;
+        // BLOCK 6
+        test_manager
+            .add_block(current_timestamp + 600000, 0, 1, true, vec![])
+            .await;
 
-                let mut transaction: Transaction;
+        // BLOCK 7
+        test_manager
+            .add_block(current_timestamp + 720000, 0, 1, false, vec![])
+            .await;
 
-                {
-                    let mut wallet = wallet_lock.write().await;
-                    transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
-                }
+        // BLOCK 8
+        test_manager
+            .add_block(current_timestamp + 840000, 0, 1, true, vec![])
+            .await;
 
-                transaction.generate_metadata(publickey);
-                transactions.push(transaction);
+        // BLOCK 9
+        test_manager
+            .add_block(current_timestamp + 960000, 0, 1, false, vec![])
+            .await;
 
-                {
-                    let blockchain = blockchain_lock.read().await;
-                    last_block_hash = blockchain.get_latest_block().unwrap().get_hash();
-                    last_block_difficulty = blockchain.get_latest_block().unwrap().get_difficulty();
-                }
+	{
+	    let blockchain = blockchain_lock.read().await;
+	    // check that block 9 is indeed the latest block
+            assert_eq!(9, blockchain.get_latest_block_id());
+	    block9_hash = blockchain.get_latest_block_hash();
+	}
 
-                let future_timestamp = create_timestamp() + (i * 120000);
+	//
+	// start a separate fork that reorgs from block 5
+	//
+	// note that we have to run generate_metadata, as we cannot 
+	// calculate some dynamic variables like the appropriate 
+	// difficulty without being able to check if the previous
+	// block has golden tickets, etc. which is calculated in 
+	// generate_metadata(). this is not a problem in production
+	// as blocks are built off the longest-chain.
+	//
 
-                block = Block::generate(
-                    &mut transactions,
-                    last_block_hash,
-                    wallet_lock.clone(),
-                    blockchain_lock.clone(),
-                    future_timestamp,
-                )
-                .await;
-            }
+        // BLOCK 6-2
+	let block6_2 = test_manager.generate_block_and_metadata(block5_hash, current_timestamp + 600000, 0, 0, true, vec![]).await;
+	let block6_2_hash = block6_2.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block6_2).await;
 
-            test_block_hash = block.get_hash();
-            test_block_id = block.get_id();
+	{
+	    let blockchain = blockchain_lock.read().await;
+            assert_eq!(9, blockchain.get_latest_block_id());
+            assert_eq!(block9_hash, blockchain.get_latest_block_hash());
+	}
 
-            {
-                let mut blockchain = blockchain_lock.write().await;
-                blockchain.add_block(block).await;
-                assert_eq!(test_block_hash, blockchain.get_latest_block_hash());
-                assert_eq!(test_block_id, blockchain.get_latest_block_id());
-                assert_eq!(
-                    prev_block_hash,
-                    blockchain
-                        .get_latest_block()
-                        .unwrap()
-                        .get_previous_block_hash()
-                );
-                if test_block_id > 1 {
-                    assert!(blockchain.get_block_sync(&prev_block_hash).is_some());
-                }
-                prev_block_hash = test_block_hash;
-            }
-        }
+        // BLOCK 7-2
+	let block7_2 = test_manager.generate_block_and_metadata(block6_2_hash, current_timestamp + 720000, 0, 0, true, vec![]).await;
+	let block7_2_hash = block7_2.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block7_2).await;
+
+	{
+	    let blockchain = blockchain_lock.read().await;
+            assert_eq!(9, blockchain.get_latest_block_id());
+            assert_eq!(block9_hash, blockchain.get_latest_block_hash());
+	}
+
+        // BLOCK 8-2
+	let block8_2 = test_manager.generate_block_and_metadata(block7_2_hash, current_timestamp + 840000, 0, 0, true, vec![]).await;
+	let block8_2_hash = block8_2.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block8_2).await;
+
+	{
+	    let blockchain = blockchain_lock.read().await;
+            assert_eq!(9, blockchain.get_latest_block_id());
+            assert_eq!(block9_hash, blockchain.get_latest_block_hash());
+	}
+
+        // BLOCK 9-2
+	let block9_2 = test_manager.generate_block_and_metadata(block8_2_hash, current_timestamp + 960000, 0, 0, true, vec![]).await;
+	let block9_2_hash = block9_2.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block9_2).await;
+
+	{
+	    let blockchain = blockchain_lock.read().await;
+            assert_eq!(9, blockchain.get_latest_block_id());
+            assert_eq!(block9_hash, blockchain.get_latest_block_hash());
+	}
+
+        // BLOCK 10-2
+	let block10_2 = test_manager.generate_block_and_metadata(block9_2_hash, current_timestamp + 1080000, 0, 0, true, vec![]).await;
+	let block10_2_hash = block10_2.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block10_2).await;
+
+	{
+	    let blockchain = blockchain_lock.read().await;
+            assert_eq!(10, blockchain.get_latest_block_id());
+            assert_eq!(block10_2_hash, blockchain.get_latest_block_hash());
+	}
+
     }
+
 }
+

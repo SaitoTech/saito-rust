@@ -1156,8 +1156,6 @@ impl Block {
         if cv.gt_num == 0 {
             for i in 1..=MAX_STAKER_RECURSION {
 
-println!("{} {}", i , self.get_id());
-
                 if i >= self.get_id() {
                     break;
                 }
@@ -1166,7 +1164,6 @@ println!("{} {}", i , self.get_id());
                 let previous_block_hash = blockchain
                     .blockring
                     .get_longest_chain_block_hash_by_block_id(bid);
-println!("{:?}", previous_block_hash);
 
 		// previous block hash can be [0; 32] if there is no longest-chain block
 
@@ -1534,6 +1531,7 @@ println!("{:?}", previous_block_hash);
                 return false;
             }
 
+
             event!(
                 Level::TRACE,
                 " ... burn fee in blk validated:  {:?}",
@@ -1565,6 +1563,7 @@ println!("{:?}", previous_block_hash);
                 " ... done routing work required: {:?}",
                 create_timestamp()
             );
+
 
             //
             // validate golden ticket
@@ -1606,6 +1605,7 @@ println!("{:?}", previous_block_hash);
                 create_timestamp()
             );
         }
+
 
         event!(
             Level::TRACE,
@@ -1701,6 +1701,7 @@ println!("{:?}", previous_block_hash);
                 return false;
             }
         }
+
 
         //
         // validate difficulty
@@ -1945,6 +1946,7 @@ println!("{:?}", previous_block_hash);
         // set difficulty
         //
         if cv.expected_difficulty != 0 {
+println!("SETTING DIFFICULTY OF BLOCK TO: {}", cv.expected_difficulty);
             block.set_difficulty(cv.expected_difficulty);
         }
 
@@ -2150,9 +2152,11 @@ mod tests {
 
     #[tokio::test]
     async fn block_serialization_test() {
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+println!("1");
 
         let privatekey: SaitoPrivateKey;
         let publickey: SaitoPublicKey;
@@ -2161,6 +2165,7 @@ mod tests {
             publickey = wallet.get_publickey();
             privatekey = wallet.get_privatekey();
         }
+println!("2");
         let golden_ticket = GoldenTicket::new(1, [1; 32], [2; 32], [3; 33]);
         let mut tx2: Transaction;
         {
@@ -2172,6 +2177,7 @@ mod tests {
         let mut block = test_manager
             .generate_block([1; 32], create_timestamp(), 1, 1, false, vec![])
             .await;
+println!("3");
 
         block.sign(publickey, privatekey);
 
@@ -2179,7 +2185,10 @@ mod tests {
 
         block.sign(publickey, privatekey);
 
+println!("4");
         TestManager::check_block_consistency(&block);
+println!("4");
         TestManager::check_block_consistency(&unsigned_block);
+println!("4");
     }
 }

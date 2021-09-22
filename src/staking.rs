@@ -764,6 +764,7 @@ mod tests {
         }
     }
 
+
     #[tokio::test]
     async fn blockchain_staking_deposits_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
