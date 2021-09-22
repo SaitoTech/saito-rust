@@ -74,22 +74,9 @@ pub async fn post_transaction_handler(
         let response = std::str::from_utf8(&tx.get_signature().to_base58().as_bytes())
             .unwrap()
             .to_string();
-
-        //let response = String::from("OK");
         let mut mempool = mempool_lock.write().await;
-        let add_tx_result = mempool.add_transaction(tx).await;
-        match add_tx_result {
-            crate::mempool::AddTransactionResult::Accepted => Ok(Message { msg: response }),
-            crate::mempool::AddTransactionResult::Exists => {
-                Err(warp::reject::custom(AlreadyExists))
-            }
-            crate::mempool::AddTransactionResult::Invalid => {
-                panic!("This appears unused, implement if needed");
-            }
-            crate::mempool::AddTransactionResult::Rejected => {
-                panic!("This appears unused, implement if needed");
-            }
-        }
+        mempool.add_transaction(tx).await;
+        Ok(Message { msg: response })
     } else {
         Err(warp::reject::custom(Invalid))
     }
@@ -112,10 +99,7 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
 
     match Storage::stream_block_from_disk(block_hash).await {
         Ok(block_bytes) => Ok(block_bytes),
-        Err(_err) => {
-            eprintln!("{:?}", _err);
-            Err(warp::reject())
-        }
+        Err(_err) => Err(warp::reject()),
     }
 }
 
@@ -126,7 +110,6 @@ pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
 //     match Storage::stream_json_block_from_disk(block_hash).await {
 //         Ok(json_data) => Ok(warp::reply::json(&json_data)),
 //         Err(_err) => {
-//             eprintln!("{:?}", _err);
 //             Err(warp::reject())
 //         }
 //     }
