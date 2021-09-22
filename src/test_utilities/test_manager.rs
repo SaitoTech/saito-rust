@@ -2,7 +2,7 @@
 // TestManager provides a set of functions to simplify testing. It's goal is to
 // help make tests more succinct.
 //
-use crate::block::Block;
+use crate::block::{Block, BlockType};
 use crate::blockchain::Blockchain;
 use crate::crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoUTXOSetKey};
 use crate::golden_ticket::GoldenTicket;
@@ -408,7 +408,7 @@ impl TestManager {
         }
     }
     pub fn check_block_consistency(block: &Block) {
-        let serialized_block = block.serialize_for_net();
+        let serialized_block = block.serialize_for_net(BlockType::Full);
 
         let deserialized_block = Block::deserialize_for_net(&serialized_block);
 
