@@ -19,6 +19,7 @@ use crate::consensus::SaitoMessage;
 use crate::crypto::{SaitoHash, SaitoUTXOSetKey};
 use crate::staking::Staking;
 use crate::storage::Storage;
+use crate::transaction::{Transaction, TransactionType};
 use crate::time::create_timestamp;
 use crate::wallet::Wallet;
 use tracing::{event, Level};
@@ -760,7 +761,13 @@ impl Blockchain {
 		    if block.get_id() < MIN_GOLDEN_TICKETS_DENOMINATOR { break; }
 		}
 
-		if block.get_has_golden_ticket() { golden_tickets_found += 1; }
+		// the latest block will not have has_golden_ticket set yet
+		// so it is possible we undercount the latest block. this
+		// is dealt with by manually checking for the existence of
+		// a golden ticket if we only have 1 golden ticket below.
+		if block.get_has_golden_ticket() {
+		    golden_tickets_found += 1; 
+		}
 		latest_block_hash = block.get_previous_block_hash();
 
 	    } else {
@@ -768,8 +775,24 @@ impl Blockchain {
 	    }
 
 	}
+
+println!("golden tix found: {}", golden_tickets_found);
+println!("search depth: {}", search_depth_idx);
+
         if golden_tickets_found < MIN_GOLDEN_TICKETS_NUMERATOR && search_depth_idx >= MIN_GOLDEN_TICKETS_DENOMINATOR {
-	    return false;
+	    let mut return_value = false;
+	    if let Some(block) = self.get_block_sync(&new_chain[0]) {
+	        for transaction in block.get_transactions() {
+		    if transaction.get_transaction_type() == TransactionType::GoldenTicket {
+			return_value = true;
+println!("found gt: {}", search_depth_idx);
+			break;
+		    }
+		}
+	    }
+	    if !return_value {
+		return false;
+	    }
 	}
 
 
@@ -1331,7 +1354,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        block::Block, golden_ticket::GoldenTicket, miner::Miner, transaction::Transaction,
+        block::Block, golden_ticket::GoldenTicket, miner::Miner, transaction::Transaction, test_utilities::test_manager::TestManager,
     };
 
     #[test]
@@ -1360,129 +1383,154 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn add_blocks_test_1() {
+    // this tests we can produce five blocks in a row
+    async fn add_five_good_blocks() {
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        {
-            let mut wallet = wallet_lock.write().await;
-            wallet.load_keys("test/testwallet", Some("asdf"));
-        }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let publickey;
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 
-        let mut transactions: Vec<Transaction> = vec![];
-        let mut latest_block_id;
-        let mut latest_block_hash = [0; 32];
-        let latest_block_difficulty;
-        let mut miner = Miner::new(wallet_lock.clone());
+        let current_timestamp = create_timestamp();
 
-        {
-            let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-        }
-
-        //
-        // Add first GOOD block
-        //
-        let mut tx =
-            Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
-        tx.generate_metadata(publickey);
-        transactions.push(tx);
-        let block = Block::generate(
-            &mut transactions,
-            latest_block_hash,
-            wallet_lock.clone(),
-            blockchain_lock.clone(),
-            create_timestamp(),
-        )
-        .await;
-
-        latest_block_id = block.get_id();
-        latest_block_hash = block.get_hash();
-        latest_block_difficulty = block.get_difficulty();
-
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            let block_copy = block.clone();
-            blockchain.add_block(block).await;
-            assert_eq!(latest_block_id, blockchain.get_latest_block_id());
-            assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
-            let latest_block = blockchain.get_latest_block().unwrap();
-
-            assert_eq!(block_copy.get_id(), latest_block.get_id());
-            assert_eq!(block_copy.get_hash(), latest_block.get_hash());
-            assert_eq!(
-                block_copy.get_previous_block_hash(),
-                latest_block.get_previous_block_hash()
-            );
-
-            let prev_block = blockchain.get_block_sync(&latest_block.get_previous_block_hash());
-            assert!(prev_block.is_none());
-        }
-
-        //
-        // Add second BAD block (no transactions)
-        //
-        let future_timestamp = create_timestamp() + 120000;
-        let block = Block::generate(
-            &mut transactions,
-            latest_block_hash,
-            wallet_lock.clone(),
-            blockchain_lock.clone(),
-            future_timestamp,
-        )
-        .await;
-
-        latest_block_id = block.get_id();
-        latest_block_hash = block.get_hash();
-
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
-            assert_ne!(latest_block_id, blockchain.get_latest_block_id());
-            assert_ne!(latest_block_hash, blockchain.get_latest_block_hash());
-            //latest_block_id = blockchain.get_latest_block_id();
-            latest_block_hash = blockchain.get_latest_block_hash();
-        }
-
-        //
-        // Add second GOOD block
-        //
-        let golden_ticket: GoldenTicket = miner
-            .mine_on_block_until_golden_ticket_found(latest_block_hash, latest_block_difficulty)
+        // BLOCK 1
+        test_manager
+            .add_block(current_timestamp, 3, 0, false, vec![])
             .await;
-        let mut tx2: Transaction;
 
-        {
-            let mut wallet = wallet_lock.write().await;
-            tx2 = wallet.create_golden_ticket_transaction(golden_ticket).await;
-        }
+        // BLOCK 2
+        test_manager
+            .add_block(current_timestamp + 120000, 0, 1, false, vec![])
+            .await;
 
-        tx2.generate_metadata(publickey);
-        transactions.push(tx2);
+        // BLOCK 3
+        test_manager
+            .add_block(current_timestamp + 240000, 0, 1, false, vec![])
+            .await;
 
-        let future_timestamp2 = create_timestamp() + 120000;
-        let block = Block::generate(
-            &mut transactions,
-            latest_block_hash,
-            wallet_lock.clone(),
-            blockchain_lock.clone(),
-            future_timestamp2,
-        )
-        .await;
+        // BLOCK 4
+        test_manager
+            .add_block(current_timestamp + 360000, 0, 1, false, vec![])
+            .await;
 
-        latest_block_id = block.get_id();
-        latest_block_hash = block.get_hash();
+        // BLOCK 5
+        test_manager
+            .add_block(current_timestamp + 480000, 0, 1, false, vec![])
+            .await;
 
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            blockchain.add_block(block).await;
-            assert_eq!(latest_block_id, blockchain.get_latest_block_id());
-            assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
-        }
+	let blockchain = blockchain_lock.read().await;
+
+        assert_eq!(5, blockchain.get_latest_block_id());
+
     }
 
-    // this test produces four blocks in a row, with all subsequent blocks
-    // containing a golden ticket, but no other transactions.
+
+    // this tests that we stop adding blocks 6 and 7 because of insuffient golden tickets
+    #[tokio::test]
+    async fn add_seven_good_blocks_but_no_golden_tickets() {
+
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+        let current_timestamp = create_timestamp();
+
+        // BLOCK 1
+        test_manager
+            .add_block(current_timestamp, 3, 0, false, vec![])
+            .await;
+
+        // BLOCK 2
+        test_manager
+            .add_block(current_timestamp + 120000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 3
+        test_manager
+            .add_block(current_timestamp + 240000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 4
+        test_manager
+            .add_block(current_timestamp + 360000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 5
+        test_manager
+            .add_block(current_timestamp + 480000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 6
+        test_manager
+            .add_block(current_timestamp + 600000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 7
+        test_manager
+            .add_block(current_timestamp + 720000, 0, 1, false, vec![])
+            .await;
+
+	let blockchain = blockchain_lock.read().await;
+
+        assert_eq!(5, blockchain.get_latest_block_id());
+        assert_ne!(7, blockchain.get_latest_block_id());
+
+    }
+
+
+    // this tests that adding 2 golden tickets permits block 7 to be longest-chain
+    #[tokio::test]
+    async fn add_seven_good_blocks_and_two_golden_tickets() {
+
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+        let current_timestamp = create_timestamp();
+
+        // BLOCK 1
+        test_manager
+            .add_block(current_timestamp, 3, 0, false, vec![])
+            .await;
+
+        // BLOCK 2
+        test_manager
+            .add_block(current_timestamp + 120000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 3
+        test_manager
+            .add_block(current_timestamp + 240000, 0, 1, true, vec![])
+            .await;
+
+        // BLOCK 4
+        test_manager
+            .add_block(current_timestamp + 360000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 5
+        test_manager
+            .add_block(current_timestamp + 480000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 6
+        test_manager
+            .add_block(current_timestamp + 600000, 0, 1, true, vec![])
+            .await;
+
+        // BLOCK 7
+        test_manager
+            .add_block(current_timestamp + 720000, 0, 1, false, vec![])
+            .await;
+
+	let blockchain = blockchain_lock.read().await;
+
+        assert_eq!(7, blockchain.get_latest_block_id());
+        assert_ne!(5, blockchain.get_latest_block_id());
+
+    }
+
+
+
 
     #[tokio::test]
     async fn produce_four_blocks_test() {

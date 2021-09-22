@@ -1155,6 +1155,9 @@ impl Block {
         //
         if cv.gt_num == 0 {
             for i in 1..=MAX_STAKER_RECURSION {
+
+println!("{} {}", i , self.get_id());
+
                 if i >= self.get_id() {
                     break;
                 }
@@ -1163,20 +1166,27 @@ impl Block {
                 let previous_block_hash = blockchain
                     .blockring
                     .get_longest_chain_block_hash_by_block_id(bid);
-                let previous_block = blockchain.get_block(&previous_block_hash).await.unwrap();
+println!("{:?}", previous_block_hash);
 
-                if previous_block.get_has_golden_ticket() {
-                    break;
-                } else {
-                    //
-                    // this is the block BEFORE from which we need to collect the nolan due to
-                    // our iterator starting at 0 for the current block. i.e. if MAX_STAKER_
-                    // RECURSION is 3, at 3 we are the fourth block back.
-                    //
-                    if i == MAX_STAKER_RECURSION {
-                        cv.nolan_falling_off_chain = previous_block.get_total_fees();
+		// previous block hash can be [0; 32] if there is no longest-chain block
+
+		if previous_block_hash != [0; 32] {
+
+                    let previous_block = blockchain.get_block(&previous_block_hash).await.unwrap();
+
+                    if previous_block.get_has_golden_ticket() {
+                        break;
+                    } else {
+                        //
+                        // this is the block BEFORE from which we need to collect the nolan due to
+                        // our iterator starting at 0 for the current block. i.e. if MAX_STAKER_
+                        // RECURSION is 3, at 3 we are the fourth block back.
+                        //
+                        if i == MAX_STAKER_RECURSION {
+                            cv.nolan_falling_off_chain = previous_block.get_total_fees();
+                        }
                     }
-                }
+		}
             }
         }
 
