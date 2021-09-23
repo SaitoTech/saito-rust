@@ -2,7 +2,7 @@ use crate::{
     blockchain::{Blockchain, GENESIS_PERIOD, MAX_STAKER_RECURSION},
     burnfee::BurnFee,
     crypto::{
-        hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
+        hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
     },
     golden_ticket::GoldenTicket,
     hop::HOP_SIZE,
@@ -631,8 +631,8 @@ impl Block {
         // we set final data
         //
         self.set_creator(publickey);
-        self.set_signature(sign(&self.get_pre_hash(), privatekey));
         self.generate_hashes();
+        self.set_signature(sign(&self.get_pre_hash(), privatekey));
     }
 
     pub fn generate_hashes(&mut self) -> SaitoHash {
@@ -1415,6 +1415,7 @@ impl Block {
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
         staking: &Staking,
     ) -> bool {
+
         //
         // no transactions? no thank you
         //
@@ -1432,6 +1433,20 @@ impl Block {
             create_timestamp(),
             // tracing_tracker.time_since_last();
         );
+
+
+	//
+	// verify signed by creator
+	//
+	if !verify(&self.get_pre_hash(), self.get_signature(), self.get_creator()) {
+            event!(
+                Level::ERROR,
+                "ERROR 582039: block is not signed by creator or signature does not validate",
+            );
+	    return false;
+	}
+
+
 
         //
         // Consensus Values
@@ -1946,7 +1961,6 @@ impl Block {
         // set difficulty
         //
         if cv.expected_difficulty != 0 {
-println!("SETTING DIFFICULTY OF BLOCK TO: {}", cv.expected_difficulty);
             block.set_difficulty(cv.expected_difficulty);
         }
 
@@ -2029,29 +2043,42 @@ mod tests {
         assert_eq!(block.lc, false);
         assert_eq!(block.has_golden_ticket, false);
         assert_eq!(block.has_fee_transaction, false);
+        assert_eq!(block.has_issuance_transaction, false);
+        assert_eq!(block.issuance_transaction_idx, 0);
+        assert_eq!(block.fee_transaction_idx, 0);
+        assert_eq!(block.golden_ticket_idx, 0);
+        assert_eq!(block.routing_work_for_creator, 0);
     }
 
+
     #[test]
+    // signs and verifies the signature of a block
     fn block_sign_test() {
-        let mut wallet = Wallet::new();
-        wallet.load_keys("test/testwallet", Some("asdf"));
+
+        let wallet = Wallet::new();
         let mut block = Block::new();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
         assert_eq!(block.creator, wallet.get_publickey());
+        assert_eq!(verify(&block.get_pre_hash(), block.get_signature(), block.get_creator()), true);
         assert_ne!(block.get_hash(), [0; 32]);
         assert_ne!(block.get_signature(), [0; 64]);
+
     }
 
     #[test]
+    // test that we are properly generating pre_hash and hash
     fn block_generate_hashes() {
         let mut block = Block::new();
         let hash = block.generate_hashes();
         assert_ne!(hash, [0; 32]);
+        assert_ne!(block.get_pre_hash(), [0; 32]);
+        assert_ne!(block.get_hash(), [0; 32]);
     }
 
     #[test]
+    // confirm we have not modified the length of the serialized block
     fn block_serialize_for_signature_hash() {
         let block = Block::new();
         let serialized_body = block.serialize_for_signature();
@@ -2059,6 +2086,7 @@ mod tests {
     }
 
     #[test]
+    // signs and verifies the signature of a block
     fn block_serialize_for_net_test() {
         let mock_input = Slip::new();
         let mock_output = Slip::new();
@@ -2092,8 +2120,12 @@ mod tests {
         block.set_difficulty(3);
         block.set_transactions(&mut vec![mock_tx, mock_tx2]);
 
-        let serialized_block = block.serialize_for_net();
+        let serialized_block = block.serialize_for_net(BlockType::Full);
         let deserialized_block = Block::deserialize_for_net(&serialized_block);
+
+        let serialized_block_header = block.serialize_for_net(BlockType::Header);
+        let deserialized_block_header = Block::deserialize_for_net(&serialized_block_header);
+
         // assert_eq!(block, deserialized_block);
         assert_eq!(deserialized_block.get_id(), 1);
         assert_eq!(deserialized_block.get_timestamp(), timestamp);

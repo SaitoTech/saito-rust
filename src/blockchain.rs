@@ -1330,10 +1330,13 @@ mod tests {
 
     use super::*;
     use crate::{
-        block::Block, golden_ticket::GoldenTicket, miner::Miner, transaction::Transaction, test_utilities::test_manager::TestManager,
+        test_utilities::test_manager::TestManager,
     };
 
     #[test]
+    //
+    // code that packs/unpacks two 32-bit values into one 64-bit variable
+    //
     fn bit_pack_test() {
         let top = 157171715;
         let bottom = 11661612;
