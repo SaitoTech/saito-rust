@@ -664,7 +664,7 @@ impl Blockchain {
     }
 
     pub fn get_latest_block_id(&self) -> u64 {
-        self.blockring.get_longest_chain_block_id()
+        self.blockring.get_latest_block_id()
     }
 
     pub fn get_block_sync(&self, block_hash: &SaitoHash) -> Option<&Block> {
@@ -704,7 +704,7 @@ impl Blockchain {
             return false;
         }
 
-        if self.blockring.get_longest_chain_block_id()
+        if self.blockring.get_latest_block_id()
             >= self.blocks.get(&new_chain[0]).unwrap().get_id()
         {
             return false;
