@@ -2,7 +2,8 @@ use crate::{
     blockchain::{Blockchain, GENESIS_PERIOD, MAX_STAKER_RECURSION},
     burnfee::BurnFee,
     crypto::{
-        hash, sign, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
+        hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
+        SaitoUTXOSetKey,
     },
     golden_ticket::GoldenTicket,
     hop::HOP_SIZE,
@@ -541,8 +542,8 @@ impl Block {
         // we set final data
         //
         self.set_creator(publickey);
-        self.set_signature(sign(&self.get_pre_hash(), privatekey));
         self.generate_hashes();
+        self.set_signature(sign(&self.get_pre_hash(), privatekey));
     }
 
     pub fn generate_hashes(&mut self) -> SaitoHash {
@@ -1087,18 +1088,23 @@ impl Block {
                 let previous_block_hash = blockchain
                     .blockring
                     .get_longest_chain_block_hash_by_block_id(bid);
-                let previous_block = blockchain.get_block(&previous_block_hash).await.unwrap();
 
-                if previous_block.get_has_golden_ticket() {
-                    break;
-                } else {
-                    //
-                    // this is the block BEFORE from which we need to collect the nolan due to
-                    // our iterator starting at 0 for the current block. i.e. if MAX_STAKER_
-                    // RECURSION is 3, at 3 we are the fourth block back.
-                    //
-                    if i == MAX_STAKER_RECURSION {
-                        cv.nolan_falling_off_chain = previous_block.get_total_fees();
+                // previous block hash can be [0; 32] if there is no longest-chain block
+
+                if previous_block_hash != [0; 32] {
+                    let previous_block = blockchain.get_block(&previous_block_hash).await.unwrap();
+
+                    if previous_block.get_has_golden_ticket() {
+                        break;
+                    } else {
+                        //
+                        // this is the block BEFORE from which we need to collect the nolan due to
+                        // our iterator starting at 0 for the current block. i.e. if MAX_STAKER_
+                        // RECURSION is 3, at 3 we are the fourth block back.
+                        //
+                        if i == MAX_STAKER_RECURSION {
+                            cv.nolan_falling_off_chain = previous_block.get_total_fees();
+                        }
                     }
                 }
             }
@@ -1349,6 +1355,21 @@ impl Block {
             create_timestamp(),
             // tracing_tracker.time_since_last();
         );
+
+        //
+        // verify signed by creator
+        //
+        if !verify(
+            &self.get_pre_hash(),
+            self.get_signature(),
+            self.get_creator(),
+        ) {
+            event!(
+                Level::ERROR,
+                "ERROR 582039: block is not signed by creator or signature does not validate",
+            );
+            return false;
+        }
 
         //
         // Consensus Values
@@ -1941,29 +1962,46 @@ mod tests {
         assert_eq!(block.lc, false);
         assert_eq!(block.has_golden_ticket, false);
         assert_eq!(block.has_fee_transaction, false);
+        assert_eq!(block.has_issuance_transaction, false);
+        assert_eq!(block.issuance_transaction_idx, 0);
+        assert_eq!(block.fee_transaction_idx, 0);
+        assert_eq!(block.golden_ticket_idx, 0);
+        assert_eq!(block.routing_work_for_creator, 0);
     }
 
     #[test]
+    // signs and verifies the signature of a block
     fn block_sign_test() {
-        let mut wallet = Wallet::new();
-        wallet.load_keys("test/testwallet", Some("asdf"));
+        let wallet = Wallet::new();
         let mut block = Block::new();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
         assert_eq!(block.creator, wallet.get_publickey());
+        assert_eq!(
+            verify(
+                &block.get_pre_hash(),
+                block.get_signature(),
+                block.get_creator()
+            ),
+            true
+        );
         assert_ne!(block.get_hash(), [0; 32]);
         assert_ne!(block.get_signature(), [0; 64]);
     }
 
     #[test]
+    // test that we are properly generating pre_hash and hash
     fn block_generate_hashes() {
         let mut block = Block::new();
         let hash = block.generate_hashes();
         assert_ne!(hash, [0; 32]);
+        assert_ne!(block.get_pre_hash(), [0; 32]);
+        assert_ne!(block.get_hash(), [0; 32]);
     }
 
     #[test]
+    // confirm we have not modified the length of the serialized block
     fn block_serialize_for_signature_hash() {
         let block = Block::new();
         let serialized_body = block.serialize_for_signature();
@@ -1971,6 +2009,7 @@ mod tests {
     }
 
     #[test]
+    // signs and verifies the signature of a block
     fn block_serialize_for_net_test() {
         let mock_input = Slip::new();
         let mock_output = Slip::new();
@@ -2006,6 +2045,10 @@ mod tests {
 
         let serialized_block = block.serialize_for_net(BlockType::Full);
         let deserialized_block = Block::deserialize_for_net(&serialized_block);
+
+        let serialized_block_header = block.serialize_for_net(BlockType::Header);
+        let deserialized_block_header = Block::deserialize_for_net(&serialized_block_header);
+
         // assert_eq!(block, deserialized_block);
         assert_eq!(deserialized_block.get_id(), 1);
         assert_eq!(deserialized_block.get_timestamp(), timestamp);
@@ -2067,6 +2110,7 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+        println!("1");
 
         let privatekey: SaitoPrivateKey;
         let publickey: SaitoPublicKey;
@@ -2075,6 +2119,7 @@ mod tests {
             publickey = wallet.get_publickey();
             privatekey = wallet.get_privatekey();
         }
+        println!("2");
         let golden_ticket = GoldenTicket::new(1, [1; 32], [2; 32], [3; 33]);
         let mut tx2: Transaction;
         {
@@ -2086,6 +2131,7 @@ mod tests {
         let mut block = test_manager
             .generate_block([1; 32], create_timestamp(), 1, 1, false, vec![])
             .await;
+        println!("3");
 
         block.sign(publickey, privatekey);
 
@@ -2093,7 +2139,10 @@ mod tests {
 
         block.sign(publickey, privatekey);
 
+        println!("4");
         TestManager::check_block_consistency(&block);
+        println!("4");
         TestManager::check_block_consistency(&unsigned_block);
+        println!("4");
     }
 }

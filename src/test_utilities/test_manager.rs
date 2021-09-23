@@ -15,11 +15,12 @@ use tokio::sync::RwLock;
 
 //
 //
-// generate_block 	<-- create a block
-// generate_transaction <-- create a transaction
-// add_block 		<-- create and add block to longest_chain
-// add_block_on_hash	<-- create and add block elsewhere on chain
-// on_chain_reorganization <-- test monetary policy
+// generate_block 		<-- create a block
+// generate_block_and_metadata 	<--- create block with metadata (difficulty, has_golden ticket, etc.)
+// generate_transaction 	<-- create a transaction
+// add_block 			<-- create and add block to longest_chain
+// add_block_on_hash		<-- create and add block elsewhere on chain
+// on_chain_reorganization 	<-- test monetary policy
 //
 //
 
@@ -178,6 +179,29 @@ impl TestManager {
         )
         .await;
 
+        block
+    }
+
+    pub async fn generate_block_and_metadata(
+        &self,
+        parent_hash: SaitoHash,
+        timestamp: u64,
+        vip_transactions: usize,
+        normal_transactions: usize,
+        golden_ticket: bool,
+        additional_transactions: Vec<Transaction>,
+    ) -> Block {
+        let mut block = self
+            .generate_block(
+                parent_hash,
+                timestamp,
+                vip_transactions,
+                normal_transactions,
+                golden_ticket,
+                additional_transactions,
+            )
+            .await;
+        block.generate_metadata();
         block
     }
 
