@@ -329,7 +329,7 @@ impl Blockchain {
         {
             let block = self.get_mut_block(&block_hash).await;
             block_id = block.get_id();
-            if block.get_block_type != Block::Header {
+            if block.get_block_type() != BlockType::Header {
                 Storage::write_block_to_disk(block);
             }
         }
