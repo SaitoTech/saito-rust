@@ -470,7 +470,7 @@
 <span class="comment">// TestManager provides a set of functions to simplify testing. It&#39;s goal is to</span>
 <span class="comment">// help make tests more succinct.</span>
 <span class="comment">//</span>
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block</span>::{<span class="ident">Block</span>, <span class="ident">BlockType</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoUTXOSetKey</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
@@ -876,7 +876,7 @@
         }
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_block_consistency</span>(<span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>) {
-        <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_net</span>();
+        <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_net</span>(<span class="ident">BlockType::Full</span>);
 
         <span class="kw">let</span> <span class="ident">deserialized_block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_block</span>);
 

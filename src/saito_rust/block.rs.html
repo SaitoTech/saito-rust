@@ -2097,82 +2097,6 @@
 <span id="2097">2097</span>
 <span id="2098">2098</span>
 <span id="2099">2099</span>
-<span id="2100">2100</span>
-<span id="2101">2101</span>
-<span id="2102">2102</span>
-<span id="2103">2103</span>
-<span id="2104">2104</span>
-<span id="2105">2105</span>
-<span id="2106">2106</span>
-<span id="2107">2107</span>
-<span id="2108">2108</span>
-<span id="2109">2109</span>
-<span id="2110">2110</span>
-<span id="2111">2111</span>
-<span id="2112">2112</span>
-<span id="2113">2113</span>
-<span id="2114">2114</span>
-<span id="2115">2115</span>
-<span id="2116">2116</span>
-<span id="2117">2117</span>
-<span id="2118">2118</span>
-<span id="2119">2119</span>
-<span id="2120">2120</span>
-<span id="2121">2121</span>
-<span id="2122">2122</span>
-<span id="2123">2123</span>
-<span id="2124">2124</span>
-<span id="2125">2125</span>
-<span id="2126">2126</span>
-<span id="2127">2127</span>
-<span id="2128">2128</span>
-<span id="2129">2129</span>
-<span id="2130">2130</span>
-<span id="2131">2131</span>
-<span id="2132">2132</span>
-<span id="2133">2133</span>
-<span id="2134">2134</span>
-<span id="2135">2135</span>
-<span id="2136">2136</span>
-<span id="2137">2137</span>
-<span id="2138">2138</span>
-<span id="2139">2139</span>
-<span id="2140">2140</span>
-<span id="2141">2141</span>
-<span id="2142">2142</span>
-<span id="2143">2143</span>
-<span id="2144">2144</span>
-<span id="2145">2145</span>
-<span id="2146">2146</span>
-<span id="2147">2147</span>
-<span id="2148">2148</span>
-<span id="2149">2149</span>
-<span id="2150">2150</span>
-<span id="2151">2151</span>
-<span id="2152">2152</span>
-<span id="2153">2153</span>
-<span id="2154">2154</span>
-<span id="2155">2155</span>
-<span id="2156">2156</span>
-<span id="2157">2157</span>
-<span id="2158">2158</span>
-<span id="2159">2159</span>
-<span id="2160">2160</span>
-<span id="2161">2161</span>
-<span id="2162">2162</span>
-<span id="2163">2163</span>
-<span id="2164">2164</span>
-<span id="2165">2165</span>
-<span id="2166">2166</span>
-<span id="2167">2167</span>
-<span id="2168">2168</span>
-<span id="2169">2169</span>
-<span id="2170">2170</span>
-<span id="2171">2171</span>
-<span id="2172">2172</span>
-<span id="2173">2173</span>
-<span id="2174">2174</span>
-<span id="2175">2175</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
@@ -2342,90 +2266,9 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">BlockType</span> {
     <span class="ident">Ghost</span>,
+    <span class="ident">Header</span>,
     <span class="ident">Pruned</span>,
     <span class="ident">Full</span>,
-}
-
-<span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BlockHeader</span> {
-    <span class="ident">id</span>: <span class="ident">u64</span>,
-    <span class="ident">timestamp</span>: <span class="ident">u64</span>,
-    <span class="ident">previous_block_hash</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 33]&quot;</span>)]</span>
-    <span class="ident">creator</span>: [<span class="ident">u8</span>; <span class="number">33</span>],
-    <span class="ident">merkle_root</span>: [<span class="ident">u8</span>; <span class="number">32</span>],
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 64]&quot;</span>)]</span>
-    <span class="ident">signature</span>: [<span class="ident">u8</span>; <span class="number">64</span>],
-    <span class="ident">treasury</span>: <span class="ident">u64</span>,
-    <span class="ident">burnfee</span>: <span class="ident">u64</span>,
-    <span class="ident">difficulty</span>: <span class="ident">u64</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">BlockHeader</span> {
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_without_default</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">id</span>: <span class="ident">u64</span>,
-        <span class="ident">timestamp</span>: <span class="ident">u64</span>,
-        <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span>,
-        <span class="ident">creator</span>: <span class="ident">SaitoPublicKey</span>,
-        <span class="ident">merkle_root</span>: <span class="ident">SaitoHash</span>,
-        <span class="ident">signature</span>: <span class="ident">SaitoSignature</span>,
-        <span class="ident">treasury</span>: <span class="ident">u64</span>,
-        <span class="ident">burnfee</span>: <span class="ident">u64</span>,
-        <span class="ident">difficulty</span>: <span class="ident">u64</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">id</span>,
-            <span class="ident">timestamp</span>,
-            <span class="ident">previous_block_hash</span>,
-            <span class="ident">creator</span>,
-            <span class="ident">merkle_root</span>,
-            <span class="ident">signature</span>,
-            <span class="ident">treasury</span>,
-            <span class="ident">burnfee</span>,
-            <span class="ident">difficulty</span>,
-        }
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_net</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">id</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">timestamp</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">previous_block_hash</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">creator</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">merkle_root</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>);
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">treasury</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">burnfee</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">difficulty</span>.<span class="ident">to_be_bytes</span>());
-        <span class="ident">vbytes</span>
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_for_net</span>(<span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BlockHeader</span> {
-        <span class="kw">let</span> <span class="ident">id</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">4</span>..<span class="number">12</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
-        <span class="kw">let</span> <span class="ident">timestamp</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">12</span>..<span class="number">20</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
-        <span class="kw">let</span> <span class="ident">previous_block_hash</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">20</span>..<span class="number">52</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">creator</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">52</span>..<span class="number">85</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">merkle_root</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">85</span>..<span class="number">117</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">signature</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">117</span>..<span class="number">181</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-
-        <span class="kw">let</span> <span class="ident">treasury</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">181</span>..<span class="number">189</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
-        <span class="kw">let</span> <span class="ident">burnfee</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">189</span>..<span class="number">197</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
-        <span class="kw">let</span> <span class="ident">difficulty</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">u64::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">197</span>..<span class="number">205</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
-
-        <span class="ident">BlockHeader::new</span>(
-            <span class="ident">id</span>,
-            <span class="ident">timestamp</span>,
-            <span class="ident">previous_block_hash</span>,
-            <span class="ident">creator</span>,
-            <span class="ident">merkle_root</span>,
-            <span class="ident">signature</span>,
-            <span class="ident">treasury</span>,
-            <span class="ident">burnfee</span>,
-            <span class="ident">difficulty</span>,
-        )
-    }
 }
 
 <span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>
@@ -2518,20 +2361,6 @@
             <span class="comment">// hashmap of all SaitoUTXOSetKeys of the slips in the block</span>
             <span class="ident">slips_spent_this_block</span>: <span class="ident">AHashMap::new</span>(),
             <span class="ident">created_hashmap_of_slips_spent_this_block</span>: <span class="bool-val">false</span>,
-        }
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_header</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">BlockHeader</span> {
-        <span class="ident">BlockHeader</span> {
-            <span class="ident">id</span>: <span class="self">self</span>.<span class="ident">id</span>,
-            <span class="ident">timestamp</span>: <span class="self">self</span>.<span class="ident">timestamp</span>,
-            <span class="ident">previous_block_hash</span>: <span class="self">self</span>.<span class="ident">previous_block_hash</span>,
-            <span class="ident">creator</span>: <span class="self">self</span>.<span class="ident">creator</span>,
-            <span class="ident">merkle_root</span>: <span class="self">self</span>.<span class="ident">merkle_root</span>,
-            <span class="ident">signature</span>: <span class="self">self</span>.<span class="ident">signature</span>,
-            <span class="ident">treasury</span>: <span class="self">self</span>.<span class="ident">treasury</span>,
-            <span class="ident">burnfee</span>: <span class="self">self</span>.<span class="ident">burnfee</span>,
-            <span class="ident">difficulty</span>: <span class="self">self</span>.<span class="ident">difficulty</span>,
         }
     }
 
@@ -2749,6 +2578,11 @@
         }
 
         <span class="comment">//</span>
+        <span class="comment">// TODO - if the block does not exist on disk, we have to</span>
+        <span class="comment">// attempt a remote fetch.</span>
+        <span class="comment">//</span>
+
+        <span class="comment">//</span>
         <span class="comment">// if the block type needed is full and we are not,</span>
         <span class="comment">// load the block if it exists on disk.</span>
         <span class="comment">//</span>
@@ -2864,9 +2698,16 @@
     <span class="doccomment">/// [burnfee - 8 bytes - u64]</span>
     <span class="doccomment">/// [difficulty - 8 bytes - u64]</span>
     <span class="doccomment">/// [transaction][transaction][transaction]...</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_net</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_net</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_type</span>: <span class="ident">BlockType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">iter</span>().<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
+
+        <span class="comment">// block headers do not get tx data</span>
+        <span class="kw">if</span> <span class="ident">block_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BlockType::Header</span> {
+            <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="number">0</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
+        } <span class="kw">else</span> {
+            <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">iter</span>().<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">to_be_bytes</span>());
+        }
+
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">id</span>.<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">timestamp</span>.<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">previous_block_hash</span>);
@@ -2878,10 +2719,15 @@
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">burnfee</span>.<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">difficulty</span>.<span class="ident">to_be_bytes</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized_txs</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> {
-            <span class="ident">serialized_txs</span>.<span class="ident">extend</span>(<span class="ident">transaction</span>.<span class="ident">serialize_for_net</span>());
-        });
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="ident">serialized_txs</span>);
+
+        <span class="comment">// block headers do not get tx data</span>
+        <span class="kw">if</span> <span class="ident">block_type</span> <span class="op">!</span><span class="op">=</span> <span class="ident">BlockType::Header</span> {
+            <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> {
+                <span class="ident">serialized_txs</span>.<span class="ident">extend</span>(<span class="ident">transaction</span>.<span class="ident">serialize_for_net</span>());
+            });
+            <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="ident">serialized_txs</span>);
+        }
+
         <span class="ident">vbytes</span>
     }
     <span class="doccomment">/// Deserialize from bytes to a Block.</span>
@@ -2957,8 +2803,10 @@
         <span class="ident">block</span>.<span class="ident">set_burnfee</span>(<span class="ident">burnfee</span>);
         <span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="ident">difficulty</span>);
         <span class="ident">block</span>.<span class="ident">set_staking_treasury</span>(<span class="ident">staking_treasury</span>);
-
         <span class="ident">block</span>.<span class="ident">set_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>);
+        <span class="kw">if</span> <span class="ident">transactions_len</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+            <span class="ident">block</span>.<span class="ident">set_block_type</span>(<span class="ident">BlockType::Header</span>);
+        }
         <span class="ident">block</span>.<span class="ident">generate_hashes</span>();
         <span class="ident">block</span>
     }
@@ -4256,7 +4104,7 @@
         <span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="number">3</span>);
         <span class="ident">block</span>.<span class="ident">set_transactions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec!</span>[<span class="ident">mock_tx</span>, <span class="ident">mock_tx2</span>]);
 
-        <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_net</span>();
+        <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_net</span>(<span class="ident">BlockType::Full</span>);
         <span class="kw">let</span> <span class="ident">deserialized_block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_block</span>);
         <span class="comment">// assert_eq!(block, deserialized_block);</span>
         <span class="macro">assert_eq!</span>(<span class="ident">deserialized_block</span>.<span class="ident">get_id</span>(), <span class="number">1</span>);
