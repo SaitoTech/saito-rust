@@ -66,7 +66,7 @@ impl Storage {
         let filename = Storage::generate_block_filename(block);
         if !Path::new(&filename).exists() {
             let mut buffer = File::create(filename).unwrap();
-            let byte_array: Vec<u8> = block.serialize_for_net();
+            let byte_array: Vec<u8> = block.serialize_for_net(BlockType::Full);
             buffer.write_all(&byte_array[..]).unwrap();
         }
     }

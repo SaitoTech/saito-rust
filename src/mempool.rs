@@ -382,7 +382,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        block::Block,
+        block::{Block, BlockType},
         test_utilities::{
             mocks::{add_vip_block, make_block_with_mempool, MockTimestampGenerator},
             test_manager::TestManager,
@@ -542,7 +542,7 @@ mod tests {
 
                 TestManager::check_block_consistency(&latest_block);
 
-                let serialized_latest_block = latest_block.serialize_for_net();
+                let serialized_latest_block = latest_block.serialize_for_net(BlockType::Full);
                 let deserialize_latest_block = Block::deserialize_for_net(&serialized_latest_block);
                 assert_eq!(latest_block.get_hash(), deserialize_latest_block.get_hash());
 
