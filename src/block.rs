@@ -2,7 +2,8 @@ use crate::{
     blockchain::{Blockchain, GENESIS_PERIOD, MAX_STAKER_RECURSION},
     burnfee::BurnFee,
     crypto::{
-        hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
+        hash, sign, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoSignature,
+        SaitoUTXOSetKey,
     },
     golden_ticket::GoldenTicket,
     hop::HOP_SIZE,
@@ -1155,7 +1156,6 @@ impl Block {
         //
         if cv.gt_num == 0 {
             for i in 1..=MAX_STAKER_RECURSION {
-
                 if i >= self.get_id() {
                     break;
                 }
@@ -1165,10 +1165,9 @@ impl Block {
                     .blockring
                     .get_longest_chain_block_hash_by_block_id(bid);
 
-		// previous block hash can be [0; 32] if there is no longest-chain block
+                // previous block hash can be [0; 32] if there is no longest-chain block
 
-		if previous_block_hash != [0; 32] {
-
+                if previous_block_hash != [0; 32] {
                     let previous_block = blockchain.get_block(&previous_block_hash).await.unwrap();
 
                     if previous_block.get_has_golden_ticket() {
@@ -1183,7 +1182,7 @@ impl Block {
                             cv.nolan_falling_off_chain = previous_block.get_total_fees();
                         }
                     }
-		}
+                }
             }
         }
 
@@ -1415,7 +1414,6 @@ impl Block {
         utxoset: &AHashMap<SaitoUTXOSetKey, u64>,
         staking: &Staking,
     ) -> bool {
-
         //
         // no transactions? no thank you
         //
@@ -1434,19 +1432,20 @@ impl Block {
             // tracing_tracker.time_since_last();
         );
 
-
-	//
-	// verify signed by creator
-	//
-	if !verify(&self.get_pre_hash(), self.get_signature(), self.get_creator()) {
+        //
+        // verify signed by creator
+        //
+        if !verify(
+            &self.get_pre_hash(),
+            self.get_signature(),
+            self.get_creator(),
+        ) {
             event!(
                 Level::ERROR,
                 "ERROR 582039: block is not signed by creator or signature does not validate",
             );
-	    return false;
-	}
-
-
+            return false;
+        }
 
         //
         // Consensus Values
@@ -1546,7 +1545,6 @@ impl Block {
                 return false;
             }
 
-
             event!(
                 Level::TRACE,
                 " ... burn fee in blk validated:  {:?}",
@@ -1578,7 +1576,6 @@ impl Block {
                 " ... done routing work required: {:?}",
                 create_timestamp()
             );
-
 
             //
             // validate golden ticket
@@ -1620,7 +1617,6 @@ impl Block {
                 create_timestamp()
             );
         }
-
 
         event!(
             Level::TRACE,
@@ -1716,7 +1712,6 @@ impl Block {
                 return false;
             }
         }
-
 
         //
         // validate difficulty
@@ -2050,21 +2045,25 @@ mod tests {
         assert_eq!(block.routing_work_for_creator, 0);
     }
 
-
     #[test]
     // signs and verifies the signature of a block
     fn block_sign_test() {
-
         let wallet = Wallet::new();
         let mut block = Block::new();
 
         block.sign(wallet.get_publickey(), wallet.get_privatekey());
 
         assert_eq!(block.creator, wallet.get_publickey());
-        assert_eq!(verify(&block.get_pre_hash(), block.get_signature(), block.get_creator()), true);
+        assert_eq!(
+            verify(
+                &block.get_pre_hash(),
+                block.get_signature(),
+                block.get_creator()
+            ),
+            true
+        );
         assert_ne!(block.get_hash(), [0; 32]);
         assert_ne!(block.get_signature(), [0; 64]);
-
     }
 
     #[test]
@@ -2184,11 +2183,10 @@ mod tests {
 
     #[tokio::test]
     async fn block_serialization_test() {
-
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
-println!("1");
+        println!("1");
 
         let privatekey: SaitoPrivateKey;
         let publickey: SaitoPublicKey;
@@ -2197,7 +2195,7 @@ println!("1");
             publickey = wallet.get_publickey();
             privatekey = wallet.get_privatekey();
         }
-println!("2");
+        println!("2");
         let golden_ticket = GoldenTicket::new(1, [1; 32], [2; 32], [3; 33]);
         let mut tx2: Transaction;
         {
@@ -2209,7 +2207,7 @@ println!("2");
         let mut block = test_manager
             .generate_block([1; 32], create_timestamp(), 1, 1, false, vec![])
             .await;
-println!("3");
+        println!("3");
 
         block.sign(publickey, privatekey);
 
@@ -2217,10 +2215,10 @@ println!("3");
 
         block.sign(publickey, privatekey);
 
-println!("4");
+        println!("4");
         TestManager::check_block_consistency(&block);
-println!("4");
+        println!("4");
         TestManager::check_block_consistency(&unsigned_block);
-println!("4");
+        println!("4");
     }
 }

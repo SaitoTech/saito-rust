@@ -115,7 +115,6 @@ impl TestManager {
         golden_ticket: bool,
         additional_transactions: Vec<Transaction>,
     ) -> Block {
-
         let mut transactions: Vec<Transaction> = vec![];
         let mut miner = Miner::new(self.wallet_lock.clone());
         let blockchain = self.blockchain_lock.read().await;
@@ -168,7 +167,6 @@ impl TestManager {
             transactions.push(tx2);
         }
 
-
         //
         // create block
         //
@@ -193,13 +191,19 @@ impl TestManager {
         golden_ticket: bool,
         additional_transactions: Vec<Transaction>,
     ) -> Block {
-
-	let mut block = self.generate_block(parent_hash, timestamp, vip_transactions, normal_transactions, golden_ticket, additional_transactions).await;
-	block.generate_metadata();
-	block
-
+        let mut block = self
+            .generate_block(
+                parent_hash,
+                timestamp,
+                vip_transactions,
+                normal_transactions,
+                golden_ticket,
+                additional_transactions,
+            )
+            .await;
+        block.generate_metadata();
+        block
     }
-
 
     //
     // generate transaction
