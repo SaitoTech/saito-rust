@@ -98,8 +98,8 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_latest_block_hash();
 
-        println!("blockring reports prev hash: {:?}", previous_block_hash);
-        println!("block reports: {:?}", block.get_previous_block_hash());
+        println!("blockring prev hash: {:?}", previous_block_hash);
+        println!("block     prev hash: {:?}", block.get_previous_block_hash());
 
         //
         // sanity checks
@@ -328,11 +328,12 @@ impl Blockchain {
         //
         // save to disk
         //
-        //let storage = Storage::new();
         {
             let block = self.get_mut_block(&block_hash).await;
             block_id = block.get_id();
-            Storage::write_block_to_disk(block);
+            if block.get_block_type() != BlockType::Header {
+                Storage::write_block_to_disk(block);
+            }
         }
 
         event!(
@@ -485,7 +486,7 @@ impl Blockchain {
             //
             for i in 0..10 {
                 if (pbid - i) % 10 == 0 {
-                    pbid = pbid - i;
+                    pbid -= i;
                     break;
                 }
             }
@@ -1310,10 +1311,9 @@ pub async fn run(
         //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
-                    SaitoMessage::MempoolNewBlock { hash: _hash } => {
-                        println!("Blockchain aware of new block in mempool! -- we might use for this congestion tracking");
+                    SaitoMessage::NetworkNewBlock { hash: _hash } => {
+                        println!("Blockchain aware network has received new block! -- we might use for this congestion tracking");
                     },
-
                     _ => {},
                 }
             }
