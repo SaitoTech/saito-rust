@@ -2097,12 +2097,62 @@
 <span id="2097">2097</span>
 <span id="2098">2098</span>
 <span id="2099">2099</span>
+<span id="2100">2100</span>
+<span id="2101">2101</span>
+<span id="2102">2102</span>
+<span id="2103">2103</span>
+<span id="2104">2104</span>
+<span id="2105">2105</span>
+<span id="2106">2106</span>
+<span id="2107">2107</span>
+<span id="2108">2108</span>
+<span id="2109">2109</span>
+<span id="2110">2110</span>
+<span id="2111">2111</span>
+<span id="2112">2112</span>
+<span id="2113">2113</span>
+<span id="2114">2114</span>
+<span id="2115">2115</span>
+<span id="2116">2116</span>
+<span id="2117">2117</span>
+<span id="2118">2118</span>
+<span id="2119">2119</span>
+<span id="2120">2120</span>
+<span id="2121">2121</span>
+<span id="2122">2122</span>
+<span id="2123">2123</span>
+<span id="2124">2124</span>
+<span id="2125">2125</span>
+<span id="2126">2126</span>
+<span id="2127">2127</span>
+<span id="2128">2128</span>
+<span id="2129">2129</span>
+<span id="2130">2130</span>
+<span id="2131">2131</span>
+<span id="2132">2132</span>
+<span id="2133">2133</span>
+<span id="2134">2134</span>
+<span id="2135">2135</span>
+<span id="2136">2136</span>
+<span id="2137">2137</span>
+<span id="2138">2138</span>
+<span id="2139">2139</span>
+<span id="2140">2140</span>
+<span id="2141">2141</span>
+<span id="2142">2142</span>
+<span id="2143">2143</span>
+<span id="2144">2144</span>
+<span id="2145">2145</span>
+<span id="2146">2146</span>
+<span id="2147">2147</span>
+<span id="2148">2148</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
     <span class="ident">burnfee::BurnFee</span>,
     <span class="ident">crypto</span>::{
-        <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>,
+        <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">verify</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>,
+        <span class="ident">SaitoUTXOSetKey</span>,
     },
     <span class="ident">golden_ticket::GoldenTicket</span>,
     <span class="ident">hop::HOP_SIZE</span>,
@@ -2641,8 +2691,8 @@
         <span class="comment">// we set final data</span>
         <span class="comment">//</span>
         <span class="self">self</span>.<span class="ident">set_creator</span>(<span class="ident">publickey</span>);
-        <span class="self">self</span>.<span class="ident">set_signature</span>(<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_pre_hash</span>(), <span class="ident">privatekey</span>));
         <span class="self">self</span>.<span class="ident">generate_hashes</span>();
+        <span class="self">self</span>.<span class="ident">set_signature</span>(<span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_pre_hash</span>(), <span class="ident">privatekey</span>));
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_hashes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
@@ -3187,18 +3237,23 @@
                 <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>
                     .<span class="ident">blockring</span>
                     .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="ident">bid</span>);
-                <span class="kw">let</span> <span class="ident">previous_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="ident">previous_block_hash</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
 
-                <span class="kw">if</span> <span class="ident">previous_block</span>.<span class="ident">get_has_golden_ticket</span>() {
-                    <span class="kw">break</span>;
-                } <span class="kw">else</span> {
-                    <span class="comment">//</span>
-                    <span class="comment">// this is the block BEFORE from which we need to collect the nolan due to</span>
-                    <span class="comment">// our iterator starting at 0 for the current block. i.e. if MAX_STAKER_</span>
-                    <span class="comment">// RECURSION is 3, at 3 we are the fourth block back.</span>
-                    <span class="comment">//</span>
-                    <span class="kw">if</span> <span class="ident">i</span> <span class="op">=</span><span class="op">=</span> <span class="ident">MAX_STAKER_RECURSION</span> {
-                        <span class="ident">cv</span>.<span class="ident">nolan_falling_off_chain</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_total_fees</span>();
+                <span class="comment">// previous block hash can be [0; 32] if there is no longest-chain block</span>
+
+                <span class="kw">if</span> <span class="ident">previous_block_hash</span> <span class="op">!</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>] {
+                    <span class="kw">let</span> <span class="ident">previous_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="ident">previous_block_hash</span>).<span class="kw">await</span>.<span class="ident">unwrap</span>();
+
+                    <span class="kw">if</span> <span class="ident">previous_block</span>.<span class="ident">get_has_golden_ticket</span>() {
+                        <span class="kw">break</span>;
+                    } <span class="kw">else</span> {
+                        <span class="comment">//</span>
+                        <span class="comment">// this is the block BEFORE from which we need to collect the nolan due to</span>
+                        <span class="comment">// our iterator starting at 0 for the current block. i.e. if MAX_STAKER_</span>
+                        <span class="comment">// RECURSION is 3, at 3 we are the fourth block back.</span>
+                        <span class="comment">//</span>
+                        <span class="kw">if</span> <span class="ident">i</span> <span class="op">=</span><span class="op">=</span> <span class="ident">MAX_STAKER_RECURSION</span> {
+                            <span class="ident">cv</span>.<span class="ident">nolan_falling_off_chain</span> <span class="op">=</span> <span class="ident">previous_block</span>.<span class="ident">get_total_fees</span>();
+                        }
                     }
                 }
             }
@@ -3449,6 +3504,21 @@
             <span class="ident">create_timestamp</span>(),
             <span class="comment">// tracing_tracker.time_since_last();</span>
         );
+
+        <span class="comment">//</span>
+        <span class="comment">// verify signed by creator</span>
+        <span class="comment">//</span>
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">verify</span>(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_pre_hash</span>(),
+            <span class="self">self</span>.<span class="ident">get_signature</span>(),
+            <span class="self">self</span>.<span class="ident">get_creator</span>(),
+        ) {
+            <span class="macro">event!</span>(
+                <span class="ident">Level::ERROR</span>,
+                <span class="string">&quot;ERROR 582039: block is not signed by creator or signature does not validate&quot;</span>,
+            );
+            <span class="kw">return</span> <span class="bool-val">false</span>;
+        }
 
         <span class="comment">//</span>
         <span class="comment">// Consensus Values</span>
@@ -4041,29 +4111,46 @@
         <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">lc</span>, <span class="bool-val">false</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">has_golden_ticket</span>, <span class="bool-val">false</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">has_fee_transaction</span>, <span class="bool-val">false</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">has_issuance_transaction</span>, <span class="bool-val">false</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">issuance_transaction_idx</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">fee_transaction_idx</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">golden_ticket_idx</span>, <span class="number">0</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">routing_work_for_creator</span>, <span class="number">0</span>);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="comment">// signs and verifies the signature of a block</span>
     <span class="kw">fn</span> <span class="ident">block_sign_test</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
-        <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
 
         <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>(), <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
 
         <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">creator</span>, <span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">verify</span>(
+                <span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_pre_hash</span>(),
+                <span class="ident">block</span>.<span class="ident">get_signature</span>(),
+                <span class="ident">block</span>.<span class="ident">get_creator</span>()
+            ),
+            <span class="bool-val">true</span>
+        );
         <span class="macro">assert_ne!</span>(<span class="ident">block</span>.<span class="ident">get_hash</span>(), [<span class="number">0</span>; <span class="number">32</span>]);
         <span class="macro">assert_ne!</span>(<span class="ident">block</span>.<span class="ident">get_signature</span>(), [<span class="number">0</span>; <span class="number">64</span>]);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="comment">// test that we are properly generating pre_hash and hash</span>
     <span class="kw">fn</span> <span class="ident">block_generate_hashes</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
         <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">generate_hashes</span>();
         <span class="macro">assert_ne!</span>(<span class="ident">hash</span>, [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_ne!</span>(<span class="ident">block</span>.<span class="ident">get_pre_hash</span>(), [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_ne!</span>(<span class="ident">block</span>.<span class="ident">get_hash</span>(), [<span class="number">0</span>; <span class="number">32</span>]);
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="comment">// confirm we have not modified the length of the serialized block</span>
     <span class="kw">fn</span> <span class="ident">block_serialize_for_signature_hash</span>() {
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
         <span class="kw">let</span> <span class="ident">serialized_body</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_signature</span>();
@@ -4071,6 +4158,7 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="comment">// signs and verifies the signature of a block</span>
     <span class="kw">fn</span> <span class="ident">block_serialize_for_net_test</span>() {
         <span class="kw">let</span> <span class="ident">mock_input</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
         <span class="kw">let</span> <span class="ident">mock_output</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
@@ -4106,6 +4194,10 @@
 
         <span class="kw">let</span> <span class="ident">serialized_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_net</span>(<span class="ident">BlockType::Full</span>);
         <span class="kw">let</span> <span class="ident">deserialized_block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_block</span>);
+
+        <span class="kw">let</span> <span class="ident">serialized_block_header</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_net</span>(<span class="ident">BlockType::Header</span>);
+        <span class="kw">let</span> <span class="ident">deserialized_block_header</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_block_header</span>);
+
         <span class="comment">// assert_eq!(block, deserialized_block);</span>
         <span class="macro">assert_eq!</span>(<span class="ident">deserialized_block</span>.<span class="ident">get_id</span>(), <span class="number">1</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">deserialized_block</span>.<span class="ident">get_timestamp</span>(), <span class="ident">timestamp</span>);
@@ -4167,6 +4259,7 @@
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">test_manager</span> <span class="op">=</span> <span class="ident">TestManager::new</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
+        <span class="macro">println!</span>(<span class="string">&quot;1&quot;</span>);
 
         <span class="kw">let</span> <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>;
         <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>;
@@ -4175,6 +4268,7 @@
             <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
             <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
         }
+        <span class="macro">println!</span>(<span class="string">&quot;2&quot;</span>);
         <span class="kw">let</span> <span class="ident">golden_ticket</span> <span class="op">=</span> <span class="ident">GoldenTicket::new</span>(<span class="number">1</span>, [<span class="number">1</span>; <span class="number">32</span>], [<span class="number">2</span>; <span class="number">32</span>], [<span class="number">3</span>; <span class="number">33</span>]);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx2</span>: <span class="ident">Transaction</span>;
         {
@@ -4186,6 +4280,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_manager</span>
             .<span class="ident">generate_block</span>([<span class="number">1</span>; <span class="number">32</span>], <span class="ident">create_timestamp</span>(), <span class="number">1</span>, <span class="number">1</span>, <span class="bool-val">false</span>, <span class="macro">vec!</span>[])
             .<span class="kw">await</span>;
+        <span class="macro">println!</span>(<span class="string">&quot;3&quot;</span>);
 
         <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">publickey</span>, <span class="ident">privatekey</span>);
 
@@ -4193,8 +4288,11 @@
 
         <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">publickey</span>, <span class="ident">privatekey</span>);
 
+        <span class="macro">println!</span>(<span class="string">&quot;4&quot;</span>);
         <span class="ident">TestManager::check_block_consistency</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;4&quot;</span>);
         <span class="ident">TestManager::check_block_consistency</span>(<span class="kw-2">&amp;</span><span class="ident">unsigned_block</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;4&quot;</span>);
     }
 }
 </pre></div>

@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["GENESIS_PERIOD",""],["MAX_STAKER_RECURSION",""],["MAX_TOKEN_SUPPLY",""],["PRUNE_AFTER_BLOCKS",""]],"fn":[["bit_pack",""],["bit_unpack",""],["run",""]],"struct":[["Blockchain",""]],"type":[["UtxoSet",""]]});
+initSidebarItems({"constant":[["GENESIS_PERIOD",""],["MAX_STAKER_RECURSION",""],["MAX_TOKEN_SUPPLY",""],["MIN_GOLDEN_TICKETS_DENOMINATOR",""],["MIN_GOLDEN_TICKETS_NUMERATOR",""],["PRUNE_AFTER_BLOCKS",""]],"fn":[["bit_pack",""],["bit_unpack",""],["run",""]],"struct":[["Blockchain",""]],"type":[["UtxoSet",""]]});
