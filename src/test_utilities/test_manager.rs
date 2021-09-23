@@ -234,13 +234,19 @@ impl TestManager {
         let mut utxoset: AHashMap<SaitoUTXOSetKey, u64> = AHashMap::new();
         let latest_block_id = blockchain.get_latest_block_id();
 
+println!("----");
+println!("----");
+println!("---- check utxoset ");
+println!("----");
+println!("----");
         for i in 1..=latest_block_id {
             let block_hash = blockchain
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(i as u64);
+println!("WINDING ID HASH - {} {:?}", i, block_hash);
             let block = blockchain.get_block(&block_hash).await.unwrap();
-            for i in 0..block.get_transactions().len() {
-                block.get_transactions()[i].on_chain_reorganization(&mut utxoset, true, i as u64);
+            for j in 0..block.get_transactions().len() {
+                block.get_transactions()[j].on_chain_reorganization(&mut utxoset, true, i as u64);
             }
         }
 
@@ -248,7 +254,6 @@ impl TestManager {
         // check main utxoset matches longest-chain
         //
         for (key, value) in &blockchain.utxoset {
-            //println!("{:?} / {}", key, value);
             match utxoset.get(key) {
                 Some(value2) => {
                     //
@@ -263,7 +268,8 @@ impl TestManager {
                         // everything spent in blockchain.utxoset should be spent on longest-chain
                         //
                         if *value > 1 {
-                            //println!("comparing {} and {}", value, value2);
+                            println!("comparing key: {:?}", key);
+                            println!("comparing blkchn {} and sanitycheck {}", value, value2);
                             assert_eq!(value, value2);
                         } else {
                             //
@@ -273,9 +279,18 @@ impl TestManager {
                     }
                 }
                 None => {
-                    //                    println!("comparing {:?} with expected value {}", key, value);
-                    //                    println!("Value does not exist in actual blockchain!");
-                    assert_eq!(1, 2);
+		    //
+		    // if the value is 0, the token is unspendable on the main chain and
+		    // it may still be in the UTXOSET simply because it was not removed
+		    // but rather set to an unspendable value. These entries will be 
+		    // removed on purge, although we can look at deleting them on unwind
+		    // as well if that is reasonably efficient.
+		    //
+		    if *value > 0 {
+                        println!("Value does not exist in actual blockchain!");
+                        println!("comparing {:?} with on-chain value {}", key, value);
+                        assert_eq!(1, 2);
+                    }
                 }
             }
         }
@@ -511,13 +526,13 @@ impl TestManager {
 	let hashmap2 = &deserialized_block.slips_spent_this_block;
 
         //
-        for (key, value) in hashmap1 {
+        for (key, _value) in hashmap1 {
             let value1 = hashmap1.get(key).unwrap();
             let value2 = hashmap2.get(key).unwrap();
 	    assert_eq!(value1, value2)
 	}
 
-        for (key, value) in hashmap2 {
+        for (key, _value) in hashmap2 {
             let value1 = hashmap1.get(key).unwrap();
             let value2 = hashmap2.get(key).unwrap();
 	    assert_eq!(value1, value2)

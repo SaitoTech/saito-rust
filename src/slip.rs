@@ -98,11 +98,35 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_amount() > 0 {
+	    //
             // TODO cleanup once ready
-            //println!("updating utxoset: {:?} value {}", self.utxoset_key, slip_value);
+	    //
+            //println!("update utxoset: {:?} value {} lc -> {}", self.utxoset_key, slip_value, lc);
             //println!("slip_ordinal: {}", self.get_slip_ordinal());
             //println!("slip_amount: {}", self.get_amount());
-            utxoset.entry(self.utxoset_key).or_insert(slip_value);
+            //utxoset.entry(self.utxoset_key).or_insert(slip_value);
+	    //
+	    // TODO find more efficient update operation
+	    //
+	    // entry().or_insert() does not update
+	    //
+            if utxoset.contains_key(&self.utxoset_key) {
+                utxoset.insert(self.utxoset_key, slip_value);
+	    } else {
+                utxoset.entry(self.utxoset_key).or_insert(slip_value);
+	    }
+
+	    //
+	    // TODO - remove once this seems useless
+	    //
+            let x = utxoset.get(&self.utxoset_key).unwrap();	    
+	    if *x != slip_value {
+                println!("-----------------------------");
+                println!("-----------------------------");
+                println!("-------{}------{}----------", *x, slip_value);
+                println!("-----------------------------");
+                println!("-----------------------------");
+            }
         }
     }
 

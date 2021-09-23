@@ -98,8 +98,8 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_latest_block_hash();
 
-        println!("blockring prev hash: {:?}", previous_block_hash);
-        println!("block     prev hash: {:?}", block.get_previous_block_hash());
+        //println!("blockring prev hash: {:?}", previous_block_hash);
+        //println!("block     prev hash: {:?}", block.get_previous_block_hash());
 
         //
         // sanity checks
@@ -792,7 +792,8 @@ impl Blockchain {
 
         if !old_chain.is_empty() {
             let res = self
-                .unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
+                .unwind_chain(&new_chain, &old_chain, 0, true)
+                //.unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
                 .await;
             res
         } else if !new_chain.is_empty() {
@@ -830,6 +831,7 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
+
         event!(
             Level::TRACE,
             " ... blockchain.wind_chain strt: {:?}",
@@ -1395,6 +1397,10 @@ mod tests {
         let blockchain = blockchain_lock.read().await;
 
         assert_eq!(5, blockchain.get_latest_block_id());
+
+        test_manager.check_utxoset().await;
+        test_manager.check_token_supply().await;
+
     }
 
     #[tokio::test]
@@ -1447,7 +1453,11 @@ mod tests {
 
         assert_eq!(5, blockchain.get_latest_block_id());
         assert_ne!(7, blockchain.get_latest_block_id());
+
+        test_manager.check_utxoset().await;
+        test_manager.check_token_supply().await;
     }
+
 
     #[tokio::test]
     //
@@ -1499,6 +1509,10 @@ mod tests {
 
         assert_eq!(7, blockchain.get_latest_block_id());
         assert_ne!(5, blockchain.get_latest_block_id());
+
+        test_manager.check_utxoset().await;
+        test_manager.check_token_supply().await;
+
     }
 
     #[tokio::test]
@@ -1690,5 +1704,9 @@ mod tests {
             assert_eq!(10, blockchain.get_latest_block_id());
             assert_eq!(block10_2_hash, blockchain.get_latest_block_hash());
         }
+
+        test_manager.check_utxoset().await;
+        test_manager.check_token_supply().await;
+
     }
 }
