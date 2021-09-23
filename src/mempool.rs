@@ -487,15 +487,14 @@ mod tests {
             }
         }
     }
+
     #[tokio::test]
     async fn mempool_bundle_and_send_blocks_to_blockchain_test() {
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        {
-            let mut wallet = wallet_lock.write().await;
-            wallet.load_keys("test/testwallet", Some("asdf"));
-        }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+
         let publickey;
         let mut prev_block;
         {
@@ -509,6 +508,7 @@ mod tests {
             wallet_lock.clone(),
         )
         .await;
+
         // make sure to create the mock_timestamp_generator after the VIP block.
         let mut mock_timestamp_generator = MockTimestampGenerator::new();
         {

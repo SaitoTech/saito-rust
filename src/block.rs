@@ -222,7 +222,7 @@ pub struct Block {
     block_type: BlockType,
     // vector of staker slips spent this block - used to prevent withdrawals and payouts same block
     #[serde(skip)]
-    slips_spent_this_block: AHashMap<SaitoUTXOSetKey, u64>,
+    pub slips_spent_this_block: AHashMap<SaitoUTXOSetKey, u64>,
     #[serde(skip)]
     created_hashmap_of_slips_spent_this_block: bool,
 }
@@ -1826,7 +1826,8 @@ impl Block {
         // ATR transactions
         //
         let rlen = cv.rebroadcasts.len();
-        // TODO -- delete if pos
+        // TODO -- figure out if there is a more efficient solution
+	// than iterating through the entire transaction set here.
         let _tx_hashes_generated = cv.rebroadcasts[0..rlen]
             .par_iter_mut()
             .all(|tx| tx.generate_metadata(publickey));
@@ -1967,6 +1968,7 @@ mod tests {
         assert_eq!(block.fee_transaction_idx, 0);
         assert_eq!(block.golden_ticket_idx, 0);
         assert_eq!(block.routing_work_for_creator, 0);
+        TestManager::check_block_consistency(&block);
     }
 
     #[test]
@@ -1988,6 +1990,7 @@ mod tests {
         );
         assert_ne!(block.get_hash(), [0; 32]);
         assert_ne!(block.get_signature(), [0; 64]);
+        TestManager::check_block_consistency(&block);
     }
 
     #[test]
@@ -1998,6 +2001,7 @@ mod tests {
         assert_ne!(hash, [0; 32]);
         assert_ne!(block.get_pre_hash(), [0; 32]);
         assert_ne!(block.get_hash(), [0; 32]);
+        TestManager::check_block_consistency(&block);
     }
 
     #[test]
@@ -2006,10 +2010,11 @@ mod tests {
         let block = Block::new();
         let serialized_body = block.serialize_for_signature();
         assert_eq!(serialized_body.len(), 145);
+        TestManager::check_block_consistency(&block);
     }
 
     #[test]
-    // signs and verifies the signature of a block
+    // confirm serialization / deserialization does not modify block content
     fn block_serialize_for_net_test() {
         let mock_input = Slip::new();
         let mock_output = Slip::new();
@@ -2049,7 +2054,7 @@ mod tests {
         let serialized_block_header = block.serialize_for_net(BlockType::Header);
         let deserialized_block_header = Block::deserialize_for_net(&serialized_block_header);
 
-        // assert_eq!(block, deserialized_block);
+        assert_eq!(block.serialize_for_net(BlockType::Full), deserialized_block.serialize_for_net(BlockType::Full));
         assert_eq!(deserialized_block.get_id(), 1);
         assert_eq!(deserialized_block.get_timestamp(), timestamp);
         assert_eq!(deserialized_block.get_previous_block_hash(), [1; 32]);
@@ -2059,13 +2064,29 @@ mod tests {
         assert_eq!(deserialized_block.get_treasury(), 1);
         assert_eq!(deserialized_block.get_burnfee(), 2);
         assert_eq!(deserialized_block.get_difficulty(), 3);
+
+        assert_eq!(deserialized_block_header.serialize_for_net(BlockType::Full), deserialized_block.serialize_for_net(BlockType::Header));
+        assert_eq!(deserialized_block_header.get_id(), 1);
+        assert_eq!(deserialized_block_header.get_timestamp(), timestamp);
+        assert_eq!(deserialized_block_header.get_previous_block_hash(), [1; 32]);
+        assert_eq!(deserialized_block_header.get_creator(), [2; 33]);
+        assert_eq!(deserialized_block_header.get_merkle_root(), [3; 32]);
+        assert_eq!(deserialized_block_header.get_signature(), [4; 64]);
+        assert_eq!(deserialized_block_header.get_treasury(), 1);
+        assert_eq!(deserialized_block_header.get_burnfee(), 2);
+        assert_eq!(deserialized_block_header.get_difficulty(), 3);
+
+        TestManager::check_block_consistency(&block);
+        TestManager::check_block_consistency(&deserialized_block);
+        TestManager::check_block_consistency(&deserialized_block_header);
     }
 
     #[test]
+    // confirm merkle root is being generated from transactions in block
     fn block_merkle_root_test() {
+
         let mut block = Block::new();
-        let mut wallet = Wallet::new();
-        wallet.load_keys("test/testwallet", Some("asdf"));
+        let wallet = Wallet::new();
 
         let mut transactions = (0..5)
             .into_iter()
@@ -2077,15 +2098,20 @@ mod tests {
             .collect();
 
         block.set_transactions(&mut transactions);
+	block.set_merkle_root(block.generate_merkle_root());
 
-        assert!(block.generate_merkle_root().len() == 32);
+        assert!(block.get_merkle_root().len() == 32);
+        assert_ne!(block.get_merkle_root(), [0; 32]);
+
+        TestManager::check_block_consistency(&block);
     }
 
+
     #[tokio::test]
-    async fn block_downgrade_test() {
+    // downgrade and upgrade a block with transactions
+    async fn block_downgrade_upgrade_test() {
         let mut block = Block::new();
-        let mut wallet = Wallet::new();
-        wallet.load_keys("test/testwallet", Some("asdf"));
+        let wallet = Wallet::new();
         let mut transactions = (0..5)
             .into_iter()
             .map(|_| {
@@ -2095,54 +2121,27 @@ mod tests {
             })
             .collect();
         block.set_transactions(&mut transactions);
+
+	Storage::write_block_to_disk(&mut block);
 
         assert_eq!(block.transactions.len(), 5);
         assert_eq!(block.get_block_type(), BlockType::Full);
+
+	let serialized_full_block = block.serialize_for_net(BlockType::Full);
 
         block.downgrade_block_to_block_type(BlockType::Pruned).await;
 
         assert_eq!(block.transactions.len(), 0);
         assert_eq!(block.get_block_type(), BlockType::Pruned);
-    }
 
-    #[tokio::test]
-    async fn block_serialization_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
-        println!("1");
+        block.upgrade_block_to_block_type(BlockType::Full).await;
 
-        let privatekey: SaitoPrivateKey;
-        let publickey: SaitoPublicKey;
-        {
-            let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-            privatekey = wallet.get_privatekey();
-        }
-        println!("2");
-        let golden_ticket = GoldenTicket::new(1, [1; 32], [2; 32], [3; 33]);
-        let mut tx2: Transaction;
-        {
-            let mut wallet = wallet_lock.write().await;
-            tx2 = wallet.create_golden_ticket_transaction(golden_ticket).await;
-        }
-        tx2.generate_metadata(publickey);
+        assert_eq!(block.transactions.len(), 5);
+        assert_eq!(block.get_block_type(), BlockType::Full);
+	assert_eq!(serialized_full_block, block.serialize_for_net(BlockType::Full));
 
-        let mut block = test_manager
-            .generate_block([1; 32], create_timestamp(), 1, 1, false, vec![])
-            .await;
-        println!("3");
-
-        block.sign(publickey, privatekey);
-
-        let unsigned_block = block.clone();
-
-        block.sign(publickey, privatekey);
-
-        println!("4");
         TestManager::check_block_consistency(&block);
-        println!("4");
-        TestManager::check_block_consistency(&unsigned_block);
-        println!("4");
+
     }
+
 }

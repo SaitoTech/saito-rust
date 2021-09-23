@@ -316,6 +316,7 @@ impl TestManager {
         }
     }
 
+
     pub async fn check_token_supply(&self) {
         let mut token_supply: u64 = 0;
         let mut current_supply: u64 = 0;
@@ -431,59 +432,97 @@ impl TestManager {
             }
         }
     }
+
     pub fn check_block_consistency(block: &Block) {
-        let serialized_block = block.serialize_for_net(BlockType::Full);
 
-        let deserialized_block = Block::deserialize_for_net(&serialized_block);
+	//
+	// tests are run with blocks in various stages of
+	// completion. in order to ensure that the tests here
+	// can be comprehensive, we generate metadata if the
+	// pre_hash has not been created.
+	//
+	let mut block2 = block.clone();
 
-        assert_eq!(block.get_id(), deserialized_block.get_id());
-        assert_eq!(block.get_timestamp(), deserialized_block.get_timestamp());
+        let serialized_block = block2.serialize_for_net(BlockType::Full);
+        let mut deserialized_block = Block::deserialize_for_net(&serialized_block);
+
+        block2.generate_metadata();
+	deserialized_block.generate_metadata();
+        block2.generate_hashes();
+	deserialized_block.generate_hashes();
+
+        assert_eq!(block2.get_id(), deserialized_block.get_id());
+        assert_eq!(block2.get_timestamp(), deserialized_block.get_timestamp());
         assert_eq!(
-            block.get_previous_block_hash(),
+            block2.get_previous_block_hash(),
             deserialized_block.get_previous_block_hash()
         );
         assert_eq!(block.get_creator(), deserialized_block.get_creator());
         assert_eq!(
-            block.get_merkle_root(),
+            block2.get_merkle_root(),
             deserialized_block.get_merkle_root()
         );
-        assert_eq!(block.get_signature(), deserialized_block.get_signature());
-        assert_eq!(block.get_treasury(), deserialized_block.get_treasury());
-        assert_eq!(block.get_burnfee(), deserialized_block.get_burnfee());
-        assert_eq!(block.get_difficulty(), deserialized_block.get_difficulty());
+        assert_eq!(block2.get_signature(), deserialized_block.get_signature());
+        assert_eq!(block2.get_treasury(), deserialized_block.get_treasury());
+        assert_eq!(block2.get_burnfee(), deserialized_block.get_burnfee());
+        assert_eq!(block2.get_difficulty(), deserialized_block.get_difficulty());
         assert_eq!(
-            block.get_staking_treasury(),
+            block2.get_staking_treasury(),
             deserialized_block.get_staking_treasury()
         );
-        // assert_eq!(block.get_total_fees(), deserialized_block.get_total_fees());
+        // assert_eq!(block2.get_total_fees(), deserialized_block.get_total_fees());
         assert_eq!(
-            block.get_routing_work_for_creator(),
+            block2.get_routing_work_for_creator(),
             deserialized_block.get_routing_work_for_creator()
         );
-        // assert_eq!(block.get_lc(), deserialized_block.get_lc());
+        // assert_eq!(block2.get_lc(), deserialized_block.get_lc());
         assert_eq!(
-            block.get_has_golden_ticket(),
+            block2.get_has_golden_ticket(),
             deserialized_block.get_has_golden_ticket()
         );
         assert_eq!(
-            block.get_has_fee_transaction(),
+            block2.get_has_fee_transaction(),
             deserialized_block.get_has_fee_transaction()
         );
         assert_eq!(
-            block.get_golden_ticket_idx(),
+            block2.get_golden_ticket_idx(),
             deserialized_block.get_golden_ticket_idx()
         );
         assert_eq!(
-            block.get_fee_transaction_idx(),
+            block2.get_fee_transaction_idx(),
             deserialized_block.get_fee_transaction_idx()
         );
-        // assert_eq!(block.get_total_rebroadcast_slips(), deserialized_block.get_total_rebroadcast_slips());
-        // assert_eq!(block.get_total_rebroadcast_nolan(), deserialized_block.get_total_rebroadcast_nolan());
-        // assert_eq!(block.get_rebroadcast_hash(), deserialized_block.get_rebroadcast_hash());
-        assert_eq!(block.get_block_type(), deserialized_block.get_block_type());
-        // assert_eq!(block.slips_spent_this_block, deserialized_block.slips_spent_this_block);
-        assert_eq!(block.get_pre_hash(), deserialized_block.get_pre_hash());
-        assert_eq!(block.get_hash(), deserialized_block.get_hash());
+        // assert_eq!(block2.get_total_rebroadcast_slips(), deserialized_block.get_total_rebroadcast_slips());
+        // assert_eq!(block2.get_total_rebroadcast_nolan(), deserialized_block.get_total_rebroadcast_nolan());
+        // assert_eq!(block2.get_rebroadcast_hash(), deserialized_block.get_rebroadcast_hash());
+	//
+	// in production blocks are required to have at least one transaction
+	// but in testing we sometimes have blocks that do not have transactions
+	// deserialization sets those blocks to Header blocks by default so we
+	// only want to run this test if there are transactions in play
+	//
+	if block2.get_transactions().len() > 0 {
+            assert_eq!(block2.get_block_type(), deserialized_block.get_block_type());
+	}
+        assert_eq!(block2.get_pre_hash(), deserialized_block.get_pre_hash());
+        assert_eq!(block2.get_hash(), deserialized_block.get_hash());
+
+	let hashmap1 = &block2.slips_spent_this_block;
+	let hashmap2 = &deserialized_block.slips_spent_this_block;
+
+        //
+        for (key, value) in hashmap1 {
+            let value1 = hashmap1.get(key).unwrap();
+            let value2 = hashmap2.get(key).unwrap();
+	    assert_eq!(value1, value2)
+	}
+
+        for (key, value) in hashmap2 {
+            let value1 = hashmap1.get(key).unwrap();
+            let value2 = hashmap2.get(key).unwrap();
+	    assert_eq!(value1, value2)
+	}
+
     }
 }
 
