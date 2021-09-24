@@ -704,8 +704,7 @@ impl Blockchain {
             return false;
         }
 
-        if self.blockring.get_latest_block_id()
-            >= self.blocks.get(&new_chain[0]).unwrap().get_id()
+        if self.blockring.get_latest_block_id() >= self.blocks.get(&new_chain[0]).unwrap().get_id()
         {
             return false;
         }
@@ -831,7 +830,6 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-
         event!(
             Level::TRACE,
             " ... blockchain.wind_chain strt: {:?}",
@@ -1400,7 +1398,6 @@ mod tests {
 
         test_manager.check_utxoset().await;
         test_manager.check_token_supply().await;
-
     }
 
     #[tokio::test]
@@ -1458,7 +1455,6 @@ mod tests {
         test_manager.check_token_supply().await;
     }
 
-
     #[tokio::test]
     //
     // test we add blocks 6 and 7 because of suffient mining
@@ -1512,7 +1508,6 @@ mod tests {
 
         test_manager.check_utxoset().await;
         test_manager.check_token_supply().await;
-
     }
 
     #[tokio::test]
@@ -1707,6 +1702,5 @@ mod tests {
 
         test_manager.check_utxoset().await;
         test_manager.check_token_supply().await;
-
     }
 }

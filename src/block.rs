@@ -1827,7 +1827,7 @@ impl Block {
         //
         let rlen = cv.rebroadcasts.len();
         // TODO -- figure out if there is a more efficient solution
-	// than iterating through the entire transaction set here.
+        // than iterating through the entire transaction set here.
         let _tx_hashes_generated = cv.rebroadcasts[0..rlen]
             .par_iter_mut()
             .all(|tx| tx.generate_metadata(publickey));
@@ -2054,7 +2054,10 @@ mod tests {
         let serialized_block_header = block.serialize_for_net(BlockType::Header);
         let deserialized_block_header = Block::deserialize_for_net(&serialized_block_header);
 
-        assert_eq!(block.serialize_for_net(BlockType::Full), deserialized_block.serialize_for_net(BlockType::Full));
+        assert_eq!(
+            block.serialize_for_net(BlockType::Full),
+            deserialized_block.serialize_for_net(BlockType::Full)
+        );
         assert_eq!(deserialized_block.get_id(), 1);
         assert_eq!(deserialized_block.get_timestamp(), timestamp);
         assert_eq!(deserialized_block.get_previous_block_hash(), [1; 32]);
@@ -2065,7 +2068,10 @@ mod tests {
         assert_eq!(deserialized_block.get_burnfee(), 2);
         assert_eq!(deserialized_block.get_difficulty(), 3);
 
-        assert_eq!(deserialized_block_header.serialize_for_net(BlockType::Full), deserialized_block.serialize_for_net(BlockType::Header));
+        assert_eq!(
+            deserialized_block_header.serialize_for_net(BlockType::Full),
+            deserialized_block.serialize_for_net(BlockType::Header)
+        );
         assert_eq!(deserialized_block_header.get_id(), 1);
         assert_eq!(deserialized_block_header.get_timestamp(), timestamp);
         assert_eq!(deserialized_block_header.get_previous_block_hash(), [1; 32]);
@@ -2084,7 +2090,6 @@ mod tests {
     #[test]
     // confirm merkle root is being generated from transactions in block
     fn block_merkle_root_test() {
-
         let mut block = Block::new();
         let wallet = Wallet::new();
 
@@ -2098,14 +2103,13 @@ mod tests {
             .collect();
 
         block.set_transactions(&mut transactions);
-	block.set_merkle_root(block.generate_merkle_root());
+        block.set_merkle_root(block.generate_merkle_root());
 
         assert!(block.get_merkle_root().len() == 32);
         assert_ne!(block.get_merkle_root(), [0; 32]);
 
         TestManager::check_block_consistency(&block);
     }
-
 
     #[tokio::test]
     // downgrade and upgrade a block with transactions
@@ -2122,12 +2126,12 @@ mod tests {
             .collect();
         block.set_transactions(&mut transactions);
 
-	Storage::write_block_to_disk(&mut block);
+        Storage::write_block_to_disk(&mut block);
 
         assert_eq!(block.transactions.len(), 5);
         assert_eq!(block.get_block_type(), BlockType::Full);
 
-	let serialized_full_block = block.serialize_for_net(BlockType::Full);
+        let serialized_full_block = block.serialize_for_net(BlockType::Full);
 
         block.downgrade_block_to_block_type(BlockType::Pruned).await;
 
@@ -2138,10 +2142,11 @@ mod tests {
 
         assert_eq!(block.transactions.len(), 5);
         assert_eq!(block.get_block_type(), BlockType::Full);
-	assert_eq!(serialized_full_block, block.serialize_for_net(BlockType::Full));
+        assert_eq!(
+            serialized_full_block,
+            block.serialize_for_net(BlockType::Full)
+        );
 
         TestManager::check_block_consistency(&block);
-
     }
-
 }

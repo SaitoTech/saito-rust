@@ -234,16 +234,16 @@ impl TestManager {
         let mut utxoset: AHashMap<SaitoUTXOSetKey, u64> = AHashMap::new();
         let latest_block_id = blockchain.get_latest_block_id();
 
-println!("----");
-println!("----");
-println!("---- check utxoset ");
-println!("----");
-println!("----");
+        println!("----");
+        println!("----");
+        println!("---- check utxoset ");
+        println!("----");
+        println!("----");
         for i in 1..=latest_block_id {
             let block_hash = blockchain
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(i as u64);
-println!("WINDING ID HASH - {} {:?}", i, block_hash);
+            println!("WINDING ID HASH - {} {:?}", i, block_hash);
             let block = blockchain.get_block(&block_hash).await.unwrap();
             for j in 0..block.get_transactions().len() {
                 block.get_transactions()[j].on_chain_reorganization(&mut utxoset, true, i as u64);
@@ -279,14 +279,14 @@ println!("WINDING ID HASH - {} {:?}", i, block_hash);
                     }
                 }
                 None => {
-		    //
-		    // if the value is 0, the token is unspendable on the main chain and
-		    // it may still be in the UTXOSET simply because it was not removed
-		    // but rather set to an unspendable value. These entries will be 
-		    // removed on purge, although we can look at deleting them on unwind
-		    // as well if that is reasonably efficient.
-		    //
-		    if *value > 0 {
+                    //
+                    // if the value is 0, the token is unspendable on the main chain and
+                    // it may still be in the UTXOSET simply because it was not removed
+                    // but rather set to an unspendable value. These entries will be
+                    // removed on purge, although we can look at deleting them on unwind
+                    // as well if that is reasonably efficient.
+                    //
+                    if *value > 0 {
                         println!("Value does not exist in actual blockchain!");
                         println!("comparing {:?} with on-chain value {}", key, value);
                         assert_eq!(1, 2);
@@ -330,7 +330,6 @@ println!("WINDING ID HASH - {} {:?}", i, block_hash);
             }
         }
     }
-
 
     pub async fn check_token_supply(&self) {
         let mut token_supply: u64 = 0;
@@ -449,22 +448,21 @@ println!("WINDING ID HASH - {} {:?}", i, block_hash);
     }
 
     pub fn check_block_consistency(block: &Block) {
-
-	//
-	// tests are run with blocks in various stages of
-	// completion. in order to ensure that the tests here
-	// can be comprehensive, we generate metadata if the
-	// pre_hash has not been created.
-	//
-	let mut block2 = block.clone();
+        //
+        // tests are run with blocks in various stages of
+        // completion. in order to ensure that the tests here
+        // can be comprehensive, we generate metadata if the
+        // pre_hash has not been created.
+        //
+        let mut block2 = block.clone();
 
         let serialized_block = block2.serialize_for_net(BlockType::Full);
         let mut deserialized_block = Block::deserialize_for_net(&serialized_block);
 
         block2.generate_metadata();
-	deserialized_block.generate_metadata();
+        deserialized_block.generate_metadata();
         block2.generate_hashes();
-	deserialized_block.generate_hashes();
+        deserialized_block.generate_hashes();
 
         assert_eq!(block2.get_id(), deserialized_block.get_id());
         assert_eq!(block2.get_timestamp(), deserialized_block.get_timestamp());
@@ -510,34 +508,33 @@ println!("WINDING ID HASH - {} {:?}", i, block_hash);
         // assert_eq!(block2.get_total_rebroadcast_slips(), deserialized_block.get_total_rebroadcast_slips());
         // assert_eq!(block2.get_total_rebroadcast_nolan(), deserialized_block.get_total_rebroadcast_nolan());
         // assert_eq!(block2.get_rebroadcast_hash(), deserialized_block.get_rebroadcast_hash());
-	//
-	// in production blocks are required to have at least one transaction
-	// but in testing we sometimes have blocks that do not have transactions
-	// deserialization sets those blocks to Header blocks by default so we
-	// only want to run this test if there are transactions in play
-	//
-	if block2.get_transactions().len() > 0 {
+        //
+        // in production blocks are required to have at least one transaction
+        // but in testing we sometimes have blocks that do not have transactions
+        // deserialization sets those blocks to Header blocks by default so we
+        // only want to run this test if there are transactions in play
+        //
+        if block2.get_transactions().len() > 0 {
             assert_eq!(block2.get_block_type(), deserialized_block.get_block_type());
-	}
+        }
         assert_eq!(block2.get_pre_hash(), deserialized_block.get_pre_hash());
         assert_eq!(block2.get_hash(), deserialized_block.get_hash());
 
-	let hashmap1 = &block2.slips_spent_this_block;
-	let hashmap2 = &deserialized_block.slips_spent_this_block;
+        let hashmap1 = &block2.slips_spent_this_block;
+        let hashmap2 = &deserialized_block.slips_spent_this_block;
 
         //
         for (key, _value) in hashmap1 {
             let value1 = hashmap1.get(key).unwrap();
             let value2 = hashmap2.get(key).unwrap();
-	    assert_eq!(value1, value2)
-	}
+            assert_eq!(value1, value2)
+        }
 
         for (key, _value) in hashmap2 {
             let value1 = hashmap1.get(key).unwrap();
             let value2 = hashmap2.get(key).unwrap();
-	    assert_eq!(value1, value2)
-	}
-
+            assert_eq!(value1, value2)
+        }
     }
 }
 
