@@ -4,9 +4,12 @@
 //
 use crate::block::{Block, BlockType};
 use crate::blockchain::Blockchain;
+use crate::burnfee::HEARTBEAT;
 use crate::crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoUTXOSetKey};
 use crate::golden_ticket::GoldenTicket;
+use crate::mempool::Mempool;
 use crate::miner::Miner;
+use crate::time::create_timestamp;
 use crate::transaction::{Transaction, TransactionType};
 use crate::wallet::Wallet;
 use ahash::AHashMap;
@@ -26,6 +29,7 @@ use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]
 pub struct TestManager {
+    pub mempool_lock: Arc<RwLock<Mempool>>,
     pub blockchain_lock: Arc<RwLock<Blockchain>>,
     pub wallet_lock: Arc<RwLock<Wallet>>,
     pub latest_block_hash: SaitoHash,
@@ -34,6 +38,7 @@ pub struct TestManager {
 impl TestManager {
     pub fn new(blockchain_lock: Arc<RwLock<Blockchain>>, wallet_lock: Arc<RwLock<Wallet>>) -> Self {
         Self {
+            mempool_lock: Arc::new(RwLock::new(Mempool::new(wallet_lock.clone()))),
             blockchain_lock: blockchain_lock.clone(),
             wallet_lock: wallet_lock.clone(),
             latest_block_hash: [0; 32],
@@ -53,7 +58,7 @@ impl TestManager {
     ) {
         let parent_hash = self.latest_block_hash;
         //println!("ADDING BLOCK 2! {:?}", parent_hash);
-        let block = self
+        let _block = self
             .add_block_on_hash(
                 timestamp,
                 vip_txs,
@@ -63,7 +68,6 @@ impl TestManager {
                 parent_hash,
             )
             .await;
-        block
     }
 
     //
@@ -77,9 +81,9 @@ impl TestManager {
         has_golden_ticket: bool,
         additional_txs: Vec<Transaction>,
         parent_hash: SaitoHash,
-    ) {
+    ) -> SaitoHash {
         let mut block = self
-            .generate_block(
+            .generate_block_and_metadata(
                 parent_hash,
                 timestamp,
                 vip_txs,
@@ -101,6 +105,67 @@ impl TestManager {
 
         self.latest_block_hash = block.get_hash();
         Blockchain::add_block_to_blockchain(self.blockchain_lock.clone(), block).await;
+        self.latest_block_hash
+    }
+
+    //
+    // generate_blockchain can be used to add multiple chains of blocks that are not
+    // on the longest-chain, and thus will attempt to create transactions that reflect
+    // the UTXOSET on the longest-chain at their time of creation.
+    //
+    // in order to prevent this from being a problem, this function is limited to
+    // including a golden ticket every block so as to ensure there is no staking
+    // payout in fork-block-5 that is created given expected state of staking table
+    // on the other fork. There are no NORMAL transactions permitted and the golden
+    // ticket is required every block.
+    //
+    pub async fn generate_blockchain(
+        &mut self,
+        chain_length: u64,
+        starting_hash: SaitoHash,
+    ) -> SaitoHash {
+        let mut current_timestamp = create_timestamp();
+        let mut parent_hash = starting_hash;
+
+        {
+            if parent_hash != [0; 32] {
+                let blockchain = self.blockchain_lock.read().await;
+                let block_option = blockchain.get_block(&parent_hash).await;
+                let block = block_option.unwrap();
+                current_timestamp = block.get_timestamp() + 120000;
+            }
+        }
+
+        for i in 0..chain_length as u64 {
+            let mut vip_txs = 10;
+            if i > 0 {
+                vip_txs = 0;
+            }
+
+            let normal_txs = 0;
+            //let mut normal_txs = 1;
+            //if i == 0 { normal_txs = 0; }
+            //normal_txs = 0;
+
+            let mut has_gt = true;
+            if parent_hash == [0; 32] {
+                has_gt = false;
+            }
+            //if i%2 == 0 { has_gt = false; }
+
+            parent_hash = self
+                .add_block_on_hash(
+                    current_timestamp + (i * 120000),
+                    vip_txs,
+                    normal_txs,
+                    has_gt,
+                    vec![],
+                    parent_hash,
+                )
+                .await;
+        }
+
+        parent_hash
     }
 
     //
@@ -205,6 +270,39 @@ impl TestManager {
         block
     }
 
+    pub async fn generate_block_via_mempool(&self) -> Block {
+        let latest_block_hash;
+        let mut latest_block_timestamp = 0;
+
+        let transaction = self.generate_transaction(1000, 1000).await;
+        {
+            let mut mempool = self.mempool_lock.write().await;
+            mempool.add_transaction(transaction).await;
+        }
+
+        // get timestamp of previous block
+        {
+            let blockchain = self.blockchain_lock.read().await;
+            latest_block_hash = blockchain.get_latest_block_hash();
+            if latest_block_hash != [0; 32] {
+                let block = blockchain.get_block(&latest_block_hash).await;
+                latest_block_timestamp = block.unwrap().get_timestamp();
+            }
+        }
+
+        let next_block_timestamp = latest_block_timestamp + (HEARTBEAT * 2);
+
+        let block_option = crate::mempool::try_bundle_block(
+            self.mempool_lock.clone(),
+            self.blockchain_lock.clone(),
+            next_block_timestamp,
+        )
+        .await;
+
+        assert!(block_option.is_some());
+        block_option.unwrap()
+    }
+
     //
     // generate transaction
     //
@@ -223,6 +321,34 @@ impl TestManager {
                 .await;
         transaction.sign(privatekey);
         transaction
+    }
+
+    //
+    // check that the blockchain connects properly
+    //
+    pub async fn check_blockchain(&self) {
+        let blockchain = self.blockchain_lock.read().await;
+
+        for i in 1..blockchain.blocks.len() {
+            let block_hash = blockchain
+                .blockring
+                .get_longest_chain_block_hash_by_block_id(i as u64);
+            let previous_block_hash = blockchain
+                .blockring
+                .get_longest_chain_block_hash_by_block_id((i as u64) - 1);
+
+            let block = blockchain.get_block_sync(&block_hash);
+            let previous_block = blockchain.get_block_sync(&previous_block_hash);
+
+            assert_eq!(block.is_none(), false);
+            if i != 1 && previous_block_hash != [0; 32] {
+                assert_eq!(previous_block.is_none(), false);
+                assert_eq!(
+                    block.unwrap().get_previous_block_hash(),
+                    previous_block.unwrap().get_hash()
+                );
+            }
+        }
     }
 
     //
@@ -535,6 +661,10 @@ impl TestManager {
             let value2 = hashmap2.get(key).unwrap();
             assert_eq!(value1, value2)
         }
+    }
+
+    pub fn set_latest_block_hash(&mut self, latest_block_hash: SaitoHash) {
+        self.latest_block_hash = latest_block_hash;
     }
 }
 

@@ -11,7 +11,7 @@ use crate::{
     slip::{Slip, SlipType, SLIP_SIZE},
     staking::Staking,
     storage::Storage,
-    time::{create_timestamp, TracingTimer},
+    time::create_timestamp,
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
     wallet::Wallet,
 };
@@ -487,6 +487,7 @@ impl Block {
         // if the block type needed is full and we are not,
         // load the block if it exists on disk.
         //
+        println!("trying to updated: {:?} for {}", block_type, self.get_id());
         if block_type == BlockType::Full {
             let mut new_block =
                 Storage::load_block_from_disk(Storage::generate_block_filename(&self)).await;
@@ -934,6 +935,7 @@ impl Block {
                 payout.router_payout = router_payment;
                 payout.random_number = next_random_number;
 
+                println!("pushing mining block payout!");
                 cv.block_payout.push(payout);
 
                 //
@@ -941,6 +943,11 @@ impl Block {
                 //
                 let mut cont = 1;
                 let mut loop_idx = 0;
+                let mut did_the_block_before_our_staking_block_have_a_golden_ticket =
+                    previous_block.get_has_golden_ticket();
+                //
+                // staking block hash is 3 back, pre
+                //
                 let mut staking_block_hash = previous_block.get_previous_block_hash();
 
                 while cont == 1 {
@@ -956,10 +963,15 @@ impl Block {
                     } else {
                         if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
                             staking_block_hash = staking_block.get_previous_block_hash();
-
-                            if !staking_block.get_has_golden_ticket() {
+                            if !did_the_block_before_our_staking_block_have_a_golden_ticket {
                                 //
-                                // calculate miner and router payments
+                                // update with this block info in case of next loop
+                                //
+                                did_the_block_before_our_staking_block_have_a_golden_ticket =
+                                    staking_block.get_has_golden_ticket();
+
+                                //
+                                // calculate staker and router payments
                                 //
                                 // the staker payout is contained in the slip of the winner. this is
                                 // because we calculate it afresh every time we reset the staking table
@@ -1021,6 +1033,7 @@ impl Block {
 
                                     next_random_number = hash(&next_random_number.to_vec());
 
+                                    println!("pushing staking block payout! {:?}", payout);
                                     cv.block_payout.push(payout);
                                 }
                             }
@@ -1197,11 +1210,9 @@ impl Block {
     // cumulative block fees they contain.
     //
     pub fn generate_metadata(&mut self) -> bool {
-        let mut _tracing_tracker = TracingTimer::new();
         event!(
             Level::TRACE,
             " ... block.prevalid - pre hash:  {:?}",
-            // tracing_tracker.time_since_last();
             create_timestamp(),
         );
 
@@ -1691,12 +1702,12 @@ impl Block {
         // problem is. ergo this code that tries to do them on the main thread so
         // debugging output works.
         //
-        //for i in 0..self.transactions.len() {
-        //    let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
-        //    if !transactions_valid2 {
-        //        println!("TType: {:?}", self.transactions[i].get_transaction_type());
-        //    }
-        //}
+        for i in 0..self.transactions.len() {
+            let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
+            if !transactions_valid2 {
+                println!("TType: {:?}", self.transactions[i].get_transaction_type());
+            }
+        }
         //true
 
         let transactions_valid = self

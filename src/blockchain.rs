@@ -1,7 +1,7 @@
 // length of 1 genesis period
 pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
-pub const PRUNE_AFTER_BLOCKS: u64 = 10;
+pub const PRUNE_AFTER_BLOCKS: u64 = 20;
 // max recursion when paying stakers
 pub const MAX_STAKER_RECURSION: u64 = 2;
 // max token supply - used in validating block #1
@@ -1012,7 +1012,7 @@ impl Blockchain {
                 // which requires us to start at the END of the new chain vector.
                 //
                 let res = self
-                    .wind_chain(old_chain, new_chain, new_chain.len() - 1, true)
+                    .wind_chain(old_chain, new_chain, old_chain.len() - 1, true)
                     .await;
                 res
             } else {
@@ -1084,7 +1084,7 @@ impl Blockchain {
         // wallet update
         {
             let mut wallet = self.wallet_lock.write().await;
-            wallet.on_chain_reorganization(&block, true);
+            wallet.on_chain_reorganization(&block, false);
         }
 
         //
@@ -1702,5 +1702,60 @@ mod tests {
 
         test_manager.check_utxoset().await;
         test_manager.check_token_supply().await;
+    }
+
+    #[tokio::test]
+    //
+    // use test_manager to generate blockchains and reorgs and test
+    //
+    async fn test_manager_blockchain_fork_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+        // 5 initial blocks
+        test_manager.generate_blockchain(5, [0; 32]).await;
+
+        let block5_hash;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            block5_hash = blockchain.get_latest_block_hash();
+
+            assert_eq!(
+                blockchain
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(5),
+                block5_hash
+            );
+            assert_eq!(blockchain.get_latest_block_hash(), block5_hash);
+        }
+
+        // 5 block reorg with 10 block fork
+        let block10_hash = test_manager.generate_blockchain(5, block5_hash).await;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            assert_eq!(
+                blockchain
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(10),
+                block10_hash
+            );
+            assert_eq!(blockchain.get_latest_block_hash(), block10_hash);
+        }
+
+        let block15_hash = test_manager.generate_blockchain(10, block5_hash).await;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            assert_eq!(
+                blockchain
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(15),
+                block15_hash
+            );
+            assert_eq!(blockchain.get_latest_block_hash(), block15_hash);
+        }
     }
 }

@@ -77,6 +77,14 @@ impl Staking {
     //
     // returns three vectors with slips to SPEND, UNSPEND, DELETE
     //
+    // wny?
+    //
+    // we cannot pass the UTXOSet into the staking object to update as that would
+    // require multiple mutable borrows of the blockchain object, so we receive
+    // vectors of the slips that need to be inserted, spent or deleted in the
+    // blockchain and handle after-the-fact. This permits keeping the UTXOSET
+    // up-to-date with the staking tables.
+    //
     pub fn reset_staker_table(
         &mut self,
         staking_treasury: u64,
@@ -314,6 +322,7 @@ impl Staking {
             // reset stakers if necessary
             //
             if self.stakers.is_empty() {
+                println!("RESETTING STAKERS TABLE!");
                 let (_res_spend, _res_unspend, _res_delete) =
                     self.reset_staker_table(block.get_staking_treasury());
             }
@@ -321,6 +330,7 @@ impl Staking {
             //
             // reset pending if necessary
             //
+            println!("RESETTING PENDING ON UNWIND!");
             if self.pending.is_empty() {
                 self.pending = vec![];
                 self.deposits = vec![];
@@ -363,8 +373,10 @@ impl Staking {
                 return (res_spend, res_unspend, res_delete);
             }
 
+            println!("this is the fee tx: {:?}", fee_transaction);
             let staker_output = fee_transaction.outputs[2].clone(); // 3rd output is staker
             let staker_input = fee_transaction.inputs[0].clone(); // 1st input is staker
+            println!("we think staker output is: {:?}", staker_output);
 
             //
             // roll forward
@@ -473,7 +485,6 @@ impl Staking {
 mod tests {
 
     use super::*;
-    use crate::test_utilities::mocks::make_mock_block_with_info;
     use crate::test_utilities::test_manager::TestManager;
     use crate::transaction::Transaction;
     use crate::{
@@ -539,238 +550,263 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn blockchain_roll_forward_staking_table_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let publickey;
-        let mut latest_block_hash = [0; 32];
+    /****
+        #[tokio::test]
+        async fn blockchain_roll_forward_staking_table_test() {
 
-        {
+            let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+            let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+            let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+            //
+            // initialize blockchain staking table
+            //
+            {
+                let mut blockchain = blockchain_lock.write().await;
             let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-        }
+            let publickey = wallet.get_publickey();
+
+                let mut slip1 = Slip::new();
+                slip1.set_amount(200_000_000);
+                slip1.set_slip_type(SlipType::StakerDeposit);
+
+                let mut slip2 = Slip::new();
+                slip2.set_amount(300_000_000);
+                slip2.set_slip_type(SlipType::StakerDeposit);
+
+                slip1.set_publickey(publickey);
+                slip2.set_publickey(publickey);
+
+                slip1.generate_utxoset_key();
+                slip2.generate_utxoset_key();
+
+                slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+                slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+
+                blockchain.staking.add_deposit(slip1);
+                blockchain.staking.add_deposit(slip2);
+
+                blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
+            }
+
+        let current_timestamp = create_timestamp();
 
         //
-        // initialize blockchain staking table
+            // BLOCK 1
         //
-        {
-            let mut blockchain = blockchain_lock.write().await;
+            let block1 = test_manager
+                .generate_block_and_metadata(
+                    [0; 32],
+                    current_timestamp,
+                    3,
+                    0,
+                    false,
+                    vec![],
+                )
+                .await;
+            let block1_hash = block1.get_hash();
+            Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block1).await;
 
-            let mut slip1 = Slip::new();
-            slip1.set_amount(200_000_000);
-            slip1.set_slip_type(SlipType::StakerDeposit);
-
-            let mut slip2 = Slip::new();
-            slip2.set_amount(300_000_000);
-            slip2.set_slip_type(SlipType::StakerDeposit);
-
-            slip1.set_publickey(publickey);
-            slip2.set_publickey(publickey);
-
-            slip1.generate_utxoset_key();
-            slip2.generate_utxoset_key();
-
-            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
-            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
-
-            blockchain.staking.add_deposit(slip1);
-            blockchain.staking.add_deposit(slip2);
-
-            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
-        }
-
-        //
-        // BLOCK 1
-        //
-        let mut current_timestamp = create_timestamp();
-        let mut block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            3,
-            0,
-            false,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
-
-        //
-        // BLOCK 2
-        //
-        current_timestamp = create_timestamp() + 120000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            false,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
-
-        //
-        // BLOCK 3
-        //
-        current_timestamp = create_timestamp() + 240000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            true,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
-
-        //
-        // BLOCK 4
-        //
-        current_timestamp = create_timestamp() + 360000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            false,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
-
-        //
-        // second staker payment should have happened and staking table reset
-        //
-        {
-            let blockchain = blockchain_lock.write().await;
-            println!("STAKERS: {:?}", blockchain.staking.stakers);
-            println!("PENDING: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT: {:?}", blockchain.staking.deposits);
-        }
-
-        //
-        // BLOCK 5
-        //
-        current_timestamp = create_timestamp() + 480000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            true,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
-
-        //
-        // BLOCK 6
-        //
-        current_timestamp = create_timestamp() + 600000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            false,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
-
-        //
-        // BLOCK 7
-        //
-        current_timestamp = create_timestamp() + 720000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            true,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
-
-        //
-        // second staker payment should have happened and staking table reset
-        //
-        {
-            let blockchain = blockchain_lock.write().await;
-            println!("STAKERS 2: {:?}", blockchain.staking.stakers);
-            println!("PENDING 2: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT 2: {:?}", blockchain.staking.deposits);
-        }
-
-        //
-        // BLOCK 8
-        //
-        current_timestamp = create_timestamp() + 840000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            false,
-        )
-        .await;
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
-
-        //
-        // TEST STAKER PAID
-        //
-        {
-            let blockchain = blockchain_lock.write().await;
 
             //
-            // second staker payment should have happened and staking table reset
-            //
-            println!("STAKERS 3: {:?}", blockchain.staking.stakers);
-            println!("PENDING 3: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT 3: {:?}", blockchain.staking.deposits);
+            // BLOCK 2
+        //
+            let block2 = test_manager
+                .generate_block_and_metadata(
+                    block1_hash,
+                    current_timestamp + 120000,
+                    0,
+                    1,
+                    false,
+                    vec![],
+                )
+                .await;
+            let block2_hash = block2.get_hash();
+            Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block2).await;
 
-            //assert_eq!(blk.get_has_fee_transaction(), true);
-            //assert_eq!(blk.get_fee_transaction_idx(), 2);
-            // normal tx, golden ticket, fee tx
-            //println!("{:?}", blk.transactions[2].get_outputs());
-            //assert_eq!(blk.transactions[2].get_outputs()[2].get_slip_type(), SlipType::StakerOutput);
+            //
+            // we have yet to find a single golden ticket, so all in stakers
+            //
+            {
+                let blockchain = blockchain_lock.write().await;
+                println!("STAKERS: {:?}", blockchain.staking.stakers);
+                println!("PENDING: {:?}", blockchain.staking.pending);
+                println!("DEPOSIT: {:?}", blockchain.staking.deposits);
+            }
+
+
+            //
+            // BLOCK 3
+        //
+            let block3 = test_manager
+                .generate_block_and_metadata(
+                    block2_hash,
+                    current_timestamp + 240000,
+                    0,
+                    1,
+                    true,
+                    vec![],
+                )
+                .await;
+            let block3_hash = block3.get_hash();
+            Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block3).await;
+
+
+
+            //
+            // we have found a single golden ticket, so we have paid a single staker
+            //
+            {
+    println!("single staker paid");
+                let blockchain = blockchain_lock.write().await;
+                println!("STAKERS 2: {:?}", blockchain.staking.stakers);
+                println!("PENDING 2: {:?}", blockchain.staking.pending);
+                println!("DEPOSIT 2: {:?}", blockchain.staking.deposits);
+            }
+
+            //
+            // BLOCK 4
+        //
+            let block4 = test_manager
+                .generate_block_and_metadata(
+                    block3_hash,
+                    current_timestamp + 360000,
+                    0,
+                    1,
+                    false,
+                    vec![],
+                )
+                .await;
+            let block4_hash = block4.get_hash();
+            Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block4).await;
+
+            //
+            // we have paid our second staker, the table should be reset to two pending
+            //
+            {
+                let blockchain = blockchain_lock.write().await;
+                println!("STAKERS 2-2: {:?}", blockchain.staking.stakers);
+                println!("PENDING 2-2: {:?}", blockchain.staking.pending);
+                println!("DEPOSIT 2-2: {:?}", blockchain.staking.deposits);
+            }
+
+
+            //
+            // BLOCK 5
+            //
+        test_manager.set_latest_block_hash(block4_hash);
+            test_manager
+                .add_block(current_timestamp + 480000, 0, 1, true, vec![])
+                .await;
+        let block5_hash;
+            {
+            let blockchain = blockchain_lock.read().await;
+            block5_hash = blockchain.get_latest_block_hash();
         }
-    }
+
+            //
+            // we have paid our second staker, the table should be reset to two pending
+            //
+            {
+    println!("second staker paid");
+                let blockchain = blockchain_lock.write().await;
+    let blk_option = blockchain.get_block(&block5_hash).await;
+    let blk = blk_option.unwrap();
+    let ft_idx = blk.get_fee_transaction_idx();
+    let txs = blk.get_transactions();
+    println!("{:?}", txs[ft_idx as usize]);
+                println!("STAKERS 3: {:?}", blockchain.staking.stakers);
+                println!("PENDING 3: {:?}", blockchain.staking.pending);
+                println!("DEPOSIT 3: {:?}", blockchain.staking.deposits);
+            }
+
+
+            //
+            // BLOCK 6
+            //
+            test_manager
+                .add_block(current_timestamp + 600000, 0, 1, false, vec![])
+                .await;
+        let block6_hash;
+            {
+            let blockchain = blockchain_lock.read().await;
+            block6_hash = blockchain.get_latest_block_hash();
+        }
+
+            //
+            // we have paid our second staker, the table should be reset to two pending
+            //
+            {
+    println!("should be reset");
+                let blockchain = blockchain_lock.write().await;
+                println!("STAKERS 4: {:?}", blockchain.staking.stakers);
+                println!("PENDING 4: {:?}", blockchain.staking.pending);
+                println!("DEPOSIT 4: {:?}", blockchain.staking.deposits);
+            }
+
+
+            //
+            // BLOCK 7
+            //
+            test_manager
+                .add_block(current_timestamp + 720000, 0, 1, true, vec![])
+                .await;
+        let block7_hash;
+            {
+            let blockchain = blockchain_lock.read().await;
+            block7_hash = blockchain.get_latest_block_hash();
+        }
+
+            //
+            // another payout to a single staker
+            //
+            {
+                let blockchain = blockchain_lock.write().await;
+                println!("STAKERS 2: {:?}", blockchain.staking.stakers);
+                println!("PENDING 2: {:?}", blockchain.staking.pending);
+                println!("DEPOSIT 2: {:?}", blockchain.staking.deposits);
+            }
+
+            //
+            // BLOCK 8
+            //
+            test_manager
+                .add_block(current_timestamp + 840000, 0, 1, true, vec![])
+                .await;
+        let block8_hash;
+            {
+            let blockchain = blockchain_lock.read().await;
+            block8_hash = blockchain.get_latest_block_hash();
+        }
+
+            //
+            // still just one pending as two GT in a row
+            //
+            {
+                let blockchain = blockchain_lock.write().await;
+
+                //
+                // second staker payment should have happened and staking table reset
+                //
+                println!("STAKERS 3: {:?}", blockchain.staking.stakers);
+                println!("PENDING 3: {:?}", blockchain.staking.pending);
+                println!("DEPOSIT 3: {:?}", blockchain.staking.deposits);
+
+            }
+
+        println!("This test is not completed until it is reviewed to ensure we are testing the correct equalities, etc.");
+        assert_eq!(1,2);
+
+        }
+    ****/
 
     #[tokio::test]
     async fn blockchain_staking_deposits_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+        let current_timestamp = create_timestamp();
         let publickey;
-        let mut latest_block_hash = [0; 32];
-
         {
             let wallet = wallet_lock.read().await;
             publickey = wallet.get_publickey();
@@ -779,20 +815,15 @@ mod tests {
         //
         // BLOCK 1 -- VIP transactions
         //
-        let mut current_timestamp = create_timestamp();
-        let mut block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            10,
-            0,
-            false,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+        test_manager
+            .add_block(current_timestamp, 10, 0, false, vec![])
+            .await;
+        let block1_hash;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            block1_hash = blockchain.get_latest_block_hash();
+        }
 
         //
         // BLOCK 2 -- staking deposits
@@ -809,20 +840,19 @@ mod tests {
         let mut transactions: Vec<Transaction> = vec![];
         transactions.push(stx1);
         transactions.push(stx2);
-        current_timestamp = create_timestamp() + 120000;
-        block = Block::generate(
+        let block2 = Block::generate(
             &mut transactions,
-            latest_block_hash,
+            block1_hash,
             wallet_lock.clone(),
             blockchain_lock.clone(),
-            current_timestamp,
+            current_timestamp + 120000,
         )
         .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+        let _block2_hash = block2.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block2).await;
 
         //
-        // the staking deposits should be econd staker payment should have happened and staking table reset
+        // the staking deposits should be made
         //
         {
             let blockchain = blockchain_lock.write().await;
@@ -835,20 +865,15 @@ mod tests {
         //
         // BLOCK 3 - payout
         //
-        current_timestamp = create_timestamp() + 240000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            true,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+        test_manager
+            .add_block(current_timestamp + 240000, 0, 1, true, vec![])
+            .await;
+        let _block3_hash;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            _block3_hash = blockchain.get_latest_block_hash();
+        }
 
         //
         // the staking table should have been created when needed for the payout
@@ -864,45 +889,35 @@ mod tests {
         //
         // BLOCK 4
         //
-        current_timestamp = create_timestamp() + 360000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            false,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+        test_manager
+            .add_block(current_timestamp + 360000, 0, 1, false, vec![])
+            .await;
+        let _block4_hash;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            _block4_hash = blockchain.get_latest_block_hash();
+        }
 
         //
-        // BLOCK 5 - payout
+        // BLOCK 5
         //
-        current_timestamp = create_timestamp() + 480000;
-        block = make_mock_block_with_info(
-            blockchain_lock.clone(),
-            wallet_lock.clone(),
-            publickey,
-            latest_block_hash,
-            current_timestamp,
-            0,
-            1,
-            true,
-        )
-        .await;
-        latest_block_hash = block.get_hash();
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+        test_manager
+            .add_block(current_timestamp + 480000, 0, 1, true, vec![])
+            .await;
+        let block5_hash;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            block5_hash = blockchain.get_latest_block_hash();
+        }
 
         //
         // the staking table should have been created when needed for the payout
         //
         {
             let mut blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(&latest_block_hash).await.unwrap();
+            let blk = blockchain.get_block(&block5_hash).await.unwrap();
             println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
             println!("STAKERS: {:?}", blockchain.staking.stakers);
             println!("PENDING: {:?}", blockchain.staking.pending);
@@ -942,22 +957,21 @@ mod tests {
         }
         let mut transactions: Vec<Transaction> = vec![];
         transactions.push(wstx1);
-        current_timestamp = create_timestamp() + 600000;
-        block = Block::generate(
+        let block6 = Block::generate(
             &mut transactions,
-            latest_block_hash,
+            block5_hash,
             wallet_lock.clone(),
             blockchain_lock.clone(),
-            current_timestamp,
+            current_timestamp + 600000,
         )
         .await;
-        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block).await;
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block6).await;
 
         //
         // the staking table should have been created when needed for the payout
         //
         {
-            let blockchain = blockchain_lock.write().await;
+            let blockchain = blockchain_lock.read().await;
             println!("after the withdrawal of a staking transaction...");
             println!("STAKERS: {:?}", blockchain.staking.stakers);
             println!("PENDING: {:?}", blockchain.staking.pending);

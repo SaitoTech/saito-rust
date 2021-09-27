@@ -3,11 +3,9 @@ use crate::{
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
 };
 use ahash::AHashMap;
-use serde::{Deserialize, Serialize};
-
 use macros::TryFromByte;
+use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
-
 use tracing::{event, Level};
 
 /// The size of a serilized slip in bytes.
@@ -115,18 +113,6 @@ impl Slip {
             } else {
                 utxoset.entry(self.utxoset_key).or_insert(slip_value);
             }
-
-            //
-            // TODO - remove once this seems useless
-            //
-            let x = utxoset.get(&self.utxoset_key).unwrap();
-            if *x != slip_value {
-                println!("-----------------------------");
-                println!("-----------------------------");
-                println!("-------{}------{}----------", *x, slip_value);
-                println!("-----------------------------");
-                println!("-----------------------------");
-            }
         }
     }
 
@@ -181,7 +167,9 @@ impl Slip {
         self.slip_type = slip_type;
     }
 
-    // runs when block is purged for good
+    //
+    // runs when block is purged for good or staking slip deleted
+    //
     pub fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_utxoset_key() == [0; 74] {
             event!(
