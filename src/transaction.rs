@@ -816,6 +816,7 @@ impl Transaction {
                 let publickey: SaitoPublicKey = self.get_inputs()[0].get_publickey();
                 if !verify(&hash_for_signature, sig, publickey) {
                     event!(Level::ERROR, "message verifies not");
+println!("ERR1");
                     return false;
                 }
             } else {
@@ -829,6 +830,7 @@ impl Transaction {
                     Level::ERROR,
                     "ERROR 757293: there is no hash for signature in a transaction"
                 );
+println!("ERR2");
                 return false;
             }
 
@@ -840,6 +842,7 @@ impl Transaction {
                     Level::ERROR,
                     "ERROR 582039: less than 1 input in transaction"
                 );
+println!("ERR3");
                 return false;
             }
 
@@ -855,6 +858,7 @@ impl Transaction {
                     Level::ERROR,
                     "ERROR 482033: routing paths do not validate, transaction invalid"
                 );
+println!("ERR5");
                 return false;
             }
 
@@ -878,6 +882,7 @@ impl Transaction {
                     Level::TRACE,
                     "ERROR 672941: transaction spends more than it has available"
                 );
+println!("ERR6");
                 return false;
             }
         }
@@ -949,6 +954,7 @@ impl Transaction {
                 Level::ERROR,
                 "ERROR 582039: less than 1 output in transaction"
             );
+println!("ERR7");
             return false;
         }
 
@@ -971,6 +977,9 @@ impl Transaction {
         //}
 
         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
+if !inputs_validate {
+println!("ERR8");
+}
         inputs_validate
     }
 }

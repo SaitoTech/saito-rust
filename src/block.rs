@@ -1706,6 +1706,7 @@ impl Block {
             let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
             if !transactions_valid2 {
                 println!("TType: {:?}", self.transactions[i].get_transaction_type());
+		println!("Data {:?}", self.transactions[i]);
             }
         }
         //true

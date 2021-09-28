@@ -407,7 +407,7 @@ impl Staking {
 
                     let staker_output = fee_transaction.outputs[i].clone();
 		    if fee_transaction.inputs.len() < staker_slip_num { break; }
-                    let staker_input = fee_transaction.inputs[staker_slip_num].clone();
+                    //let staker_input = fee_transaction.inputs[staker_slip_num].clone();
 
 		    if staker_output.get_slip_type() == SlipType::StakerOutput {
 
