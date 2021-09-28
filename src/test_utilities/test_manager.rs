@@ -2,7 +2,7 @@
 // TestManager provides a set of functions to simplify testing. It's goal is to
 // help make tests more succinct.
 //
-use crate::block::Block;
+use crate::block::{Block, BlockType};
 use crate::blockchain::Blockchain;
 use crate::crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey, SaitoUTXOSetKey};
 use crate::golden_ticket::GoldenTicket;
@@ -15,11 +15,12 @@ use tokio::sync::RwLock;
 
 //
 //
-// generate_block 	<-- create a block
-// generate_transaction <-- create a transaction
-// add_block 		<-- create and add block to longest_chain
-// add_block_on_hash	<-- create and add block elsewhere on chain
-// on_chain_reorganization <-- test monetary policy
+// generate_block 		<-- create a block
+// generate_block_and_metadata 	<--- create block with metadata (difficulty, has_golden ticket, etc.)
+// generate_transaction 	<-- create a transaction
+// add_block 			<-- create and add block to longest_chain
+// add_block_on_hash		<-- create and add block elsewhere on chain
+// on_chain_reorganization 	<-- test monetary policy
 //
 //
 
@@ -178,6 +179,29 @@ impl TestManager {
         )
         .await;
 
+        block
+    }
+
+    pub async fn generate_block_and_metadata(
+        &self,
+        parent_hash: SaitoHash,
+        timestamp: u64,
+        vip_transactions: usize,
+        normal_transactions: usize,
+        golden_ticket: bool,
+        additional_transactions: Vec<Transaction>,
+    ) -> Block {
+        let mut block = self
+            .generate_block(
+                parent_hash,
+                timestamp,
+                vip_transactions,
+                normal_transactions,
+                golden_ticket,
+                additional_transactions,
+            )
+            .await;
+        block.generate_metadata();
         block
     }
 
@@ -408,7 +432,7 @@ impl TestManager {
         }
     }
     pub fn check_block_consistency(block: &Block) {
-        let serialized_block = block.serialize_for_net();
+        let serialized_block = block.serialize_for_net(BlockType::Full);
 
         let deserialized_block = Block::deserialize_for_net(&serialized_block);
 
