@@ -314,8 +314,8 @@ impl Staking {
             // reset stakers if necessary
             //
             if self.stakers.is_empty() {
-                //self.reset_staker_table(block.get_staking_treasury());
-                let (_res_spend, _res_unspend, _res_delete) = self.reset_staker_table(100_000_000);
+                let (_res_spend, _res_unspend, _res_delete) =
+                    self.reset_staker_table(block.get_staking_treasury());
             }
         } else {
             //
@@ -384,9 +384,8 @@ impl Staking {
                     self.stakers.len()
                 );
                 if self.stakers.is_empty() {
-                    //self.reset_staker_table(block.get_staking_treasury());
                     let (_res_spend, _res_unspend, _res_delete) =
-                        self.reset_staker_table(100_000_000);
+                        self.reset_staker_table(block.get_staking_treasury());
                 }
 
                 //
@@ -408,9 +407,8 @@ impl Staking {
                 // re-create staker table, if needed
                 //
                 if self.stakers.is_empty() {
-                    //self.reset_staker_table(block.get_staking_treasury());
                     let (_res_spend, _res_unspend, _res_delete) =
-                        self.reset_staker_table(100_000_000);
+                        self.reset_staker_table(block.get_staking_treasury());
                 }
 
             //
@@ -543,7 +541,7 @@ mod tests {
 
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
         let mut latest_block_hash = [0; 32];
@@ -768,7 +766,7 @@ mod tests {
 
     #[tokio::test]
     async fn blockchain_staking_deposits_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let publickey;
         let mut latest_block_hash = [0; 32];
@@ -969,7 +967,7 @@ mod tests {
 
     #[tokio::test]
     async fn blockchain_roll_forward_staking_table_test_with_test_manager() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::default()));
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 

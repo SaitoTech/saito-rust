@@ -1,9 +1,9 @@
 use super::api_message::APIMessage;
 use super::network::CHALLENGE_EXPIRATION_TIME;
-use crate::block::Block;
+use crate::block::{Block, BlockType};
 use crate::blockchain::{Blockchain, GENESIS_PERIOD};
 use crate::crypto::{hash, verify, SaitoHash, SaitoPublicKey};
-use crate::mempool::{AddBlockResult, AddTransactionResult, Mempool};
+use crate::mempool::{AddBlockResult, Mempool};
 use crate::networking::message_types::handshake_challenge::HandshakeChallenge;
 use crate::networking::message_types::request_block_message::RequestBlockMessage;
 use crate::networking::message_types::request_blockchain_message::RequestBlockchainMessage;
@@ -415,27 +415,15 @@ impl SaitoPeer {
             "SNDTRANS" => {
                 if let Some(tx) = socket_receive_transaction(api_message.clone()) {
                     let mut mempool = mempool_lock.write().await;
-                    match mempool.add_transaction(tx).await {
-                        AddTransactionResult::Accepted | AddTransactionResult::Exists => {
-                            // TODO The tx is accepted, propagate it to all available peers
-                            peer.send_response_from_str(api_message.message_id, "OK")
-                                .await;
-                        }
-                        AddTransactionResult::Invalid => {
-                            peer.send_error_response(
-                                api_message.message_id,
-                                String::from("Invalid").as_bytes().try_into().unwrap(),
-                            )
-                            .await;
-                        }
-                        AddTransactionResult::Rejected => {
-                            peer.send_error_response(
-                                api_message.message_id,
-                                String::from("Invalid").as_bytes().try_into().unwrap(),
-                            )
-                            .await;
-                        }
-                    }
+                    mempool.add_transaction(tx).await;
+                    peer.send_response_from_str(api_message.message_id, "OK")
+                        .await;
+                    // in event of error
+                    //peer.send_error_response(
+                    //            api_message.message_id,
+                    //            String::from("Invalid").as_bytes().try_into().unwrap(),
+                    //        )
+                    //        .await;
                 }
             }
             "SNDCHAIN" => {
@@ -677,7 +665,7 @@ pub async fn build_request_block_response(
             Some(target_block) => APIMessage::new(
                 "RESULT__",
                 api_message.message_id,
-                target_block.serialize_for_net(),
+                target_block.serialize_for_net(BlockType::Full),
             ),
             None => APIMessage::new_from_string(
                 "ERROR___",
@@ -702,10 +690,7 @@ pub async fn socket_send_block_header(
     let blockchain = blockchain_lock.read().await;
 
     match blockchain.get_block_sync(&block_hash) {
-        Some(target_block) => {
-            let block_header = target_block.get_header();
-            Some(block_header.serialize_for_net())
-        }
+        Some(target_block) => Some(target_block.serialize_for_net(BlockType::Header)),
         None => None,
     }
 }

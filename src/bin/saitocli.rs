@@ -166,7 +166,9 @@ pub async fn main() -> saito_rust::Result<()> {
         let key_file = matches.value_of("keyfile").unwrap();
         let password = matches.value_of("password");
 
-        let wallet = Wallet::new(key_file, password);
+        let mut wallet = Wallet::new();
+        wallet.load_keys(key_file, password);
+
         println!("public key : {}", hex::encode(wallet.get_publickey()));
         println!("private key : {}", hex::encode(wallet.get_privatekey()));
     }
@@ -223,7 +225,9 @@ pub async fn main() -> saito_rust::Result<()> {
         let key_file = matches.value_of("keyfile").unwrap();
         let password = matches.value_of("password");
 
-        let wallet = Wallet::new(key_file, password);
+        let mut wallet = Wallet::new();
+        wallet.load_keys(key_file, password);
+
         let filename: String = match matches.value_of("filename") {
             Some(filename) => String::from(filename),
             None => String::from("transaction.out"),
