@@ -363,8 +363,6 @@ impl Staking {
                 golden_ticket_transaction.get_message().to_vec(),
             );
             let router_random_number1 = hash(&golden_ticket.get_random().to_vec()); // router block1
-            let staker_random_number = hash(&router_random_number1.to_vec()); // staker block2
-            let _router_random_number2 = hash(&staker_random_number.to_vec()); // router block2
 
             if fee_transaction.outputs.len() < 3 {
                 return (res_spend, res_unspend, res_delete);
@@ -373,10 +371,6 @@ impl Staking {
                 return (res_spend, res_unspend, res_delete);
             }
 
-            println!("this is the fee tx: {:?}", fee_transaction);
-            let staker_output = fee_transaction.outputs[2].clone(); // 3rd output is staker
-            let staker_input = fee_transaction.inputs[0].clone(); // 1st input is staker
-            println!("we think staker output is: {:?}", staker_output);
 
             //
             // roll forward
@@ -400,20 +394,61 @@ impl Staking {
                         self.reset_staker_table(block.get_staking_treasury());
                 }
 
+
+		//
+		// process outbound staking payments
+		//
+                let staker_random_number = hash(&router_random_number1.to_vec()); // staker block2
+                let _router_random_number2 = hash(&staker_random_number.to_vec()); // router block2
+	        let mut random_number_for_node_selection = hash(&router_random_number1.to_vec());
+
+		let mut staker_slip_num = 0;
+	    	for i in 0..fee_transaction.outputs.len() {
+
+                    let staker_output = fee_transaction.outputs[i].clone();
+		    if fee_transaction.inputs.len() < staker_slip_num { break; }
+                    let staker_input = fee_transaction.inputs[staker_slip_num].clone();
+
+		    if staker_output.get_slip_type() == SlipType::StakerOutput {
+
+                        //
+                        // move staker to pending
+                        //
+                        let lucky_staker_option = self.find_winning_staker(random_number_for_node_selection); // use first
+		        random_number_for_node_selection = hash(&random_number_for_node_selection.to_vec());  // burn second
+		        random_number_for_node_selection = hash(&random_number_for_node_selection.to_vec());  // prepare for re-use
+
+                        if let Some(lucky_staker) = lucky_staker_option {
+                            event!(Level::TRACE, "the lucky staker is: {:?}", lucky_staker);
+                            event!(
+                                Level::TRACE,
+                                "moving from staker into pending: {}",
+                                lucky_staker.get_amount()
+                            );
+                            self.remove_staker(lucky_staker.clone());
+                            self.add_pending(staker_output.clone());
+                        }
+		        staker_slip_num += 1;
+		    }
+	        }
+
+
+
                 //
                 // move staker to pending
                 //
-                let lucky_staker_option = self.find_winning_staker(staker_random_number);
-                if let Some(lucky_staker) = lucky_staker_option {
-                    event!(Level::TRACE, "the lucky staker is: {:?}", lucky_staker);
-                    event!(
-                        Level::TRACE,
-                        "moving from staker into pending: {}",
-                        lucky_staker.get_amount()
-                    );
-                    self.remove_staker(lucky_staker.clone());
-                    self.add_pending(staker_output.clone());
-                }
+                //let lucky_staker_option = self.find_winning_staker(staker_random_number);
+                //if let Some(lucky_staker) = lucky_staker_option {
+                //    event!(Level::TRACE, "the lucky staker is: {:?}", lucky_staker);
+                //    event!(
+                //        Level::TRACE,
+                //        "moving from staker into pending: {}",
+                //        lucky_staker.get_amount()
+                //    );
+                //    self.remove_staker(lucky_staker.clone());
+                //    self.add_pending(staker_output.clone());
+                //}
+
 
                 //
                 // re-create staker table, if needed
@@ -446,17 +481,40 @@ impl Staking {
                     self.stakers = vec![];
                 }
 
-                //
-                // remove from pending to staker (awaiting payout)
-                //
-                self.remove_pending(staker_output.clone());
-                let slip_type = staker_input.get_slip_type();
-                if slip_type == SlipType::StakerDeposit {
-                    self.add_deposit(staker_input.clone());
-                }
-                if slip_type == SlipType::StakerOutput {
-                    self.add_staker(staker_input.clone());
-                }
+
+
+		//
+		// process outbound staking payments
+		//
+                let staker_random_number = hash(&router_random_number1.to_vec()); // staker block2
+                let _router_random_number2 = hash(&staker_random_number.to_vec()); // router block2
+	        let mut random_number_for_node_selection = hash(&router_random_number1.to_vec());
+
+		let mut staker_slip_num = 0;
+	    	for i in 0..fee_transaction.outputs.len() {
+
+                    let staker_output = fee_transaction.outputs[i].clone();
+		    if fee_transaction.inputs.len() < staker_slip_num { break; }
+                    let staker_input = fee_transaction.inputs[staker_slip_num].clone();
+
+		    if staker_output.get_slip_type() == SlipType::StakerOutput {
+
+                	//
+                	// remove from pending to staker (awaiting payout)
+                	//
+                	self.remove_pending(staker_output.clone());
+                	let slip_type = staker_input.get_slip_type();
+                	if slip_type == SlipType::StakerDeposit {
+                	    self.add_deposit(staker_input.clone());
+                	}
+                	if slip_type == SlipType::StakerOutput {
+                	    self.add_staker(staker_input.clone());
+                	}
+
+		        staker_slip_num += 1;
+		    }
+	        }
+
 
                 //
                 // reset pending if necessary
@@ -550,7 +608,7 @@ mod tests {
         );
     }
 
-    /****
+
         #[tokio::test]
         async fn blockchain_roll_forward_staking_table_test() {
 
@@ -563,8 +621,8 @@ mod tests {
             //
             {
                 let mut blockchain = blockchain_lock.write().await;
-            let wallet = wallet_lock.read().await;
-            let publickey = wallet.get_publickey();
+                let wallet = wallet_lock.read().await;
+                let publickey = wallet.get_publickey();
 
                 let mut slip1 = Slip::new();
                 slip1.set_amount(200_000_000);
@@ -591,9 +649,9 @@ mod tests {
 
         let current_timestamp = create_timestamp();
 
-        //
+            //
             // BLOCK 1
-        //
+            //
             let block1 = test_manager
                 .generate_block_and_metadata(
                     [0; 32],
@@ -610,7 +668,7 @@ mod tests {
 
             //
             // BLOCK 2
-        //
+            //
             let block2 = test_manager
                 .generate_block_and_metadata(
                     block1_hash,
@@ -657,7 +715,7 @@ mod tests {
             // we have found a single golden ticket, so we have paid a single staker
             //
             {
-    println!("single staker paid");
+                println!("single staker paid");
                 let blockchain = blockchain_lock.write().await;
                 println!("STAKERS 2: {:?}", blockchain.staking.stakers);
                 println!("PENDING 2: {:?}", blockchain.staking.pending);
@@ -666,7 +724,7 @@ mod tests {
 
             //
             // BLOCK 4
-        //
+            //
             let block4 = test_manager
                 .generate_block_and_metadata(
                     block3_hash,
@@ -694,21 +752,22 @@ mod tests {
             //
             // BLOCK 5
             //
-        test_manager.set_latest_block_hash(block4_hash);
+            test_manager.set_latest_block_hash(block4_hash);
             test_manager
                 .add_block(current_timestamp + 480000, 0, 1, true, vec![])
                 .await;
-        let block5_hash;
+            let block5_hash;
+
             {
-            let blockchain = blockchain_lock.read().await;
-            block5_hash = blockchain.get_latest_block_hash();
-        }
+                let blockchain = blockchain_lock.read().await;
+                block5_hash = blockchain.get_latest_block_hash();
+            }
 
             //
             // we have paid our second staker, the table should be reset to two pending
             //
             {
-    println!("second staker paid");
+                println!("second staker paid");
                 let blockchain = blockchain_lock.write().await;
     let blk_option = blockchain.get_block(&block5_hash).await;
     let blk = blk_option.unwrap();
@@ -798,7 +857,7 @@ mod tests {
         assert_eq!(1,2);
 
         }
-    ****/
+
 
     #[tokio::test]
     async fn blockchain_staking_deposits_test() {
