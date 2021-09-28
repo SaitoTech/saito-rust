@@ -911,9 +911,9 @@ impl Block {
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
-println!("----");
-println!("GT RNG: {:?}", golden_ticket.get_random());
-	    // generate input hash for router
+            println!("----");
+            println!("GT RNG: {:?}", golden_ticket.get_random());
+            // generate input hash for router
             let mut next_random_number = hash(&golden_ticket.get_random().to_vec());
             let _miner_publickey = golden_ticket.get_publickey();
 
@@ -927,11 +927,12 @@ println!("GT RNG: {:?}", golden_ticket.get_random());
                 //
                 // calculate miner and router payments
                 //
-println!("RT RNG: {:?}", next_random_number);
-                let block_payouts: RouterPayout = previous_block.find_winning_router(next_random_number);
+                println!("RT RNG: {:?}", next_random_number);
+                let block_payouts: RouterPayout =
+                    previous_block.find_winning_router(next_random_number);
                 let router_publickey = block_payouts.publickey;
 
-		// these two from find_winning_router - 3, 4
+                // these two from find_winning_router - 3, 4
                 next_random_number = hash(&next_random_number.to_vec());
                 next_random_number = hash(&next_random_number.to_vec());
 
@@ -988,18 +989,17 @@ println!("RT RNG: {:?}", next_random_number);
                                 let rp = staking_block.get_total_fees() - sp;
 
                                 let mut payout = BlockPayout::new();
-println!("RT RNG: {:?}", next_random_number);
+                                println!("RT RNG: {:?}", next_random_number);
                                 payout.router = staking_block
                                     .find_winning_router(next_random_number)
                                     .publickey;
                                 payout.router_payout = rp;
                                 payout.staking_treasury = sp as i64;
 
-				// router consumes 2 hashes
+                                // router consumes 2 hashes
                                 next_random_number = hash(&next_random_number.to_vec());
                                 next_random_number = hash(&next_random_number.to_vec());
-println!("ST RNG: {:?}", next_random_number);
-
+                                println!("ST RNG: {:?}", next_random_number);
 
                                 let staker_slip_option =
                                     blockchain.staking.find_winning_staker(next_random_number);
@@ -1042,7 +1042,10 @@ println!("ST RNG: {:?}", next_random_number);
 
                                     next_random_number = hash(&next_random_number.to_vec());
 
-                                    println!("staker UTXOKEY that will be spent: {:?}", staker_slip.get_utxoset_key());
+                                    println!(
+                                        "staker UTXOKEY that will be spent: {:?}",
+                                        staker_slip.get_utxoset_key()
+                                    );
                                     cv.block_payout.push(payout);
                                 }
                             }
@@ -1078,8 +1081,11 @@ println!("ST RNG: {:?}", next_random_number);
                     slip_ordinal += 1;
                 }
                 if cv.block_payout[i].staker != [0; 33] {
-
-println!("BLock {} has staker payout w/ amount {}", self.get_id(), cv.block_payout[i].staker_payout);
+                    println!(
+                        "BLock {} has staker payout w/ amount {}",
+                        self.get_id(),
+                        cv.block_payout[i].staker_payout
+                    );
 
                     transaction.add_input(cv.block_payout[i].staker_slip.clone());
 
@@ -1716,7 +1722,7 @@ println!("BLock {} has staker payout w/ amount {}", self.get_id(), cv.block_payo
             let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
             if !transactions_valid2 {
                 println!("TType: {:?}", self.transactions[i].get_transaction_type());
-		println!("Data {:?}", self.transactions[i]);
+                println!("Data {:?}", self.transactions[i]);
             }
         }
         //true

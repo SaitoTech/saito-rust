@@ -68,7 +68,10 @@ impl Slip {
                     if *value == 1 {
                         true
                     } else {
-                        println!("in utxoset but invalid: value is {} at {:?}", *value, &self.utxoset_key);
+                        println!(
+                            "in utxoset but invalid: value is {} at {:?}",
+                            *value, &self.utxoset_key
+                        );
                         false
                     }
                 }

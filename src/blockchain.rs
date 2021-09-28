@@ -1011,15 +1011,15 @@ impl Blockchain {
                 // to unwind. Because of this, we start WINDING the old chain back
                 // which requires us to start at the END of the new chain vector.
                 //
-	        if old_chain.len() > 0 {
-println!("old chain len: {}", old_chain.len());
+                if old_chain.len() > 0 {
+                    println!("old chain len: {}", old_chain.len());
                     let res = self
                         .wind_chain(old_chain, new_chain, old_chain.len() - 1, true)
                         .await;
                     res
-		} else {
-		    false
-		}
+                } else {
+                    false
+                }
             } else {
                 let mut chain_to_unwind: Vec<[u8; 32]> = vec![];
 
