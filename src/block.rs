@@ -911,7 +911,10 @@ impl Block {
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
-            let random_number = hash(&golden_ticket.get_random().to_vec());
+println!("----");
+println!("GT RNG: {:?}", golden_ticket.get_random());
+	    // generate input hash for router
+            let mut next_random_number = hash(&golden_ticket.get_random().to_vec());
             let _miner_publickey = golden_ticket.get_publickey();
 
             //
@@ -924,18 +927,20 @@ impl Block {
                 //
                 // calculate miner and router payments
                 //
-                let block_payouts: RouterPayout = previous_block.find_winning_router(random_number);
+println!("RT RNG: {:?}", next_random_number);
+                let block_payouts: RouterPayout = previous_block.find_winning_router(next_random_number);
                 let router_publickey = block_payouts.publickey;
-                let mut next_random_number = block_payouts.random_number;
+
+		// these two from find_winning_router - 3, 4
+                next_random_number = hash(&next_random_number.to_vec());
+                next_random_number = hash(&next_random_number.to_vec());
 
                 let mut payout = BlockPayout::new();
                 payout.miner = golden_ticket.get_publickey();
                 payout.router = router_publickey;
                 payout.miner_payout = miner_payment;
                 payout.router_payout = router_payment;
-                payout.random_number = next_random_number;
 
-                println!("pushing mining block payout!");
                 cv.block_payout.push(payout);
 
                 //
@@ -983,13 +988,18 @@ impl Block {
                                 let rp = staking_block.get_total_fees() - sp;
 
                                 let mut payout = BlockPayout::new();
+println!("RT RNG: {:?}", next_random_number);
                                 payout.router = staking_block
                                     .find_winning_router(next_random_number)
                                     .publickey;
                                 payout.router_payout = rp;
                                 payout.staking_treasury = sp as i64;
 
+				// router consumes 2 hashes
                                 next_random_number = hash(&next_random_number.to_vec());
+                                next_random_number = hash(&next_random_number.to_vec());
+println!("ST RNG: {:?}", next_random_number);
+
 
                                 let staker_slip_option =
                                     blockchain.staking.find_winning_staker(next_random_number);
@@ -1017,7 +1027,6 @@ impl Block {
                                     {
                                         slip_was_spent = 1;
                                     }
-
                                     //
                                     // add payout to staker if staker is new
                                     //
@@ -1033,7 +1042,7 @@ impl Block {
 
                                     next_random_number = hash(&next_random_number.to_vec());
 
-                                    println!("pushing staking block payout! {:?}", payout);
+                                    println!("staker UTXOKEY that will be spent: {:?}", staker_slip.get_utxoset_key());
                                     cv.block_payout.push(payout);
                                 }
                             }
@@ -1069,6 +1078,9 @@ impl Block {
                     slip_ordinal += 1;
                 }
                 if cv.block_payout[i].staker != [0; 33] {
+
+println!("BLock {} has staker payout w/ amount {}", self.get_id(), cv.block_payout[i].staker_payout);
+
                     transaction.add_input(cv.block_payout[i].staker_slip.clone());
 
                     let mut output = Slip::new();
@@ -1126,6 +1138,7 @@ impl Block {
         cv
     }
 
+    // consumes two hashes every time
     pub fn find_winning_router(&self, random_number: SaitoHash) -> RouterPayout {
         let mut rp = RouterPayout::new();
 
@@ -1144,7 +1157,6 @@ impl Block {
         //
         if y == 0 {
             rp.publickey = [0; 33];
-            rp.random_number = hash(&random_number.to_vec());
             return rp;
         }
 
@@ -1181,9 +1193,7 @@ impl Block {
         //
         // hash random number to pick routing node
         //
-        let random_number2 = hash(&random_number.to_vec());
-        rp.publickey = winning_tx.get_winning_routing_node(random_number2);
-        rp.random_number = hash(&random_number2.to_vec());
+        rp.publickey = winning_tx.get_winning_routing_node(hash(&random_number.to_vec()));
 
         rp
     }

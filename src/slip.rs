@@ -68,11 +68,12 @@ impl Slip {
                     if *value == 1 {
                         true
                     } else {
-                        //println!("value is {} at {:?}", *value, &self.utxoset_key);
+                        println!("in utxoset but invalid: value is {} at {:?}", *value, &self.utxoset_key);
                         false
                     }
                 }
                 None => {
+                    println!("not in utxoset so invalid");
                     event!(
                         Level::ERROR,
                         "value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}",
