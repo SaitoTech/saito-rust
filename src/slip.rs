@@ -1,6 +1,7 @@
 use crate::{
     blockchain::UtxoSet,
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
+    transaction::{TransactionType},
 };
 use ahash::AHashMap;
 use macros::TryFromByte;
@@ -61,20 +62,7 @@ impl Slip {
         }
     }
 
-    pub fn validate(&self, utxoset: &UtxoSet, transaction_type : TransactionType) -> bool {
-
-	//
-	// StakerDeposit slips can only be spent in Fee transactions.
-	//
-	if self.get_slip_type == SlipType::StakerDeposit {
-	    if transaction_type != TransactionType::Fee {
-                println!(
-                    "in utxoset but invalid: value is {} at {:?}",
-                    *value, &self.utxoset_key
-                );
-                false
-	    }
-	}
+    pub fn validate(&self, utxoset: &UtxoSet) -> bool {
 
         if self.get_amount() > 0 {
             match utxoset.get(&self.utxoset_key) {

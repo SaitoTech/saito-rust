@@ -785,6 +785,20 @@ impl Transaction {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet, staking: &Staking) -> bool {
+
+	//
+	// Fee Transactions are validated in the block class. There can only
+	// be one per block, and they are checked by ensuring the transaction hash 
+	// matches our self-generated safety check. We do not need to validate
+	// their input slips as their input slips are records of what to do
+	// when reversing/unwinding the chain and have been spent previously.
+	//
+	if self.get_transaction_type() == TransactionType::Fee {
+	    return true;
+	}
+
+
+
         //
         // User-Sent Transactions
         //
@@ -890,7 +904,9 @@ println!("ERR8");
         //
         // fee transactions
         //
-        if transaction_type == TransactionType::Fee {}
+        if transaction_type == TransactionType::Fee {
+
+	}
 
 
         //
@@ -970,9 +986,8 @@ println!("ERR2");
         // tokens it will pass this check, which is conducted inside
         // the slip-level validation logic.
         //
-let transaction_type = self.get_transaction_type();
         for i in 0..self.inputs.len() {
-            let is_valid = self.inputs[i].validate(utxoset, transaction_type);
+            let is_valid = self.inputs[i].validate(utxoset);
             if is_valid != true {
                 println!("tx: {:?}", self);
                 println!(
@@ -984,7 +999,7 @@ println!("ERR3");
             }
         }
 
-         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset, transaction_type));
+         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
 println!("ERR4");
         inputs_validate
     }
