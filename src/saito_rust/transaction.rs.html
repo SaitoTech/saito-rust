@@ -1052,15 +1052,6 @@
 <span id="1052">1052</span>
 <span id="1053">1053</span>
 <span id="1054">1054</span>
-<span id="1055">1055</span>
-<span id="1056">1056</span>
-<span id="1057">1057</span>
-<span id="1058">1058</span>
-<span id="1059">1059</span>
-<span id="1060">1060</span>
-<span id="1061">1061</span>
-<span id="1062">1062</span>
-<span id="1063">1063</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -1880,7 +1871,6 @@
                 <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_inputs</span>()[<span class="number">0</span>].<span class="ident">get_publickey</span>();
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">hash_for_signature</span>, <span class="ident">sig</span>, <span class="ident">publickey</span>) {
                     <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;message verifies not&quot;</span>);
-                    <span class="macro">println!</span>(<span class="string">&quot;ERR1&quot;</span>);
                     <span class="kw">return</span> <span class="bool-val">false</span>;
                 }
             } <span class="kw">else</span> {
@@ -1894,7 +1884,6 @@
                     <span class="ident">Level::ERROR</span>,
                     <span class="string">&quot;ERROR 757293: there is no hash for signature in a transaction&quot;</span>
                 );
-                <span class="macro">println!</span>(<span class="string">&quot;ERR2&quot;</span>);
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
 
@@ -1906,7 +1895,6 @@
                     <span class="ident">Level::ERROR</span>,
                     <span class="string">&quot;ERROR 582039: less than 1 input in transaction&quot;</span>
                 );
-                <span class="macro">println!</span>(<span class="string">&quot;ERR3&quot;</span>);
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
 
@@ -1922,7 +1910,6 @@
                     <span class="ident">Level::ERROR</span>,
                     <span class="string">&quot;ERROR 482033: routing paths do not validate, transaction invalid&quot;</span>
                 );
-                <span class="macro">println!</span>(<span class="string">&quot;ERR5&quot;</span>);
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
 
@@ -1946,7 +1933,6 @@
                     <span class="ident">Level::TRACE</span>,
                     <span class="string">&quot;ERROR 672941: transaction spends more than it has available&quot;</span>
                 );
-                <span class="macro">println!</span>(<span class="string">&quot;ERR6&quot;</span>);
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
         }
@@ -2018,7 +2004,6 @@
                 <span class="ident">Level::ERROR</span>,
                 <span class="string">&quot;ERROR 582039: less than 1 output in transaction&quot;</span>
             );
-            <span class="macro">println!</span>(<span class="string">&quot;ERR7&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
@@ -2028,22 +2013,19 @@
         <span class="comment">// tokens it will pass this check, which is conducted inside</span>
         <span class="comment">// the slip-level validation logic.</span>
         <span class="comment">//</span>
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() {
-            <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">validate</span>(<span class="ident">utxoset</span>);
-            <span class="kw">if</span> <span class="ident">is_valid</span> <span class="op">!</span><span class="op">=</span> <span class="bool-val">true</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;tx: {:?}&quot;</span>, <span class="self">self</span>);
-                <span class="macro">println!</span>(
-                    <span class="string">&quot;this input is invalid: {:?}&quot;</span>,
-                    <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>()
-                );
-                <span class="kw">return</span> <span class="bool-val">false</span>;
-            }
-        }
+        <span class="comment">//for i in 0..self.inputs.len() {</span>
+        <span class="comment">//    let is_valid = self.inputs[i].validate(utxoset);</span>
+        <span class="comment">//    if is_valid != true {</span>
+        <span class="comment">//        println!(&quot;tx: {:?}&quot;, self);</span>
+        <span class="comment">//        println!(</span>
+        <span class="comment">//            &quot;this input is invalid: {:?}&quot;,</span>
+        <span class="comment">//            self.inputs[i].get_slip_type()</span>
+        <span class="comment">//        );</span>
+        <span class="comment">//        return false;</span>
+        <span class="comment">//    }</span>
+        <span class="comment">//}</span>
 
         <span class="kw">let</span> <span class="ident">inputs_validate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">par_iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>));
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">inputs_validate</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;ERR8&quot;</span>);
-        }
         <span class="ident">inputs_validate</span>
     }
 }

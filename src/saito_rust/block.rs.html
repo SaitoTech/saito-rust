@@ -2164,38 +2164,6 @@
 <span id="2164">2164</span>
 <span id="2165">2165</span>
 <span id="2166">2166</span>
-<span id="2167">2167</span>
-<span id="2168">2168</span>
-<span id="2169">2169</span>
-<span id="2170">2170</span>
-<span id="2171">2171</span>
-<span id="2172">2172</span>
-<span id="2173">2173</span>
-<span id="2174">2174</span>
-<span id="2175">2175</span>
-<span id="2176">2176</span>
-<span id="2177">2177</span>
-<span id="2178">2178</span>
-<span id="2179">2179</span>
-<span id="2180">2180</span>
-<span id="2181">2181</span>
-<span id="2182">2182</span>
-<span id="2183">2183</span>
-<span id="2184">2184</span>
-<span id="2185">2185</span>
-<span id="2186">2186</span>
-<span id="2187">2187</span>
-<span id="2188">2188</span>
-<span id="2189">2189</span>
-<span id="2190">2190</span>
-<span id="2191">2191</span>
-<span id="2192">2192</span>
-<span id="2193">2193</span>
-<span id="2194">2194</span>
-<span id="2195">2195</span>
-<span id="2196">2196</span>
-<span id="2197">2197</span>
-<span id="2198">2198</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
@@ -2686,7 +2654,6 @@
         <span class="comment">// if the block type needed is full and we are not,</span>
         <span class="comment">// load the block if it exists on disk.</span>
         <span class="comment">//</span>
-        <span class="macro">println!</span>(<span class="string">&quot;trying to updated: {:?} for {}&quot;</span>, <span class="ident">block_type</span>, <span class="self">self</span>.<span class="ident">get_id</span>());
         <span class="kw">if</span> <span class="ident">block_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BlockType::Full</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_block</span> <span class="op">=</span>
                 <span class="ident">Storage::load_block_from_disk</span>(<span class="ident">Storage::generate_block_filename</span>(<span class="kw-2">&amp;</span><span class="self">self</span>)).<span class="kw">await</span>;
@@ -3110,9 +3077,6 @@
             <span class="kw">let</span> <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span> <span class="op">=</span> <span class="ident">GoldenTicket::deserialize_for_transaction</span>(
                 <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">gt_idx</span>].<span class="ident">get_message</span>().<span class="ident">to_vec</span>(),
             );
-            <span class="macro">println!</span>(<span class="string">&quot;----&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;BLOCK {}&quot;</span>, <span class="self">self</span>.<span class="ident">get_id</span>());
-            <span class="macro">println!</span>(<span class="string">&quot;GT RNG: {:?}&quot;</span>, <span class="ident">golden_ticket</span>.<span class="ident">get_random</span>());
             <span class="comment">// generate input hash for router</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">next_random_number</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">golden_ticket</span>.<span class="ident">get_random</span>().<span class="ident">to_vec</span>());
             <span class="kw">let</span> <span class="ident">_miner_publickey</span> <span class="op">=</span> <span class="ident">golden_ticket</span>.<span class="ident">get_publickey</span>();
@@ -3127,7 +3091,6 @@
                 <span class="comment">//</span>
                 <span class="comment">// calculate miner and router payments</span>
                 <span class="comment">//</span>
-                <span class="macro">println!</span>(<span class="string">&quot;RT RNG: {:?}&quot;</span>, <span class="ident">next_random_number</span>);
                 <span class="kw">let</span> <span class="ident">block_payouts</span>: <span class="ident">RouterPayout</span> <span class="op">=</span>
                     <span class="ident">previous_block</span>.<span class="ident">find_winning_router</span>(<span class="ident">next_random_number</span>);
                 <span class="kw">let</span> <span class="ident">router_publickey</span> <span class="op">=</span> <span class="ident">block_payouts</span>.<span class="ident">publickey</span>;
@@ -3159,7 +3122,6 @@
                 <span class="kw">while</span> <span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
                     <span class="ident">loop_idx</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
 
-                    <span class="macro">println!</span>(<span class="string">&quot;looping in search of GT&quot;</span>);
                     <span class="comment">//</span>
                     <span class="comment">// we start with the second block, so once loop_IDX hits the same</span>
                     <span class="comment">// number as MAX_STAKER_RECURSION we have processed N blocks where</span>
@@ -3171,7 +3133,6 @@
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">staking_block</span>) <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">staking_block_hash</span>) {
                             <span class="ident">staking_block_hash</span> <span class="op">=</span> <span class="ident">staking_block</span>.<span class="ident">get_previous_block_hash</span>();
                             <span class="kw">if</span> <span class="op">!</span><span class="ident">did_the_block_before_our_staking_block_have_a_golden_ticket</span> {
-                                <span class="macro">println!</span>(<span class="string">&quot;block before did not have a golden ticket {}&quot;</span>, <span class="ident">loop_idx</span>);
 
                                 <span class="comment">//</span>
                                 <span class="comment">// update with this block info in case of next loop</span>
@@ -3192,7 +3153,6 @@
                                 <span class="kw">let</span> <span class="ident">rp</span> <span class="op">=</span> <span class="ident">staking_block</span>.<span class="ident">get_total_fees</span>() <span class="op">-</span> <span class="ident">sp</span>;
 
                                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">payout</span> <span class="op">=</span> <span class="ident">BlockPayout::new</span>();
-                                <span class="macro">println!</span>(<span class="string">&quot;RT RNG: {:?}&quot;</span>, <span class="ident">next_random_number</span>);
                                 <span class="ident">payout</span>.<span class="ident">router</span> <span class="op">=</span> <span class="ident">staking_block</span>
                                     .<span class="ident">find_winning_router</span>(<span class="ident">next_random_number</span>)
                                     .<span class="ident">publickey</span>;
@@ -3202,17 +3162,11 @@
                                 <span class="comment">// router consumes 2 hashes</span>
                                 <span class="ident">next_random_number</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">next_random_number</span>.<span class="ident">to_vec</span>());
                                 <span class="ident">next_random_number</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">next_random_number</span>.<span class="ident">to_vec</span>());
-                                <span class="macro">println!</span>(<span class="string">&quot;ST RNG: {:?}&quot;</span>, <span class="ident">next_random_number</span>);
 
                                 <span class="kw">let</span> <span class="ident">staker_slip_option</span> <span class="op">=</span>
                                     <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">find_winning_staker</span>(<span class="ident">next_random_number</span>);
                                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">staker_slip</span>) <span class="op">=</span> <span class="ident">staker_slip_option</span> {
                                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slip_was_spent</span> <span class="op">=</span> <span class="number">0</span>;
-
-                                    <span class="macro">println!</span>(
-                                        <span class="string">&quot;winning staker is: {:?}&quot;</span>,
-                                        <span class="ident">staker_slip</span>.<span class="ident">get_utxoset_key</span>()
-                                    );
 
                                     <span class="comment">//</span>
                                     <span class="comment">// check to see if the block already pays out to this slip</span>
@@ -3221,12 +3175,6 @@
                                         <span class="kw">if</span> <span class="ident">cv</span>.<span class="ident">block_payout</span>[<span class="ident">i</span>].<span class="ident">staker_slip</span>.<span class="ident">get_utxoset_key</span>()
                                             <span class="op">=</span><span class="op">=</span> <span class="ident">staker_slip</span>.<span class="ident">get_utxoset_key</span>()
                                         {
-                                            <span class="macro">println!</span>(<span class="string">&quot;This slip was already spent!&quot;</span>);
-                                            <span class="macro">println!</span>(
-                                                <span class="string">&quot;{:?} ----- {:?}&quot;</span>,
-                                                <span class="ident">staker_slip</span>.<span class="ident">get_utxoset_key</span>(),
-                                                <span class="ident">cv</span>.<span class="ident">block_payout</span>[<span class="ident">i</span>].<span class="ident">staker_slip</span>.<span class="ident">get_utxoset_key</span>()
-                                            );
                                             <span class="ident">slip_was_spent</span> <span class="op">=</span> <span class="number">1</span>;
                                             <span class="kw">break</span>;
                                         }
@@ -3239,7 +3187,6 @@
                                         .<span class="ident">slips_spent_this_block</span>
                                         .<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">staker_slip</span>.<span class="ident">get_utxoset_key</span>())
                                     {
-                                        <span class="macro">println!</span>(<span class="string">&quot;staker slip was spent!&quot;</span>);
                                         <span class="ident">slip_was_spent</span> <span class="op">=</span> <span class="number">1</span>;
                                     }
 
@@ -3258,11 +3205,6 @@
 
                                     <span class="ident">next_random_number</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">next_random_number</span>.<span class="ident">to_vec</span>());
 
-                                    <span class="macro">println!</span>(
-                                        <span class="string">&quot;staker UTXOKEY that will be spent: {:?}&quot;</span>,
-                                        <span class="ident">staker_slip</span>.<span class="ident">get_utxoset_key</span>()
-                                    );
-                                    <span class="macro">println!</span>(<span class="string">&quot;pushing back payout!&quot;</span>);
                                     <span class="ident">cv</span>.<span class="ident">block_payout</span>.<span class="ident">push</span>(<span class="ident">payout</span>);
                                 }
                             }
@@ -3298,11 +3240,6 @@
                     <span class="ident">slip_ordinal</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
                 }
                 <span class="kw">if</span> <span class="ident">cv</span>.<span class="ident">block_payout</span>[<span class="ident">i</span>].<span class="ident">staker</span> <span class="op">!</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">33</span>] {
-                    <span class="macro">println!</span>(
-                        <span class="string">&quot;BLOCK {} has staker payout w/ amount {}&quot;</span>,
-                        <span class="self">self</span>.<span class="ident">get_id</span>(),
-                        <span class="ident">cv</span>.<span class="ident">block_payout</span>[<span class="ident">i</span>].<span class="ident">staker_payout</span>
-                    );
 
                     <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">cv</span>.<span class="ident">block_payout</span>[<span class="ident">i</span>].<span class="ident">staker_slip</span>.<span class="ident">clone</span>());
 
@@ -3935,13 +3872,13 @@
         <span class="comment">// problem is. ergo this code that tries to do them on the main thread so</span>
         <span class="comment">// debugging output works.</span>
         <span class="comment">//</span>
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">len</span>() {
-            <span class="kw">let</span> <span class="ident">transactions_valid2</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">i</span>].<span class="ident">validate</span>(<span class="ident">utxoset</span>, <span class="ident">staking</span>);
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">transactions_valid2</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;TType: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">i</span>].<span class="ident">get_transaction_type</span>());
-                <span class="macro">println!</span>(<span class="string">&quot;Data {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">transactions</span>[<span class="ident">i</span>]);
-            }
-        }
+        <span class="comment">//for i in 0..self.transactions.len() {</span>
+        <span class="comment">//    let transactions_valid2 = self.transactions[i].validate(utxoset, staking);</span>
+        <span class="comment">//    if !transactions_valid2 {</span>
+        <span class="comment">//        println!(&quot;TType: {:?}&quot;, self.transactions[i].get_transaction_type());</span>
+        <span class="comment">//        println!(&quot;Data {:?}&quot;, self.transactions[i]);</span>
+        <span class="comment">//    }</span>
+        <span class="comment">//}</span>
         <span class="comment">//true</span>
 
         <span class="kw">let</span> <span class="ident">transactions_valid</span> <span class="op">=</span> <span class="self">self</span>
@@ -4047,7 +3984,6 @@
         <span class="kw">if</span> <span class="ident">previous_block_id</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
             {
                 <span class="kw">let</span> <span class="ident">initial_token_allocation_slips</span> <span class="op">=</span> <span class="ident">Storage::return_token_supply_slips_from_disk</span>();
-                <span class="comment">//println!(&quot;{:?}&quot;, initial_token_allocation_slips);</span>
 
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
                 <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">initial_token_allocation_slips</span>.<span class="ident">len</span>() {
