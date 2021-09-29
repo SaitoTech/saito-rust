@@ -52,8 +52,6 @@ impl Staking {
             return None;
         }
 
-        println!("PICKING WINNINER STAKER RN: {:?}", random_number);
-
         //
         // find winning staker
         //
@@ -324,7 +322,6 @@ impl Staking {
             // reset stakers if necessary
             //
             if self.stakers.is_empty() {
-                println!("RESETTING STAKERS TABLE!");
                 let (_res_spend, _res_unspend, _res_delete) =
                     self.reset_staker_table(block.get_staking_treasury());
             }
@@ -332,7 +329,6 @@ impl Staking {
             //
             // reset pending if necessary
             //
-            println!("RESETTING PENDING ON UNWIND!");
             if self.pending.is_empty() {
                 self.pending = vec![];
                 self.deposits = vec![];
@@ -366,11 +362,7 @@ impl Staking {
             );
 
             // pick router and burn one
-
-            println!(" == gt: {:?}", golden_ticket.get_random().to_vec());
-
             let mut next_random_number = hash(&golden_ticket.get_random().to_vec());
-            println!(" -- rt: {:?}", next_random_number);
             next_random_number = hash(&next_random_number.to_vec());
             next_random_number = hash(&next_random_number.to_vec());
 
@@ -418,14 +410,12 @@ impl Staking {
                     }
                     if staker_output.get_slip_type() == SlipType::StakerOutput {
                         // ROUTER BURNED FIRST
-                        println!(" == rt: {:?}", next_random_number);
                         next_random_number = hash(&next_random_number.to_vec()); // router + burn
                         next_random_number = hash(&next_random_number.to_vec()); // burn second
 
                         //
                         // move staker to pending
                         //
-                        println!(" == st: {:?}", next_random_number);
                         let lucky_staker_option = self.find_winning_staker(next_random_number); // use first
 
                         if let Some(lucky_staker) = lucky_staker_option {
@@ -434,12 +424,6 @@ impl Staking {
                                 Level::TRACE,
                                 "moving from staker into pending: {}",
                                 lucky_staker.get_amount()
-                            );
-                            println!(
-                                "REMOVING LUCKY STAKER w/ amount: {} / {} / {:?}",
-                                lucky_staker.get_amount(),
-                                lucky_staker.get_payout(),
-                                lucky_staker.get_utxoset_key()
                             );
 
                             slips_to_remove_from_staking.push(lucky_staker.clone());
@@ -1053,43 +1037,17 @@ mod tests {
             current_timestamp + 120000,
         )
         .await;
-        let _block2_hash = block2.get_hash();
+        let block2_hash = block2.get_hash();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block2).await;
-
-        //
-        // the staking deposits should be made
-        //
-        {
-            let blockchain = blockchain_lock.write().await;
-            println!("2 staking deposit transactions made, deposits should have TWO");
-            println!("STAKERS: {:?}", blockchain.staking.stakers);
-            println!("PENDING: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT: {:?}", blockchain.staking.deposits);
-        }
 
         //
         // BLOCK 3 - payout
         //
+	test_manager.set_latest_block_hash(block2_hash);
         test_manager
             .add_block(current_timestamp + 240000, 0, 1, true, vec![])
             .await;
-        let _block3_hash;
 
-        {
-            let blockchain = blockchain_lock.read().await;
-            _block3_hash = blockchain.get_latest_block_hash();
-        }
-
-        //
-        // the staking table should have been created when needed for the payout
-        //
-        {
-            let blockchain = blockchain_lock.write().await;
-            println!("2 staking deposit transactions made... where are we?");
-            println!("STAKERS: {:?}", blockchain.staking.stakers);
-            println!("PENDING: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT: {:?}", blockchain.staking.deposits);
-        }
 
         //
         // BLOCK 4
@@ -1097,12 +1055,7 @@ mod tests {
         test_manager
             .add_block(current_timestamp + 360000, 0, 1, false, vec![])
             .await;
-        let _block4_hash;
 
-        {
-            let blockchain = blockchain_lock.read().await;
-            _block4_hash = blockchain.get_latest_block_hash();
-        }
 
         //
         // BLOCK 5
@@ -1110,43 +1063,11 @@ mod tests {
         test_manager
             .add_block(current_timestamp + 480000, 0, 1, true, vec![])
             .await;
-        let block5_hash;
-
-        {
-            let blockchain = blockchain_lock.read().await;
-            block5_hash = blockchain.get_latest_block_hash();
-        }
-
-        //
-        // the staking table should have been created when needed for the payout
-        //
-        {
-            let mut blockchain = blockchain_lock.write().await;
-            let blk = blockchain.get_block(&block5_hash).await.unwrap();
-            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            println!("STAKERS: {:?}", blockchain.staking.stakers);
-            println!("PENDING: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT: {:?}", blockchain.staking.deposits);
-            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            println!("!!! AND NOW REWINDING SHOULD RESTORE STAKING !!!");
-            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
-            let blk2 = blk.clone();
-            blockchain.staking.on_chain_reorganization(&blk2, false);
-            println!("STAKERS: {:?}", blockchain.staking.stakers);
-            println!("PENDING: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT: {:?}", blockchain.staking.deposits);
-
-            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            println!("!!! AND NOW MOVING FORWARD AGAIN !!!");
-            println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
-            let blk3 = blk2.clone();
-            blockchain.staking.on_chain_reorganization(&blk3, true);
-            println!("STAKERS: {:?}", blockchain.staking.stakers);
-            println!("PENDING: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT: {:?}", blockchain.staking.deposits);
-        }
+	let block5_hash;
+	{
+	    let blockchain = blockchain_lock.read().await;
+	    block5_hash = blockchain.get_latest_block_hash();
+	}
 
         //
         // BLOCK 6 -- withdraw a staking deposit
@@ -1170,17 +1091,15 @@ mod tests {
             current_timestamp + 600000,
         )
         .await;
+	let block6_hash = block6.get_hash();
+	let block6_id = block6.get_id();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block6).await;
 
-        //
-        // the staking table should have been created when needed for the payout
-        //
-        {
+	{
             let blockchain = blockchain_lock.read().await;
-            println!("after the withdrawal of a staking transaction...");
-            println!("STAKERS: {:?}", blockchain.staking.stakers);
-            println!("PENDING: {:?}", blockchain.staking.pending);
-            println!("DEPOSIT: {:?}", blockchain.staking.deposits);
+println!("LATESTID: {} / {}", block6_id, blockchain.get_latest_block_id());
+	    assert_eq!(blockchain.get_latest_block_id(), 6);
+	    assert_eq!(blockchain.staking.stakers.len()+blockchain.staking.pending.len(), 1);
         }
     }
 

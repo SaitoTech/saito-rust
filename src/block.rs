@@ -487,7 +487,6 @@ impl Block {
         // if the block type needed is full and we are not,
         // load the block if it exists on disk.
         //
-        println!("trying to updated: {:?} for {}", block_type, self.get_id());
         if block_type == BlockType::Full {
             let mut new_block =
                 Storage::load_block_from_disk(Storage::generate_block_filename(&self)).await;
@@ -911,9 +910,6 @@ impl Block {
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
-            println!("----");
-            println!("BLOCK {}", self.get_id());
-            println!("GT RNG: {:?}", golden_ticket.get_random());
             // generate input hash for router
             let mut next_random_number = hash(&golden_ticket.get_random().to_vec());
             let _miner_publickey = golden_ticket.get_publickey();
@@ -928,7 +924,6 @@ impl Block {
                 //
                 // calculate miner and router payments
                 //
-                println!("RT RNG: {:?}", next_random_number);
                 let block_payouts: RouterPayout =
                     previous_block.find_winning_router(next_random_number);
                 let router_publickey = block_payouts.publickey;
@@ -960,7 +955,6 @@ impl Block {
                 while cont == 1 {
                     loop_idx += 1;
 
-                    println!("looping in search of GT");
                     //
                     // we start with the second block, so once loop_IDX hits the same
                     // number as MAX_STAKER_RECURSION we have processed N blocks where
@@ -972,7 +966,6 @@ impl Block {
                         if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
                             staking_block_hash = staking_block.get_previous_block_hash();
                             if !did_the_block_before_our_staking_block_have_a_golden_ticket {
-                                println!("block before did not have a golden ticket {}", loop_idx);
 
                                 //
                                 // update with this block info in case of next loop
@@ -993,7 +986,6 @@ impl Block {
                                 let rp = staking_block.get_total_fees() - sp;
 
                                 let mut payout = BlockPayout::new();
-                                println!("RT RNG: {:?}", next_random_number);
                                 payout.router = staking_block
                                     .find_winning_router(next_random_number)
                                     .publickey;
@@ -1003,17 +995,11 @@ impl Block {
                                 // router consumes 2 hashes
                                 next_random_number = hash(&next_random_number.to_vec());
                                 next_random_number = hash(&next_random_number.to_vec());
-                                println!("ST RNG: {:?}", next_random_number);
 
                                 let staker_slip_option =
                                     blockchain.staking.find_winning_staker(next_random_number);
                                 if let Some(staker_slip) = staker_slip_option {
                                     let mut slip_was_spent = 0;
-
-                                    println!(
-                                        "winning staker is: {:?}",
-                                        staker_slip.get_utxoset_key()
-                                    );
 
                                     //
                                     // check to see if the block already pays out to this slip
@@ -1022,12 +1008,6 @@ impl Block {
                                         if cv.block_payout[i].staker_slip.get_utxoset_key()
                                             == staker_slip.get_utxoset_key()
                                         {
-                                            println!("This slip was already spent!");
-                                            println!(
-                                                "{:?} ----- {:?}",
-                                                staker_slip.get_utxoset_key(),
-                                                cv.block_payout[i].staker_slip.get_utxoset_key()
-                                            );
                                             slip_was_spent = 1;
                                             break;
                                         }
@@ -1040,7 +1020,6 @@ impl Block {
                                         .slips_spent_this_block
                                         .contains_key(&staker_slip.get_utxoset_key())
                                     {
-                                        println!("staker slip was spent!");
                                         slip_was_spent = 1;
                                     }
 
@@ -1059,11 +1038,6 @@ impl Block {
 
                                     next_random_number = hash(&next_random_number.to_vec());
 
-                                    println!(
-                                        "staker UTXOKEY that will be spent: {:?}",
-                                        staker_slip.get_utxoset_key()
-                                    );
-                                    println!("pushing back payout!");
                                     cv.block_payout.push(payout);
                                 }
                             }
@@ -1099,11 +1073,6 @@ impl Block {
                     slip_ordinal += 1;
                 }
                 if cv.block_payout[i].staker != [0; 33] {
-                    println!(
-                        "BLOCK {} has staker payout w/ amount {}",
-                        self.get_id(),
-                        cv.block_payout[i].staker_payout
-                    );
 
                     transaction.add_input(cv.block_payout[i].staker_slip.clone());
 
@@ -1736,13 +1705,13 @@ impl Block {
         // problem is. ergo this code that tries to do them on the main thread so
         // debugging output works.
         //
-        for i in 0..self.transactions.len() {
-            let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
-            if !transactions_valid2 {
-                println!("TType: {:?}", self.transactions[i].get_transaction_type());
-                println!("Data {:?}", self.transactions[i]);
-            }
-        }
+        //for i in 0..self.transactions.len() {
+        //    let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
+        //    if !transactions_valid2 {
+        //        println!("TType: {:?}", self.transactions[i].get_transaction_type());
+        //        println!("Data {:?}", self.transactions[i]);
+        //    }
+        //}
         //true
 
         let transactions_valid = self
@@ -1848,7 +1817,6 @@ impl Block {
         if previous_block_id == 0 {
             {
                 let initial_token_allocation_slips = Storage::return_token_supply_slips_from_disk();
-                //println!("{:?}", initial_token_allocation_slips);
 
                 let mut transaction = Transaction::new();
                 for i in 0..initial_token_allocation_slips.len() {
