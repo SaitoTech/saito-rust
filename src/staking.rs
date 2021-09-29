@@ -621,6 +621,56 @@ mod tests {
         );
     }
 
+
+    //
+    // do we get proper results removing stakers and adding to pending? this is
+    // important because we rely on remove_stakers() to not remove non-existing
+    // entities, otherwise we need more complicated dupe-detection code.
+    //
+    #[test]
+    fn staking_remove_staker_code_handles_duplicates_properly() {
+        let mut staking = Staking::new();
+
+        let mut slip1 = Slip::new();
+        slip1.set_amount(200_000_000);
+        slip1.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip2 = Slip::new();
+        slip2.set_amount(300_000_000);
+        slip2.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip3 = Slip::new();
+        slip3.set_amount(400_000_000);
+        slip3.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip4 = Slip::new();
+        slip4.set_amount(500_000_000);
+        slip4.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip5 = Slip::new();
+        slip5.set_amount(600_000_000);
+        slip5.set_slip_type(SlipType::StakerDeposit);
+
+        staking.add_deposit(slip1.clone());
+        staking.add_deposit(slip2.clone());
+        staking.add_deposit(slip3.clone());
+        staking.add_deposit(slip4.clone());
+        staking.add_deposit(slip5.clone());
+
+        let (_res_spend, _res_unspend, _res_delete) = staking.reset_staker_table(1_000_000_000); // 10 Saito
+
+	assert_eq!(staking.stakers.len(), 5);
+	assert_eq!(staking.remove_staker(slip1.clone()), true);
+	assert_eq!(staking.remove_staker(slip2.clone()), true);
+	assert_eq!(staking.remove_staker(slip1.clone()), false);
+	assert_eq!(staking.stakers.len(), 3);
+	assert_eq!(staking.remove_staker(slip5.clone()), true);
+	assert_eq!(staking.remove_staker(slip5.clone()), false);
+	assert_eq!(staking.stakers.len(), 2);
+
+    }
+
+
     //
     // will staking payouts and the reset / rollover of the staking table work
     // properly with single-payouts per block?
