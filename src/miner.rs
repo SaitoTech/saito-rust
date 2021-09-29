@@ -110,6 +110,7 @@ pub async fn run(
     //
     // miner gets global broadcast channel
     //
+    println!("miner run 1");
     {
         let mut miner = miner_lock.write().await;
         miner.set_broadcast_channel_sender(broadcast_channel_sender.clone());
@@ -127,7 +128,7 @@ pub async fn run(
             sleep(Duration::from_millis(100));
         }
     });
-
+    println!("miner run 2");
     loop {
         tokio::select! {
 

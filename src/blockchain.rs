@@ -1282,7 +1282,7 @@ pub async fn run(
         tokio::sync::mpsc::Sender<SaitoMessage>,
         tokio::sync::mpsc::Receiver<SaitoMessage>,
     ) = mpsc::channel(4);
-
+    println!("blockchain run 1");
     //
     // blockchain takes global broadcast channel
     //
@@ -1290,7 +1290,7 @@ pub async fn run(
         let mut blockchain = blockchain_lock.write().await;
         blockchain.set_broadcast_channel_sender(broadcast_channel_sender.clone());
     }
-
+    println!("blockchain run 2");
     //
     // receive broadcast messages
     //

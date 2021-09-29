@@ -145,15 +145,17 @@ impl Mempool {
         blockchain_lock: Arc<RwLock<Blockchain>>,
         current_timestamp: u64,
     ) -> bool {
+        println!("here 1?");
         if self.currently_bundling_block {
             return false;
         }
-        if self.transactions.is_empty() {
+        println!("here 2?");
+        if self.transactions.len() == 0 {
             return false;
         }
-
+        println!("here 3?");
         let blockchain = blockchain_lock.read().await;
-
+        println!("WTF 1");
         if let Some(previous_block) = blockchain.get_latest_block() {
             let work_available = self.get_routing_work_available();
             let work_needed = self.get_routing_work_needed(previous_block, current_timestamp);
@@ -167,6 +169,7 @@ impl Mempool {
             );
             work_available >= work_needed
         } else {
+            println!("WTF 2");
             true
         }
     }
@@ -234,15 +237,18 @@ pub async fn try_bundle_block(
     timestamp_generator: &mut impl TimestampGenerator,
 ) -> Option<Block> {
     // use boolean to avoid monopolizing write lock
+    println!("try_bundle_block");
     let can_bundle;
     {
         let mempool = mempool_lock.read().await;
+        println!("try_bundle_block got mempool");
         can_bundle = mempool
             .can_bundle_block(blockchain_lock.clone(), timestamp_generator.get_timestamp())
             .await;
     }
     if can_bundle {
         let mut mempool = mempool_lock.write().await;
+        println!("try_bundle_block got mempool 2");
         Some(
             mempool
                 .bundle_block(blockchain_lock.clone(), Box::new(timestamp_generator))
@@ -295,7 +301,7 @@ pub async fn run(
         mempool.set_mempool_publickey(publickey);
         mempool.set_mempool_privatekey(privatekey);
     }
-
+    println!("mempool run 1");
     //
     // create local broadcast channel
     //
@@ -318,6 +324,7 @@ pub async fn run(
     //
     // global and local channel receivers
     //
+    println!("mempool run 2");
     loop {
         tokio::select! {
 
@@ -331,11 +338,13 @@ pub async fn run(
            // attempt to bundle block
                    //
                    MempoolMessage::LocalTryBundleBlock => {
+                        println!("LocalTryBundleBlock run 2");
                         if let Some(block) = try_bundle_block(
                             mempool_lock.clone(),
                             blockchain_lock.clone(),
                             &mut SystemTimestampGenerator{},
                         ).await {
+                            println!("made a block...");
                             let mut mempool = mempool_lock.write().await;
                             mempool.add_block(block);
                             mempool_channel_sender.send(MempoolMessage::LocalNewBlock).await.expect("Failed to send LocalNewBlock message");

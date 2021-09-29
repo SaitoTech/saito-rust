@@ -11,6 +11,7 @@ use saito_rust::{
 
 use clap::{App, Arg};
 
+use std::env;
 use std::{sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, RwLock};
 
@@ -21,6 +22,10 @@ use tracing::{event, Level};
 
 #[tokio::main]
 pub async fn main() -> saito_rust::Result<()> {
+    println!("{:?}", env::var("RUST_LOG"));
+    if env::var("RUST_LOG").is_err() {
+        env::set_var("RUST_LOG", "info")
+    }
     tracing_subscriber::fmt::init();
     let matches = App::new("Saito Runtime")
         .about("Runs a Saito Node")

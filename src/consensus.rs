@@ -226,10 +226,10 @@ impl Consensus {
         // Network
         //
             res = crate::networking::network::run(
-        network_lock.clone(),
-        wallet_lock.clone(),
-        mempool_lock.clone(),
-        blockchain_lock.clone(),
+                network_lock.clone(),
+                wallet_lock.clone(),
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
         ) => {

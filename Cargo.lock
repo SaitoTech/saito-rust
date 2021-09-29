@@ -1682,6 +1682,7 @@ dependencies = [
  "jemalloc-ctl",
  "jemallocator",
  "lazy_static",
+ "log",
  "macros",
  "merkle",
  "rand 0.8.4",

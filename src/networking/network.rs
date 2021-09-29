@@ -204,6 +204,8 @@ pub async fn run(
     //
     // get network settings from  configuation file
     //
+
+    println!("network run 1");
     {
         let network = network_lock.read().await;
         host = network
@@ -212,7 +214,7 @@ pub async fn run(
             .unwrap();
         port = network.config_settings.get::<u16>("network.port").unwrap();
     }
-
+    println!("network run 2");
     //
     // set global broadcast channel and connect to peers
     //
@@ -224,7 +226,7 @@ pub async fn run(
         network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
         network.connect_to_configured_peers().await;
     }
-
+    println!("network run 3");
     //
     // initialize routes for server
     //
@@ -248,6 +250,7 @@ pub async fn run(
     // local channel sending thread
     //
     let network_channel_sender_clone = network_channel_sender.clone();
+    println!("network run 4");
     tokio::spawn(async move {
         loop {
             network_channel_sender_clone
@@ -261,6 +264,7 @@ pub async fn run(
     //
     // start the server (separate thread)
     //
+    println!("network run 5");
     tokio::spawn(async move {
         warp::serve(routes).run((host, port)).await;
     });

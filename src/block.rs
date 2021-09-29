@@ -2047,7 +2047,7 @@ mod tests {
         let deserialized_block = Block::deserialize_for_net(&serialized_block);
 
         let serialized_block_header = block.serialize_for_net(BlockType::Header);
-        let deserialized_block_header = Block::deserialize_for_net(&serialized_block_header);
+        let _deserialized_block_header = Block::deserialize_for_net(&serialized_block_header);
 
         // assert_eq!(block, deserialized_block);
         assert_eq!(deserialized_block.get_id(), 1);

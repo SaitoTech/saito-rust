@@ -34,6 +34,7 @@ hex = "0.4.3"
 jemallocator = "0.1.9"
 jemalloc-ctl = "0.2.0"
 lazy_static = "1.4.0"
+log = "0.4.14"
 macros = { path = "macros" }
 merkle = "1.11.0"
 rand = "0.8.4"
