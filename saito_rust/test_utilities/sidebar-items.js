@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["memory_stats",""],["mocks",""],["test_manager",""]]});
+initSidebarItems({"mod":[["memory_stats",""],["test_manager",""]]});

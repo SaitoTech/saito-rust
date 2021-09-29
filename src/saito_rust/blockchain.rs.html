@@ -1692,13 +1692,85 @@
 <span id="1692">1692</span>
 <span id="1693">1693</span>
 <span id="1694">1694</span>
+<span id="1695">1695</span>
+<span id="1696">1696</span>
+<span id="1697">1697</span>
+<span id="1698">1698</span>
+<span id="1699">1699</span>
+<span id="1700">1700</span>
+<span id="1701">1701</span>
+<span id="1702">1702</span>
+<span id="1703">1703</span>
+<span id="1704">1704</span>
+<span id="1705">1705</span>
+<span id="1706">1706</span>
+<span id="1707">1707</span>
+<span id="1708">1708</span>
+<span id="1709">1709</span>
+<span id="1710">1710</span>
+<span id="1711">1711</span>
+<span id="1712">1712</span>
+<span id="1713">1713</span>
+<span id="1714">1714</span>
+<span id="1715">1715</span>
+<span id="1716">1716</span>
+<span id="1717">1717</span>
+<span id="1718">1718</span>
+<span id="1719">1719</span>
+<span id="1720">1720</span>
+<span id="1721">1721</span>
+<span id="1722">1722</span>
+<span id="1723">1723</span>
+<span id="1724">1724</span>
+<span id="1725">1725</span>
+<span id="1726">1726</span>
+<span id="1727">1727</span>
+<span id="1728">1728</span>
+<span id="1729">1729</span>
+<span id="1730">1730</span>
+<span id="1731">1731</span>
+<span id="1732">1732</span>
+<span id="1733">1733</span>
+<span id="1734">1734</span>
+<span id="1735">1735</span>
+<span id="1736">1736</span>
+<span id="1737">1737</span>
+<span id="1738">1738</span>
+<span id="1739">1739</span>
+<span id="1740">1740</span>
+<span id="1741">1741</span>
+<span id="1742">1742</span>
+<span id="1743">1743</span>
+<span id="1744">1744</span>
+<span id="1745">1745</span>
+<span id="1746">1746</span>
+<span id="1747">1747</span>
+<span id="1748">1748</span>
+<span id="1749">1749</span>
+<span id="1750">1750</span>
+<span id="1751">1751</span>
+<span id="1752">1752</span>
+<span id="1753">1753</span>
+<span id="1754">1754</span>
+<span id="1755">1755</span>
+<span id="1756">1756</span>
+<span id="1757">1757</span>
+<span id="1758">1758</span>
+<span id="1759">1759</span>
+<span id="1760">1760</span>
+<span id="1761">1761</span>
+<span id="1762">1762</span>
+<span id="1763">1763</span>
+<span id="1764">1764</span>
+<span id="1765">1765</span>
+<span id="1766">1766</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
 <span class="comment">// prune blocks from index after N blocks</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PRUNE_AFTER_BLOCKS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
-<span class="comment">// max recursion when paying stakers</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_STAKER_RECURSION</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">2</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PRUNE_AFTER_BLOCKS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">20</span>;
+<span class="comment">// max recursion when paying stakers -- number of blocks including  -- number of blocks including GTT</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_STAKER_RECURSION</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">3</span>;
 <span class="comment">// max token supply - used in validating block #1</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_TOKEN_SUPPLY</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">1_000_000_000_000_000_000</span>;
 <span class="comment">// minimum golden tickets required ( NUMBER_OF_TICKETS / number of preceding blocks )</span>
@@ -1793,8 +1865,8 @@
         <span class="kw">let</span> <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
         <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_latest_block_hash</span>();
 
-        <span class="macro">println!</span>(<span class="string">&quot;blockring prev hash: {:?}&quot;</span>, <span class="ident">previous_block_hash</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;block     prev hash: {:?}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>());
+        <span class="comment">//println!(&quot;blockring prev hash: {:?}&quot;, previous_block_hash);</span>
+        <span class="comment">//println!(&quot;block     prev hash: {:?}&quot;, block.get_previous_block_hash());</span>
 
         <span class="comment">//</span>
         <span class="comment">// sanity checks</span>
@@ -2359,7 +2431,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_latest_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
-        <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_id</span>()
+        <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_latest_block_id</span>()
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_sync</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">block_hash</span>: <span class="kw-2">&amp;</span><span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Block</span><span class="op">&gt;</span> {
@@ -2399,8 +2471,7 @@
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_longest_chain_block_id</span>()
-            <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="number">0</span>]).<span class="ident">unwrap</span>().<span class="ident">get_id</span>()
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_latest_block_id</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>[<span class="number">0</span>]).<span class="ident">unwrap</span>().<span class="ident">get_id</span>()
         {
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
@@ -2487,7 +2558,8 @@
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">old_chain</span>.<span class="ident">is_empty</span>() {
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">unwind_chain</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>, <span class="kw-2">&amp;</span><span class="ident">old_chain</span>, <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">true</span>)
+                .<span class="ident">unwind_chain</span>(<span class="kw-2">&amp;</span><span class="ident">new_chain</span>, <span class="kw-2">&amp;</span><span class="ident">old_chain</span>, <span class="number">0</span>, <span class="bool-val">true</span>)
+                <span class="comment">//.unwind_chain(&amp;new_chain, &amp;old_chain, old_chain.len() - 1, true)</span>
                 .<span class="kw">await</span>;
             <span class="ident">res</span>
         } <span class="kw">else</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">new_chain</span>.<span class="ident">is_empty</span>() {
@@ -2706,10 +2778,15 @@
                 <span class="comment">// to unwind. Because of this, we start WINDING the old chain back</span>
                 <span class="comment">// which requires us to start at the END of the new chain vector.</span>
                 <span class="comment">//</span>
-                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-                    .<span class="ident">wind_chain</span>(<span class="ident">old_chain</span>, <span class="ident">new_chain</span>, <span class="ident">new_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">true</span>)
-                    .<span class="kw">await</span>;
-                <span class="ident">res</span>
+                <span class="kw">if</span> <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span> {
+                    <span class="macro">println!</span>(<span class="string">&quot;old chain len: {}&quot;</span>, <span class="ident">old_chain</span>.<span class="ident">len</span>());
+                    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
+                        .<span class="ident">wind_chain</span>(<span class="ident">old_chain</span>, <span class="ident">new_chain</span>, <span class="ident">old_chain</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>, <span class="bool-val">true</span>)
+                        .<span class="kw">await</span>;
+                    <span class="ident">res</span>
+                } <span class="kw">else</span> {
+                    <span class="bool-val">false</span>
+                }
             } <span class="kw">else</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chain_to_unwind</span>: <span class="ident">Vec</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
@@ -2779,7 +2856,7 @@
         <span class="comment">// wallet update</span>
         {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="ident">wallet</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>, <span class="bool-val">true</span>);
+            <span class="ident">wallet</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>, <span class="bool-val">false</span>);
         }
 
         <span class="comment">//</span>
@@ -3090,6 +3167,9 @@
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
 
         <span class="macro">assert_eq!</span>(<span class="number">5</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
+
+        <span class="ident">test_manager</span>.<span class="ident">check_utxoset</span>().<span class="kw">await</span>;
+        <span class="ident">test_manager</span>.<span class="ident">check_token_supply</span>().<span class="kw">await</span>;
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
@@ -3142,6 +3222,9 @@
 
         <span class="macro">assert_eq!</span>(<span class="number">5</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
         <span class="macro">assert_ne!</span>(<span class="number">7</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
+
+        <span class="ident">test_manager</span>.<span class="ident">check_utxoset</span>().<span class="kw">await</span>;
+        <span class="ident">test_manager</span>.<span class="ident">check_token_supply</span>().<span class="kw">await</span>;
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
@@ -3194,6 +3277,9 @@
 
         <span class="macro">assert_eq!</span>(<span class="number">7</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
         <span class="macro">assert_ne!</span>(<span class="number">5</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
+
+        <span class="ident">test_manager</span>.<span class="ident">check_utxoset</span>().<span class="kw">await</span>;
+        <span class="ident">test_manager</span>.<span class="ident">check_token_supply</span>().<span class="kw">await</span>;
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
@@ -3384,6 +3470,64 @@
             <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="macro">assert_eq!</span>(<span class="number">10</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
             <span class="macro">assert_eq!</span>(<span class="ident">block10_2_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
+        }
+
+        <span class="ident">test_manager</span>.<span class="ident">check_utxoset</span>().<span class="kw">await</span>;
+        <span class="ident">test_manager</span>.<span class="ident">check_token_supply</span>().<span class="kw">await</span>;
+    }
+
+    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="comment">//</span>
+    <span class="comment">// use test_manager to generate blockchains and reorgs and test</span>
+    <span class="comment">//</span>
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_manager_blockchain_fork_test</span>() {
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
+        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">test_manager</span> <span class="op">=</span> <span class="ident">TestManager::new</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
+
+        <span class="comment">// 5 initial blocks</span>
+        <span class="ident">test_manager</span>.<span class="ident">generate_blockchain</span>(<span class="number">5</span>, [<span class="number">0</span>; <span class="number">32</span>]).<span class="kw">await</span>;
+
+        <span class="kw">let</span> <span class="ident">block5_hash</span>;
+
+        {
+            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+            <span class="ident">block5_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
+
+            <span class="macro">assert_eq!</span>(
+                <span class="ident">blockchain</span>
+                    .<span class="ident">blockring</span>
+                    .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="number">5</span>),
+                <span class="ident">block5_hash</span>
+            );
+            <span class="macro">assert_eq!</span>(<span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>(), <span class="ident">block5_hash</span>);
+        }
+
+        <span class="comment">// 5 block reorg with 10 block fork</span>
+        <span class="kw">let</span> <span class="ident">block10_hash</span> <span class="op">=</span> <span class="ident">test_manager</span>.<span class="ident">generate_blockchain</span>(<span class="number">5</span>, <span class="ident">block5_hash</span>).<span class="kw">await</span>;
+
+        {
+            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+            <span class="macro">assert_eq!</span>(
+                <span class="ident">blockchain</span>
+                    .<span class="ident">blockring</span>
+                    .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="number">10</span>),
+                <span class="ident">block10_hash</span>
+            );
+            <span class="macro">assert_eq!</span>(<span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>(), <span class="ident">block10_hash</span>);
+        }
+
+        <span class="kw">let</span> <span class="ident">block15_hash</span> <span class="op">=</span> <span class="ident">test_manager</span>.<span class="ident">generate_blockchain</span>(<span class="number">10</span>, <span class="ident">block5_hash</span>).<span class="kw">await</span>;
+
+        {
+            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+            <span class="macro">assert_eq!</span>(
+                <span class="ident">blockchain</span>
+                    .<span class="ident">blockring</span>
+                    .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="number">15</span>),
+                <span class="ident">block15_hash</span>
+            );
+            <span class="macro">assert_eq!</span>(<span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>(), <span class="ident">block15_hash</span>);
         }
     }
 }

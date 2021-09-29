@@ -521,60 +521,6 @@
 <span id="521">521</span>
 <span id="522">522</span>
 <span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
-<span id="553">553</span>
-<span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -583,7 +529,7 @@
     <span class="ident">consensus::SaitoMessage</span>,
     <span class="ident">crypto</span>::{<span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>},
     <span class="ident">golden_ticket::GoldenTicket</span>,
-    <span class="ident">time</span>::{<span class="ident">SystemTimestampGenerator</span>, <span class="ident">TimestampGenerator</span>},
+    <span class="ident">time::create_timestamp</span>,
     <span class="ident">transaction::Transaction</span>,
     <span class="ident">wallet::Wallet</span>,
 };
@@ -608,6 +554,7 @@
 <span class="doccomment">/// sends it to the `Blockchain` to be added to the longest-chain. New `Block`s</span>
 <span class="doccomment">/// received over the network are queued in the `Mempool` before being added to</span>
 <span class="doccomment">/// the `Blockchain`</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Mempool</span> {
     <span class="ident">blocks_queue</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>, <span class="comment">// vector so we just copy it over</span>
@@ -699,7 +646,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">bundle_block</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-        <span class="ident">timestamp_generator</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">dyn</span> <span class="ident">TimestampGenerator</span><span class="op">&gt;</span>,
+        <span class="ident">current_timestamp</span>: <span class="ident">u64</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
@@ -709,7 +656,7 @@
             <span class="ident">previous_block_hash</span>,
             <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
             <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">timestamp_generator</span>.<span class="ident">get_timestamp</span>(),
+            <span class="ident">current_timestamp</span>,
         )
         .<span class="kw">await</span>;
 
@@ -809,21 +756,21 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">try_bundle_block</span>(
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">timestamp_generator</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">impl</span> <span class="ident">TimestampGenerator</span>,
+    <span class="ident">current_timestamp</span>: <span class="ident">u64</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span> {
     <span class="comment">// use boolean to avoid monopolizing write lock</span>
     <span class="kw">let</span> <span class="ident">can_bundle</span>;
     {
         <span class="kw">let</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="ident">can_bundle</span> <span class="op">=</span> <span class="ident">mempool</span>
-            .<span class="ident">can_bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">timestamp_generator</span>.<span class="ident">get_timestamp</span>())
+            .<span class="ident">can_bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">current_timestamp</span>)
             .<span class="kw">await</span>;
     }
     <span class="kw">if</span> <span class="ident">can_bundle</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
         <span class="prelude-val">Some</span>(
             <span class="ident">mempool</span>
-                .<span class="ident">bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">Box::new</span>(<span class="ident">timestamp_generator</span>))
+                .<span class="ident">bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">current_timestamp</span>)
                 .<span class="kw">await</span>,
         )
     } <span class="kw">else</span> {
@@ -905,14 +852,15 @@
             <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">mempool_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">match</span> <span class="ident">message</span> {
 
-                   <span class="comment">//</span>
-           <span class="comment">// attempt to bundle block</span>
-                   <span class="comment">//</span>
-                   <span class="ident">MempoolMessage::LocalTryBundleBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="comment">//</span>
+                   <span class="comment">// attempt to bundle block</span>
+                    <span class="comment">//</span>
+                    <span class="ident">MempoolMessage::LocalTryBundleBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="ident">current_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">try_bundle_block</span>(
                             <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                             <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-                            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SystemTimestampGenerator</span>{},
+                            <span class="ident">current_timestamp</span>,
                         ).<span class="kw">await</span> {
                             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                             <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>);
@@ -921,9 +869,9 @@
 
                     },
 
-            <span class="comment">//</span>
-            <span class="comment">// attempt to send to blockchain</span>
-            <span class="comment">//</span>
+                    <span class="comment">//</span>
+                    <span class="comment">// attempt to send to blockchain</span>
+                    <span class="comment">//</span>
                     <span class="comment">// ProcessBlocks will add blocks FIFO from the queue into blockchain</span>
                     <span class="ident">MempoolMessage::LocalNewBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">send_blocks_to_blockchain</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
@@ -959,199 +907,143 @@
 <span class="kw">mod</span> <span class="ident">tests</span> {
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">block</span>::{<span class="ident">Block</span>, <span class="ident">BlockType</span>},
-        <span class="ident">test_utilities</span>::{
-            <span class="ident">mocks</span>::{<span class="ident">add_vip_block</span>, <span class="ident">make_block_with_mempool</span>, <span class="ident">MockTimestampGenerator</span>},
-            <span class="ident">test_manager::TestManager</span>,
-        },
-        <span class="ident">wallet::Wallet</span>,
-    };
+    <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">block::Block</span>, <span class="ident">test_utilities::test_manager::TestManager</span>, <span class="ident">wallet::Wallet</span>};
 
     <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
     <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">mempool_new_test</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
-        <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
         <span class="kw">let</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool::new</span>(<span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">wallet</span>)));
         <span class="macro">assert_eq!</span>(<span class="ident">mempool</span>.<span class="ident">blocks_queue</span>, <span class="ident">VecDeque::new</span>());
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">mempool_add_block_test</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
-        <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">Mempool::new</span>(<span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">wallet</span>)));
-
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
-
         <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>.<span class="ident">clone</span>());
-
         <span class="macro">assert_eq!</span>(<span class="prelude-val">Some</span>(<span class="ident">block</span>), <span class="ident">mempool</span>.<span class="ident">blocks_queue</span>.<span class="ident">pop_front</span>())
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mempool_bundle_blocks_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
-        {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
-        }
-        <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> <span class="ident">publickey</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">prev_block</span>;
-        {
-            <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
-        }
-        <span class="ident">add_vip_block</span>(
-            <span class="ident">publickey</span>,
-            [<span class="number">0</span>; <span class="number">32</span>],
-            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-        )
-        .<span class="kw">await</span>;
-        <span class="comment">// make sure to create the mock_timestamp_generator after the VIP block.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span> <span class="op">=</span> <span class="ident">MockTimestampGenerator::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">test_manager</span> <span class="op">=</span> <span class="ident">TestManager::new</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
+        <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">test_manager</span>.<span class="ident">mempool_lock</span>.<span class="ident">clone</span>();
+
+        <span class="comment">// BLOCK 1 - VIP transactions</span>
+        <span class="ident">test_manager</span>
+            .<span class="ident">add_block</span>(<span class="ident">create_timestamp</span>(), <span class="number">3</span>, <span class="number">0</span>, <span class="bool-val">false</span>, <span class="macro">vec!</span>[])
+            .<span class="kw">await</span>;
+
         {
             <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">prev_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
-            <span class="macro">assert_eq!</span>(<span class="ident">prev_block</span>.<span class="ident">get_id</span>(), <span class="number">1</span>);
+            <span class="macro">assert_eq!</span>(<span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>(), <span class="number">1</span>);
         }
 
         <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">4</span> {
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">make_block_with_mempool</span>(
-                <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span>,
-                <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-            )
-            .<span class="kw">await</span>;
-            <span class="macro">assert_eq!</span>(<span class="ident">prev_block</span>.<span class="ident">get_hash</span>(), <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>());
-            <span class="kw">let</span> <span class="ident">latest_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
-            <span class="kw">let</span> <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-            <span class="kw">let</span> <span class="ident">latest_block_prev_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>();
+            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_manager</span>.<span class="ident">generate_block_via_mempool</span>().<span class="kw">await</span>;
             {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="ident">prev_hash_before</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>();
-                <span class="comment">// add block to blockchain(normally this is done in mempool also, see test below)</span>
-                <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="ident">prev_hash_after</span> <span class="op">=</span> <span class="ident">blockchain</span>
-                    .<span class="ident">get_latest_block</span>()
-                    .<span class="ident">unwrap</span>()
-                    .<span class="ident">get_previous_block_hash</span>();
-                <span class="macro">assert_eq!</span>(<span class="ident">prev_hash_before</span>, <span class="ident">prev_hash_after</span>);
-
-                <span class="macro">assert_eq!</span>(<span class="ident">latest_block_id</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
-                <span class="macro">assert_eq!</span>(<span class="ident">latest_block_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
-                <span class="macro">assert_eq!</span>(
-                    <span class="ident">prev_block</span>.<span class="ident">get_hash</span>(),
-                    <span class="ident">blockchain</span>
-                        .<span class="ident">get_latest_block</span>()
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">get_previous_block_hash</span>()
-                );
-                <span class="macro">assert_eq!</span>(
-                    <span class="ident">latest_block_prev_hash</span>,
-                    <span class="ident">blockchain</span>
-                        .<span class="ident">get_latest_block</span>()
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">get_previous_block_hash</span>()
-                );
-                <span class="ident">prev_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">test_manager</span>.<span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>);
             }
+            <span class="ident">send_blocks_to_blockchain</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
         }
+
+        <span class="comment">// check chain consistence</span>
+        <span class="ident">test_manager</span>.<span class="ident">check_blockchain</span>().<span class="kw">await</span>;
     }
-    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mempool_bundle_and_send_blocks_to_blockchain_test</span>() {
-        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
-        {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
-        }
-        <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> <span class="ident">publickey</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">prev_block</span>;
-        {
-            <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
-        }
-        <span class="ident">add_vip_block</span>(
-            <span class="ident">publickey</span>,
-            [<span class="number">0</span>; <span class="number">32</span>],
-            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-        )
-        .<span class="kw">await</span>;
-        <span class="comment">// make sure to create the mock_timestamp_generator after the VIP block.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span> <span class="op">=</span> <span class="ident">MockTimestampGenerator::new</span>();
-        {
-            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">prev_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
-            <span class="macro">assert_eq!</span>(<span class="ident">prev_block</span>.<span class="ident">get_id</span>(), <span class="number">1</span>);
-        }
 
-        <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">4</span> {
-            <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">make_block_with_mempool</span>(
-                <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">mock_timestamp_generator</span>,
-                <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-            )
-            .<span class="kw">await</span>;
-            <span class="macro">assert_eq!</span>(<span class="ident">prev_block</span>.<span class="ident">get_hash</span>(), <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>());
+    <span class="comment">/*******
+        #[tokio::test]
+        async fn mempool_bundle_and_send_blocks_to_blockchain_test() {
+            let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+            let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+            let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
-            <span class="kw">let</span> <span class="ident">latest_block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
-            <span class="kw">let</span> <span class="ident">latest_block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-            <span class="kw">let</span> <span class="ident">latest_block_prev_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>();
+            let publickey;
+            let mut prev_block;
             {
-                <span class="kw">let</span> <span class="ident">prev_hash_before</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>();
+                let wallet = wallet_lock.read().await;
+                publickey = wallet.get_publickey();
+            }
+            add_vip_block(
+                publickey,
+                [0; 32],
+                blockchain_lock.clone(),
+                wallet_lock.clone(),
+            )
+            .await;
+
+            let current_timestamp = create_timestamp();
+            {
+                let blockchain = blockchain_lock.read().await;
+                prev_block = blockchain.get_latest_block().unwrap().clone();
+                assert_eq!(prev_block.get_id(), 1);
+            }
+
+            for i in 0..4 {
+                let block = make_block_with_mempool(
+                    current_timestamp + (i * 120000),
+                    mempool_lock.clone(),
+                    blockchain_lock.clone(),
+                    wallet_lock.clone(),
+                )
+                .await;
+                assert_eq!(prev_block.get_hash(), block.get_previous_block_hash());
+
+                let latest_block_id = block.get_id();
+                let latest_block_hash = block.get_hash();
+                let latest_block_prev_hash = block.get_previous_block_hash();
                 {
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                    <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>);
+                    let prev_hash_before = block.get_previous_block_hash();
+                    {
+                        let mut mempool = mempool_lock.write().await;
+                        mempool.add_block(block);
+                    }
+                    send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
+                    let blockchain = blockchain_lock.read().await;
+                    let latest_block = blockchain.get_latest_block().unwrap();
+
+                    TestManager::check_block_consistency(&amp;latest_block);
+
+                    let serialized_latest_block = latest_block.serialize_for_net(BlockType::Full);
+                    let deserialize_latest_block = Block::deserialize_for_net(&amp;serialized_latest_block);
+                    assert_eq!(latest_block.get_hash(), deserialize_latest_block.get_hash());
+
+                    let prev_hash_after = latest_block.get_previous_block_hash();
+                    assert_eq!(prev_hash_before, prev_hash_after);
+
+                    assert_eq!(latest_block_id, blockchain.get_latest_block_id());
+                    assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
+                    assert_eq!(latest_block.get_hash(), blockchain.get_latest_block_hash());
+
+                    assert!(blockchain.get_block_sync(&amp;prev_hash_before).is_some());
+                    assert!(blockchain.get_block(&amp;prev_hash_before).await.is_some());
+
+                    assert_eq!(
+                        prev_block.get_hash(),
+                        blockchain
+                            .get_latest_block()
+                            .unwrap()
+                            .get_previous_block_hash()
+                    );
+                    assert_eq!(
+                        latest_block_prev_hash,
+                        blockchain
+                            .get_latest_block()
+                            .unwrap()
+                            .get_previous_block_hash()
+                    );
+                    prev_block = blockchain.get_latest_block().unwrap().clone();
                 }
-                <span class="ident">send_blocks_to_blockchain</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="ident">latest_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>().<span class="ident">unwrap</span>();
-
-                <span class="ident">TestManager::check_block_consistency</span>(<span class="kw-2">&amp;</span><span class="ident">latest_block</span>);
-
-                <span class="kw">let</span> <span class="ident">serialized_latest_block</span> <span class="op">=</span> <span class="ident">latest_block</span>.<span class="ident">serialize_for_net</span>(<span class="ident">BlockType::Full</span>);
-                <span class="kw">let</span> <span class="ident">deserialize_latest_block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_latest_block</span>);
-                <span class="macro">assert_eq!</span>(<span class="ident">latest_block</span>.<span class="ident">get_hash</span>(), <span class="ident">deserialize_latest_block</span>.<span class="ident">get_hash</span>());
-
-                <span class="kw">let</span> <span class="ident">prev_hash_after</span> <span class="op">=</span> <span class="ident">latest_block</span>.<span class="ident">get_previous_block_hash</span>();
-                <span class="macro">assert_eq!</span>(<span class="ident">prev_hash_before</span>, <span class="ident">prev_hash_after</span>);
-
-                <span class="macro">assert_eq!</span>(<span class="ident">latest_block_id</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
-                <span class="macro">assert_eq!</span>(<span class="ident">latest_block_hash</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
-                <span class="macro">assert_eq!</span>(<span class="ident">latest_block</span>.<span class="ident">get_hash</span>(), <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>());
-
-                <span class="macro">assert!</span>(<span class="ident">blockchain</span>.<span class="ident">get_block_sync</span>(<span class="kw-2">&amp;</span><span class="ident">prev_hash_before</span>).<span class="ident">is_some</span>());
-                <span class="macro">assert!</span>(<span class="ident">blockchain</span>.<span class="ident">get_block</span>(<span class="kw-2">&amp;</span><span class="ident">prev_hash_before</span>).<span class="kw">await</span>.<span class="ident">is_some</span>());
-
-                <span class="macro">assert_eq!</span>(
-                    <span class="ident">prev_block</span>.<span class="ident">get_hash</span>(),
-                    <span class="ident">blockchain</span>
-                        .<span class="ident">get_latest_block</span>()
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">get_previous_block_hash</span>()
-                );
-                <span class="macro">assert_eq!</span>(
-                    <span class="ident">latest_block_prev_hash</span>,
-                    <span class="ident">blockchain</span>
-                        .<span class="ident">get_latest_block</span>()
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">get_previous_block_hash</span>()
-                );
-                <span class="ident">prev_block</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>();
             }
         }
-    }
+    *******/</span>
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>

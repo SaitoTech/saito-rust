@@ -671,6 +671,8 @@
 <span id="671">671</span>
 <span id="672">672</span>
 <span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::consensus::SaitoMessage</span>;
@@ -1011,7 +1013,6 @@
                 <span class="ident">request_blockchain_message::RequestBlockchainMessage</span>,
             },
         },
-        <span class="ident">test_utilities::mocks::make_mock_blockchain</span>,
         <span class="ident">transaction::Transaction</span>,
     };
     <span class="kw">use</span> <span class="ident">secp256k1::PublicKey</span>;
@@ -1170,180 +1171,183 @@
     <span class="comment">//     (command, api_message.message_id, api_message.message_data)</span>
     <span class="comment">// }</span>
 
-    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_send_block_header</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();
-        <span class="ident">settings</span>.<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="string">&quot;config&quot;</span>)).<span class="ident">unwrap</span>();
+    <span class="comment">/****
+        #[tokio::test]
+        async fn test_send_block_header() {
+            let mut settings = config::Config::default();
+            settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();
 
-        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
-        {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
+            let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+            {
+                let mut wallet = wallet_lock.write().await;
+                wallet.load_keys(&quot;test/testwallet&quot;, Some(&quot;asdf&quot;));
+            }
+            let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+            let (blockchain_lock, block_hashes) =
+                make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
+
+            let socket_filter = ws_upgrade_route_filter(
+                wallet_lock.clone(),
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+            );
+            let mut ws_client = warp::test::ws()
+                .path(&quot;/wsopen&quot;)
+                .handshake(socket_filter)
+                .await
+                .expect(&quot;transaction websocket&quot;);
+
+            let mut message_bytes: Vec&lt;u8&gt; = vec![];
+            message_bytes.extend_from_slice(&amp;block_hashes[0]);
+            message_bytes.extend_from_slice(&amp;[0u8; 32]);
+
+            let api_message = APIMessage::new(&quot;REQBLKHD&quot;, 0, message_bytes);
+            let serialized_api_message = api_message.serialize();
+
+            let _socket_resp = ws_client
+                .send(Message::binary(serialized_api_message))
+                .await;
+            let resp = ws_client.recv().await.unwrap();
+
+            let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
+
+            assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);
+            assert_eq!(api_message.message_id, 0);
+            assert_eq!(
+                String::from_utf8_lossy(&amp;api_message.message_data).to_string(),
+                String::from(&quot;OK&quot;)
+            );
         }
-        <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> (<span class="ident">blockchain_lock</span>, <span class="ident">block_hashes</span>) <span class="op">=</span>
-            <span class="ident">make_mock_blockchain</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="number">4</span> <span class="kw">as</span> <span class="ident">u64</span>).<span class="kw">await</span>;
+    ****/</span>
+    <span class="comment">/****
+        #[tokio::test]
+        async fn test_send_blockchain() {
+            let mut settings = config::Config::default();
+            settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();
 
-        <span class="kw">let</span> <span class="ident">socket_filter</span> <span class="op">=</span> <span class="ident">ws_upgrade_route_filter</span>(
-            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-        );
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ws_client</span> <span class="op">=</span> <span class="ident">warp::test::ws</span>()
-            .<span class="ident">path</span>(<span class="string">&quot;/wsopen&quot;</span>)
-            .<span class="ident">handshake</span>(<span class="ident">socket_filter</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">expect</span>(<span class="string">&quot;transaction websocket&quot;</span>);
+            let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+            {
+                let mut wallet = wallet_lock.write().await;
+                wallet.load_keys(&quot;test/testwallet&quot;, Some(&quot;asdf&quot;));
+            }
+            let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+            let (blockchain_lock, _block_hashes) =
+                make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">message_bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="ident">message_bytes</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">block_hashes</span>[<span class="number">0</span>]);
-        <span class="ident">message_bytes</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span>[<span class="number">0u8</span>; <span class="number">32</span>]);
+            let mut settings = config::Config::default();
+            settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();
 
-        <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">APIMessage::new</span>(<span class="string">&quot;REQBLKHD&quot;</span>, <span class="number">0</span>, <span class="ident">message_bytes</span>);
-        <span class="kw">let</span> <span class="ident">serialized_api_message</span> <span class="op">=</span> <span class="ident">api_message</span>.<span class="ident">serialize</span>();
+            let socket_filter = ws_upgrade_route_filter(
+                wallet_lock.clone(),
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+            );
+            let mut ws_client = warp::test::ws()
+                .path(&quot;/wsopen&quot;)
+                .handshake(socket_filter)
+                .await
+                .expect(&quot;transaction websocket&quot;);
 
-        <span class="kw">let</span> <span class="ident">_socket_resp</span> <span class="op">=</span> <span class="ident">ws_client</span>
-            .<span class="ident">send</span>(<span class="ident">Message::binary</span>(<span class="ident">serialized_api_message</span>))
-            .<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">resp</span> <span class="op">=</span> <span class="ident">ws_client</span>.<span class="ident">recv</span>().<span class="kw">await</span>.<span class="ident">unwrap</span>();
+            //
+            // first confirm the whole blockchain is received when sent zeroed block hash
+            //
+            let request_blockchain_message = RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
 
-        <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">APIMessage::deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">resp</span>.<span class="ident">as_bytes</span>().<span class="ident">to_vec</span>());
+            let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, request_blockchain_message.serialize());
+            let serialized_api_message = api_message.serialize();
 
-        <span class="macro">assert_eq!</span>(<span class="ident">api_message</span>.<span class="ident">message_name_as_string</span>(), <span class="string">&quot;RESULT__&quot;</span>);
-        <span class="macro">assert_eq!</span>(<span class="ident">api_message</span>.<span class="ident">message_id</span>, <span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(
-            <span class="ident">String::from_utf8_lossy</span>(<span class="kw-2">&amp;</span><span class="ident">api_message</span>.<span class="ident">message_data</span>).<span class="ident">to_string</span>(),
-            <span class="ident">String::from</span>(<span class="string">&quot;OK&quot;</span>)
-        );
-    }
+            let _socket_resp = ws_client
+                .send(Message::binary(serialized_api_message))
+                .await;
+            let _resp = ws_client.recv().await.unwrap();
+            // let command = String::from_utf8_lossy(&amp;resp.as_bytes()[0..8]);
+            // let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());
+            // let msg = resp.as_bytes()[12..].to_vec();
 
-    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_send_blockchain</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();
-        <span class="ident">settings</span>.<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="string">&quot;config&quot;</span>)).<span class="ident">unwrap</span>();
+            // assert_eq!(command, &quot;RESULT__&quot;);
+            // assert_eq!(index, 0);
+            // assert_eq!(String::from_utf8_lossy(&amp;api_message.message_data).to_string(), String::from(&quot;OK&quot;));
 
-        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
-        {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
+            // // then confirm that the program only receives three hashes
+            // message_bytes = vec![];
+            // message_bytes.extend_from_slice(&amp;block_hashes[0]);
+            // message_bytes.extend_from_slice(&amp;[0u8; 32]);
+
+            // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);
+            // let serialized_api_message = api_message.serialize();
+
+            // let _socket_resp = ws_client
+            //     .send(Message::binary(serialized_api_message))
+            //     .await;
+            // let resp = ws_client.recv().await.unwrap();
+
+            // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
+
+            // assert_eq!(api_message.message_name_as_stringing(), &quot;RESULT__&quot;);
+            // assert_eq!(api_message.message_id, 0);
+
+            // TODO this is length 0 on my machine...
+            // assert_eq!(api_message.message_data.len(), 96);
+
+            // TODO repair this test:
+            // next block should have only 2 hashes
+            // message_bytes = vec![];
+            // message_bytes.extend_from_slice(&amp;block_hashes[1]);
+            // message_bytes.extend_from_slice(&amp;[0u8; 32]);
+
+            // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);
+            // let serialized_api_message = api_message.serialize();
+
+            // let _socket_resp = ws_client
+            //     .send(Message::binary(serialized_api_message))
+            //     .await;
+            // let resp = ws_client.recv().await.unwrap();
+
+            // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
+
+            // assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);
+            // assert_eq!(api_message.message_id, 0);
+            // assert_eq!(api_message.message_data.len(), 64);
+
+            // // next block should have only 2 hashes
+            // message_bytes = vec![];
+            // message_bytes.extend_from_slice(&amp;block_hashes[2]);
+            // message_bytes.extend_from_slice(&amp;[0u8; 32]);
+
+            // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);
+            // let serialized_api_message = api_message.serialize();
+
+            // let _socket_resp = ws_client
+            //     .send(Message::binary(serialized_api_message))
+            //     .await;
+            // let resp = ws_client.recv().await.unwrap();
+
+            // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
+
+            // assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);
+            // assert_eq!(api_message.message_id, 0);
+            // assert_eq!(api_message.message_data.len(), 32);
+
+            // // sending the latest block hash should return with nothing
+            // message_bytes = vec![];
+            // message_bytes.extend_from_slice(&amp;block_hashes[3]);
+            // message_bytes.extend_from_slice(&amp;[0u8; 32]);
+
+            // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);
+            // let serialized_api_message = api_message.serialize();
+
+            // let _socket_resp = ws_client
+            //     .send(Message::binary(serialized_api_message))
+            //     .await;
+            // let resp = ws_client.recv().await.unwrap();
+
+            // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
+
+            // assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);
+            // assert_eq!(api_message.message_id, 0);
+            // assert_eq!(api_message.message_data.len(), 0);
         }
-        <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> (<span class="ident">blockchain_lock</span>, <span class="ident">_block_hashes</span>) <span class="op">=</span>
-            <span class="ident">make_mock_blockchain</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(), <span class="number">1</span> <span class="kw">as</span> <span class="ident">u64</span>).<span class="kw">await</span>;
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();
-        <span class="ident">settings</span>.<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="string">&quot;config&quot;</span>)).<span class="ident">unwrap</span>();
-
-        <span class="kw">let</span> <span class="ident">socket_filter</span> <span class="op">=</span> <span class="ident">ws_upgrade_route_filter</span>(
-            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-        );
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ws_client</span> <span class="op">=</span> <span class="ident">warp::test::ws</span>()
-            .<span class="ident">path</span>(<span class="string">&quot;/wsopen&quot;</span>)
-            .<span class="ident">handshake</span>(<span class="ident">socket_filter</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">expect</span>(<span class="string">&quot;transaction websocket&quot;</span>);
-
-        <span class="comment">//</span>
-        <span class="comment">// first confirm the whole blockchain is received when sent zeroed block hash</span>
-        <span class="comment">//</span>
-        <span class="kw">let</span> <span class="ident">request_blockchain_message</span> <span class="op">=</span> <span class="ident">RequestBlockchainMessage::new</span>(<span class="number">0</span>, [<span class="number">0</span>; <span class="number">32</span>], [<span class="number">42</span>; <span class="number">32</span>]);
-
-        <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">APIMessage::new</span>(<span class="string">&quot;REQCHAIN&quot;</span>, <span class="number">0</span>, <span class="ident">request_blockchain_message</span>.<span class="ident">serialize</span>());
-        <span class="kw">let</span> <span class="ident">serialized_api_message</span> <span class="op">=</span> <span class="ident">api_message</span>.<span class="ident">serialize</span>();
-
-        <span class="kw">let</span> <span class="ident">_socket_resp</span> <span class="op">=</span> <span class="ident">ws_client</span>
-            .<span class="ident">send</span>(<span class="ident">Message::binary</span>(<span class="ident">serialized_api_message</span>))
-            .<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">_resp</span> <span class="op">=</span> <span class="ident">ws_client</span>.<span class="ident">recv</span>().<span class="kw">await</span>.<span class="ident">unwrap</span>();
-        <span class="comment">// let command = String::from_utf8_lossy(&amp;resp.as_bytes()[0..8]);</span>
-        <span class="comment">// let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());</span>
-        <span class="comment">// let msg = resp.as_bytes()[12..].to_vec();</span>
-
-        <span class="comment">// assert_eq!(command, &quot;RESULT__&quot;);</span>
-        <span class="comment">// assert_eq!(index, 0);</span>
-        <span class="comment">// assert_eq!(String::from_utf8_lossy(&amp;api_message.message_data).to_string(), String::from(&quot;OK&quot;));</span>
-
-        <span class="comment">// // then confirm that the program only receives three hashes</span>
-        <span class="comment">// message_bytes = vec![];</span>
-        <span class="comment">// message_bytes.extend_from_slice(&amp;block_hashes[0]);</span>
-        <span class="comment">// message_bytes.extend_from_slice(&amp;[0u8; 32]);</span>
-
-        <span class="comment">// let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);</span>
-        <span class="comment">// let serialized_api_message = api_message.serialize();</span>
-
-        <span class="comment">// let _socket_resp = ws_client</span>
-        <span class="comment">//     .send(Message::binary(serialized_api_message))</span>
-        <span class="comment">//     .await;</span>
-        <span class="comment">// let resp = ws_client.recv().await.unwrap();</span>
-
-        <span class="comment">// let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());</span>
-
-        <span class="comment">// assert_eq!(api_message.message_name_as_stringing(), &quot;RESULT__&quot;);</span>
-        <span class="comment">// assert_eq!(api_message.message_id, 0);</span>
-
-        <span class="comment">// TODO this is length 0 on my machine...</span>
-        <span class="comment">// assert_eq!(api_message.message_data.len(), 96);</span>
-
-        <span class="comment">// TODO repair this test:</span>
-        <span class="comment">// next block should have only 2 hashes</span>
-        <span class="comment">// message_bytes = vec![];</span>
-        <span class="comment">// message_bytes.extend_from_slice(&amp;block_hashes[1]);</span>
-        <span class="comment">// message_bytes.extend_from_slice(&amp;[0u8; 32]);</span>
-
-        <span class="comment">// let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);</span>
-        <span class="comment">// let serialized_api_message = api_message.serialize();</span>
-
-        <span class="comment">// let _socket_resp = ws_client</span>
-        <span class="comment">//     .send(Message::binary(serialized_api_message))</span>
-        <span class="comment">//     .await;</span>
-        <span class="comment">// let resp = ws_client.recv().await.unwrap();</span>
-
-        <span class="comment">// let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());</span>
-
-        <span class="comment">// assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);</span>
-        <span class="comment">// assert_eq!(api_message.message_id, 0);</span>
-        <span class="comment">// assert_eq!(api_message.message_data.len(), 64);</span>
-
-        <span class="comment">// // next block should have only 2 hashes</span>
-        <span class="comment">// message_bytes = vec![];</span>
-        <span class="comment">// message_bytes.extend_from_slice(&amp;block_hashes[2]);</span>
-        <span class="comment">// message_bytes.extend_from_slice(&amp;[0u8; 32]);</span>
-
-        <span class="comment">// let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);</span>
-        <span class="comment">// let serialized_api_message = api_message.serialize();</span>
-
-        <span class="comment">// let _socket_resp = ws_client</span>
-        <span class="comment">//     .send(Message::binary(serialized_api_message))</span>
-        <span class="comment">//     .await;</span>
-        <span class="comment">// let resp = ws_client.recv().await.unwrap();</span>
-
-        <span class="comment">// let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());</span>
-
-        <span class="comment">// assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);</span>
-        <span class="comment">// assert_eq!(api_message.message_id, 0);</span>
-        <span class="comment">// assert_eq!(api_message.message_data.len(), 32);</span>
-
-        <span class="comment">// // sending the latest block hash should return with nothing</span>
-        <span class="comment">// message_bytes = vec![];</span>
-        <span class="comment">// message_bytes.extend_from_slice(&amp;block_hashes[3]);</span>
-        <span class="comment">// message_bytes.extend_from_slice(&amp;[0u8; 32]);</span>
-
-        <span class="comment">// let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);</span>
-        <span class="comment">// let serialized_api_message = api_message.serialize();</span>
-
-        <span class="comment">// let _socket_resp = ws_client</span>
-        <span class="comment">//     .send(Message::binary(serialized_api_message))</span>
-        <span class="comment">//     .await;</span>
-        <span class="comment">// let resp = ws_client.recv().await.unwrap();</span>
-
-        <span class="comment">// let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());</span>
-
-        <span class="comment">// assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);</span>
-        <span class="comment">// assert_eq!(api_message.message_id, 0);</span>
-        <span class="comment">// assert_eq!(api_message.message_data.len(), 0);</span>
-    }
+    ****/</span>
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="saito_rust" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

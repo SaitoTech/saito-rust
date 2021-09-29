@@ -167,6 +167,7 @@
 <span id="167">167</span>
 <span id="168">168</span>
 <span id="169">169</span>
+<span id="170">170</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">consensus::SaitoMessage</span>,
@@ -239,6 +240,7 @@
         }
     }
 
+    <span class="comment">// function used primarily for test fuctions</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mine_on_block_until_golden_ticket_found</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">block_hash</span>: <span class="ident">SaitoHash</span>,

@@ -248,6 +248,7 @@
 <span id="248">248</span>
 <span id="249">249</span>
 <span id="250">250</span>
+<span id="251">251</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
@@ -433,9 +434,9 @@
         <span class="comment">//</span>
         <span class="macro">tokio::select!</span> {
 
-        <span class="comment">//</span>
-        <span class="comment">// Mempool</span>
-        <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">// Mempool</span>
+            <span class="comment">//</span>
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::mempool::run</span>(
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
@@ -447,9 +448,9 @@
                 }
             },
 
-        <span class="comment">//</span>
-        <span class="comment">// Blockchain</span>
-        <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">// Blockchain</span>
+            <span class="comment">//</span>
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::blockchain::run</span>(
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
@@ -460,9 +461,9 @@
                 }
             },
 
-        <span class="comment">//</span>
-        <span class="comment">// Miner</span>
-        <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">// Miner</span>
+            <span class="comment">//</span>
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::miner::run</span>(
                 <span class="ident">miner_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
@@ -473,25 +474,26 @@
                 }
             },
 
-        <span class="comment">//</span>
-        <span class="comment">// Network</span>
-        <span class="comment">//</span>
+
+            <span class="comment">//</span>
+            <span class="comment">// Network</span>
+            <span class="comment">//</span>
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::networking::network::run</span>(
-        <span class="ident">network_lock</span>.<span class="ident">clone</span>(),
-        <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-        <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-        <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+             <span class="ident">network_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
-        ) <span class="op">=</span><span class="op">&gt;</span> {
+            ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;network err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
             },
 
-        <span class="comment">//</span>
-        <span class="comment">// Other</span>
-        <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="comment">// Other</span>
+            <span class="comment">//</span>
             <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">_shutdown_complete_tx</span>.<span class="ident">closed</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="macro">println!</span>(<span class="string">&quot;Shutdown message complete&quot;</span>)
             }
