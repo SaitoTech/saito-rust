@@ -34,8 +34,8 @@ jobs:
       - name: Update Rust
         run: rustup update
       - name: Check Rust version
-        run: rustc --version
+        run: RUSTFLAGS="-D warnings" rustc --version
       - name: Build
         run: cargo build --verbose
       - name: Run tests
-        run: GENESIS_PERIOD=200 cargo test --features=test-utilities --verbose
+        run: RUSTFLAGS="-D warnings" cargo test --verbose
