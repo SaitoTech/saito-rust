@@ -15,12 +15,12 @@ use futures::StreamExt;
 use secp256k1::PublicKey;
 use tokio::sync::{broadcast, RwLock};
 use tokio::time::sleep;
+
+use std::{sync::Arc, time::Duration};
 use tokio_tungstenite::connect_async;
 use tracing::{event, Level};
 use uuid::Uuid;
 
-use std::sync::Arc;
-use std::time::Duration;
 use warp::{Filter, Rejection};
 
 use super::peer::{PeerSetting, OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL};
@@ -50,6 +50,35 @@ pub struct Network {
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
+}
+
+pub async fn run(
+    config_settings: Config,
+    wallet_lock: Arc<RwLock<Wallet>>,
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> crate::Result<()> {
+    let network = Network::new(
+        config_settings,
+        wallet_lock.clone(),
+        mempool_lock.clone(),
+        blockchain_lock.clone(),
+    );
+    // TODO: refactor this into two separate classes maybe and split this run() into two...
+    tokio::select! {
+        res = network.run_client() => {
+            if let Err(err) = res {
+                eprintln!("network err {:?}", err)
+            }
+        },
+        res = network.run_server() => {
+            if let Err(err) = res {
+                eprintln!("run_server err {:?}", err)
+            }
+        },
+    }
+
+    Ok(())
 }
 
 impl Network {
@@ -310,11 +339,12 @@ impl Network {
                 self.mempool_lock.clone(),
                 self.blockchain_lock.clone(),
             ));
+        println!("warp serve");
         warp::serve(routes).run((host, port)).await;
         Ok(())
     }
     /// connects to any peers configured in our peers list. Opens a socket, does handshake, sychronizes, etc.
-    pub async fn run(&self) -> crate::Result<()> {
+    pub async fn run_client(&self) -> crate::Result<()> {
         self.initialize_configured_peers().await;
         let _foo = self
             .spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())

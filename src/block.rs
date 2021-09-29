@@ -1704,12 +1704,12 @@ impl Block {
             .par_iter()
             .all(|tx| tx.validate(utxoset, staking));
 
-        println!(" ... block.validate: (done all)  {:?}", create_timestamp());
+        // println!(" ... block.validate: (done all)  {:?}", create_timestamp());
 
         //
         // and if our transactions are valid, so is the block...
         //
-        println!(" ... are txs valid: {}", transactions_valid);
+        // println!(" ... are txs valid: {}", transactions_valid);
         transactions_valid
     }
 
@@ -1905,10 +1905,10 @@ impl Block {
             } else {
                 adjusted_staking_treasury += cv.staking_treasury as u64;
             }
-            println!(
-                "adjusted staking treasury written into block {}",
-                adjusted_staking_treasury
-            );
+            // println!(
+            //     "adjusted staking treasury written into block {}",
+            //     adjusted_staking_treasury
+            // );
             block.set_staking_treasury(adjusted_staking_treasury);
         }
 
@@ -2110,7 +2110,6 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
-        println!("1");
 
         let privatekey: SaitoPrivateKey;
         let publickey: SaitoPublicKey;
@@ -2119,7 +2118,6 @@ mod tests {
             publickey = wallet.get_publickey();
             privatekey = wallet.get_privatekey();
         }
-        println!("2");
         let golden_ticket = GoldenTicket::new(1, [1; 32], [2; 32], [3; 33]);
         let mut tx2: Transaction;
         {
@@ -2131,18 +2129,13 @@ mod tests {
         let mut block = test_manager
             .generate_block([1; 32], create_timestamp(), 1, 1, false, vec![])
             .await;
-        println!("3");
-
         block.sign(publickey, privatekey);
 
         let unsigned_block = block.clone();
 
         block.sign(publickey, privatekey);
 
-        println!("4");
         TestManager::check_block_consistency(&block);
-        println!("4");
         TestManager::check_block_consistency(&unsigned_block);
-        println!("4");
     }
 }

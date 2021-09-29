@@ -1,7 +1,6 @@
 use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
-use crate::networking::network::Network;
 use crate::storage::Storage;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
@@ -168,12 +167,6 @@ impl Consensus {
         //     mempool_lock.clone(),
         //     blockchain_lock.clone(),
         // )));
-        let network = Network::new(
-            settings,
-            wallet_lock.clone(),
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
-        );
         //
         // initialize core classes.
         //
@@ -230,17 +223,16 @@ impl Consensus {
         //
         // Network
         //
-            res = network.run() => {
+            res = crate::networking::network::run(
+                settings,
+                wallet_lock.clone(),
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+            ) => {
                 if let Err(err) = res {
-                    eprintln!("network err {:?}", err)
+                    eprintln!("miner err {:?}", err)
                 }
             },
-            res = network.run_server() => {
-                if let Err(err) = res {
-                    eprintln!("run_server err {:?}", err)
-                }
-            },
-
         //
         // Other
         //

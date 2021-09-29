@@ -58,7 +58,7 @@ impl APIMessage {
     pub fn get_message_data(&self) -> &Vec<u8> {
         &self.message_data
     }
-    pub fn get_into_message_data(self) -> Vec<u8> {
+    pub fn into_message_data(self) -> Vec<u8> {
         self.message_data
     }
     pub fn get_message_data_as_str(&self) -> String {
