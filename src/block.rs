@@ -11,7 +11,7 @@ use crate::{
     slip::{Slip, SlipType, SLIP_SIZE},
     staking::Staking,
     storage::Storage,
-    time::{create_timestamp, TracingTimer},
+    time::create_timestamp,
     transaction::{Transaction, TransactionType, TRANSACTION_SIZE},
     wallet::Wallet,
 };
@@ -222,7 +222,7 @@ pub struct Block {
     block_type: BlockType,
     // vector of staker slips spent this block - used to prevent withdrawals and payouts same block
     #[serde(skip)]
-    slips_spent_this_block: AHashMap<SaitoUTXOSetKey, u64>,
+    pub slips_spent_this_block: AHashMap<SaitoUTXOSetKey, u64>,
     #[serde(skip)]
     created_hashmap_of_slips_spent_this_block: bool,
 }
@@ -487,6 +487,7 @@ impl Block {
         // if the block type needed is full and we are not,
         // load the block if it exists on disk.
         //
+        println!("trying to updated: {:?} for {}", block_type, self.get_id());
         if block_type == BlockType::Full {
             let mut new_block =
                 Storage::load_block_from_disk(Storage::generate_block_filename(&self)).await;
@@ -910,7 +911,11 @@ impl Block {
             let golden_ticket: GoldenTicket = GoldenTicket::deserialize_for_transaction(
                 self.transactions[gt_idx].get_message().to_vec(),
             );
-            let random_number = hash(&golden_ticket.get_random().to_vec());
+            println!("----");
+            println!("BLOCK {}", self.get_id());
+            println!("GT RNG: {:?}", golden_ticket.get_random());
+            // generate input hash for router
+            let mut next_random_number = hash(&golden_ticket.get_random().to_vec());
             let _miner_publickey = golden_ticket.get_publickey();
 
             //
@@ -923,16 +928,20 @@ impl Block {
                 //
                 // calculate miner and router payments
                 //
-                let block_payouts: RouterPayout = previous_block.find_winning_router(random_number);
+                println!("RT RNG: {:?}", next_random_number);
+                let block_payouts: RouterPayout =
+                    previous_block.find_winning_router(next_random_number);
                 let router_publickey = block_payouts.publickey;
-                let mut next_random_number = block_payouts.random_number;
+
+                // these two from find_winning_router - 3, 4
+                next_random_number = hash(&next_random_number.to_vec());
+                next_random_number = hash(&next_random_number.to_vec());
 
                 let mut payout = BlockPayout::new();
                 payout.miner = golden_ticket.get_publickey();
                 payout.router = router_publickey;
                 payout.miner_payout = miner_payment;
                 payout.router_payout = router_payment;
-                payout.random_number = next_random_number;
 
                 cv.block_payout.push(payout);
 
@@ -941,11 +950,17 @@ impl Block {
                 //
                 let mut cont = 1;
                 let mut loop_idx = 0;
+                let mut did_the_block_before_our_staking_block_have_a_golden_ticket =
+                    previous_block.get_has_golden_ticket();
+                //
+                // staking block hash is 3 back, pre
+                //
                 let mut staking_block_hash = previous_block.get_previous_block_hash();
 
                 while cont == 1 {
                     loop_idx += 1;
 
+                    println!("looping in search of GT");
                     //
                     // we start with the second block, so once loop_IDX hits the same
                     // number as MAX_STAKER_RECURSION we have processed N blocks where
@@ -956,10 +971,17 @@ impl Block {
                     } else {
                         if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
                             staking_block_hash = staking_block.get_previous_block_hash();
+                            if !did_the_block_before_our_staking_block_have_a_golden_ticket {
+                                println!("block before did not have a golden ticket {}", loop_idx);
 
-                            if !staking_block.get_has_golden_ticket() {
                                 //
-                                // calculate miner and router payments
+                                // update with this block info in case of next loop
+                                //
+                                did_the_block_before_our_staking_block_have_a_golden_ticket =
+                                    staking_block.get_has_golden_ticket();
+
+                                //
+                                // calculate staker and router payments
                                 //
                                 // the staker payout is contained in the slip of the winner. this is
                                 // because we calculate it afresh every time we reset the staking table
@@ -971,18 +993,27 @@ impl Block {
                                 let rp = staking_block.get_total_fees() - sp;
 
                                 let mut payout = BlockPayout::new();
+                                println!("RT RNG: {:?}", next_random_number);
                                 payout.router = staking_block
                                     .find_winning_router(next_random_number)
                                     .publickey;
                                 payout.router_payout = rp;
                                 payout.staking_treasury = sp as i64;
 
+                                // router consumes 2 hashes
                                 next_random_number = hash(&next_random_number.to_vec());
+                                next_random_number = hash(&next_random_number.to_vec());
+                                println!("ST RNG: {:?}", next_random_number);
 
                                 let staker_slip_option =
                                     blockchain.staking.find_winning_staker(next_random_number);
                                 if let Some(staker_slip) = staker_slip_option {
                                     let mut slip_was_spent = 0;
+
+                                    println!(
+                                        "winning staker is: {:?}",
+                                        staker_slip.get_utxoset_key()
+                                    );
 
                                     //
                                     // check to see if the block already pays out to this slip
@@ -991,6 +1022,12 @@ impl Block {
                                         if cv.block_payout[i].staker_slip.get_utxoset_key()
                                             == staker_slip.get_utxoset_key()
                                         {
+                                            println!("This slip was already spent!");
+                                            println!(
+                                                "{:?} ----- {:?}",
+                                                staker_slip.get_utxoset_key(),
+                                                cv.block_payout[i].staker_slip.get_utxoset_key()
+                                            );
                                             slip_was_spent = 1;
                                             break;
                                         }
@@ -1003,6 +1040,7 @@ impl Block {
                                         .slips_spent_this_block
                                         .contains_key(&staker_slip.get_utxoset_key())
                                     {
+                                        println!("staker slip was spent!");
                                         slip_was_spent = 1;
                                     }
 
@@ -1021,6 +1059,11 @@ impl Block {
 
                                     next_random_number = hash(&next_random_number.to_vec());
 
+                                    println!(
+                                        "staker UTXOKEY that will be spent: {:?}",
+                                        staker_slip.get_utxoset_key()
+                                    );
+                                    println!("pushing back payout!");
                                     cv.block_payout.push(payout);
                                 }
                             }
@@ -1056,6 +1099,12 @@ impl Block {
                     slip_ordinal += 1;
                 }
                 if cv.block_payout[i].staker != [0; 33] {
+                    println!(
+                        "BLOCK {} has staker payout w/ amount {}",
+                        self.get_id(),
+                        cv.block_payout[i].staker_payout
+                    );
+
                     transaction.add_input(cv.block_payout[i].staker_slip.clone());
 
                     let mut output = Slip::new();
@@ -1113,6 +1162,7 @@ impl Block {
         cv
     }
 
+    // consumes two hashes every time
     pub fn find_winning_router(&self, random_number: SaitoHash) -> RouterPayout {
         let mut rp = RouterPayout::new();
 
@@ -1131,7 +1181,6 @@ impl Block {
         //
         if y == 0 {
             rp.publickey = [0; 33];
-            rp.random_number = hash(&random_number.to_vec());
             return rp;
         }
 
@@ -1168,9 +1217,7 @@ impl Block {
         //
         // hash random number to pick routing node
         //
-        let random_number2 = hash(&random_number.to_vec());
-        rp.publickey = winning_tx.get_winning_routing_node(random_number2);
-        rp.random_number = hash(&random_number2.to_vec());
+        rp.publickey = winning_tx.get_winning_routing_node(hash(&random_number.to_vec()));
 
         rp
     }
@@ -1197,11 +1244,9 @@ impl Block {
     // cumulative block fees they contain.
     //
     pub fn generate_metadata(&mut self) -> bool {
-        let mut _tracing_tracker = TracingTimer::new();
         event!(
             Level::TRACE,
             " ... block.prevalid - pre hash:  {:?}",
-            // tracing_tracker.time_since_last();
             create_timestamp(),
         );
 
@@ -1691,12 +1736,13 @@ impl Block {
         // problem is. ergo this code that tries to do them on the main thread so
         // debugging output works.
         //
-        //for i in 0..self.transactions.len() {
-        //    let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
-        //    if !transactions_valid2 {
-        //        println!("TType: {:?}", self.transactions[i].get_transaction_type());
-        //    }
-        //}
+        for i in 0..self.transactions.len() {
+            let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
+            if !transactions_valid2 {
+                println!("TType: {:?}", self.transactions[i].get_transaction_type());
+                println!("Data {:?}", self.transactions[i]);
+            }
+        }
         //true
 
         let transactions_valid = self
@@ -1826,7 +1872,8 @@ impl Block {
         // ATR transactions
         //
         let rlen = cv.rebroadcasts.len();
-        // TODO -- delete if pos
+        // TODO -- figure out if there is a more efficient solution
+        // than iterating through the entire transaction set here.
         let _tx_hashes_generated = cv.rebroadcasts[0..rlen]
             .par_iter_mut()
             .all(|tx| tx.generate_metadata(publickey));
@@ -1967,6 +2014,7 @@ mod tests {
         assert_eq!(block.fee_transaction_idx, 0);
         assert_eq!(block.golden_ticket_idx, 0);
         assert_eq!(block.routing_work_for_creator, 0);
+        TestManager::check_block_consistency(&block);
     }
 
     #[test]
@@ -1988,6 +2036,7 @@ mod tests {
         );
         assert_ne!(block.get_hash(), [0; 32]);
         assert_ne!(block.get_signature(), [0; 64]);
+        TestManager::check_block_consistency(&block);
     }
 
     #[test]
@@ -1998,6 +2047,7 @@ mod tests {
         assert_ne!(hash, [0; 32]);
         assert_ne!(block.get_pre_hash(), [0; 32]);
         assert_ne!(block.get_hash(), [0; 32]);
+        TestManager::check_block_consistency(&block);
     }
 
     #[test]
@@ -2006,10 +2056,11 @@ mod tests {
         let block = Block::new();
         let serialized_body = block.serialize_for_signature();
         assert_eq!(serialized_body.len(), 145);
+        TestManager::check_block_consistency(&block);
     }
 
     #[test]
-    // signs and verifies the signature of a block
+    // confirm serialization / deserialization does not modify block content
     fn block_serialize_for_net_test() {
         let mock_input = Slip::new();
         let mock_output = Slip::new();
@@ -2049,7 +2100,10 @@ mod tests {
         let serialized_block_header = block.serialize_for_net(BlockType::Header);
         let deserialized_block_header = Block::deserialize_for_net(&serialized_block_header);
 
-        // assert_eq!(block, deserialized_block);
+        assert_eq!(
+            block.serialize_for_net(BlockType::Full),
+            deserialized_block.serialize_for_net(BlockType::Full)
+        );
         assert_eq!(deserialized_block.get_id(), 1);
         assert_eq!(deserialized_block.get_timestamp(), timestamp);
         assert_eq!(deserialized_block.get_previous_block_hash(), [1; 32]);
@@ -2059,13 +2113,31 @@ mod tests {
         assert_eq!(deserialized_block.get_treasury(), 1);
         assert_eq!(deserialized_block.get_burnfee(), 2);
         assert_eq!(deserialized_block.get_difficulty(), 3);
+
+        assert_eq!(
+            deserialized_block_header.serialize_for_net(BlockType::Full),
+            deserialized_block.serialize_for_net(BlockType::Header)
+        );
+        assert_eq!(deserialized_block_header.get_id(), 1);
+        assert_eq!(deserialized_block_header.get_timestamp(), timestamp);
+        assert_eq!(deserialized_block_header.get_previous_block_hash(), [1; 32]);
+        assert_eq!(deserialized_block_header.get_creator(), [2; 33]);
+        assert_eq!(deserialized_block_header.get_merkle_root(), [3; 32]);
+        assert_eq!(deserialized_block_header.get_signature(), [4; 64]);
+        assert_eq!(deserialized_block_header.get_treasury(), 1);
+        assert_eq!(deserialized_block_header.get_burnfee(), 2);
+        assert_eq!(deserialized_block_header.get_difficulty(), 3);
+
+        TestManager::check_block_consistency(&block);
+        TestManager::check_block_consistency(&deserialized_block);
+        TestManager::check_block_consistency(&deserialized_block_header);
     }
 
     #[test]
+    // confirm merkle root is being generated from transactions in block
     fn block_merkle_root_test() {
         let mut block = Block::new();
-        let mut wallet = Wallet::new();
-        wallet.load_keys("test/testwallet", Some("asdf"));
+        let wallet = Wallet::new();
 
         let mut transactions = (0..5)
             .into_iter()
@@ -2077,15 +2149,19 @@ mod tests {
             .collect();
 
         block.set_transactions(&mut transactions);
+        block.set_merkle_root(block.generate_merkle_root());
 
-        assert!(block.generate_merkle_root().len() == 32);
+        assert!(block.get_merkle_root().len() == 32);
+        assert_ne!(block.get_merkle_root(), [0; 32]);
+
+        TestManager::check_block_consistency(&block);
     }
 
     #[tokio::test]
-    async fn block_downgrade_test() {
+    // downgrade and upgrade a block with transactions
+    async fn block_downgrade_upgrade_test() {
         let mut block = Block::new();
-        let mut wallet = Wallet::new();
-        wallet.load_keys("test/testwallet", Some("asdf"));
+        let wallet = Wallet::new();
         let mut transactions = (0..5)
             .into_iter()
             .map(|_| {
@@ -2096,53 +2172,27 @@ mod tests {
             .collect();
         block.set_transactions(&mut transactions);
 
+        Storage::write_block_to_disk(&mut block);
+
         assert_eq!(block.transactions.len(), 5);
         assert_eq!(block.get_block_type(), BlockType::Full);
+
+        let serialized_full_block = block.serialize_for_net(BlockType::Full);
 
         block.downgrade_block_to_block_type(BlockType::Pruned).await;
 
         assert_eq!(block.transactions.len(), 0);
         assert_eq!(block.get_block_type(), BlockType::Pruned);
-    }
 
-    #[tokio::test]
-    async fn block_serialization_test() {
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
-        println!("1");
+        block.upgrade_block_to_block_type(BlockType::Full).await;
 
-        let privatekey: SaitoPrivateKey;
-        let publickey: SaitoPublicKey;
-        {
-            let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-            privatekey = wallet.get_privatekey();
-        }
-        println!("2");
-        let golden_ticket = GoldenTicket::new(1, [1; 32], [2; 32], [3; 33]);
-        let mut tx2: Transaction;
-        {
-            let mut wallet = wallet_lock.write().await;
-            tx2 = wallet.create_golden_ticket_transaction(golden_ticket).await;
-        }
-        tx2.generate_metadata(publickey);
+        assert_eq!(block.transactions.len(), 5);
+        assert_eq!(block.get_block_type(), BlockType::Full);
+        assert_eq!(
+            serialized_full_block,
+            block.serialize_for_net(BlockType::Full)
+        );
 
-        let mut block = test_manager
-            .generate_block([1; 32], create_timestamp(), 1, 1, false, vec![])
-            .await;
-        println!("3");
-
-        block.sign(publickey, privatekey);
-
-        let unsigned_block = block.clone();
-
-        block.sign(publickey, privatekey);
-
-        println!("4");
         TestManager::check_block_consistency(&block);
-        println!("4");
-        TestManager::check_block_consistency(&unsigned_block);
-        println!("4");
     }
 }

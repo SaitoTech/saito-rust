@@ -182,9 +182,9 @@ impl Consensus {
         //
         tokio::select! {
 
-        //
-        // Mempool
-        //
+            //
+            // Mempool
+            //
             res = crate::mempool::run(
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
@@ -196,9 +196,9 @@ impl Consensus {
                 }
             },
 
-        //
-        // Blockchain
-        //
+            //
+            // Blockchain
+            //
             res = crate::blockchain::run(
                 blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
@@ -209,9 +209,9 @@ impl Consensus {
                 }
             },
 
-        //
-        // Miner
-        //
+            //
+            // Miner
+            //
             res = crate::miner::run(
                 miner_lock.clone(),
                 broadcast_channel_sender.clone(),
@@ -222,25 +222,26 @@ impl Consensus {
                 }
             },
 
-        //
-        // Network
-        //
+
+            //
+            // Network
+            //
             res = crate::networking::network::run(
-        network_lock.clone(),
-        wallet_lock.clone(),
-        mempool_lock.clone(),
-        blockchain_lock.clone(),
+             network_lock.clone(),
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
-        ) => {
+            ) => {
                 if let Err(err) = res {
                     eprintln!("network err {:?}", err)
                 }
             },
 
-        //
-        // Other
-        //
+            //
+            // Other
+            //
             _ = self._shutdown_complete_tx.closed() => {
                 println!("Shutdown message complete")
             }
