@@ -830,7 +830,6 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-
         event!(
             Level::TRACE,
             " ... blockchain.wind_chain strt: {:?}",
@@ -904,7 +903,7 @@ impl Blockchain {
                 create_timestamp()
             );
 
-println!("OCR for block: {}", block.get_id());
+            println!("OCR for block: {}", block.get_id());
 
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);

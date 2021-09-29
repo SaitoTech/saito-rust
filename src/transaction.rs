@@ -263,13 +263,13 @@ impl Transaction {
         let mut transaction = Transaction::new();
         transaction.set_transaction_type(TransactionType::Vip);
 
-	for i in 0..number_of_vip_slips {
+        for i in 0..number_of_vip_slips {
             let mut output = Slip::new();
             output.set_publickey(to_publickey);
             output.set_amount(with_amount);
             output.set_slip_type(SlipType::VipOutput);
             transaction.add_output(output);
-	}
+        }
 
         transaction
     }
@@ -785,19 +785,16 @@ impl Transaction {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet, staking: &Staking) -> bool {
-
-	//
-	// Fee Transactions are validated in the block class. There can only
-	// be one per block, and they are checked by ensuring the transaction hash 
-	// matches our self-generated safety check. We do not need to validate
-	// their input slips as their input slips are records of what to do
-	// when reversing/unwinding the chain and have been spent previously.
-	//
-	if self.get_transaction_type() == TransactionType::Fee {
-	    return true;
-	}
-
-
+        //
+        // Fee Transactions are validated in the block class. There can only
+        // be one per block, and they are checked by ensuring the transaction hash
+        // matches our self-generated safety check. We do not need to validate
+        // their input slips as their input slips are records of what to do
+        // when reversing/unwinding the chain and have been spent previously.
+        //
+        if self.get_transaction_type() == TransactionType::Fee {
+            return true;
+        }
 
         //
         // User-Sent Transactions
@@ -847,7 +844,7 @@ impl Transaction {
                 );
                 return false;
             }
-println!("ERR6");
+            println!("ERR6");
 
             //
             // validate sender exists
@@ -860,7 +857,7 @@ println!("ERR6");
                 return false;
             }
 
-println!("ERR7");
+            println!("ERR7");
             //
             // validate routing path sigs
             //
@@ -898,16 +895,13 @@ println!("ERR7");
                 );
                 return false;
             }
-println!("ERR8");
+            println!("ERR8");
         }
 
         //
         // fee transactions
         //
-        if transaction_type == TransactionType::Fee {
-
-	}
-
+        if transaction_type == TransactionType::Fee {}
 
         //
         // atr transactions
@@ -923,7 +917,7 @@ println!("ERR8");
         // golden ticket transactions
         //
         if transaction_type == TransactionType::GoldenTicket {}
-println!("ERR9");
+        println!("ERR9");
 
         //
         // Staking Withdrawal Transactions
@@ -939,8 +933,8 @@ println!("ERR9");
                 if self.inputs[i].get_slip_type() == SlipType::StakerWithdrawalStaking {
                     if !staking.validate_slip_in_stakers(self.inputs[i].clone()) {
                         println!("Staking Withdrawal Staker input slip is not in Staker thus transaction invalid!");
-		println!("STAKING SLIP WE HAVE: {:?}", self.inputs[i]);
-		println!("STAKING TABLE: {:?}", staking.stakers);
+                        println!("STAKING SLIP WE HAVE: {:?}", self.inputs[i]);
+                        println!("STAKING TABLE: {:?}", staking.stakers);
                         return false;
                     }
                 }
@@ -960,7 +954,7 @@ println!("ERR9");
             // publickey associated with the Saito project.
         }
 
-println!("ERR1");
+        println!("ERR1");
 
         //
         // all Transactions
@@ -976,7 +970,7 @@ println!("ERR1");
                 Level::ERROR,
                 "ERROR 582039: less than 1 output in transaction"
             );
-println!("ERR2");
+            println!("ERR2");
             return false;
         }
 
@@ -994,13 +988,13 @@ println!("ERR2");
                     "this input is invalid: {:?}",
                     self.inputs[i].get_slip_type()
                 );
-println!("ERR3");
+                println!("ERR3");
                 return false;
             }
         }
 
-         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
-println!("ERR4");
+        let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
+        println!("ERR4");
         inputs_validate
     }
 }

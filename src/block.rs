@@ -966,7 +966,6 @@ impl Block {
                         if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
                             staking_block_hash = staking_block.get_previous_block_hash();
                             if !did_the_block_before_our_staking_block_have_a_golden_ticket {
-
                                 //
                                 // update with this block info in case of next loop
                                 //
@@ -1073,7 +1072,6 @@ impl Block {
                     slip_ordinal += 1;
                 }
                 if cv.block_payout[i].staker != [0; 33] {
-
                     transaction.add_input(cv.block_payout[i].staker_slip.clone());
 
                     let mut output = Slip::new();
@@ -1808,7 +1806,6 @@ impl Block {
         // contextual values
         //
         let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain).await;
-
 
         //
         // ATR transactions

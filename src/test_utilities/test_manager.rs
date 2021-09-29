@@ -197,14 +197,13 @@ impl TestManager {
                 self.wallet_lock.clone(),
                 publickey,
                 10_000_000,
-	        vip_transactions as u64
+                vip_transactions as u64,
             )
             .await;
             tx.generate_metadata(publickey);
-	    tx.sign(privatekey);
+            tx.sign(privatekey);
             transactions.push(tx);
         }
-
 
         for _i in 0..normal_transactions {
             let mut transaction =
