@@ -61,7 +61,21 @@ impl Slip {
         }
     }
 
-    pub fn validate(&self, utxoset: &UtxoSet) -> bool {
+    pub fn validate(&self, utxoset: &UtxoSet, transaction_type : TransactionType) -> bool {
+
+	//
+	// StakerDeposit slips can only be spent in Fee transactions.
+	//
+	if self.get_slip_type == SlipType::StakerDeposit {
+	    if transaction_type != TransactionType::Fee {
+                println!(
+                    "in utxoset but invalid: value is {} at {:?}",
+                    *value, &self.utxoset_key
+                );
+                false
+	    }
+	}
+
         if self.get_amount() > 0 {
             match utxoset.get(&self.utxoset_key) {
                 Some(value) => {
@@ -101,7 +115,7 @@ impl Slip {
     ) {
         if self.get_slip_type() == SlipType::StakerDeposit {
             if _lc == true {
-                println!(" ====> spending deposit: {:?}", self.get_utxoset_key());
+                println!(" ====> spending deposit: {:?} -- {:?}", self.get_utxoset_key(), self.get_slip_type());
             }
         }
 

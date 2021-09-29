@@ -1082,6 +1082,9 @@ mod tests {
             wstx1.generate_metadata(publickey);
         }
         let mut transactions: Vec<Transaction> = vec![];
+println!("----------");
+println!("---{:?}---", wstx1);
+println!("----------");
         transactions.push(wstx1);
         let block6 = Block::generate(
             &mut transactions,
@@ -1091,7 +1094,6 @@ mod tests {
             current_timestamp + 600000,
         )
         .await;
-	let block6_hash = block6.get_hash();
 	let block6_id = block6.get_id();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block6).await;
 
