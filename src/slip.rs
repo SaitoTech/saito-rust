@@ -99,6 +99,13 @@ impl Slip {
         _lc: bool,
         slip_value: u64,
     ) {
+
+if self.get_slip_type() == SlipType::StakerDeposit {
+    if _lc == true {
+        println!(" ====> spending deposit: {:?}", self.get_utxoset_key());
+    }
+}
+
         if self.get_amount() > 0 {
             //
             // TODO cleanup once ready

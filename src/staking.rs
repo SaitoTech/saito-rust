@@ -406,12 +406,17 @@ impl Staking {
                 //
                 // process outbound staking payments
                 //
+		let mut slips_to_remove_from_staking = vec![];
+		let mut slips_to_add_to_pending = vec![];
+
                 let mut staker_slip_num = 0;
                 for i in 0..fee_transaction.outputs.len() {
                     let staker_output = fee_transaction.outputs[i].clone();
-                    if fee_transaction.inputs.len() < staker_slip_num {
+		    // we have already handled all stakers
+                    if fee_transaction.inputs.len() <= staker_slip_num {
                         break;
                     }
+                    let staker_input = fee_transaction.inputs[staker_slip_num].clone();
                     if staker_output.get_slip_type() == SlipType::StakerOutput {
                         // ROUTER BURNED FIRST
                         println!(" == rt: {:?}", next_random_number);
@@ -432,16 +437,35 @@ impl Staking {
                                 lucky_staker.get_amount()
                             );
                             println!(
-                                "REMOVING LUCKY STAKER w/ amount: {} / {}",
+                                "REMOVING LUCKY STAKER w/ amount: {} / {} / {:?}",
                                 lucky_staker.get_amount(),
-                                lucky_staker.get_payout()
+                                lucky_staker.get_payout(),
+				lucky_staker.get_utxoset_key()
                             );
-                            self.remove_staker(lucky_staker.clone());
-                            self.add_pending(staker_output.clone());
+
+			    slips_to_remove_from_staking.push(lucky_staker.clone());
+			    slips_to_add_to_pending.push(staker_output.clone());
                         }
                         staker_slip_num += 1;
+
+			// setup for router selection next loop
+                	next_random_number = hash(&next_random_number.to_vec());
+
                     }
-                }
+
+		}
+
+		//
+		// we handle the slips together like this as we can occasionally
+		// get duplicates if the same slip is selected recursively, but 
+		// we do not pay out duplicates. so we only add to pending if we
+		// successfully remove from the staker table.
+		//
+		for i in 0..slips_to_remove_from_staking.len() {
+                    if self.remove_staker(slips_to_remove_from_staking[i].clone()) == true {
+                        self.add_pending(slips_to_add_to_pending[i].clone());
+		    }
+		}
 
                 //
                 // re-create staker table, if needed
@@ -540,8 +564,11 @@ mod tests {
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
+    //
+    // do staking deposits work properly and create proper payouts?
+    //
     #[test]
-    fn staking_table_test() {
+    fn staking_add_deposit_slip_and_payout_calculation_test() {
         let mut staking = Staking::new();
 
         let mut slip1 = Slip::new();
@@ -594,8 +621,12 @@ mod tests {
         );
     }
 
+    //
+    // will staking payouts and the reset / rollover of the staking table work
+    // properly with single-payouts per block?
+    //
     #[tokio::test]
-    async fn blockchain_roll_forward_staking_table_test() {
+    async fn staking_create_blockchain_with_two_staking_deposits_one_staker_payout_per_block() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
@@ -698,7 +729,6 @@ mod tests {
         //
         // BLOCK 4
         //
-        test_manager.set_latest_block_hash(block3_hash);
         let block4 = test_manager
             .generate_block_and_metadata(
                 block3_hash,
@@ -709,21 +739,20 @@ mod tests {
                 vec![],
             )
             .await;
+	let block4_hash = block4.get_hash();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block4).await;
 
-        //
-        // we have paid our second staker, the table should be reset to two pending
-        //
         {
             let blockchain = blockchain_lock.write().await;
-            assert_eq!(blockchain.staking.stakers.len(), 2);
-            assert_eq!(blockchain.staking.pending.len(), 0);
+            assert_eq!(blockchain.staking.stakers.len(), 1);
+            assert_eq!(blockchain.staking.pending.len(), 1);
             assert_eq!(blockchain.staking.deposits.len(), 0);
         }
 
         //
         // BLOCK 5
         //
+        test_manager.set_latest_block_hash(block4_hash);
         test_manager
             .add_block(current_timestamp + 480000, 0, 1, true, vec![])
             .await;
@@ -790,6 +819,145 @@ mod tests {
             assert_eq!(blockchain.staking.deposits.len(), 0);
         }
     }
+
+
+    //
+    // will staking payouts and the reset / rollover of the staking table work
+    // properly with recurvise staking payouts that stretch back at least two blocks
+    //
+    #[tokio::test]
+    async fn staking_create_blockchain_with_many_staking_deposits_many_staker_payouts_per_block() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+        //
+        // initialize blockchain staking table
+        //
+        {
+            let mut blockchain = blockchain_lock.write().await;
+            let wallet = wallet_lock.read().await;
+            let publickey = wallet.get_publickey();
+
+            let mut slip1 = Slip::new();
+            slip1.set_amount(200_000_000);
+            slip1.set_slip_type(SlipType::StakerDeposit);
+
+            let mut slip2 = Slip::new();
+            slip2.set_amount(300_000_000);
+            slip2.set_slip_type(SlipType::StakerDeposit);
+
+            let mut slip3 = Slip::new();
+            slip3.set_amount(400_000_000);
+            slip3.set_slip_type(SlipType::StakerDeposit);
+
+            slip1.set_publickey(publickey);
+            slip2.set_publickey(publickey);
+            slip3.set_publickey(publickey);
+
+            slip1.generate_utxoset_key();
+            slip2.generate_utxoset_key();
+            slip3.generate_utxoset_key();
+
+            // add to utxoset
+            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+            slip3.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
+
+            blockchain.staking.add_deposit(slip1);
+            blockchain.staking.add_deposit(slip2);
+            blockchain.staking.add_deposit(slip3);
+
+            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
+        }
+
+        let current_timestamp = create_timestamp();
+
+        //
+        // BLOCK 1
+        //
+        let block1 = test_manager
+            .generate_block_and_metadata([0; 32], current_timestamp, 10, 0, false, vec![])
+            .await;
+        let block1_hash = block1.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block1).await;
+
+        //
+        // BLOCK 2
+        //
+        test_manager.set_latest_block_hash(block1_hash);
+        test_manager
+            .add_block(current_timestamp + 120000, 0, 1, false, vec![])
+            .await;
+
+        //
+        // BLOCK 3
+        //
+        test_manager
+            .add_block(current_timestamp + 240000, 0, 1, false, vec![])
+            .await;
+
+        //
+        // we have yet to find a single golden ticket, so all in stakers
+        //
+        {
+            let blockchain = blockchain_lock.write().await;
+            assert_eq!(blockchain.staking.stakers.len(), 3);
+            assert_eq!(blockchain.staking.pending.len(), 0);
+            assert_eq!(blockchain.staking.deposits.len(), 0);
+        }
+
+        //
+        // BLOCK 4 - GOLDEN TICKET
+        //
+        test_manager
+            .add_block(current_timestamp + 360000, 0, 1, true, vec![])
+            .await;
+
+        //
+        // BLOCK 5
+        //
+        test_manager
+            .add_block(current_timestamp + 480000, 0, 1, false, vec![])
+            .await;
+
+        //
+        // BLOCK 6
+        //
+        test_manager
+            .add_block(current_timestamp + 600000, 0, 1, false, vec![])
+            .await;
+
+        //
+        // BLOCK 7
+        //
+        test_manager
+            .add_block(current_timestamp + 720000, 0, 1, true, vec![])
+            .await;
+
+        //
+        // BLOCK 8
+        //
+        test_manager
+            .add_block(current_timestamp + 840000, 0, 1, false, vec![])
+            .await;
+
+        //
+        // BLOCK 9
+        //
+        test_manager
+            .add_block(current_timestamp + 960000, 0, 1, true, vec![])
+            .await;
+
+	// staking must have been handled properly for all blocks to validate
+        {
+            let blockchain = blockchain_lock.read().await;
+            assert_eq!(blockchain.get_latest_block_id(), 9);
+            assert_eq!(3, blockchain.staking.stakers.len()+blockchain.staking.pending.len()+blockchain.staking.deposits.len());
+        }
+    }
+
+
 
     #[tokio::test]
     async fn blockchain_staking_deposits_test() {

@@ -2,8 +2,8 @@
 pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
 pub const PRUNE_AFTER_BLOCKS: u64 = 20;
-// max recursion when paying stakers
-pub const MAX_STAKER_RECURSION: u64 = 2;
+// max recursion when paying stakers -- number of blocks including  -- number of blocks including GTT
+pub const MAX_STAKER_RECURSION: u64 = 3;
 // max token supply - used in validating block #1
 pub const MAX_TOKEN_SUPPLY: u64 = 1_000_000_000_000_000_000;
 // minimum golden tickets required ( NUMBER_OF_TICKETS / number of preceding blocks )
