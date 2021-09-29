@@ -406,13 +406,13 @@ impl Staking {
                 //
                 // process outbound staking payments
                 //
-		let mut slips_to_remove_from_staking = vec![];
-		let mut slips_to_add_to_pending = vec![];
+                let mut slips_to_remove_from_staking = vec![];
+                let mut slips_to_add_to_pending = vec![];
 
                 let mut staker_slip_num = 0;
                 for i in 0..fee_transaction.outputs.len() {
                     let staker_output = fee_transaction.outputs[i].clone();
-		    // we have already handled all stakers
+                    // we have already handled all stakers
                     if fee_transaction.inputs.len() <= staker_slip_num {
                         break;
                     }
@@ -439,32 +439,30 @@ impl Staking {
                                 "REMOVING LUCKY STAKER w/ amount: {} / {} / {:?}",
                                 lucky_staker.get_amount(),
                                 lucky_staker.get_payout(),
-				lucky_staker.get_utxoset_key()
+                                lucky_staker.get_utxoset_key()
                             );
 
-			    slips_to_remove_from_staking.push(lucky_staker.clone());
-			    slips_to_add_to_pending.push(staker_output.clone());
+                            slips_to_remove_from_staking.push(lucky_staker.clone());
+                            slips_to_add_to_pending.push(staker_output.clone());
                         }
                         staker_slip_num += 1;
 
-			// setup for router selection next loop
-                	next_random_number = hash(&next_random_number.to_vec());
-
+                        // setup for router selection next loop
+                        next_random_number = hash(&next_random_number.to_vec());
                     }
+                }
 
-		}
-
-		//
-		// we handle the slips together like this as we can occasionally
-		// get duplicates if the same slip is selected recursively, but 
-		// we do not pay out duplicates. so we only add to pending if we
-		// successfully remove from the staker table.
-		//
-		for i in 0..slips_to_remove_from_staking.len() {
+                //
+                // we handle the slips together like this as we can occasionally
+                // get duplicates if the same slip is selected recursively, but
+                // we do not pay out duplicates. so we only add to pending if we
+                // successfully remove from the staker table.
+                //
+                for i in 0..slips_to_remove_from_staking.len() {
                     if self.remove_staker(slips_to_remove_from_staking[i].clone()) == true {
                         self.add_pending(slips_to_add_to_pending[i].clone());
-		    }
-		}
+                    }
+                }
 
                 //
                 // re-create staker table, if needed
@@ -620,7 +618,6 @@ mod tests {
         );
     }
 
-
     //
     // do we get proper results removing stakers and adding to pending? this is
     // important because we rely on remove_stakers() to not remove non-existing
@@ -658,17 +655,15 @@ mod tests {
 
         let (_res_spend, _res_unspend, _res_delete) = staking.reset_staker_table(1_000_000_000); // 10 Saito
 
-	assert_eq!(staking.stakers.len(), 5);
-	assert_eq!(staking.remove_staker(slip1.clone()), true);
-	assert_eq!(staking.remove_staker(slip2.clone()), true);
-	assert_eq!(staking.remove_staker(slip1.clone()), false);
-	assert_eq!(staking.stakers.len(), 3);
-	assert_eq!(staking.remove_staker(slip5.clone()), true);
-	assert_eq!(staking.remove_staker(slip5.clone()), false);
-	assert_eq!(staking.stakers.len(), 2);
-
+        assert_eq!(staking.stakers.len(), 5);
+        assert_eq!(staking.remove_staker(slip1.clone()), true);
+        assert_eq!(staking.remove_staker(slip2.clone()), true);
+        assert_eq!(staking.remove_staker(slip1.clone()), false);
+        assert_eq!(staking.stakers.len(), 3);
+        assert_eq!(staking.remove_staker(slip5.clone()), true);
+        assert_eq!(staking.remove_staker(slip5.clone()), false);
+        assert_eq!(staking.stakers.len(), 2);
     }
-
 
     //
     // will staking payouts and the reset / rollover of the staking table work
@@ -788,7 +783,7 @@ mod tests {
                 vec![],
             )
             .await;
-	let block4_hash = block4.get_hash();
+        let block4_hash = block4.get_hash();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block4).await;
 
         {
@@ -868,7 +863,6 @@ mod tests {
             assert_eq!(blockchain.staking.deposits.len(), 0);
         }
     }
-
 
     //
     // will staking payouts and the reset / rollover of the staking table work
@@ -998,15 +992,18 @@ mod tests {
             .add_block(current_timestamp + 960000, 0, 1, true, vec![])
             .await;
 
-	// staking must have been handled properly for all blocks to validate
+        // staking must have been handled properly for all blocks to validate
         {
             let blockchain = blockchain_lock.read().await;
             assert_eq!(blockchain.get_latest_block_id(), 9);
-            assert_eq!(3, blockchain.staking.stakers.len()+blockchain.staking.pending.len()+blockchain.staking.deposits.len());
+            assert_eq!(
+                3,
+                blockchain.staking.stakers.len()
+                    + blockchain.staking.pending.len()
+                    + blockchain.staking.deposits.len()
+            );
         }
     }
-
-
 
     #[tokio::test]
     async fn blockchain_staking_deposits_test() {

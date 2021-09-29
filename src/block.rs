@@ -960,7 +960,7 @@ impl Block {
                 while cont == 1 {
                     loop_idx += 1;
 
-println!("looping in search of GT");
+                    println!("looping in search of GT");
                     //
                     // we start with the second block, so once loop_IDX hits the same
                     // number as MAX_STAKER_RECURSION we have processed N blocks where
@@ -972,8 +972,7 @@ println!("looping in search of GT");
                         if let Some(staking_block) = blockchain.blocks.get(&staking_block_hash) {
                             staking_block_hash = staking_block.get_previous_block_hash();
                             if !did_the_block_before_our_staking_block_have_a_golden_ticket {
-
-println!("block before did not have a golden ticket {}", loop_idx);
+                                println!("block before did not have a golden ticket {}", loop_idx);
 
                                 //
                                 // update with this block info in case of next loop
@@ -1011,7 +1010,10 @@ println!("block before did not have a golden ticket {}", loop_idx);
                                 if let Some(staker_slip) = staker_slip_option {
                                     let mut slip_was_spent = 0;
 
-println!("winning staker is: {:?}", staker_slip.get_utxoset_key());
+                                    println!(
+                                        "winning staker is: {:?}",
+                                        staker_slip.get_utxoset_key()
+                                    );
 
                                     //
                                     // check to see if the block already pays out to this slip
@@ -1020,8 +1022,12 @@ println!("winning staker is: {:?}", staker_slip.get_utxoset_key());
                                         if cv.block_payout[i].staker_slip.get_utxoset_key()
                                             == staker_slip.get_utxoset_key()
                                         {
-println!("This slip was already spent!");
-println!("{:?} ----- {:?}", staker_slip.get_utxoset_key(), cv.block_payout[i].staker_slip.get_utxoset_key());
+                                            println!("This slip was already spent!");
+                                            println!(
+                                                "{:?} ----- {:?}",
+                                                staker_slip.get_utxoset_key(),
+                                                cv.block_payout[i].staker_slip.get_utxoset_key()
+                                            );
                                             slip_was_spent = 1;
                                             break;
                                         }
@@ -1034,7 +1040,7 @@ println!("{:?} ----- {:?}", staker_slip.get_utxoset_key(), cv.block_payout[i].st
                                         .slips_spent_this_block
                                         .contains_key(&staker_slip.get_utxoset_key())
                                     {
-println!("staker slip was spent!");
+                                        println!("staker slip was spent!");
                                         slip_was_spent = 1;
                                     }
 
@@ -1057,7 +1063,7 @@ println!("staker slip was spent!");
                                         "staker UTXOKEY that will be spent: {:?}",
                                         staker_slip.get_utxoset_key()
                                     );
-println!("pushing back payout!");
+                                    println!("pushing back payout!");
                                     cv.block_payout.push(payout);
                                 }
                             }
@@ -1074,7 +1080,6 @@ println!("pushing back payout!");
             transaction.set_transaction_type(TransactionType::Fee);
 
             for i in 0..cv.block_payout.len() {
-
                 if cv.block_payout[i].miner != [0; 33] {
                     let mut output = Slip::new();
                     output.set_publickey(cv.block_payout[i].miner);
