@@ -19,18 +19,6 @@ use tracing::{event, Level};
 // attempts to bundle blocks and notify itself when a block has
 // been produced.
 //
-#[derive(Clone, PartialEq)]
-pub enum AddBlockResult {
-    Accepted,
-    Exists,
-}
-#[derive(Debug, Clone, PartialEq)]
-pub enum AddTransactionResult {
-    Accepted,
-    Rejected,
-    Invalid,
-    Exists,
-}
 #[derive(Clone, Debug)]
 pub enum MempoolMessage {
     LocalTryBundleBlock,
@@ -79,19 +67,6 @@ impl Mempool {
             // do nothing
         } else {
             self.blocks_queue.push_back(block);
-        }
-    }
-    pub fn add_block_to_queue(&mut self, block: Block) -> AddBlockResult {
-        let hash_to_insert = block.get_hash();
-        if self
-            .blocks_queue
-            .iter()
-            .any(|block| block.get_hash() == hash_to_insert)
-        {
-            AddBlockResult::Exists
-        } else {
-            self.blocks_queue.push_back(block);
-            AddBlockResult::Accepted
         }
     }
     pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) {
@@ -492,7 +467,38 @@ mod tests {
         // check chain consistence
         test_manager.check_blockchain().await;
     }
-
+    // TODO fix this test
+    // #[ignore]
+    // #[tokio::test]
+    // async fn mempool_bundle_and_send_blocks_to_blockchain_test() {
+    //     let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+    //     {
+    //         let mut wallet = wallet_lock.write().await;
+    //         wallet.load_keys("test/testwallet", Some("asdf"));
+    //     }
+    //     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+    //     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+    //     let publickey;
+    //     let mut prev_block;
+    //     {
+    //         let wallet = wallet_lock.read().await;
+    //         publickey = wallet.get_publickey();
+    //     }
+    //     add_vip_block(
+    //         publickey,
+    //         [0; 32],
+    //         blockchain_lock.clone(),
+    //         wallet_lock.clone(),
+    //     )
+    //     .await;
+    //     // make sure to create the mock_timestamp_generator after the VIP block.
+    //     let mut mock_timestamp_generator = MockTimestampGenerator::new();
+    //     {
+    //         let blockchain = blockchain_lock.read().await;
+    //         prev_block = blockchain.get_latest_block().unwrap().clone();
+    //         assert_eq!(prev_block.get_id(), 1);
+    //     }
+    // }
     /*******
         #[tokio::test]
         async fn mempool_bundle_and_send_blocks_to_blockchain_test() {
