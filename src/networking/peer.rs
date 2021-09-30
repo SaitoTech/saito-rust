@@ -476,8 +476,11 @@ impl SaitoPeer {
             }
             "REQBLOCK" => {
                 let block = Block::deserialize_for_net(response_api_message.message_data());
-                let mut mempool = self.mempool_lock.write().await;
-                mempool.add_block(block);
+		{
+                    let mut mempool = self.mempool_lock.write().await;
+                    mempool.add_block(block);
+                }
+		Mempool::send_blocks_to_blockchain(self.mempool_lock.clone(), self.blockchain_lock.clone());
             }
             "REQBLKHD" => {
                 println!("IMPLEMENT REQBLKHD RESPONSE?!");
