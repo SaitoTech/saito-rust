@@ -453,9 +453,11 @@ impl SaitoPeer {
                                 let block = Block::deserialize_for_net(
                                     serialized_block_message.get_message_data(),
                                 );
-                                let mut mempool = mempool_lock.write().await;
-                                println!("ADDED TO MEMPOOL QUEUE");
-                                mempool.add_block(block);
+				{
+                                    let mut mempool = mempool_lock.write().await;
+				    mempool.add_block(block);
+                                    println!("ADDED TO MEMPOOL QUEUE");
+                                }
 				Mempool::send_blocks_to_blockchain(peer.mempool_lock.clone(), peer.blockchain_lock.clone()).await;
                             }
                             Err(error_message) => {
