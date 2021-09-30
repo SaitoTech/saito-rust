@@ -1,9 +1,9 @@
 // length of 1 genesis period
 pub const GENESIS_PERIOD: u64 = 10;
 // prune blocks from index after N blocks
-pub const PRUNE_AFTER_BLOCKS: u64 = 10;
-// max recursion when paying stakers
-pub const MAX_STAKER_RECURSION: u64 = 2;
+pub const PRUNE_AFTER_BLOCKS: u64 = 20;
+// max recursion when paying stakers -- number of blocks including  -- number of blocks including GTT
+pub const MAX_STAKER_RECURSION: u64 = 3;
 // max token supply - used in validating block #1
 pub const MAX_TOKEN_SUPPLY: u64 = 1_000_000_000_000_000_000;
 // minimum golden tickets required ( NUMBER_OF_TICKETS / number of preceding blocks )
@@ -98,8 +98,8 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_latest_block_hash();
 
-        println!("blockring prev hash: {:?}", previous_block_hash);
-        println!("block     prev hash: {:?}", block.get_previous_block_hash());
+        //println!("blockring prev hash: {:?}", previous_block_hash);
+        //println!("block     prev hash: {:?}", block.get_previous_block_hash());
 
         //
         // sanity checks
@@ -664,7 +664,7 @@ impl Blockchain {
     }
 
     pub fn get_latest_block_id(&self) -> u64 {
-        self.blockring.get_longest_chain_block_id()
+        self.blockring.get_latest_block_id()
     }
 
     pub fn get_block_sync(&self, block_hash: &SaitoHash) -> Option<&Block> {
@@ -704,8 +704,7 @@ impl Blockchain {
             return false;
         }
 
-        if self.blockring.get_longest_chain_block_id()
-            >= self.blocks.get(&new_chain[0]).unwrap().get_id()
+        if self.blockring.get_latest_block_id() >= self.blocks.get(&new_chain[0]).unwrap().get_id()
         {
             return false;
         }
@@ -792,7 +791,8 @@ impl Blockchain {
 
         if !old_chain.is_empty() {
             let res = self
-                .unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
+                .unwind_chain(&new_chain, &old_chain, 0, true)
+                //.unwind_chain(&new_chain, &old_chain, old_chain.len() - 1, true)
                 .await;
             res
         } else if !new_chain.is_empty() {
@@ -1011,10 +1011,15 @@ impl Blockchain {
                 // to unwind. Because of this, we start WINDING the old chain back
                 // which requires us to start at the END of the new chain vector.
                 //
-                let res = self
-                    .wind_chain(old_chain, new_chain, new_chain.len() - 1, true)
-                    .await;
-                res
+                if old_chain.len() > 0 {
+                    println!("old chain len: {}", old_chain.len());
+                    let res = self
+                        .wind_chain(old_chain, new_chain, old_chain.len() - 1, true)
+                        .await;
+                    res
+                } else {
+                    false
+                }
             } else {
                 let mut chain_to_unwind: Vec<[u8; 32]> = vec![];
 
@@ -1084,7 +1089,7 @@ impl Blockchain {
         // wallet update
         {
             let mut wallet = self.wallet_lock.write().await;
-            wallet.on_chain_reorganization(&block, true);
+            wallet.on_chain_reorganization(&block, false);
         }
 
         //
@@ -1395,6 +1400,9 @@ mod tests {
         let blockchain = blockchain_lock.read().await;
 
         assert_eq!(5, blockchain.get_latest_block_id());
+
+        test_manager.check_utxoset().await;
+        test_manager.check_token_supply().await;
     }
 
     #[tokio::test]
@@ -1447,6 +1455,9 @@ mod tests {
 
         assert_eq!(5, blockchain.get_latest_block_id());
         assert_ne!(7, blockchain.get_latest_block_id());
+
+        test_manager.check_utxoset().await;
+        test_manager.check_token_supply().await;
     }
 
     #[tokio::test]
@@ -1499,6 +1510,9 @@ mod tests {
 
         assert_eq!(7, blockchain.get_latest_block_id());
         assert_ne!(5, blockchain.get_latest_block_id());
+
+        test_manager.check_utxoset().await;
+        test_manager.check_token_supply().await;
     }
 
     #[tokio::test]
@@ -1689,6 +1703,64 @@ mod tests {
             let blockchain = blockchain_lock.read().await;
             assert_eq!(10, blockchain.get_latest_block_id());
             assert_eq!(block10_2_hash, blockchain.get_latest_block_hash());
+        }
+
+        test_manager.check_utxoset().await;
+        test_manager.check_token_supply().await;
+    }
+
+    #[tokio::test]
+    //
+    // use test_manager to generate blockchains and reorgs and test
+    //
+    async fn test_manager_blockchain_fork_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+        // 5 initial blocks
+        test_manager.generate_blockchain(5, [0; 32]).await;
+
+        let block5_hash;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            block5_hash = blockchain.get_latest_block_hash();
+
+            assert_eq!(
+                blockchain
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(5),
+                block5_hash
+            );
+            assert_eq!(blockchain.get_latest_block_hash(), block5_hash);
+        }
+
+        // 5 block reorg with 10 block fork
+        let block10_hash = test_manager.generate_blockchain(5, block5_hash).await;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            assert_eq!(
+                blockchain
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(10),
+                block10_hash
+            );
+            assert_eq!(blockchain.get_latest_block_hash(), block10_hash);
+        }
+
+        let block15_hash = test_manager.generate_blockchain(10, block5_hash).await;
+
+        {
+            let blockchain = blockchain_lock.read().await;
+            assert_eq!(
+                blockchain
+                    .blockring
+                    .get_longest_chain_block_hash_by_block_id(15),
+                block15_hash
+            );
+            assert_eq!(blockchain.get_latest_block_hash(), block15_hash);
         }
     }
 }

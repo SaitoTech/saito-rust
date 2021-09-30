@@ -5,8 +5,8 @@ TODO: Fill in these docs
 
 */
 use saito_rust::{
-    blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
-    transaction::Transaction, util::format_url_string, wallet::Wallet,
+    blockchain::Blockchain, mempool::Mempool, miner::Miner, transaction::Transaction,
+    util::format_url_string, wallet::Wallet,
 };
 
 use clap::{App, Arg};
@@ -230,12 +230,7 @@ pub async fn run(
     settings
         .merge(config::File::with_name(config_name))
         .unwrap();
-    let network = Network::new(
-        settings,
-        wallet_lock.clone(),
-        mempool_lock.clone(),
-        blockchain_lock.clone(),
-    );
+
     tokio::select! {
         res = saito_rust::mempool::run(
             mempool_lock.clone(),
@@ -265,14 +260,14 @@ pub async fn run(
                 eprintln!("{:?}", err)
             }
         },
-        res = network.run() => {
+        res = saito_rust::networking::network::run(
+            settings,
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        ) => {
             if let Err(err) = res {
-                eprintln!("network err {:?}", err)
-            }
-        },
-        res = network.run_server() => {
-            if let Err(err) = res {
-                eprintln!("run_server err {:?}", err)
+                eprintln!("miner err {:?}", err)
             }
         },
     }
