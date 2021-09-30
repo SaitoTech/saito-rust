@@ -199,8 +199,6 @@ impl Staking {
     // disagreements about which staker is selected.
     //
     pub fn add_staker(&mut self, slip: Slip) -> bool {
-        //self.stakers.push(slip);
-        //return true;
 
         //
         // TODO skip-hop algorithm instead of brute force
@@ -211,16 +209,8 @@ impl Staking {
         } else {
             for i in 0..self.stakers.len() {
                 let how_compares = slip.compare(self.stakers[i].clone());
-
-                println!("How does this compare! {}", how_compares);
-                println!(
-                    "{:?} -- {:?}",
-                    self.stakers[i].get_utxoset_key(),
-                    slip.get_utxoset_key()
-                );
                 // 1 - self is bigger
                 // 2 - self is smaller
-
                 // insert at position i
                 if how_compares == 2 {
                     println!("we are bigger than slip at position: {}", i);

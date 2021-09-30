@@ -5,8 +5,8 @@ TODO: Fill in these docs
 
 */
 use saito_rust::{
-    blockchain::Blockchain, mempool::Mempool, miner::Miner, networking::network::Network,
-    transaction::Transaction, util::format_url_string, wallet::Wallet,
+    blockchain::Blockchain, mempool::Mempool, miner::Miner, transaction::Transaction,
+    util::format_url_string, wallet::Wallet,
 };
 
 use clap::{App, Arg};
@@ -87,12 +87,6 @@ pub async fn main() -> saito_rust::Result<()> {
     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
     let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-    let network_lock = Arc::new(RwLock::new(Network::new(
-        settings.clone(),
-        wallet_lock.clone(),
-        mempool_lock.clone(),
-        blockchain_lock.clone(),
-    )));
 
     let publickey;
     let privatekey;
@@ -176,7 +170,6 @@ pub async fn main() -> saito_rust::Result<()> {
         wallet_lock.clone(),
         blockchain_lock.clone(),
         miner_lock.clone(),
-        network_lock.clone(),
     )
     .await?;
 
@@ -188,9 +181,56 @@ pub async fn run(
     wallet_lock: Arc<RwLock<Wallet>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
     miner_lock: Arc<RwLock<Miner>>,
-    network_lock: Arc<RwLock<Network>>,
 ) -> saito_rust::Result<()> {
     let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
+
+    let matches = App::new("Saito Runtime")
+        .about("Runs a Saito Node")
+        .arg(
+            Arg::with_name("key_path")
+                .short("k")
+                .long("key_path")
+                .default_value("keyfile")
+                .takes_value(true)
+                .help("Path to encrypted key file"),
+        )
+        .arg(
+            Arg::with_name("password")
+                .short("p")
+                .long("password")
+                .takes_value(true)
+                .help("amount to send"),
+        )
+        .arg(
+            Arg::with_name("config")
+                .short("c")
+                .long("config")
+                .takes_value(true)
+                .help("config file name"),
+        )
+        .arg(
+            Arg::with_name("transactions")
+                .short("txs")
+                .long("transactions")
+                .takes_value(true)
+                .help("Number of transactins per block"),
+        )
+        .arg(
+            Arg::with_name("bytes")
+                .short("b")
+                .long("bytes")
+                .takes_value(true)
+                .help("Size of transation message in bytes"),
+        )
+        .get_matches();
+
+    let config_name = matches.value_of("config").unwrap_or("config");
+
+    let mut settings = config::Config::default();
+    settings
+        .merge(config::File::with_name(config_name))
+        .unwrap();
+
     tokio::select! {
         res = saito_rust::mempool::run(
             mempool_lock.clone(),
@@ -221,15 +261,13 @@ pub async fn run(
             }
         },
         res = saito_rust::networking::network::run(
-            network_lock.clone(),
+            settings,
             wallet_lock.clone(),
-        mempool_lock.clone(),
-        blockchain_lock.clone(),
-            broadcast_channel_sender.clone(),
-            broadcast_channel_sender.subscribe()
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
         ) => {
             if let Err(err) = res {
-                eprintln!("network err {:?}", err)
+                eprintln!("miner err {:?}", err)
             }
         },
     }

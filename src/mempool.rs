@@ -69,7 +69,6 @@ impl Mempool {
             self.blocks_queue.push_back(block);
         }
     }
-
     pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) {
         let mut wallet = self.wallet_lock.write().await;
         let transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
@@ -216,6 +215,38 @@ impl Mempool {
         work_needed
     }
 
+    ///
+    /// Check to see if the `Mempool` has enough work to bundle a block
+    ///
+    // pub async fn can_bundle_block(
+    //     &self,
+    //     blockchain_lock: Arc<RwLock<Blockchain>>,
+    //     current_timestamp: u64,
+    // ) -> bool {
+    //     if self.currently_processing_block {
+    //         return false;
+    //     }
+    //     if self.transactions.is_empty() {
+    //         return false;
+    //     }
+
+    //     let blockchain = blockchain_lock.read().await;
+
+    //     if let Some(previous_block) = blockchain.get_latest_block() {
+    //         let work_available = self.calculate_work_available();
+    //         let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
+    //         let time_elapsed = current_timestamp - previous_block.get_timestamp();
+    //         event!(
+    //             Level::INFO,
+    //             "can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
+    //             work_available,
+    //             work_needed,
+    //             time_elapsed
+    //         );
+    //         work_available >= work_needed
+    //     } else {
+    //         true
+    //     }
     pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
         self.broadcast_channel_sender = Some(bcs);
     }
@@ -249,10 +280,12 @@ pub async fn try_bundle_block(
     blockchain_lock: Arc<RwLock<Blockchain>>,
     current_timestamp: u64,
 ) -> Option<Block> {
-    // use boolean to avoid monopolizing write lock
+    event!(Level::INFO, "try_bundle_block");
+    // We use a boolean here so we can avoid taking the write lock most of the time
     let can_bundle;
     {
         let mempool = mempool_lock.read().await;
+        event!(Level::INFO, "got mempool_lock");
         can_bundle = mempool
             .can_bundle_block(blockchain_lock.clone(), current_timestamp)
             .await;
@@ -428,7 +461,38 @@ mod tests {
         // check chain consistence
         test_manager.check_blockchain().await;
     }
-
+    // TODO fix this test
+    // #[ignore]
+    // #[tokio::test]
+    // async fn mempool_bundle_and_send_blocks_to_blockchain_test() {
+    //     let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+    //     {
+    //         let mut wallet = wallet_lock.write().await;
+    //         wallet.load_keys("test/testwallet", Some("asdf"));
+    //     }
+    //     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+    //     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+    //     let publickey;
+    //     let mut prev_block;
+    //     {
+    //         let wallet = wallet_lock.read().await;
+    //         publickey = wallet.get_publickey();
+    //     }
+    //     add_vip_block(
+    //         publickey,
+    //         [0; 32],
+    //         blockchain_lock.clone(),
+    //         wallet_lock.clone(),
+    //     )
+    //     .await;
+    //     // make sure to create the mock_timestamp_generator after the VIP block.
+    //     let mut mock_timestamp_generator = MockTimestampGenerator::new();
+    //     {
+    //         let blockchain = blockchain_lock.read().await;
+    //         prev_block = blockchain.get_latest_block().unwrap().clone();
+    //         assert_eq!(prev_block.get_id(), 1);
+    //     }
+    // }
     /*******
         #[tokio::test]
         async fn mempool_bundle_and_send_blocks_to_blockchain_test() {
