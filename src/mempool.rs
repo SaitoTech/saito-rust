@@ -272,7 +272,6 @@ impl Mempool {
         }
         mempool.currently_bundling_block = false;
     }
-
 }
 
 pub async fn try_bundle_block(
@@ -366,7 +365,7 @@ pub async fn run(
                     // attempt to bundle block
                     //
                     MempoolMessage::LocalTryBundleBlock => {
-			let current_timestamp = create_timestamp();
+            let current_timestamp = create_timestamp();
                         if let Some(block) = try_bundle_block(
                             mempool_lock.clone(),
                             blockchain_lock.clone(),
@@ -390,13 +389,13 @@ pub async fn run(
             }
 
 
-	    //
-	    // global broadcast channel receivers
-	    //
+        //
+        // global broadcast channel receivers
+        //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
                     SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
-           	        // when miner produces golden ticket
+                       // when miner produces golden ticket
                         let mut mempool = mempool_lock.write().await;
                         mempool.add_golden_ticket(golden_ticket).await;
                     },

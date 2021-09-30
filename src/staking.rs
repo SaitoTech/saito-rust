@@ -199,7 +199,6 @@ impl Staking {
     // disagreements about which staker is selected.
     //
     pub fn add_staker(&mut self, slip: Slip) -> bool {
-
         //
         // TODO skip-hop algorithm instead of brute force
         //

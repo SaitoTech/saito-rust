@@ -331,10 +331,11 @@ impl SaitoPeer {
     // code in-place where it's called or at least put this somewhere else...
     pub async fn add_block_to_mempool(&mut self, block: Block) {
         {
-	    let mut mempool = self.mempool_lock.write().await;
+            let mut mempool = self.mempool_lock.write().await;
             mempool.add_block(block);
-	}
-	Mempool::send_blocks_to_blockchain(self.mempool_lock.clone(), self.blockchain_lock.clone()).await;
+        }
+        Mempool::send_blocks_to_blockchain(self.mempool_lock.clone(), self.blockchain_lock.clone())
+            .await;
     }
     /// Handlers for all the network API commands, e.g. REQBLOCK.
     pub async fn handle_peer_command(peer: &mut SaitoPeer, api_message_orig: &APIMessage) {
@@ -453,11 +454,15 @@ impl SaitoPeer {
                                 let block = Block::deserialize_for_net(
                                     serialized_block_message.get_message_data(),
                                 );
-				{
+                                {
                                     let mut mempool = mempool_lock.write().await;
                                     mempool.add_block(block);
-				}
-				Mempool::send_blocks_to_blockchain(peer.mempool_lock.clone(), peer.blockchain_lock.clone()).await;
+                                }
+                                Mempool::send_blocks_to_blockchain(
+                                    peer.mempool_lock.clone(),
+                                    peer.blockchain_lock.clone(),
+                                )
+                                .await;
                             }
                             Err(error_message) => {
                                 event!(
