@@ -785,7 +785,6 @@ impl Transaction {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet, staking: &Staking) -> bool {
-
         //
         // Fee Transactions are validated in the block class. There can only
         // be one per block, and they are checked by ensuring the transaction hash
