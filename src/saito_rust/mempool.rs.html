@@ -580,6 +580,12 @@
 <span id="580">580</span>
 <span id="581">581</span>
 <span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -602,18 +608,6 @@
 <span class="comment">// attempts to bundle blocks and notify itself when a block has</span>
 <span class="comment">// been produced.</span>
 <span class="comment">//</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AddBlockResult</span> {
-    <span class="ident">Accepted</span>,
-    <span class="ident">Exists</span>,
-}
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AddTransactionResult</span> {
-    <span class="ident">Accepted</span>,
-    <span class="ident">Rejected</span>,
-    <span class="ident">Invalid</span>,
-    <span class="ident">Exists</span>,
-}
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MempoolMessage</span> {
     <span class="ident">LocalTryBundleBlock</span>,
@@ -662,19 +656,6 @@
             <span class="comment">// do nothing</span>
         } <span class="kw">else</span> {
             <span class="self">self</span>.<span class="ident">blocks_queue</span>.<span class="ident">push_back</span>(<span class="ident">block</span>);
-        }
-    }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_block_to_queue</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddBlockResult</span> {
-        <span class="kw">let</span> <span class="ident">hash_to_insert</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
-        <span class="kw">if</span> <span class="self">self</span>
-            .<span class="ident">blocks_queue</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">block</span><span class="op">|</span> <span class="ident">block</span>.<span class="ident">get_hash</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">hash_to_insert</span>)
-        {
-            <span class="ident">AddBlockResult::Exists</span>
-        } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">blocks_queue</span>.<span class="ident">push_back</span>(<span class="ident">block</span>);
-            <span class="ident">AddBlockResult::Accepted</span>
         }
     }
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_golden_ticket</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span>) {
@@ -1075,7 +1056,38 @@
         <span class="comment">// check chain consistence</span>
         <span class="ident">test_manager</span>.<span class="ident">check_blockchain</span>().<span class="kw">await</span>;
     }
-
+    <span class="comment">// TODO fix this test</span>
+    <span class="comment">// #[ignore]</span>
+    <span class="comment">// #[tokio::test]</span>
+    <span class="comment">// async fn mempool_bundle_and_send_blocks_to_blockchain_test() {</span>
+    <span class="comment">//     let wallet_lock = Arc::new(RwLock::new(Wallet::new()));</span>
+    <span class="comment">//     {</span>
+    <span class="comment">//         let mut wallet = wallet_lock.write().await;</span>
+    <span class="comment">//         wallet.load_keys(&quot;test/testwallet&quot;, Some(&quot;asdf&quot;));</span>
+    <span class="comment">//     }</span>
+    <span class="comment">//     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));</span>
+    <span class="comment">//     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));</span>
+    <span class="comment">//     let publickey;</span>
+    <span class="comment">//     let mut prev_block;</span>
+    <span class="comment">//     {</span>
+    <span class="comment">//         let wallet = wallet_lock.read().await;</span>
+    <span class="comment">//         publickey = wallet.get_publickey();</span>
+    <span class="comment">//     }</span>
+    <span class="comment">//     add_vip_block(</span>
+    <span class="comment">//         publickey,</span>
+    <span class="comment">//         [0; 32],</span>
+    <span class="comment">//         blockchain_lock.clone(),</span>
+    <span class="comment">//         wallet_lock.clone(),</span>
+    <span class="comment">//     )</span>
+    <span class="comment">//     .await;</span>
+    <span class="comment">//     // make sure to create the mock_timestamp_generator after the VIP block.</span>
+    <span class="comment">//     let mut mock_timestamp_generator = MockTimestampGenerator::new();</span>
+    <span class="comment">//     {</span>
+    <span class="comment">//         let blockchain = blockchain_lock.read().await;</span>
+    <span class="comment">//         prev_block = blockchain.get_latest_block().unwrap().clone();</span>
+    <span class="comment">//         assert_eq!(prev_block.get_id(), 1);</span>
+    <span class="comment">//     }</span>
+    <span class="comment">// }</span>
     <span class="comment">/*******
         #[tokio::test]
         async fn mempool_bundle_and_send_blocks_to_blockchain_test() {

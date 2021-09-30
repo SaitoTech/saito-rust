@@ -2162,6 +2162,31 @@
 <span id="2162">2162</span>
 <span id="2163">2163</span>
 <span id="2164">2164</span>
+<span id="2165">2165</span>
+<span id="2166">2166</span>
+<span id="2167">2167</span>
+<span id="2168">2168</span>
+<span id="2169">2169</span>
+<span id="2170">2170</span>
+<span id="2171">2171</span>
+<span id="2172">2172</span>
+<span id="2173">2173</span>
+<span id="2174">2174</span>
+<span id="2175">2175</span>
+<span id="2176">2176</span>
+<span id="2177">2177</span>
+<span id="2178">2178</span>
+<span id="2179">2179</span>
+<span id="2180">2180</span>
+<span id="2181">2181</span>
+<span id="2182">2182</span>
+<span id="2183">2183</span>
+<span id="2184">2184</span>
+<span id="2185">2185</span>
+<span id="2186">2186</span>
+<span id="2187">2187</span>
+<span id="2188">2188</span>
+<span id="2189">2189</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
@@ -3882,12 +3907,12 @@
             .<span class="ident">par_iter</span>()
             .<span class="ident">all</span>(<span class="op">|</span><span class="ident">tx</span><span class="op">|</span> <span class="ident">tx</span>.<span class="ident">validate</span>(<span class="ident">utxoset</span>, <span class="ident">staking</span>));
 
-        <span class="macro">println!</span>(<span class="string">&quot; ... block.validate: (done all)  {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
+        <span class="comment">// println!(&quot; ... block.validate: (done all)  {:?}&quot;, create_timestamp());</span>
 
         <span class="comment">//</span>
         <span class="comment">// and if our transactions are valid, so is the block...</span>
         <span class="comment">//</span>
-        <span class="macro">println!</span>(<span class="string">&quot; ... are txs valid: {}&quot;</span>, <span class="ident">transactions_valid</span>);
+        <span class="comment">// println!(&quot; ... are txs valid: {}&quot;, transactions_valid);</span>
         <span class="ident">transactions_valid</span>
     }
 
@@ -4083,10 +4108,10 @@
             } <span class="kw">else</span> {
                 <span class="ident">adjusted_staking_treasury</span> <span class="op">+</span><span class="op">=</span> <span class="ident">cv</span>.<span class="ident">staking_treasury</span> <span class="kw">as</span> <span class="ident">u64</span>;
             }
-            <span class="macro">println!</span>(
-                <span class="string">&quot;adjusted staking treasury written into block {}&quot;</span>,
-                <span class="ident">adjusted_staking_treasury</span>
-            );
+            <span class="comment">// println!(</span>
+            <span class="comment">//     &quot;adjusted staking treasury written into block {}&quot;,</span>
+            <span class="comment">//     adjusted_staking_treasury</span>
+            <span class="comment">// );</span>
             <span class="ident">block</span>.<span class="ident">set_staking_treasury</span>(<span class="ident">adjusted_staking_treasury</span>);
         }
 
@@ -4315,7 +4340,31 @@
         <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>(), <span class="number">0</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_block_type</span>(), <span class="ident">BlockType::Pruned</span>);
 
-        <span class="ident">block</span>.<span class="ident">upgrade_block_to_block_type</span>(<span class="ident">BlockType::Full</span>).<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
+        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
+        <span class="kw">let</span> <span class="ident">test_manager</span> <span class="op">=</span> <span class="ident">TestManager::new</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
+
+        <span class="kw">let</span> <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>;
+        <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>;
+        {
+            <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+            <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
+            <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
+        }
+        <span class="kw">let</span> <span class="ident">golden_ticket</span> <span class="op">=</span> <span class="ident">GoldenTicket::new</span>(<span class="number">1</span>, [<span class="number">1</span>; <span class="number">32</span>], [<span class="number">2</span>; <span class="number">32</span>], [<span class="number">3</span>; <span class="number">33</span>]);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx2</span>: <span class="ident">Transaction</span>;
+        {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+            <span class="ident">tx2</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">create_golden_ticket_transaction</span>(<span class="ident">golden_ticket</span>).<span class="kw">await</span>;
+        }
+        <span class="ident">tx2</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">test_manager</span>
+            .<span class="ident">generate_block</span>([<span class="number">1</span>; <span class="number">32</span>], <span class="ident">create_timestamp</span>(), <span class="number">1</span>, <span class="number">1</span>, <span class="bool-val">false</span>, <span class="macro">vec!</span>[])
+            .<span class="kw">await</span>;
+        <span class="ident">block</span>.<span class="ident">sign</span>(<span class="ident">publickey</span>, <span class="ident">privatekey</span>);
+
+        <span class="kw">let</span> <span class="ident">unsigned_block</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">clone</span>();
 
         <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">transactions</span>.<span class="ident">len</span>(), <span class="number">5</span>);
         <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">get_block_type</span>(), <span class="ident">BlockType::Full</span>);
@@ -4325,6 +4374,7 @@
         );
 
         <span class="ident">TestManager::check_block_consistency</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>);
+        <span class="ident">TestManager::check_block_consistency</span>(<span class="kw-2">&amp;</span><span class="ident">unsigned_block</span>);
     }
 }
 </pre></div>
