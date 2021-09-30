@@ -330,12 +330,8 @@ mod tests {
         crypto::{generate_keys, hash, sign_blob, verify, SaitoSignature},
         mempool::Mempool,
         networking::{
-            api_message::APIMessage,
-            filters::ws_upgrade_route_filter,
-            message_types::{
-                handshake_challenge::HandshakeChallenge,
-                request_blockchain_message::RequestBlockchainMessage,
-            },
+            api_message::APIMessage, filters::ws_upgrade_route_filter,
+            message_types::handshake_challenge::HandshakeChallenge,
         },
         transaction::Transaction,
     };
