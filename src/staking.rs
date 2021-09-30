@@ -33,19 +33,6 @@ impl Staking {
         }
     }
 
-    pub fn add_staker_with_number(&mut self, slip: Slip, random_number: SaitoHash) {
-        //
-        // find winning nolan
-        //
-        let x = U256::from_big_endian(&random_number);
-        let y = self.stakers.len() + 1;
-        let z = U256::from_big_endian(&y.to_be_bytes());
-        let (zy, _bolres) = x.overflowing_rem(z);
-
-        let insert_into_pos = zy.low_u64();
-
-        self.stakers.insert(insert_into_pos as usize, slip);
-    }
 
     pub fn find_winning_staker(&self, random_number: SaitoHash) -> Option<Slip> {
         if self.stakers.is_empty() {
