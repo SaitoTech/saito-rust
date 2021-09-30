@@ -480,7 +480,7 @@ impl SaitoPeer {
                     let mut mempool = self.mempool_lock.write().await;
                     mempool.add_block(block);
                 }
-		Mempool::send_blocks_to_blockchain(self.mempool_lock.clone(), self.blockchain_lock.clone());
+		Mempool::send_blocks_to_blockchain(self.mempool_lock.clone(), self.blockchain_lock.clone()).await;
             }
             "REQBLKHD" => {
                 println!("IMPLEMENT REQBLKHD RESPONSE?!");
