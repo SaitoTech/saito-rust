@@ -3,11 +3,9 @@ use crate::{
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
 };
 use ahash::AHashMap;
-use serde::{Deserialize, Serialize};
-
 use macros::TryFromByte;
+use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
-
 use tracing::{event, Level};
 
 /// The size of a serilized slip in bytes.
@@ -70,11 +68,15 @@ impl Slip {
                     if *value == 1 {
                         true
                     } else {
-                        //println!("value is {} at {:?}", *value, &self.utxoset_key);
+                        println!(
+                            "in utxoset but invalid: value is {} at {:?}",
+                            *value, &self.utxoset_key
+                        );
                         false
                     }
                 }
                 None => {
+                    println!("not in utxoset so invalid");
                     event!(
                         Level::ERROR,
                         "value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}",
@@ -97,12 +99,30 @@ impl Slip {
         _lc: bool,
         slip_value: u64,
     ) {
+        if self.get_slip_type() == SlipType::StakerDeposit {
+            if _lc == true {
+                println!(" ====> spending deposit: {:?}", self.get_utxoset_key());
+            }
+        }
+
         if self.get_amount() > 0 {
+            //
             // TODO cleanup once ready
-            //println!("updating utxoset: {:?} value {}", self.utxoset_key, slip_value);
+            //
+            //println!("update utxoset: {:?} value {} lc -> {}", self.utxoset_key, slip_value, lc);
             //println!("slip_ordinal: {}", self.get_slip_ordinal());
             //println!("slip_amount: {}", self.get_amount());
-            utxoset.entry(self.utxoset_key).or_insert(slip_value);
+            //utxoset.entry(self.utxoset_key).or_insert(slip_value);
+            //
+            // TODO find more efficient update operation
+            //
+            // entry().or_insert() does not update
+            //
+            if utxoset.contains_key(&self.utxoset_key) {
+                utxoset.insert(self.utxoset_key, slip_value);
+            } else {
+                utxoset.entry(self.utxoset_key).or_insert(slip_value);
+            }
         }
     }
 
@@ -157,7 +177,9 @@ impl Slip {
         self.slip_type = slip_type;
     }
 
-    // runs when block is purged for good
+    //
+    // runs when block is purged for good or staking slip deleted
+    //
     pub fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_utxoset_key() == [0; 74] {
             event!(

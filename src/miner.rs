@@ -69,6 +69,7 @@ impl Miner {
         }
     }
 
+    // function used primarily for test fuctions
     pub async fn mine_on_block_until_golden_ticket_found(
         &mut self,
         block_hash: SaitoHash,
