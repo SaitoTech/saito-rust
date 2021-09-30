@@ -3,7 +3,7 @@ use super::network::CHALLENGE_EXPIRATION_TIME;
 use crate::block::{Block, BlockType};
 use crate::blockchain::{Blockchain, GENESIS_PERIOD};
 use crate::crypto::{hash, verify, SaitoHash, SaitoPublicKey};
-use crate::mempool::{AddBlockResult, Mempool};
+use crate::mempool::Mempool;
 use crate::networking::message_types::handshake_challenge::HandshakeChallenge;
 use crate::networking::message_types::request_block_message::RequestBlockMessage;
 use crate::networking::message_types::request_blockchain_message::RequestBlockchainMessage;
@@ -456,7 +456,7 @@ impl SaitoPeer {
                                 let mut mempool = mempool_lock.write().await;
                                 println!("ADDED TO MEMPOOL QUEUE");
                                 mempool.add_block(block);
-				Mempool::send_blocks_to_blockchain(self.mempool_lock.clone(), self.blockchain_lock.clone()).await;
+				Mempool::send_blocks_to_blockchain(peer.mempool_lock.clone(), peer.blockchain_lock.clone()).await;
                             }
                             Err(error_message) => {
                                 event!(
