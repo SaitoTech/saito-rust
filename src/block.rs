@@ -1736,7 +1736,6 @@ impl Block {
         let blockchain = blockchain_lock.read().await;
         let wallet = wallet_lock.read().await;
         let publickey = wallet.get_publickey();
-        let privatekey = wallet.get_privatekey();
 
         let mut previous_block_id = 0;
         let mut previous_block_burnfee = 0;

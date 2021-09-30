@@ -1,7 +1,6 @@
 use crate::{
     blockchain::UtxoSet,
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
-    transaction::TransactionType,
 };
 use ahash::AHashMap;
 use macros::TryFromByte;
@@ -213,14 +212,19 @@ impl Slip {
 	if x > y { return 1; }
 	if y > x { return 2; }
 
-        let a = U256::from_big_endian(&self.get_uuid());
-        let b = U256::from_big_endian(&other.get_uuid());
+	//
+	// use the part of the utxoset key that does not include the
+	// publickey but includes the amount and slip ordinal, so that
+	// testing is happy that manually created slips are somewhat
+	// unique for staker-table insertion..
+	//
+        let a = U256::from_big_endian(&self.get_utxoset_key()[42..74]);
+        let b = U256::from_big_endian(&other.get_utxoset_key()[42..74]);
 
-println!("a7");
+println!("{:?} --- {:?}", a, b);
+
 	if a > b { return 1; }
-println!("a8");
 	if b > a { return 2; }
-println!("a9");
 
 	return 3;
 

@@ -214,9 +214,8 @@ impl Staking {
     //
     pub fn add_staker(&mut self, slip: Slip) -> bool {
 
-	self.stakers.push(slip);
-	return true;
-/*****
+	//self.stakers.push(slip);
+	//return true;
 
 	//
 	// TODO skip-hop algorithm instead of brute force
@@ -231,22 +230,33 @@ impl Staking {
 	        let how_compares = slip.compare(self.stakers[i].clone());
 
 println!("How does this compare! {}", how_compares);
-println!("{:?} -- {:?}", self.stakers[i].get_uuid(), slip.get_uuid());
-
+println!("{:?} -- {:?}", self.stakers[i].get_utxoset_key(), slip.get_utxoset_key());
+		// 1 - self is bigger
+		// 2 - self is smaller
 
 	        // insert at position i
 	        if how_compares == 2 {
-		    self.stakers.insert(i, slip);
-		    return true;
-	        }
-	        if how_compares == 3 {
-		    return false;
-	        }
+println!("we are bigger than slip at position: {}", i);
+		    if self.stakers.len() == (i+1) {
+		        self.stakers.push(slip);
+		        return true;
+	            }
+	        } else {
+	            if how_compares == 1 {
+		        self.stakers.insert(i, slip);
+		        return true;
+		    }
+	            if how_compares == 3 {
+		        return false;
+	            }
+		}
 	    }
 
+println!("we were smaller all the way through -- add at end");
+	    self.stakers.push(slip);
+	    return true;
+
 	}
-	return false;
-****/
     }
 
     pub fn add_pending(&mut self, slip: Slip) {
@@ -636,8 +646,12 @@ mod tests {
 	assert_eq!(staking2.stakers.len(), 5);
 
 	for i in 0..staking2.stakers.len() {
-	   assert_eq!(staking1.stakers[i].clone(), staking2.stakers[i].clone());
-	   assert_eq!(staking1.stakers[i].compare(staking2.stakers[i].clone()), 0);
+	   println!("{} -- {}", staking1.stakers[i].get_amount(), staking2.stakers[i].get_amount());
+        } 
+
+	for i in 0..staking2.stakers.len() {
+	   assert_eq!(staking1.stakers[i].clone().serialize_for_net(), staking2.stakers[i].clone().serialize_for_net());
+	   assert_eq!(staking1.stakers[i].clone().compare(staking2.stakers[i].clone()), 3); // 3 = the same
         } 
     }
 
@@ -677,11 +691,11 @@ mod tests {
         let (_res_spend, _res_unspend, _res_delete) = staking.reset_staker_table(1_000_000_000); // 10 Saito
 
         assert_eq!(
-            staking.stakers[0].get_amount() + staking.stakers[0].get_payout(),
+            staking.stakers[4].get_amount() + staking.stakers[4].get_payout(),
             210000000
         );
         assert_eq!(
-            staking.stakers[1].get_amount() + staking.stakers[1].get_payout(),
+            staking.stakers[3].get_amount() + staking.stakers[3].get_payout(),
             315000000
         );
         assert_eq!(
@@ -689,11 +703,11 @@ mod tests {
             420000000
         );
         assert_eq!(
-            staking.stakers[3].get_amount() + staking.stakers[3].get_payout(),
+            staking.stakers[1].get_amount() + staking.stakers[1].get_payout(),
             525000000
         );
         assert_eq!(
-            staking.stakers[4].get_amount() + staking.stakers[4].get_payout(),
+            staking.stakers[0].get_amount() + staking.stakers[0].get_payout(),
             630000000
         );
     }

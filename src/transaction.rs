@@ -263,7 +263,7 @@ impl Transaction {
         let mut transaction = Transaction::new();
         transaction.set_transaction_type(TransactionType::Vip);
 
-        for i in 0..number_of_vip_slips {
+        for _i in 0..number_of_vip_slips {
             let mut output = Slip::new();
             output.set_publickey(to_publickey);
             output.set_amount(with_amount);
@@ -785,6 +785,7 @@ impl Transaction {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet, staking: &Staking) -> bool {
+
         //
         // Fee Transactions are validated in the block class. There can only
         // be one per block, and they are checked by ensuring the transaction hash
