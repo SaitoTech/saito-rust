@@ -1043,11 +1043,10 @@ mod tests {
         //
         // BLOCK 3 - payout
         //
-	test_manager.set_latest_block_hash(block2_hash);
+        test_manager.set_latest_block_hash(block2_hash);
         test_manager
             .add_block(current_timestamp + 240000, 0, 1, true, vec![])
             .await;
-
 
         //
         // BLOCK 4
@@ -1056,18 +1055,17 @@ mod tests {
             .add_block(current_timestamp + 360000, 0, 1, false, vec![])
             .await;
 
-
         //
         // BLOCK 5
         //
         test_manager
             .add_block(current_timestamp + 480000, 0, 1, true, vec![])
             .await;
-	let block5_hash;
-	{
-	    let blockchain = blockchain_lock.read().await;
-	    block5_hash = blockchain.get_latest_block_hash();
-	}
+        let block5_hash;
+        {
+            let blockchain = blockchain_lock.read().await;
+            block5_hash = blockchain.get_latest_block_hash();
+        }
 
         //
         // BLOCK 6 -- withdraw a staking deposit
@@ -1091,15 +1089,22 @@ mod tests {
             current_timestamp + 600000,
         )
         .await;
-	let block6_hash = block6.get_hash();
-	let block6_id = block6.get_id();
+        let block6_hash = block6.get_hash();
+        let block6_id = block6.get_id();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block6).await;
 
-	{
+        {
             let blockchain = blockchain_lock.read().await;
-println!("LATESTID: {} / {}", block6_id, blockchain.get_latest_block_id());
-	    assert_eq!(blockchain.get_latest_block_id(), 6);
-	    assert_eq!(blockchain.staking.stakers.len()+blockchain.staking.pending.len(), 1);
+            println!(
+                "LATESTID: {} / {}",
+                block6_id,
+                blockchain.get_latest_block_id()
+            );
+            assert_eq!(blockchain.get_latest_block_id(), 6);
+            assert_eq!(
+                blockchain.staking.stakers.len() + blockchain.staking.pending.len(),
+                1
+            );
         }
     }
 
