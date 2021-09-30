@@ -599,10 +599,10 @@
 
         <span class="kw">let</span> <span class="ident">decrypted_buffer</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
         <span class="kw">if</span> <span class="op">!</span><span class="ident">path</span>.<span class="ident">exists</span>() {
-            <span class="macro">println!</span>(<span class="string">&quot;Creating key file {}&quot;</span>, <span class="ident">key_path</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;Creating key file at path: {}&quot;</span>, <span class="ident">key_path</span>);
             <span class="ident">decrypted_buffer</span> <span class="op">=</span> <span class="ident">Wallet::create_key_file</span>(<span class="kw-2">&amp;</span><span class="ident">key_path</span>, <span class="kw-2">&amp;</span><span class="ident">password</span>);
         } <span class="kw">else</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;Reading key file {}&quot;</span>, <span class="ident">key_path</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;Reading key file from path: {}&quot;</span>, <span class="ident">key_path</span>);
             <span class="ident">decrypted_buffer</span> <span class="op">=</span> <span class="ident">Wallet::read_key_file</span>(<span class="kw-2">&amp;</span><span class="ident">key_path</span>, <span class="kw-2">&amp;</span><span class="ident">password</span>);
         }
 

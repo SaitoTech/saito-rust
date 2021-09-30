@@ -164,6 +164,8 @@
 <span id="164">164</span>
 <span id="165">165</span>
 <span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">sign_blob</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>};
 
@@ -171,6 +173,8 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::time::create_timestamp</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
+<span class="doccomment">/// Data Object for passing handshake information. Is used as a</span>
+<span class="doccomment">/// payload in an APIMessage message field.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HandshakeChallenge</span> {
     <span class="kw">pub</span> <span class="ident">challenger_node</span>: <span class="ident">HandshakeNode</span>,

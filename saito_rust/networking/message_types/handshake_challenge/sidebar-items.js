@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["HandshakeChallenge",""],["HandshakeNode",""]]});
+initSidebarItems({"struct":[["HandshakeChallenge","Data Object for passing handshake information. Is used as a payload in an APIMessage message field."],["HandshakeNode",""]]});

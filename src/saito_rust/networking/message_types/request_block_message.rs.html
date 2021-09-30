@@ -162,6 +162,7 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
+<span id="165">165</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>};
 
@@ -169,21 +170,22 @@
 
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::send_blockchain_message::SyncType</span>;
 
-<span class="doccomment">/// - block_id(starts with latest)</span>
-<span class="doccomment">/// - block_hash(starts with latest)</span>
-<span class="doccomment">/// - fork_id</span>
-<span class="doccomment">/// - synctype(optional)</span>
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="doccomment">/// Data Object for REQBLOCK. Is used as a  payload in an APIMessage message field.</span>
+<span class="doccomment">/// - `block_id` - (optional)</span>
+<span class="doccomment">/// - `block_hash` - (optional)</span>
+<span class="doccomment">/// - `synctype` - Full or Lite(SPV)(optional)</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RequestBlockMessage</span> {
     <span class="ident">block_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     <span class="ident">block_hash</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span>,
     <span class="ident">sync_type</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SyncType</span><span class="op">&gt;</span>,
 }
+
+<span class="doccomment">/// a bitmask indicating which fields are filled in the RequestBlockMessage.</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">RequestBlockMessageOptionsMask</span> <span class="op">=</span> <span class="ident">u8</span>;
+
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_ID_MASK</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">1</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCK_HASH_MASK</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">2</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SYNC_TYPE_MASK</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">4</span>;
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">RequestBlockMessageOptionsMask</span> <span class="op">=</span> <span class="ident">u8</span>;
 
 <span class="kw">trait</span> <span class="ident">RequestBlockMessageOptionsMaskTrait</span> {
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">has_block_id</span>: <span class="ident">bool</span>, <span class="ident">has_block_hash</span>: <span class="ident">bool</span>, <span class="ident">has_sync_type</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>;

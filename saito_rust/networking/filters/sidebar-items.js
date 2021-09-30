@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["get_block_route_filter",""],["post_transaction_route_filter",""],["ws_upgrade_route_filter",""]]});
+initSidebarItems({"fn":[["get_block_route_filter","get block filter. TODO remove this? I believe we want ot use the socket for everything…"],["post_transaction_route_filter","POST tx filter. TODO remove this? I believe we want ot use the socket for everything…"],["ws_upgrade_route_filter","websocket upgrade filter."]]});

@@ -79,11 +79,11 @@
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 
-<span class="doccomment">/// - block_id(starts with latest)</span>
-<span class="doccomment">/// - block_hash(starts with latest)</span>
-<span class="doccomment">/// - fork_id</span>
-<span class="doccomment">/// - synctype(optional)</span>
-
+<span class="doccomment">/// Data Object for REQCHAIN. Is used as a  payload in an APIMessage message field.</span>
+<span class="doccomment">/// `latest_block_id` - (optional)(starts with latest)</span>
+<span class="doccomment">/// `latest_block_hash` - (optional)(starts with latest)</span>
+<span class="doccomment">/// &#39;fork_id` - This is a data object which looks like a hash. It is used to find a common ancestor.</span>
+<span class="doccomment">/// It allows some false positives and will not find the most recent common ancestor.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RequestBlockchainMessage</span> {
     <span class="ident">latest_block_id</span>: <span class="ident">u64</span>,

@@ -669,28 +669,53 @@
 <span id="669">669</span>
 <span id="670">670</span>
 <span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::consensus::SaitoMessage</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{<span class="ident">hash</span>, <span class="ident">sign_blob</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::mempool::Mempool</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::api_message::APIMessage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::filters</span>::{
     <span class="ident">get_block_route_filter</span>, <span class="ident">post_transaction_route_filter</span>, <span class="ident">ws_upgrade_route_filter</span>,
 };
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::peer</span>::{<span class="ident">OutboundPeer</span>, <span class="ident">SaitoPeer</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::message_types::request_blockchain_message::RequestBlockchainMessage</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::peer</span>::{<span class="ident">socket_handshake_verify</span>, <span class="ident">OutboundPeer</span>, <span class="ident">SaitoPeer</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::util::format_url_string</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">futures::StreamExt</span>;
 <span class="kw">use</span> <span class="ident">secp256k1::PublicKey</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
+<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">tokio::time::sleep</span>;
+
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio_tungstenite::connect_async</span>;
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
-<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 <span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">Filter</span>, <span class="ident">Rejection</span>};
 
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::peer</span>::{<span class="ident">PeerSetting</span>, <span class="ident">OUTBOUND_PEER_CONNECTIONS_GLOBAL</span>, <span class="ident">PEERS_DB_GLOBAL</span>};
@@ -702,6 +727,7 @@
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">Rejection</span><span class="op">&gt;</span>;
 
+<span class="doccomment">/// Configuration for Network listener, port etc.</span>
 <span class="comment">//</span>
 <span class="comment">// In addition to responding to global broadcast messages, the</span>
 <span class="comment">// network has a local broadcast channel it uses to coordinate</span>
@@ -721,7 +747,40 @@
     <span class="ident">broadcast_channel_sender</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
+    <span class="ident">config_settings</span>: <span class="ident">Config</span>,
+    <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(
+        <span class="ident">config_settings</span>,
+        <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+        <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+    );
+    <span class="comment">// TODO: refactor this into two separate classes maybe and split this run() into two...</span>
+    <span class="macro">tokio::select!</span> {
+        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run_client</span>() <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;network err {:?}&quot;</span>, <span class="ident">err</span>)
+            }
+        },
+        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run_server</span>() <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;run_server err {:?}&quot;</span>, <span class="ident">err</span>)
+            }
+        },
+    }
+
+    <span class="prelude-val">Ok</span>(())
+}
+
 <span class="kw">impl</span> <span class="ident">Network</span> {
+    <span class="doccomment">/// Returns a Network</span>
+    <span class="doccomment">/// # Arguments</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// * `config_settings` - config::config::Config</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">config_settings</span>: <span class="ident">Config</span>,
         <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -736,6 +795,78 @@
             <span class="ident">broadcast_channel_sender</span>: <span class="prelude-val">None</span>,
         }
     }
+    <span class="doccomment">/// After socket has been connected, the connector begins the handshake via SHAKINIT command.</span>
+    <span class="doccomment">/// Once the handshake is complete, we synchronize the peers via REQCHAIN/SENDCHAIN and REQBLOCK.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handshake_and_synchronize_chain</span>(
+        <span class="ident">connection_id</span>: <span class="kw-2">&amp;</span><span class="ident">SaitoHash</span>,
+        <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) {
+        {
+            <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>;
+            {
+                <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+                <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
+            }
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">message_data</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>];
+            <span class="ident">message_data</span>.<span class="ident">extend</span>(
+                <span class="ident">PublicKey::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">publickey</span>)
+                    .<span class="ident">unwrap</span>()
+                    .<span class="ident">serialize</span>()
+                    .<span class="ident">to_vec</span>(),
+            );
+
+            <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
+
+            <span class="kw">let</span> <span class="ident">response_api_message</span> <span class="op">=</span> <span class="ident">peer</span>
+                .<span class="ident">send_command</span>(<span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;SHAKINIT&quot;</span>), <span class="ident">message_data</span>)
+                .<span class="kw">await</span>
+                .<span class="ident">unwrap</span>();
+            <span class="comment">// We should sign the response and send a SHAKCOMP.</span>
+            <span class="comment">// We want to reuse socket_handshake_verify, so we will sign before verifying the peer&#39;s signature</span>
+            <span class="kw">let</span> <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>;
+            {
+                <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+                <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
+            }
+            <span class="kw">let</span> <span class="ident">signed_challenge</span> <span class="op">=</span>
+                <span class="ident">sign_blob</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">response_api_message</span>.<span class="ident">message_data</span>.<span class="ident">to_vec</span>(), <span class="ident">privatekey</span>).<span class="ident">to_owned</span>();
+            <span class="kw">match</span> <span class="ident">socket_handshake_verify</span>(<span class="kw-2">&amp;</span><span class="ident">signed_challenge</span>) {
+                <span class="prelude-val">Some</span>(<span class="ident">deserialize_challenge</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">peer</span>.<span class="ident">set_has_completed_handshake</span>(<span class="bool-val">true</span>);
+                    <span class="ident">peer</span>.<span class="ident">set_publickey</span>(<span class="ident">deserialize_challenge</span>.<span class="ident">challenger_pubkey</span>());
+                    <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">peer</span>
+                        .<span class="ident">send_command</span>(<span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;SHAKCOMP&quot;</span>), <span class="ident">signed_challenge</span>)
+                        .<span class="kw">await</span>;
+
+                    <span class="kw">if</span> <span class="ident">result</span>.<span class="ident">is_ok</span>() {
+                        <span class="kw">let</span> <span class="ident">request_blockchain_message</span> <span class="op">=</span>
+                            <span class="ident">RequestBlockchainMessage::new</span>(<span class="number">0</span>, [<span class="number">0</span>; <span class="number">32</span>], [<span class="number">42</span>; <span class="number">32</span>]);
+                        <span class="kw">let</span> <span class="ident">_req_chain_result</span> <span class="op">=</span> <span class="ident">peer</span>
+                            .<span class="ident">send_command</span>(
+                                <span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;REQCHAIN&quot;</span>),
+                                <span class="ident">request_blockchain_message</span>.<span class="ident">serialize</span>(),
+                            )
+                            .<span class="kw">await</span>
+                            .<span class="ident">unwrap</span>();
+                        <span class="comment">// TODO IMMEDIATE</span>
+                        <span class="comment">// let block = Block::deserialize_for_net(req_chain_result.message_data());</span>
+                        <span class="comment">// peer.add_block_to_mempool(block).await;</span>
+                    } <span class="kw">else</span> {
+                        <span class="comment">// TODO delete the peer if there is an error here</span>
+                    }
+                    <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;SHAKECOMPLETE!&quot;</span>);
+                }
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;Error verifying peer handshake signature&quot;</span>);
+                }
+            }
+        }
+    }
+    <span class="doccomment">/// Create an &quot;outbound&quot; connection to a peer</span>
+    <span class="comment">// TODO move this to peer near to handle_inbound_peer_connection and give it a similar name.</span>
+    <span class="comment">// these are the two functions which spawn tasks on either end of the socket.</span>
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_broadcast_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bcs</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bcs</span>);
@@ -766,18 +897,7 @@
                         .<span class="kw">await</span>
                         .<span class="ident">insert</span>(<span class="ident">connection_id</span>, <span class="ident">OutboundPeer</span> { <span class="ident">write_sink</span> });
                 }
-                <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>;
-                {
-                    <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-                    <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
-                }
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">message_data</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="number">127</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1</span>];
-                <span class="ident">message_data</span>.<span class="ident">extend</span>(
-                    <span class="ident">PublicKey::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">publickey</span>)
-                        .<span class="ident">unwrap</span>()
-                        .<span class="ident">serialize</span>()
-                        .<span class="ident">to_vec</span>(),
-                );
+
                 <span class="kw">let</span> <span class="ident">_foo</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
                     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">result</span>) <span class="op">=</span> <span class="ident">read_stream</span>.<span class="ident">next</span>().<span class="kw">await</span> {
                         <span class="kw">match</span> <span class="ident">result</span> {
@@ -787,17 +907,21 @@
                                     <span class="ident">SaitoPeer::handle_peer_message</span>(<span class="ident">api_message</span>, <span class="ident">connection_id</span>)
                                         .<span class="kw">await</span>;
                                 } <span class="kw">else</span> {
-                                    <span class="macro">println!</span>(<span class="string">&quot;Message of length 0... why?&quot;</span>);
-                                    <span class="macro">println!</span>(<span class="string">&quot;This seems to occur if we aren&#39;t holding a reference to the sender/stream on the&quot;</span>);
-                                    <span class="macro">println!</span>(<span class="string">&quot;other end of the connection. I suspect that when the stream goes out of scope,&quot;</span>);
-                                    <span class="macro">println!</span>(<span class="string">&quot;it&#39;s deconstructor is being called and sends a 0 length message to indicate&quot;</span>);
-                                    <span class="macro">println!</span>(<span class="string">&quot;that the stream has ended... I&#39;m leaving this println here for now because&quot;</span>);
-                                    <span class="macro">println!</span>(<span class="string">&quot;it would be very helpful to see this if starts to occur again. We may want to&quot;</span>);
-                                    <span class="macro">println!</span>(<span class="string">&quot;treat this as a disconnect.&quot;</span>);
+                                    <span class="macro">event!</span>(
+                                        <span class="ident">Level::ERROR</span>,
+                                        <span class="string">&quot;Message of length 0... why?\n
+                                        This seems to occur if we aren&#39;t holding a reference to the sender/stream on the\n
+                                        This seems to occur if we aren&#39;t holding a reference to the sender/stream on the\n
+                                        other end of the connection. I suspect that when the stream goes out of scope,\n
+                                        it&#39;s deconstructor is being called and sends a 0 length message to indicate\n
+                                        that the stream has ended... I&#39;m leaving this println here for now because\n
+                                        it would be very helpful to see this if starts to occur again. We may want to\n
+                                        treat this as a disconnect.&quot;</span>
+                                    );
                                 }
                             }
                             <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                                <span class="macro">println!</span>(<span class="string">&quot;Error reading from peer socket {}&quot;</span>, <span class="ident">error</span>);
+                                <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;Error reading from peer socket {}&quot;</span>, <span class="ident">error</span>);
                                 <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
                                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                                 <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
@@ -806,22 +930,22 @@
                         }
                     }
                 });
-                {
-                    <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-                    <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
-                    <span class="ident">SaitoPeer::send_command</span>(<span class="ident">peer</span>, <span class="kw-2">&amp;</span><span class="ident">String::from</span>(<span class="string">&quot;SHAKINIT&quot;</span>), <span class="ident">message_data</span>).<span class="kw">await</span>;
-                }
+                <span class="ident">Network::handshake_and_synchronize_chain</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>, <span class="ident">wallet_lock</span>).<span class="kw">await</span>;
             }
             <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;Error connecting to peer {}&quot;</span>, <span class="ident">error</span>);
+                <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;Error connecting to peer {}&quot;</span>, <span class="ident">error</span>);
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                 <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
                 <span class="ident">peer</span>.<span class="ident">set_is_connected_or_connecting</span>(<span class="bool-val">false</span>).<span class="kw">await</span>;
             }
         }
     }
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">connect_to_configured_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    <span class="doccomment">/// Load peers from the settings file into the peers db and initialized them appropriately.</span>
+    <span class="doccomment">/// They will be disconnected and have not completed handshake and will be set as &quot;from peer list&quot;.</span>
+    <span class="doccomment">/// Peers which are &quot;from peer list&quot; will have their connection maintained(reconnected) in case</span>
+    <span class="doccomment">/// there is a problem. The &quot;reconnect loop&quot;(spawn_reconnect_to_configured_peers_task) will</span>
+    <span class="doccomment">/// automatically connect to these peers if we simply set them to disconnected here.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">initialize_configured_peers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">let</span> <span class="ident">peer_settings</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>
             .<span class="ident">config_settings</span>
             .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PeerSetting</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="string">&quot;network.peers&quot;</span>)
@@ -831,8 +955,6 @@
         };
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">peer_settings</span>) <span class="op">=</span> <span class="ident">peer_settings</span> {
-            <span class="comment">// TODO replace let peer with for peer</span>
-            <span class="comment">// This was a problem because of peer_db_lock move in each loop...</span>
             <span class="kw">for</span> <span class="ident">peer_setting</span> <span class="kw">in</span> <span class="ident">peer_settings</span> {
                 <span class="kw">let</span> <span class="ident">connection_id</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::new_v4</span>().<span class="ident">as_bytes</span>().<span class="ident">to_vec</span>());
 
@@ -857,139 +979,72 @@
             }
         }
     }
-}
-
-<span class="comment">//</span>
-<span class="comment">// Starts up the Server and Other Threads</span>
-<span class="comment">//</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
-    <span class="ident">network_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Network</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
-    <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">host</span>: [<span class="ident">u8</span>; <span class="number">4</span>];
-    <span class="kw">let</span> <span class="ident">port</span>: <span class="ident">u16</span>;
-
-    <span class="comment">//</span>
-    <span class="comment">// get network settings from  configuation file</span>
-    <span class="comment">//</span>
-    {
-        <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">network_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-        <span class="ident">host</span> <span class="op">=</span> <span class="ident">network</span>
-            .<span class="ident">config_settings</span>
-            .<span class="ident">get</span>::<span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span>(<span class="string">&quot;network.host&quot;</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="ident">port</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">config_settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>(<span class="string">&quot;network.port&quot;</span>).<span class="ident">unwrap</span>();
+    <span class="doccomment">/// Launch a task which will monitor peers and make sure they stay connected. If a peer in our</span>
+    <span class="doccomment">/// configured &quot;peers list&quot; becomes disconnected, this task will reconnect to the peer and</span>
+    <span class="doccomment">/// redo the handshake and blockchain synchronization. For convenience, this task is also</span>
+    <span class="doccomment">/// used to make initial connections with peers(not only to reconnect).</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">spawn_reconnect_to_configured_peers_task</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">_foo</span> <span class="op">=</span> <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
+            <span class="kw">loop</span> {
+                <span class="kw">let</span> <span class="ident">peer_states</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">SaitoHash</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>;
+                {
+                    <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
+                    <span class="kw">let</span> <span class="ident">peers_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+                    <span class="ident">peer_states</span> <span class="op">=</span> <span class="ident">peers_db</span>
+                        .<span class="ident">keys</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">connection_id</span><span class="op">|</span> {
+                            <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peers_db</span>.<span class="ident">get</span>(<span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
+                            <span class="kw">let</span> <span class="ident">should_try_reconnect</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">get_is_from_peer_list</span>()
+                                <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">get_is_connected_or_connecting</span>();
+                            (<span class="kw-2">*</span><span class="ident">connection_id</span>, <span class="ident">should_try_reconnect</span>)
+                        })
+                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">SaitoHash</span>, <span class="ident">bool</span>)<span class="op">&gt;</span><span class="op">&gt;</span>();
+                }
+                <span class="kw">for</span> (<span class="ident">connection_id</span>, <span class="ident">should_try_reconnect</span>) <span class="kw">in</span> <span class="ident">peer_states</span> {
+                    <span class="kw">if</span> <span class="ident">should_try_reconnect</span> {
+                        <span class="macro">event!</span>(
+                            <span class="ident">Level::INFO</span>,
+                            <span class="string">&quot;found disconnected peer in peer settings, (re)connecting...&quot;</span>
+                        );
+                        <span class="ident">Network::connect_to_peer</span>(<span class="ident">connection_id</span>, <span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+                    }
+                }
+                <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">1000</span>)).<span class="kw">await</span>;
+            }
+        })
+        .<span class="kw">await</span>
+        .<span class="ident">expect</span>(<span class="string">&quot;error: spawn_reconnect_to_configured_peers_task failed&quot;</span>);
+        <span class="prelude-val">Ok</span>(())
     }
+    <span class="doccomment">/// Runs warp::serve to listen for incoming connections</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run_server</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">host</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> <span class="self">self</span>.<span class="ident">config_settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span>(<span class="string">&quot;network.host&quot;</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">port</span>: <span class="ident">u16</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">config_settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span>(<span class="string">&quot;network.port&quot;</span>).<span class="ident">unwrap</span>();
 
-    <span class="comment">//</span>
-    <span class="comment">// set global broadcast channel and connect to peers</span>
-    <span class="comment">//</span>
-    {
-        <span class="comment">//</span>
-        <span class="comment">// set global broadcast channel and connect to peers</span>
-        <span class="comment">//</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">network_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-        <span class="ident">network</span>.<span class="ident">set_broadcast_channel_sender</span>(<span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>());
-        <span class="ident">network</span>.<span class="ident">connect_to_configured_peers</span>().<span class="kw">await</span>;
-    }
-
-    <span class="comment">//</span>
-    <span class="comment">// initialize routes for server</span>
-    <span class="comment">//</span>
-    <span class="kw">let</span> <span class="ident">routes</span> <span class="op">=</span> <span class="ident">get_block_route_filter</span>()
-        .<span class="ident">or</span>(<span class="ident">post_transaction_route_filter</span>(
-            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-        ))
-        .<span class="ident">or</span>(<span class="ident">ws_upgrade_route_filter</span>(
-            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-        ));
-
-    <span class="comment">//</span>
-    <span class="comment">// create local broadcast channel</span>
-    <span class="comment">//</span>
-    <span class="kw">let</span> (<span class="ident">network_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">network_channel_receiver</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
-
-    <span class="comment">//</span>
-    <span class="comment">// local channel sending thread</span>
-    <span class="comment">//</span>
-    <span class="kw">let</span> <span class="ident">network_channel_sender_clone</span> <span class="op">=</span> <span class="ident">network_channel_sender</span>.<span class="ident">clone</span>();
-    <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-        <span class="kw">loop</span> {
-            <span class="ident">network_channel_sender_clone</span>
-                .<span class="ident">send</span>(<span class="ident">NetworkMessage::LocalNetworkMonitoring</span>)
-                .<span class="kw">await</span>
-                .<span class="ident">expect</span>(<span class="string">&quot;error: LocalNetworkMonitor message failed to send&quot;</span>);
-            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">10000</span>)).<span class="kw">await</span>;
-        }
-    });
-
-    <span class="comment">//</span>
-    <span class="comment">// start the server (separate thread)</span>
-    <span class="comment">//</span>
-    <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
+        <span class="kw">let</span> <span class="ident">routes</span> <span class="op">=</span> <span class="ident">get_block_route_filter</span>()
+            .<span class="ident">or</span>(<span class="ident">post_transaction_route_filter</span>(
+                <span class="self">self</span>.<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+                <span class="self">self</span>.<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            ))
+            .<span class="ident">or</span>(<span class="ident">ws_upgrade_route_filter</span>(
+                <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+                <span class="self">self</span>.<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+                <span class="self">self</span>.<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            ));
+        <span class="macro">println!</span>(<span class="string">&quot;warp serve&quot;</span>);
         <span class="ident">warp::serve</span>(<span class="ident">routes</span>).<span class="ident">run</span>((<span class="ident">host</span>, <span class="ident">port</span>)).<span class="kw">await</span>;
-    });
-
-    <span class="comment">//</span>
-    <span class="comment">// global and local channel receivers</span>
-    <span class="comment">//</span>
-    <span class="kw">loop</span> {
-        <span class="macro">tokio::select!</span> {
-
-            <span class="comment">//</span>
-            <span class="comment">// local broadcast channel receivers</span>
-            <span class="comment">//</span>
-            <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">network_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">match</span> <span class="ident">message</span> {
-                    <span class="comment">//</span>
-                    <span class="comment">// reconnect to dropped peers</span>
-                    <span class="comment">//</span>
-                    <span class="ident">NetworkMessage::LocalNetworkMonitoring</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">reconnect_to_dropped_peers</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
-                    },
-                }
-            }
-
-            <span class="comment">//</span>
-            <span class="comment">// global broadcast channel receivers</span>
-            <span class="comment">//</span>
-            <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">match</span> <span class="ident">message</span> {
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
-                }
-            }
-        }
+        <span class="prelude-val">Ok</span>(())
     }
-}
-
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">reconnect_to_dropped_peers</span>(<span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
-    <span class="kw">let</span> <span class="ident">peer_states</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">SaitoHash</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>;
-    {
-        <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">peers_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-        <span class="ident">peer_states</span> <span class="op">=</span> <span class="ident">peers_db</span>
-            .<span class="ident">keys</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">connection_id</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peers_db</span>.<span class="ident">get</span>(<span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
-                <span class="kw">let</span> <span class="ident">should_try_reconnect</span> <span class="op">=</span>
-                    <span class="ident">peer</span>.<span class="ident">get_is_from_peer_list</span>() <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">peer</span>.<span class="ident">get_is_connected_or_connecting</span>();
-                (<span class="kw-2">*</span><span class="ident">connection_id</span>, <span class="ident">should_try_reconnect</span>)
-            })
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">SaitoHash</span>, <span class="ident">bool</span>)<span class="op">&gt;</span><span class="op">&gt;</span>();
-    }
-
-    <span class="kw">for</span> (<span class="ident">connection_id</span>, <span class="ident">should_try_reconnect</span>) <span class="kw">in</span> <span class="ident">peer_states</span> {
-        <span class="kw">if</span> <span class="ident">should_try_reconnect</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;found disconnected peer in peer settings, connecting...&quot;</span>);
-            <span class="ident">Network::connect_to_peer</span>(<span class="ident">connection_id</span>, <span class="ident">wallet_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
-        }
+    <span class="doccomment">/// connects to any peers configured in our peers list. Opens a socket, does handshake, sychronizes, etc.</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run_client</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">initialize_configured_peers</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">_foo</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">spawn_reconnect_to_configured_peers_task</span>(<span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())
+            .<span class="kw">await</span>;
+        <span class="prelude-val">Ok</span>(())
     }
 }
 
@@ -1157,189 +1212,180 @@
         <span class="comment">// assert_eq!(mempool.transactions.len(), 1);</span>
     }
 
-    <span class="comment">// fn parse_response(message: Message) -&gt; (String, u32, Vec&lt;u8&gt;) {</span>
-    <span class="comment">//     let api_message = APIMessage::deserialize(message);</span>
-    <span class="comment">//     let command = String::from_utf8_lossy(&amp;api_message.message_name).to_string();</span>
-    <span class="comment">//     (command, api_message.message_id, api_message.message_data)</span>
+    <span class="comment">// #[tokio::test]</span>
+    <span class="comment">// async fn test_send_block_header() {</span>
+    <span class="comment">//     let mut settings = config::Config::default();</span>
+    <span class="comment">//     settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();</span>
+
+    <span class="comment">//     let wallet_lock = Arc::new(RwLock::new(Wallet::new()));</span>
+    <span class="comment">//     {</span>
+    <span class="comment">//         let mut wallet = wallet_lock.write().await;</span>
+    <span class="comment">//         wallet.load_keys(&quot;test/testwallet&quot;, Some(&quot;asdf&quot;));</span>
+    <span class="comment">//     }</span>
+    <span class="comment">//     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));</span>
+    <span class="comment">//     let (blockchain_lock, block_hashes) =</span>
+    <span class="comment">//         make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;</span>
+
+    <span class="comment">//     let socket_filter = ws_upgrade_route_filter(</span>
+    <span class="comment">//         wallet_lock.clone(),</span>
+    <span class="comment">//         mempool_lock.clone(),</span>
+    <span class="comment">//         blockchain_lock.clone(),</span>
+    <span class="comment">//     );</span>
+    <span class="comment">//     let mut ws_client = warp::test::ws()</span>
+    <span class="comment">//         .path(&quot;/wsopen&quot;)</span>
+    <span class="comment">//         .handshake(socket_filter)</span>
+    <span class="comment">//         .await</span>
+    <span class="comment">//         .expect(&quot;transaction websocket&quot;);</span>
+
+    <span class="comment">//     let mut message_bytes: Vec&lt;u8&gt; = vec![];</span>
+    <span class="comment">//     message_bytes.extend_from_slice(&amp;block_hashes[0]);</span>
+    <span class="comment">//     message_bytes.extend_from_slice(&amp;[0u8; 32]);</span>
+
+    <span class="comment">//     let api_message = APIMessage::new(&quot;REQBLKHD&quot;, 0, message_bytes);</span>
+    <span class="comment">//     let serialized_api_message = api_message.serialize();</span>
+
+    <span class="comment">//     let _socket_resp = ws_client</span>
+    <span class="comment">//         .send(Message::binary(serialized_api_message))</span>
+    <span class="comment">//         .await;</span>
+    <span class="comment">//     let resp = ws_client.recv().await.unwrap();</span>
+
+    <span class="comment">//     let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());</span>
+
+    <span class="comment">//     assert_eq!(api_message.get_message_name_as_string(), &quot;RESULT__&quot;);</span>
+    <span class="comment">//     assert_eq!(api_message.message_id, 0);</span>
+    <span class="comment">//     assert_eq!(</span>
+    <span class="comment">//         String::from_utf8_lossy(&amp;api_message.message_data).to_string(),</span>
+    <span class="comment">//         String::from(&quot;OK&quot;)</span>
+    <span class="comment">//     );</span>
     <span class="comment">// }</span>
 
-    <span class="comment">/****
-        #[tokio::test]
-        async fn test_send_block_header() {
-            let mut settings = config::Config::default();
-            settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();
+    <span class="comment">// #[tokio::test]</span>
+    <span class="comment">// async fn test_send_blockchain() {</span>
+    <span class="comment">//     let mut settings = config::Config::default();</span>
+    <span class="comment">//     settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();</span>
 
-            let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-            {
-                let mut wallet = wallet_lock.write().await;
-                wallet.load_keys(&quot;test/testwallet&quot;, Some(&quot;asdf&quot;));
-            }
-            let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-            let (blockchain_lock, block_hashes) =
-                make_mock_blockchain(wallet_lock.clone(), 4 as u64).await;
+    <span class="comment">//     let wallet_lock = Arc::new(RwLock::new(Wallet::new()));</span>
+    <span class="comment">//     {</span>
+    <span class="comment">//         let mut wallet = wallet_lock.write().await;</span>
+    <span class="comment">//         wallet.load_keys(&quot;test/testwallet&quot;, Some(&quot;asdf&quot;));</span>
+    <span class="comment">//     }</span>
+    <span class="comment">//     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));</span>
+    <span class="comment">//     let (blockchain_lock, _block_hashes) =</span>
+    <span class="comment">//         make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;</span>
 
-            let socket_filter = ws_upgrade_route_filter(
-                wallet_lock.clone(),
-                mempool_lock.clone(),
-                blockchain_lock.clone(),
-            );
-            let mut ws_client = warp::test::ws()
-                .path(&quot;/wsopen&quot;)
-                .handshake(socket_filter)
-                .await
-                .expect(&quot;transaction websocket&quot;);
+    <span class="comment">//     let mut settings = config::Config::default();</span>
+    <span class="comment">//     settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();</span>
 
-            let mut message_bytes: Vec&lt;u8&gt; = vec![];
-            message_bytes.extend_from_slice(&amp;block_hashes[0]);
-            message_bytes.extend_from_slice(&amp;[0u8; 32]);
+    <span class="comment">//     let socket_filter = ws_upgrade_route_filter(</span>
+    <span class="comment">//         wallet_lock.clone(),</span>
+    <span class="comment">//         mempool_lock.clone(),</span>
+    <span class="comment">//         blockchain_lock.clone(),</span>
+    <span class="comment">//     );</span>
+    <span class="comment">//     let mut ws_client = warp::test::ws()</span>
+    <span class="comment">//         .path(&quot;/wsopen&quot;)</span>
+    <span class="comment">//         .handshake(socket_filter)</span>
+    <span class="comment">//         .await</span>
+    <span class="comment">//         .expect(&quot;transaction websocket&quot;);</span>
 
-            let api_message = APIMessage::new(&quot;REQBLKHD&quot;, 0, message_bytes);
-            let serialized_api_message = api_message.serialize();
+    <span class="comment">//     //</span>
+    <span class="comment">//     // first confirm the whole blockchain is received when sent zeroed block hash</span>
+    <span class="comment">//     //</span>
+    <span class="comment">//     let request_blockchain_message = RequestBlockchainMessage::new(0, [0; 32], [42; 32]);</span>
 
-            let _socket_resp = ws_client
-                .send(Message::binary(serialized_api_message))
-                .await;
-            let resp = ws_client.recv().await.unwrap();
+    <span class="comment">//     let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, request_blockchain_message.serialize());</span>
+    <span class="comment">//     let serialized_api_message = api_message.serialize();</span>
 
-            let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
+    <span class="comment">//     let _socket_resp = ws_client</span>
+    <span class="comment">//         .send(Message::binary(serialized_api_message))</span>
+    <span class="comment">//         .await;</span>
+    <span class="comment">//     let _resp = ws_client.recv().await.unwrap();</span>
+    <span class="comment">//     // let command = String::from_utf8_lossy(&amp;resp.as_bytes()[0..8]);</span>
+    <span class="comment">//     // let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());</span>
+    <span class="comment">//     // let msg = resp.as_bytes()[12..].to_vec();</span>
 
-            assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);
-            assert_eq!(api_message.message_id, 0);
-            assert_eq!(
-                String::from_utf8_lossy(&amp;api_message.message_data).to_string(),
-                String::from(&quot;OK&quot;)
-            );
-        }
-    ****/</span>
-    <span class="comment">/****
-        #[tokio::test]
-        async fn test_send_blockchain() {
-            let mut settings = config::Config::default();
-            settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();
+    <span class="comment">//     // assert_eq!(command, &quot;RESULT__&quot;);</span>
+    <span class="comment">//     // assert_eq!(index, 0);</span>
+    <span class="comment">//     // assert_eq!(String::from_utf8_lossy(&amp;api_message.message_data).to_string(), String::from(&quot;OK&quot;));</span>
 
-            let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-            {
-                let mut wallet = wallet_lock.write().await;
-                wallet.load_keys(&quot;test/testwallet&quot;, Some(&quot;asdf&quot;));
-            }
-            let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-            let (blockchain_lock, _block_hashes) =
-                make_mock_blockchain(wallet_lock.clone(), 1 as u64).await;
+    <span class="comment">//     // // then confirm that the program only receives three hashes</span>
+    <span class="comment">//     // message_bytes = vec![];</span>
+    <span class="comment">//     // message_bytes.extend_from_slice(&amp;block_hashes[0]);</span>
+    <span class="comment">//     // message_bytes.extend_from_slice(&amp;[0u8; 32]);</span>
 
-            let mut settings = config::Config::default();
-            settings.merge(config::File::with_name(&quot;config&quot;)).unwrap();
+    <span class="comment">//     // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);</span>
+    <span class="comment">//     // let serialized_api_message = api_message.serialize();</span>
 
-            let socket_filter = ws_upgrade_route_filter(
-                wallet_lock.clone(),
-                mempool_lock.clone(),
-                blockchain_lock.clone(),
-            );
-            let mut ws_client = warp::test::ws()
-                .path(&quot;/wsopen&quot;)
-                .handshake(socket_filter)
-                .await
-                .expect(&quot;transaction websocket&quot;);
+    <span class="comment">//     // let _socket_resp = ws_client</span>
+    <span class="comment">//     //     .send(Message::binary(serialized_api_message))</span>
+    <span class="comment">//     //     .await;</span>
+    <span class="comment">//     // let resp = ws_client.recv().await.unwrap();</span>
 
-            //
-            // first confirm the whole blockchain is received when sent zeroed block hash
-            //
-            let request_blockchain_message = RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
+    <span class="comment">//     // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());</span>
 
-            let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, request_blockchain_message.serialize());
-            let serialized_api_message = api_message.serialize();
+    <span class="comment">//     // assert_eq!(api_message.message_name_as_stringing(), &quot;RESULT__&quot;);</span>
+    <span class="comment">//     // assert_eq!(api_message.message_id, 0);</span>
 
-            let _socket_resp = ws_client
-                .send(Message::binary(serialized_api_message))
-                .await;
-            let _resp = ws_client.recv().await.unwrap();
-            // let command = String::from_utf8_lossy(&amp;resp.as_bytes()[0..8]);
-            // let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());
-            // let msg = resp.as_bytes()[12..].to_vec();
+    <span class="comment">//     // TODO this is length 0 on my machine...</span>
+    <span class="comment">//     // assert_eq!(api_message.message_data.len(), 96);</span>
 
-            // assert_eq!(command, &quot;RESULT__&quot;);
-            // assert_eq!(index, 0);
-            // assert_eq!(String::from_utf8_lossy(&amp;api_message.message_data).to_string(), String::from(&quot;OK&quot;));
+    <span class="comment">//     // TODO repair this test:</span>
+    <span class="comment">//     // next block should have only 2 hashes</span>
+    <span class="comment">//     // message_bytes = vec![];</span>
+    <span class="comment">//     // message_bytes.extend_from_slice(&amp;block_hashes[1]);</span>
+    <span class="comment">//     // message_bytes.extend_from_slice(&amp;[0u8; 32]);</span>
 
-            // // then confirm that the program only receives three hashes
-            // message_bytes = vec![];
-            // message_bytes.extend_from_slice(&amp;block_hashes[0]);
-            // message_bytes.extend_from_slice(&amp;[0u8; 32]);
+    <span class="comment">//     // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);</span>
+    <span class="comment">//     // let serialized_api_message = api_message.serialize();</span>
 
-            // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);
-            // let serialized_api_message = api_message.serialize();
+    <span class="comment">//     // let _socket_resp = ws_client</span>
+    <span class="comment">//     //     .send(Message::binary(serialized_api_message))</span>
+    <span class="comment">//     //     .await;</span>
+    <span class="comment">//     // let resp = ws_client.recv().await.unwrap();</span>
 
-            // let _socket_resp = ws_client
-            //     .send(Message::binary(serialized_api_message))
-            //     .await;
-            // let resp = ws_client.recv().await.unwrap();
+    <span class="comment">//     // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());</span>
 
-            // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
+    <span class="comment">//     // assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);</span>
+    <span class="comment">//     // assert_eq!(api_message.message_id, 0);</span>
+    <span class="comment">//     // assert_eq!(api_message.message_data.len(), 64);</span>
 
-            // assert_eq!(api_message.message_name_as_stringing(), &quot;RESULT__&quot;);
-            // assert_eq!(api_message.message_id, 0);
+    <span class="comment">//     // // next block should have only 2 hashes</span>
+    <span class="comment">//     // message_bytes = vec![];</span>
+    <span class="comment">//     // message_bytes.extend_from_slice(&amp;block_hashes[2]);</span>
+    <span class="comment">//     // message_bytes.extend_from_slice(&amp;[0u8; 32]);</span>
 
-            // TODO this is length 0 on my machine...
-            // assert_eq!(api_message.message_data.len(), 96);
+    <span class="comment">//     // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);</span>
+    <span class="comment">//     // let serialized_api_message = api_message.serialize();</span>
 
-            // TODO repair this test:
-            // next block should have only 2 hashes
-            // message_bytes = vec![];
-            // message_bytes.extend_from_slice(&amp;block_hashes[1]);
-            // message_bytes.extend_from_slice(&amp;[0u8; 32]);
+    <span class="comment">//     // let _socket_resp = ws_client</span>
+    <span class="comment">//     //     .send(Message::binary(serialized_api_message))</span>
+    <span class="comment">//     //     .await;</span>
+    <span class="comment">//     // let resp = ws_client.recv().await.unwrap();</span>
 
-            // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);
-            // let serialized_api_message = api_message.serialize();
+    <span class="comment">//     // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());</span>
 
-            // let _socket_resp = ws_client
-            //     .send(Message::binary(serialized_api_message))
-            //     .await;
-            // let resp = ws_client.recv().await.unwrap();
+    <span class="comment">//     // assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);</span>
+    <span class="comment">//     // assert_eq!(api_message.message_id, 0);</span>
+    <span class="comment">//     // assert_eq!(api_message.message_data.len(), 32);</span>
 
-            // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
+    <span class="comment">//     // // sending the latest block hash should return with nothing</span>
+    <span class="comment">//     // message_bytes = vec![];</span>
+    <span class="comment">//     // message_bytes.extend_from_slice(&amp;block_hashes[3]);</span>
+    <span class="comment">//     // message_bytes.extend_from_slice(&amp;[0u8; 32]);</span>
 
-            // assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);
-            // assert_eq!(api_message.message_id, 0);
-            // assert_eq!(api_message.message_data.len(), 64);
+    <span class="comment">//     // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);</span>
+    <span class="comment">//     // let serialized_api_message = api_message.serialize();</span>
 
-            // // next block should have only 2 hashes
-            // message_bytes = vec![];
-            // message_bytes.extend_from_slice(&amp;block_hashes[2]);
-            // message_bytes.extend_from_slice(&amp;[0u8; 32]);
+    <span class="comment">//     // let _socket_resp = ws_client</span>
+    <span class="comment">//     //     .send(Message::binary(serialized_api_message))</span>
+    <span class="comment">//     //     .await;</span>
+    <span class="comment">//     // let resp = ws_client.recv().await.unwrap();</span>
 
-            // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);
-            // let serialized_api_message = api_message.serialize();
+    <span class="comment">//     // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());</span>
 
-            // let _socket_resp = ws_client
-            //     .send(Message::binary(serialized_api_message))
-            //     .await;
-            // let resp = ws_client.recv().await.unwrap();
-
-            // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
-
-            // assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);
-            // assert_eq!(api_message.message_id, 0);
-            // assert_eq!(api_message.message_data.len(), 32);
-
-            // // sending the latest block hash should return with nothing
-            // message_bytes = vec![];
-            // message_bytes.extend_from_slice(&amp;block_hashes[3]);
-            // message_bytes.extend_from_slice(&amp;[0u8; 32]);
-
-            // let api_message = APIMessage::new(&quot;REQCHAIN&quot;, 0, message_bytes);
-            // let serialized_api_message = api_message.serialize();
-
-            // let _socket_resp = ws_client
-            //     .send(Message::binary(serialized_api_message))
-            //     .await;
-            // let resp = ws_client.recv().await.unwrap();
-
-            // let api_message = APIMessage::deserialize(&amp;resp.as_bytes().to_vec());
-
-            // assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);
-            // assert_eq!(api_message.message_id, 0);
-            // assert_eq!(api_message.message_data.len(), 0);
-        }
-    ****/</span>
+    <span class="comment">//     // assert_eq!(api_message.message_name_as_string(), &quot;RESULT__&quot;);</span>
+    <span class="comment">//     // assert_eq!(api_message.message_id, 0);</span>
+    <span class="comment">//     // assert_eq!(api_message.message_data.len(), 0);</span>
+    <span class="comment">// }</span>
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="saito_rust" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["APIMessage",""]]});
+initSidebarItems({"struct":[["APIMessage","The core data type for transporting data across the Saito Network. See the Network module doc for more details."]]});

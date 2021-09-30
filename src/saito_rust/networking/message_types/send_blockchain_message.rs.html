@@ -164,20 +164,15 @@
 <span id="164">164</span>
 <span id="165">165</span>
 <span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="ident">macros::TryFromByte</span>;
 <span class="kw">use</span> <span class="ident">std::convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>};
-<span class="doccomment">/// SENDS:</span>
-<span class="doccomment">/// Blocktype/synctype</span>
-<span class="doccomment">/// Starting_hash</span>
-<span class="doccomment">/// array of block data with each entry containing:</span>
-<span class="doccomment">/// block_id: the id of the block</span>
-<span class="doccomment">/// timestamp: the timestamp of the block</span>
+
+<span class="doccomment">/// Data Object for SNDCHAIN. Is used as a payload in an APIMessage message field.</span>
+<span class="doccomment">/// `block_id`</span>
+<span class="doccomment">/// `block_hash`</span>
+<span class="doccomment">/// `timestamp`</span>
 <span class="doccomment">/// (future work) pre_hash: the hash which is hashed with the previous block_hash to generate the hash of the current block.</span>
 <span class="doccomment">/// (future work) number of transactions: the number of transactions in the block for the recipient</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">BLOCKCHAIN_BLOCK_DATA_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">84</span>;
@@ -281,9 +276,6 @@
         }
         <span class="ident">vbytes</span>
     }
-    <span class="comment">// pub fn latest_block_id(&amp;self) -&gt; u64 {</span>
-    <span class="comment">//     self.latest_block_id</span>
-    <span class="comment">// }</span>
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>

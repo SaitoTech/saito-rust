@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["CHALLENGE_EXPIRATION_TIME",""],["CHALLENGE_SIZE",""]],"enum":[["NetworkMessage",""]],"fn":[["reconnect_to_dropped_peers",""],["run",""]],"struct":[["Network",""]],"type":[["Result",""]]});
+initSidebarItems({"constant":[["CHALLENGE_EXPIRATION_TIME",""],["CHALLENGE_SIZE",""]],"enum":[["NetworkMessage","Configuration for Network listener, port etc."]],"fn":[["run",""]],"struct":[["Network",""]],"type":[["Result",""]]});

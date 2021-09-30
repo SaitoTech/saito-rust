@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["get_block_handler",""],["post_transaction_handler",""],["ws_upgrade_handler",""]]});
+initSidebarItems({"fn":[["get_block_handler","get block handler. TODO remove this? I believe we want ot use the socket for everything…"],["post_transaction_handler","POST tx filter. TODO remove this? I believe we want ot use the socket for everything…"],["ws_upgrade_handler","websocket upgrade handler. accepts an http connection and upgrades it to WebSocket. https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Upgrade Thanks, Ryan Dahl!!"]]});
