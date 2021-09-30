@@ -207,8 +207,46 @@ impl Staking {
         self.deposits.push(slip);
     }
 
-    pub fn add_staker(&mut self, slip: Slip) {
-        self.stakers.push(slip);
+    //
+    // slips are added in ascending order based on publickey and then 
+    // UUID. this is simply to ensure that chain reorgs do not cause
+    // disagreements about which staker is selected.
+    //
+    pub fn add_staker(&mut self, slip: Slip) -> bool {
+
+	self.stakers.push(slip);
+	return true;
+/*****
+
+	//
+	// TODO skip-hop algorithm instead of brute force
+	//
+        if self.stakers.len() == 0 {
+	    self.stakers.push(slip);
+	    return true;
+	} else {
+
+	    for i in 0..self.stakers.len() {
+
+	        let how_compares = slip.compare(self.stakers[i].clone());
+
+println!("How does this compare! {}", how_compares);
+println!("{:?} -- {:?}", self.stakers[i].get_uuid(), slip.get_uuid());
+
+
+	        // insert at position i
+	        if how_compares == 2 {
+		    self.stakers.insert(i, slip);
+		    return true;
+	        }
+	        if how_compares == 3 {
+		    return false;
+	        }
+	    }
+
+	}
+	return false;
+****/
     }
 
     pub fn add_pending(&mut self, slip: Slip) {
@@ -544,6 +582,64 @@ mod tests {
     };
     use std::sync::Arc;
     use tokio::sync::RwLock;
+
+    //
+    // does adding staking slips in different orders give us the same 
+    // results?
+    //
+    #[test]
+    fn staking_add_staker_slips_in_different_order_and_check_sorting_works() {
+
+        let mut staking1 = Staking::new();
+        let mut staking2 = Staking::new();
+
+        let mut slip1 = Slip::new();
+        slip1.set_amount(1);
+        slip1.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip2 = Slip::new();
+        slip2.set_amount(2);
+        slip2.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip3 = Slip::new();
+        slip3.set_amount(3);
+        slip3.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip4 = Slip::new();
+        slip4.set_amount(4);
+        slip4.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip5 = Slip::new();
+        slip5.set_amount(5);
+        slip5.set_slip_type(SlipType::StakerDeposit);
+
+        staking1.add_staker(slip1.clone());
+	assert_eq!(staking1.stakers.len(), 1);
+        staking1.add_staker(slip2.clone());
+	assert_eq!(staking1.stakers.len(), 2);
+        staking1.add_staker(slip3.clone());
+	assert_eq!(staking1.stakers.len(), 3);
+        staking1.add_staker(slip4.clone());
+	assert_eq!(staking1.stakers.len(), 4);
+        staking1.add_staker(slip5.clone());
+	assert_eq!(staking1.stakers.len(), 5);
+
+        staking2.add_staker(slip2.clone());
+        staking2.add_staker(slip4.clone());
+        staking2.add_staker(slip1.clone());
+        staking2.add_staker(slip5.clone());
+        staking2.add_staker(slip3.clone());
+        staking2.add_staker(slip2.clone());
+        staking2.add_staker(slip1.clone());
+
+	assert_eq!(staking1.stakers.len(), 5);
+	assert_eq!(staking2.stakers.len(), 5);
+
+	for i in 0..staking2.stakers.len() {
+	   assert_eq!(staking1.stakers[i].clone(), staking2.stakers[i].clone());
+	   assert_eq!(staking1.stakers[i].compare(staking2.stakers[i].clone()), 0);
+        } 
+    }
 
     //
     // do staking deposits work properly and create proper payouts?
