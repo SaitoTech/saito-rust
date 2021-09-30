@@ -60,10 +60,10 @@ impl Wallet {
 
         let decrypted_buffer: Vec<u8>;
         if !path.exists() {
-            println!("Creating key file {}", key_path);
+            println!("Creating key file at path: {}", key_path);
             decrypted_buffer = Wallet::create_key_file(&key_path, &password);
         } else {
-            println!("Reading key file {}", key_path);
+            println!("Reading key file from path: {}", key_path);
             decrypted_buffer = Wallet::read_key_file(&key_path, &password);
         }
 

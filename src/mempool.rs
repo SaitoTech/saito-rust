@@ -19,6 +19,18 @@ use tracing::{event, Level};
 // attempts to bundle blocks and notify itself when a block has
 // been produced.
 //
+#[derive(Clone, PartialEq)]
+pub enum AddBlockResult {
+    Accepted,
+    Exists,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum AddTransactionResult {
+    Accepted,
+    Rejected,
+    Invalid,
+    Exists,
+}
 #[derive(Clone, Debug)]
 pub enum MempoolMessage {
     LocalTryBundleBlock,
@@ -69,7 +81,19 @@ impl Mempool {
             self.blocks_queue.push_back(block);
         }
     }
-
+    pub fn add_block_to_queue(&mut self, block: Block) -> AddBlockResult {
+        let hash_to_insert = block.get_hash();
+        if self
+            .blocks_queue
+            .iter()
+            .any(|block| block.get_hash() == hash_to_insert)
+        {
+            AddBlockResult::Exists
+        } else {
+            self.blocks_queue.push_back(block);
+            AddBlockResult::Accepted
+        }
+    }
     pub async fn add_golden_ticket(&mut self, golden_ticket: GoldenTicket) {
         let mut wallet = self.wallet_lock.write().await;
         let transaction = wallet.create_golden_ticket_transaction(golden_ticket).await;
@@ -216,6 +240,38 @@ impl Mempool {
         work_needed
     }
 
+    ///
+    /// Check to see if the `Mempool` has enough work to bundle a block
+    ///
+    // pub async fn can_bundle_block(
+    //     &self,
+    //     blockchain_lock: Arc<RwLock<Blockchain>>,
+    //     current_timestamp: u64,
+    // ) -> bool {
+    //     if self.currently_processing_block {
+    //         return false;
+    //     }
+    //     if self.transactions.is_empty() {
+    //         return false;
+    //     }
+
+    //     let blockchain = blockchain_lock.read().await;
+
+    //     if let Some(previous_block) = blockchain.get_latest_block() {
+    //         let work_available = self.calculate_work_available();
+    //         let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
+    //         let time_elapsed = current_timestamp - previous_block.get_timestamp();
+    //         event!(
+    //             Level::INFO,
+    //             "can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
+    //             work_available,
+    //             work_needed,
+    //             time_elapsed
+    //         );
+    //         work_available >= work_needed
+    //     } else {
+    //         true
+    //     }
     pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
         self.broadcast_channel_sender = Some(bcs);
     }
@@ -249,10 +305,12 @@ pub async fn try_bundle_block(
     blockchain_lock: Arc<RwLock<Blockchain>>,
     current_timestamp: u64,
 ) -> Option<Block> {
-    // use boolean to avoid monopolizing write lock
+    event!(Level::INFO, "try_bundle_block");
+    // We use a boolean here so we can avoid taking the write lock most of the time
     let can_bundle;
     {
         let mempool = mempool_lock.read().await;
+        event!(Level::INFO, "got mempool_lock");
         can_bundle = mempool
             .can_bundle_block(blockchain_lock.clone(), current_timestamp)
             .await;
@@ -516,3 +574,4 @@ mod tests {
         }
     *******/
 }
+

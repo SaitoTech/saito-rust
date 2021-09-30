@@ -4,6 +4,8 @@ use crate::networking::network::CHALLENGE_SIZE;
 use crate::time::create_timestamp;
 use std::convert::TryInto;
 
+/// Data Object for passing handshake information. Is used as a
+/// payload in an APIMessage message field.
 #[derive(Debug, PartialEq)]
 pub struct HandshakeChallenge {
     pub challenger_node: HandshakeNode,
