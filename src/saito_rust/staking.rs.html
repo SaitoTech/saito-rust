@@ -1180,6 +1180,11 @@
 <span id="1180">1180</span>
 <span id="1181">1181</span>
 <span id="1182">1182</span>
+<span id="1183">1183</span>
+<span id="1184">1184</span>
+<span id="1185">1185</span>
+<span id="1186">1186</span>
+<span id="1187">1187</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TODO</span>
@@ -2226,11 +2231,10 @@
         <span class="comment">//</span>
         <span class="comment">// BLOCK 3 - payout</span>
         <span class="comment">//</span>
-	<span class="ident">test_manager</span>.<span class="ident">set_latest_block_hash</span>(<span class="ident">block2_hash</span>);
+        <span class="ident">test_manager</span>.<span class="ident">set_latest_block_hash</span>(<span class="ident">block2_hash</span>);
         <span class="ident">test_manager</span>
             .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">240000</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="bool-val">true</span>, <span class="macro">vec!</span>[])
             .<span class="kw">await</span>;
-
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 4</span>
@@ -2239,18 +2243,17 @@
             .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">360000</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="bool-val">false</span>, <span class="macro">vec!</span>[])
             .<span class="kw">await</span>;
 
-
         <span class="comment">//</span>
         <span class="comment">// BLOCK 5</span>
         <span class="comment">//</span>
         <span class="ident">test_manager</span>
             .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">480000</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="bool-val">true</span>, <span class="macro">vec!</span>[])
             .<span class="kw">await</span>;
-	<span class="kw">let</span> <span class="ident">block5_hash</span>;
-	{
-	    <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-	    <span class="ident">block5_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
-	}
+        <span class="kw">let</span> <span class="ident">block5_hash</span>;
+        {
+            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+            <span class="ident">block5_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
+        }
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 6 -- withdraw a staking deposit</span>
@@ -2274,15 +2277,22 @@
             <span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">600000</span>,
         )
         .<span class="kw">await</span>;
-	<span class="kw">let</span> <span class="ident">block6_hash</span> <span class="op">=</span> <span class="ident">block6</span>.<span class="ident">get_hash</span>();
-	<span class="kw">let</span> <span class="ident">block6_id</span> <span class="op">=</span> <span class="ident">block6</span>.<span class="ident">get_id</span>();
+        <span class="kw">let</span> <span class="ident">block6_hash</span> <span class="op">=</span> <span class="ident">block6</span>.<span class="ident">get_hash</span>();
+        <span class="kw">let</span> <span class="ident">block6_id</span> <span class="op">=</span> <span class="ident">block6</span>.<span class="ident">get_id</span>();
         <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block6</span>).<span class="kw">await</span>;
 
-	{
+        {
             <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-<span class="macro">println!</span>(<span class="string">&quot;LATESTID: {} / {}&quot;</span>, <span class="ident">block6_id</span>, <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>());
-	    <span class="macro">assert_eq!</span>(<span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>(), <span class="number">6</span>);
-	    <span class="macro">assert_eq!</span>(<span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">stakers</span>.<span class="ident">len</span>()<span class="op">+</span><span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">pending</span>.<span class="ident">len</span>(), <span class="number">1</span>);
+            <span class="macro">println!</span>(
+                <span class="string">&quot;LATESTID: {} / {}&quot;</span>,
+                <span class="ident">block6_id</span>,
+                <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>()
+            );
+            <span class="macro">assert_eq!</span>(<span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>(), <span class="number">6</span>);
+            <span class="macro">assert_eq!</span>(
+                <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">pending</span>.<span class="ident">len</span>(),
+                <span class="number">1</span>
+            );
         }
     }
 

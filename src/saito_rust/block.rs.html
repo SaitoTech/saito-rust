@@ -2162,8 +2162,6 @@
 <span id="2162">2162</span>
 <span id="2163">2163</span>
 <span id="2164">2164</span>
-<span id="2165">2165</span>
-<span id="2166">2166</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
@@ -3133,7 +3131,6 @@
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">staking_block</span>) <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">staking_block_hash</span>) {
                             <span class="ident">staking_block_hash</span> <span class="op">=</span> <span class="ident">staking_block</span>.<span class="ident">get_previous_block_hash</span>();
                             <span class="kw">if</span> <span class="op">!</span><span class="ident">did_the_block_before_our_staking_block_have_a_golden_ticket</span> {
-
                                 <span class="comment">//</span>
                                 <span class="comment">// update with this block info in case of next loop</span>
                                 <span class="comment">//</span>
@@ -3240,7 +3237,6 @@
                     <span class="ident">slip_ordinal</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
                 }
                 <span class="kw">if</span> <span class="ident">cv</span>.<span class="ident">block_payout</span>[<span class="ident">i</span>].<span class="ident">staker</span> <span class="op">!</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">33</span>] {
-
                     <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">cv</span>.<span class="ident">block_payout</span>[<span class="ident">i</span>].<span class="ident">staker_slip</span>.<span class="ident">clone</span>());
 
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
