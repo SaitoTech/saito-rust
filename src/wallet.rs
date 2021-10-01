@@ -125,35 +125,22 @@ impl Wallet {
 
     pub fn on_chain_reorganization(&mut self, block: &Block, lc: bool) {
         if lc {
-            println!("wallet on-chain-reorg");
-
             for tx in block.get_transactions() {
                 for input in tx.get_inputs() {
                     if input.get_amount() > 0 && input.get_publickey() == self.get_publickey() {
-                        println!("this type of tx: {:?}", input.get_slip_type());
                         if input.get_slip_type() == SlipType::StakerDeposit
                             || input.get_slip_type() == SlipType::StakerOutput
                             || input.get_slip_type() == SlipType::StakerWithdrawalStaking
                             || input.get_slip_type() == SlipType::StakerWithdrawalPending
                         {
-                            println!(
-                                "REMOVING STAKER INPUT FROM WALLET: {:?}",
-                                input.get_utxoset_key()
-                            );
                             self.delete_staked_slip(input);
                         } else {
-                            println!("REMOVING non-staking INPUT");
                             self.delete_slip(input);
                         }
                     }
                 }
                 for output in tx.get_outputs() {
                     if output.get_amount() > 0 && output.get_publickey() == self.get_publickey() {
-                        println!(
-                            "ADDING OUTPUT: {:?} / {}",
-                            output.get_utxoset_key(),
-                            output.get_amount()
-                        );
                         self.add_slip(block, tx, output, true);
                     }
                 }

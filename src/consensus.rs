@@ -146,8 +146,8 @@ impl Consensus {
             .merge(config::File::with_name(config_name))
             .unwrap();
 
-        let key_path = matches.value_of("key_path").unwrap();
-        let password = matches.value_of("password");
+        //let key_path = matches.value_of("key_path").unwrap();
+        //let password = matches.value_of("password");
 
         //
         // generate
@@ -168,7 +168,15 @@ impl Consensus {
         // load blocks from disk
         //
         Storage::load_blocks_from_disk(blockchain_lock.clone()).await;
-
+	{
+	    //
+	    // check block longest chain
+	    //
+	    let blockchain = blockchain_lock.read().await;
+println!("blockchain has: {}", blockchain.blocks.len());
+println!("now printing blockchain!");
+	    blockchain.print();
+	}
 
         //
         // instantiate core classes

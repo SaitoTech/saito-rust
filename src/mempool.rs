@@ -118,9 +118,6 @@ impl Mempool {
             self.transactions.push(transaction);
             self.routing_work_in_mempool += routing_work_available_for_me;
         }
-
-println!("added transaction to mempool... {}", self.transactions.len());
-
     }
 
     pub async fn bundle_block(

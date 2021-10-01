@@ -83,7 +83,7 @@ pub async fn run(
                 .send(NetworkMessage::LocalNetworkMonitoring)
                 .await
                 .expect("error: LocalNetworkMonitoring message failed to send");
-            sleep(Duration::from_millis(10000));
+            sleep(Duration::from_millis(10000)).await;
         }
     });
 
@@ -116,7 +116,7 @@ pub async fn run(
              // 
              Ok(message) = broadcast_channel_receiver.recv() => {
                  match message {
-                     SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
+                     SaitoMessage::MinerNewGoldenTicket { ticket : _golden_ticket } => {
                      },  
                      _ => {},
                  }

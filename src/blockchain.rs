@@ -79,7 +79,14 @@ impl Blockchain {
         self.fork_id
     }
 
-    pub async fn add_block(&mut self, block: Block) {
+    pub async fn add_block(&mut self, mut block: Block) {
+
+	//
+	// first things first, confirm hashes OK
+	//
+	block.generate_hashes();
+
+
         event!(Level::INFO, "add_block {}", &hex::encode(&block.get_hash()));
         event!(
             Level::TRACE,
@@ -88,6 +95,7 @@ impl Blockchain {
             block.get_hash(),
             block.get_id()
         );
+
 
         //
         // start by extracting some variables that we will use
@@ -654,6 +662,21 @@ impl Blockchain {
         0
     }
 
+    pub fn print(&self)  {
+
+	let latest_block_id = self.get_latest_block_id();
+
+println!("Latest block id is: {}", latest_block_id);
+
+	let mut current_id = latest_block_id;
+
+ 	while current_id > 0 {
+	    println!("{} - {:?}", current_id, self.blockring.get_longest_chain_block_hash_by_block_id(current_id));
+	    current_id -= 1;
+	}
+
+    }
+
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_latest_block_hash();
         self.blocks.get(&block_hash)
@@ -836,6 +859,7 @@ impl Blockchain {
             create_timestamp()
         );
 
+
         //
         // if we are winding a non-existent chain with a wind_failure it
         // means our wind attempt failed and we should move directly into
@@ -902,8 +926,6 @@ impl Blockchain {
                 " ... before block ocr            {:?}",
                 create_timestamp()
             );
-
-            println!("OCR for block: {}", block.get_id());
 
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);

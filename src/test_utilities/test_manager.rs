@@ -680,7 +680,6 @@ impl TestManager {
 
         tokio::spawn(async move {
 
-	    let mut vips_generated = 0;
 	    let txs_to_generate = 10;
 	    let bytes_per_tx = 1024;
 	    let publickey;
@@ -692,7 +691,8 @@ impl TestManager {
 		privatekey = wallet.get_privatekey();
 	    }
 
-	    if vips_generated == 0 {
+
+	    {
 		let vip_transaction = Transaction::generate_vip_transaction(
 		    wallet_lock_clone.clone(),
         	    publickey,
@@ -702,7 +702,6 @@ impl TestManager {
 
 		let mut mempool = mempool_lock_clone.write().await;
 		mempool.add_transaction(vip_transaction).await;
-		vips_generated = 1;
 	    }
 
             loop {

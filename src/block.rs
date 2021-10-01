@@ -620,7 +620,6 @@ impl Block {
         vbytes.extend(&self.burnfee.to_be_bytes());
         vbytes.extend(&self.difficulty.to_be_bytes());
 
-        println!("SERIALIZED PRE TXS: {:?}", vbytes);
         let mut serialized_txs = vec![];
 
         // block headers do not get tx data
