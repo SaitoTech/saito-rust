@@ -1764,6 +1764,8 @@
 <span id="1764">1764</span>
 <span id="1765">1765</span>
 <span id="1766">1766</span>
+<span id="1767">1767</span>
+<span id="1768">1768</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -2669,6 +2671,8 @@
                 <span class="string">&quot; ... before block ocr            {:?}&quot;</span>,
                 <span class="ident">create_timestamp</span>()
             );
+
+            <span class="macro">println!</span>(<span class="string">&quot;OCR for block: {}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_id</span>());
 
             <span class="comment">// utxoset update</span>
             <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>);

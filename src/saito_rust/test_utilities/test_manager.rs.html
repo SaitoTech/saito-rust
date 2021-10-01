@@ -670,6 +670,8 @@
 <span id="670">670</span>
 <span id="671">671</span>
 <span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TestManager provides a set of functions to simplify testing. It&#39;s goal is to</span>
@@ -865,14 +867,16 @@
             <span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>();
         }
 
-        <span class="kw">for</span> <span class="ident">_i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">vip_transactions</span> {
+        <span class="kw">if</span> <span class="number">0</span> <span class="op">&lt;</span> <span class="ident">vip_transactions</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::generate_vip_transaction</span>(
                 <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">publickey</span>,
                 <span class="number">10_000_000</span>,
+                <span class="ident">vip_transactions</span> <span class="kw">as</span> <span class="ident">u64</span>,
             )
             .<span class="kw">await</span>;
             <span class="ident">tx</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
+            <span class="ident">tx</span>.<span class="ident">sign</span>(<span class="ident">privatekey</span>);
             <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">tx</span>);
         }
 

@@ -579,13 +579,6 @@
 <span id="579">579</span>
 <span id="580">580</span>
 <span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -847,6 +840,20 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_mempool_privatekey</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) {
         <span class="self">self</span>.<span class="ident">mempool_privatekey</span> <span class="op">=</span> <span class="ident">privatekey</span>;
     }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_blocks_to_blockchain</span>(
+        <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    ) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+        <span class="ident">mempool</span>.<span class="ident">currently_bundling_block</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">blocks_queue</span>.<span class="ident">pop_front</span>() {
+            <span class="ident">mempool</span>.<span class="ident">delete_transactions</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_transactions</span>());
+            <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
+        }
+        <span class="ident">mempool</span>.<span class="ident">currently_bundling_block</span> <span class="op">=</span> <span class="bool-val">false</span>;
+    }
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">try_bundle_block</span>(
@@ -874,21 +881,6 @@
     } <span class="kw">else</span> {
         <span class="prelude-val">None</span>
     }
-}
-
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">send_blocks_to_blockchain</span>(
-    <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) {
-    <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;process blocks...&quot;</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-    <span class="ident">mempool</span>.<span class="ident">currently_bundling_block</span> <span class="op">=</span> <span class="bool-val">true</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">mempool</span>.<span class="ident">blocks_queue</span>.<span class="ident">pop_front</span>() {
-        <span class="ident">mempool</span>.<span class="ident">delete_transactions</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_transactions</span>());
-        <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
-    }
-    <span class="ident">mempool</span>.<span class="ident">currently_bundling_block</span> <span class="op">=</span> <span class="bool-val">false</span>;
 }
 
 <span class="comment">//</span>
@@ -952,10 +944,10 @@
                 <span class="kw">match</span> <span class="ident">message</span> {
 
                     <span class="comment">//</span>
-                   <span class="comment">// attempt to bundle block</span>
+                    <span class="comment">// attempt to bundle block</span>
                     <span class="comment">//</span>
                     <span class="ident">MempoolMessage::LocalTryBundleBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="ident">current_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
+            <span class="kw">let</span> <span class="ident">current_timestamp</span> <span class="op">=</span> <span class="ident">create_timestamp</span>();
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">block</span>) <span class="op">=</span> <span class="ident">try_bundle_block</span>(
                             <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                             <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
@@ -971,27 +963,21 @@
                     <span class="comment">//</span>
                     <span class="comment">// attempt to send to blockchain</span>
                     <span class="comment">//</span>
-                    <span class="comment">// ProcessBlocks will add blocks FIFO from the queue into blockchain</span>
                     <span class="ident">MempoolMessage::LocalNewBlock</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">send_blocks_to_blockchain</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+                        <span class="ident">Mempool::send_blocks_to_blockchain</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
                     },
+
                 }
             }
 
 
         <span class="comment">//</span>
-         <span class="comment">// global broadcast channel receivers</span>
-         <span class="comment">//</span>
+        <span class="comment">// global broadcast channel receivers</span>
+        <span class="comment">//</span>
             <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">match</span> <span class="ident">message</span> {
-                    <span class="comment">//SaitoMessage::NetworkNewBlock { hash: _hash } =&gt; {</span>
-                        <span class="comment">// when network receives a new block</span>
-                    <span class="comment">//}</span>
-                    <span class="comment">//SaitoMessage::NetworkNewTransaction { transaction } =&gt; {</span>
-                        <span class="comment">// when network receives a new transaction</span>
-                    <span class="comment">//},</span>
                     <span class="ident">SaitoMessage::MinerNewGoldenTicket</span> { <span class="ident">ticket</span> : <span class="ident">golden_ticket</span> } <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="comment">// when miner produces golden ticket</span>
+                       <span class="comment">// when miner produces golden ticket</span>
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                         <span class="ident">mempool</span>.<span class="ident">add_golden_ticket</span>(<span class="ident">golden_ticket</span>).<span class="kw">await</span>;
                     },
@@ -1050,7 +1036,7 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">test_manager</span>.<span class="ident">mempool_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                 <span class="ident">mempool</span>.<span class="ident">add_block</span>(<span class="ident">block</span>);
             }
-            <span class="ident">send_blocks_to_blockchain</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+            <span class="ident">Mempool::send_blocks_to_blockchain</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(), <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
         }
 
         <span class="comment">// check chain consistence</span>
@@ -1135,7 +1121,7 @@
                         let mut mempool = mempool_lock.write().await;
                         mempool.add_block(block);
                     }
-                    send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
+                    Mempool::send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
                     let blockchain = blockchain_lock.read().await;
                     let latest_block = blockchain.get_latest_block().unwrap();
 
