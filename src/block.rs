@@ -619,6 +619,8 @@ impl Block {
         vbytes.extend(&self.staking_treasury.to_be_bytes());
         vbytes.extend(&self.burnfee.to_be_bytes());
         vbytes.extend(&self.difficulty.to_be_bytes());
+
+println!("SERIALIZED PRE TXS: {:?}", vbytes);
         let mut serialized_txs = vec![];
 
         // block headers do not get tx data
@@ -2121,34 +2123,9 @@ mod tests {
 
         assert_eq!(block.transactions.len(), 0);
         assert_eq!(block.get_block_type(), BlockType::Pruned);
+ 
+        block.upgrade_block_to_block_type(BlockType::Full).await;
 
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
-
-        let privatekey: SaitoPrivateKey;
-        let publickey: SaitoPublicKey;
-        {
-            let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-            privatekey = wallet.get_privatekey();
-        }
-        let golden_ticket = GoldenTicket::new(1, [1; 32], [2; 32], [3; 33]);
-        let mut tx2: Transaction;
-        {
-            let mut wallet = wallet_lock.write().await;
-            tx2 = wallet.create_golden_ticket_transaction(golden_ticket).await;
-        }
-        tx2.generate_metadata(publickey);
-
-        let mut block = test_manager
-            .generate_block([1; 32], create_timestamp(), 1, 1, false, vec![])
-            .await;
-        block.sign(publickey, privatekey);
-
-        let unsigned_block = block.clone();
-
-        assert_eq!(block.transactions.len(), 2);
         assert_eq!(block.get_block_type(), BlockType::Full);
         assert_eq!(
             serialized_full_block,
@@ -2156,6 +2133,5 @@ mod tests {
         );
 
         TestManager::check_block_consistency(&block);
-        TestManager::check_block_consistency(&unsigned_block);
     }
 }
