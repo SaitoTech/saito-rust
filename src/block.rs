@@ -1218,6 +1218,10 @@ impl Block {
             create_timestamp(),
         );
 
+	// ensure hashes correct
+	self.generate_hashes();
+
+
         //
         // if we are generating the metadata for a block, we use the
         // publickey of the block creator when we calculate the fees

@@ -193,10 +193,10 @@ impl Consensus {
 	//
 	// start test_manager spammer
 	//
-	if is_spammer_enabled {
-	    let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
-	    test_manager.spam_mempool(mempool_lock.clone());
-	}
+	//if is_spammer_enabled {
+	//    let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+	//    test_manager.spam_mempool(mempool_lock.clone());
+	//}
 
 
         //
