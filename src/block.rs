@@ -2148,7 +2148,7 @@ mod tests {
 
         let unsigned_block = block.clone();
 
-        assert_eq!(block.transactions.len(), 5);
+        assert_eq!(block.transactions.len(), 2);
         assert_eq!(block.get_block_type(), BlockType::Full);
         assert_eq!(
             serialized_full_block,
