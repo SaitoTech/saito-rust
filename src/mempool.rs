@@ -258,6 +258,20 @@ impl Mempool {
     pub fn set_mempool_privatekey(&mut self, privatekey: SaitoPrivateKey) {
         self.mempool_privatekey = privatekey;
     }
+
+    pub async fn send_blocks_to_blockchain(
+        mempool_lock: Arc<RwLock<Mempool>>,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+    ) {
+        let mut mempool = mempool_lock.write().await;
+        mempool.currently_bundling_block = true;
+        let mut blockchain = blockchain_lock.write().await;
+        while let Some(block) = mempool.blocks_queue.pop_front() {
+            mempool.delete_transactions(&block.get_transactions());
+            blockchain.add_block(block).await;
+        }
+        mempool.currently_bundling_block = false;
+    }
 }
 
 pub async fn try_bundle_block(
@@ -285,21 +299,6 @@ pub async fn try_bundle_block(
     } else {
         None
     }
-}
-
-pub async fn send_blocks_to_blockchain(
-    mempool_lock: Arc<RwLock<Mempool>>,
-    blockchain_lock: Arc<RwLock<Blockchain>>,
-) {
-    event!(Level::INFO, "process blocks...");
-    let mut mempool = mempool_lock.write().await;
-    mempool.currently_bundling_block = true;
-    let mut blockchain = blockchain_lock.write().await;
-    while let Some(block) = mempool.blocks_queue.pop_front() {
-        mempool.delete_transactions(&block.get_transactions());
-        blockchain.add_block(block).await;
-    }
-    mempool.currently_bundling_block = false;
 }
 
 //
@@ -363,10 +362,10 @@ pub async fn run(
                 match message {
 
                     //
-                   // attempt to bundle block
+                    // attempt to bundle block
                     //
                     MempoolMessage::LocalTryBundleBlock => {
-                let current_timestamp = create_timestamp();
+            let current_timestamp = create_timestamp();
                         if let Some(block) = try_bundle_block(
                             mempool_lock.clone(),
                             blockchain_lock.clone(),
@@ -382,27 +381,21 @@ pub async fn run(
                     //
                     // attempt to send to blockchain
                     //
-                    // ProcessBlocks will add blocks FIFO from the queue into blockchain
                     MempoolMessage::LocalNewBlock => {
-                        send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
+                        Mempool::send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
                     },
+
                 }
             }
 
 
         //
-         // global broadcast channel receivers
-         //
+        // global broadcast channel receivers
+        //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
-                    //SaitoMessage::NetworkNewBlock { hash: _hash } => {
-                        // when network receives a new block
-                    //}
-                    //SaitoMessage::NetworkNewTransaction { transaction } => {
-                        // when network receives a new transaction
-                    //},
                     SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
-            // when miner produces golden ticket
+                       // when miner produces golden ticket
                         let mut mempool = mempool_lock.write().await;
                         mempool.add_golden_ticket(golden_ticket).await;
                     },
@@ -461,7 +454,7 @@ mod tests {
                 let mut mempool = test_manager.mempool_lock.write().await;
                 mempool.add_block(block);
             }
-            send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
+            Mempool::send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
         }
 
         // check chain consistence
@@ -546,7 +539,7 @@ mod tests {
                         let mut mempool = mempool_lock.write().await;
                         mempool.add_block(block);
                     }
-                    send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
+                    Mempool::send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
                     let blockchain = blockchain_lock.read().await;
                     let latest_block = blockchain.get_latest_block().unwrap();
 

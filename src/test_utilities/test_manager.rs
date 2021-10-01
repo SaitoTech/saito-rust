@@ -192,14 +192,16 @@ impl TestManager {
             privatekey = wallet.get_privatekey();
         }
 
-        for _i in 0..vip_transactions {
+        if 0 < vip_transactions {
             let mut tx = Transaction::generate_vip_transaction(
                 self.wallet_lock.clone(),
                 publickey,
                 10_000_000,
+                vip_transactions as u64,
             )
             .await;
             tx.generate_metadata(publickey);
+            tx.sign(privatekey);
             transactions.push(tx);
         }
 

@@ -33,20 +33,6 @@ impl Staking {
         }
     }
 
-    pub fn add_staker_with_number(&mut self, slip: Slip, random_number: SaitoHash) {
-        //
-        // find winning nolan
-        //
-        let x = U256::from_big_endian(&random_number);
-        let y = self.stakers.len() + 1;
-        let z = U256::from_big_endian(&y.to_be_bytes());
-        let (zy, _bolres) = x.overflowing_rem(z);
-
-        let insert_into_pos = zy.low_u64();
-
-        self.stakers.insert(insert_into_pos as usize, slip);
-    }
-
     pub fn find_winning_staker(&self, random_number: SaitoHash) -> Option<Slip> {
         if self.stakers.is_empty() {
             return None;
@@ -207,8 +193,45 @@ impl Staking {
         self.deposits.push(slip);
     }
 
-    pub fn add_staker(&mut self, slip: Slip) {
-        self.stakers.push(slip);
+    //
+    // slips are added in ascending order based on publickey and then
+    // UUID. this is simply to ensure that chain reorgs do not cause
+    // disagreements about which staker is selected.
+    //
+    pub fn add_staker(&mut self, slip: Slip) -> bool {
+        //
+        // TODO skip-hop algorithm instead of brute force
+        //
+        if self.stakers.len() == 0 {
+            self.stakers.push(slip);
+            return true;
+        } else {
+            for i in 0..self.stakers.len() {
+                let how_compares = slip.compare(self.stakers[i].clone());
+                // 1 - self is bigger
+                // 2 - self is smaller
+                // insert at position i
+                if how_compares == 2 {
+                    println!("we are bigger than slip at position: {}", i);
+                    if self.stakers.len() == (i + 1) {
+                        self.stakers.push(slip);
+                        return true;
+                    }
+                } else {
+                    if how_compares == 1 {
+                        self.stakers.insert(i, slip);
+                        return true;
+                    }
+                    if how_compares == 3 {
+                        return false;
+                    }
+                }
+            }
+
+            println!("we were smaller all the way through -- add at end");
+            self.stakers.push(slip);
+            return true;
+        }
     }
 
     pub fn add_pending(&mut self, slip: Slip) {
@@ -546,6 +569,79 @@ mod tests {
     use tokio::sync::RwLock;
 
     //
+    // does adding staking slips in different orders give us the same
+    // results?
+    //
+    #[test]
+    fn staking_add_staker_slips_in_different_order_and_check_sorting_works() {
+        let mut staking1 = Staking::new();
+        let mut staking2 = Staking::new();
+
+        let mut slip1 = Slip::new();
+        slip1.set_amount(1);
+        slip1.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip2 = Slip::new();
+        slip2.set_amount(2);
+        slip2.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip3 = Slip::new();
+        slip3.set_amount(3);
+        slip3.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip4 = Slip::new();
+        slip4.set_amount(4);
+        slip4.set_slip_type(SlipType::StakerDeposit);
+
+        let mut slip5 = Slip::new();
+        slip5.set_amount(5);
+        slip5.set_slip_type(SlipType::StakerDeposit);
+
+        staking1.add_staker(slip1.clone());
+        assert_eq!(staking1.stakers.len(), 1);
+        staking1.add_staker(slip2.clone());
+        assert_eq!(staking1.stakers.len(), 2);
+        staking1.add_staker(slip3.clone());
+        assert_eq!(staking1.stakers.len(), 3);
+        staking1.add_staker(slip4.clone());
+        assert_eq!(staking1.stakers.len(), 4);
+        staking1.add_staker(slip5.clone());
+        assert_eq!(staking1.stakers.len(), 5);
+
+        staking2.add_staker(slip2.clone());
+        staking2.add_staker(slip4.clone());
+        staking2.add_staker(slip1.clone());
+        staking2.add_staker(slip5.clone());
+        staking2.add_staker(slip3.clone());
+        staking2.add_staker(slip2.clone());
+        staking2.add_staker(slip1.clone());
+
+        assert_eq!(staking1.stakers.len(), 5);
+        assert_eq!(staking2.stakers.len(), 5);
+
+        for i in 0..staking2.stakers.len() {
+            println!(
+                "{} -- {}",
+                staking1.stakers[i].get_amount(),
+                staking2.stakers[i].get_amount()
+            );
+        }
+
+        for i in 0..staking2.stakers.len() {
+            assert_eq!(
+                staking1.stakers[i].clone().serialize_for_net(),
+                staking2.stakers[i].clone().serialize_for_net()
+            );
+            assert_eq!(
+                staking1.stakers[i]
+                    .clone()
+                    .compare(staking2.stakers[i].clone()),
+                3
+            ); // 3 = the same
+        }
+    }
+
+    //
     // do staking deposits work properly and create proper payouts?
     //
     #[test]
@@ -581,11 +677,11 @@ mod tests {
         let (_res_spend, _res_unspend, _res_delete) = staking.reset_staker_table(1_000_000_000); // 10 Saito
 
         assert_eq!(
-            staking.stakers[0].get_amount() + staking.stakers[0].get_payout(),
+            staking.stakers[4].get_amount() + staking.stakers[4].get_payout(),
             210000000
         );
         assert_eq!(
-            staking.stakers[1].get_amount() + staking.stakers[1].get_payout(),
+            staking.stakers[3].get_amount() + staking.stakers[3].get_payout(),
             315000000
         );
         assert_eq!(
@@ -593,11 +689,11 @@ mod tests {
             420000000
         );
         assert_eq!(
-            staking.stakers[3].get_amount() + staking.stakers[3].get_payout(),
+            staking.stakers[1].get_amount() + staking.stakers[1].get_payout(),
             525000000
         );
         assert_eq!(
-            staking.stakers[4].get_amount() + staking.stakers[4].get_payout(),
+            staking.stakers[0].get_amount() + staking.stakers[0].get_payout(),
             630000000
         );
     }
@@ -1081,6 +1177,9 @@ mod tests {
             wstx1.generate_metadata(publickey);
         }
         let mut transactions: Vec<Transaction> = vec![];
+        println!("----------");
+        println!("---{:?}---", wstx1);
+        println!("----------");
         transactions.push(wstx1);
         let block6 = Block::generate(
             &mut transactions,
@@ -1090,7 +1189,6 @@ mod tests {
             current_timestamp + 600000,
         )
         .await;
-        let _block6_hash = block6.get_hash();
         let block6_id = block6.get_id();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block6).await;
 
@@ -1123,36 +1221,6 @@ mod tests {
             publickey = wallet.get_publickey();
             println!("publickey: {:?}", publickey);
         }
-
-        //
-        // initialize blockchain staking table
-        //
-
-        //        {
-        //            let mut blockchain = blockchain_lock.write().await;
-
-        //            let mut slip1 = Slip::new();
-        //            slip1.set_amount(200_000_000);
-        //            slip1.set_slip_type(SlipType::StakerDeposit);
-
-        //            let mut slip2 = Slip::new();
-        //            slip2.set_amount(300_000_000);
-        //            slip2.set_slip_type(SlipType::StakerDeposit);
-
-        //            slip1.set_publickey(publickey);
-        //            slip2.set_publickey(publickey);
-
-        //            slip1.generate_utxoset_key();
-        //            slip2.generate_utxoset_key();
-
-        //            slip1.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
-        //            slip2.on_chain_reorganization(&mut blockchain.utxoset, true, 1);
-
-        //            blockchain.staking.add_deposit(slip1);
-        //            blockchain.staking.add_deposit(slip2);
-
-        //            blockchain.staking.reset_staker_table(1_000_000_000); // 10 Saito
-        //        }
 
         //
         // BLOCK 1

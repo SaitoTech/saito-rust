@@ -903,6 +903,8 @@ impl Blockchain {
                 create_timestamp()
             );
 
+            println!("OCR for block: {}", block.get_id());
+
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
             event!(

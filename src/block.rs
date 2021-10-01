@@ -619,6 +619,8 @@ impl Block {
         vbytes.extend(&self.staking_treasury.to_be_bytes());
         vbytes.extend(&self.burnfee.to_be_bytes());
         vbytes.extend(&self.difficulty.to_be_bytes());
+
+        println!("SERIALIZED PRE TXS: {:?}", vbytes);
         let mut serialized_txs = vec![];
 
         // block headers do not get tx data
@@ -1703,13 +1705,13 @@ impl Block {
         // problem is. ergo this code that tries to do them on the main thread so
         // debugging output works.
         //
-        //for i in 0..self.transactions.len() {
-        //    let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
-        //    if !transactions_valid2 {
-        //        println!("TType: {:?}", self.transactions[i].get_transaction_type());
-        //        println!("Data {:?}", self.transactions[i]);
-        //    }
-        //}
+        for i in 0..self.transactions.len() {
+            let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
+            if !transactions_valid2 {
+                println!("TType: {:?}", self.transactions[i].get_transaction_type());
+                println!("Data {:?}", self.transactions[i]);
+            }
+        }
         //true
 
         let transactions_valid = self
@@ -1736,7 +1738,6 @@ impl Block {
         let blockchain = blockchain_lock.read().await;
         let wallet = wallet_lock.read().await;
         let publickey = wallet.get_publickey();
-        let privatekey = wallet.get_privatekey();
 
         let mut previous_block_id = 0;
         let mut previous_block_burnfee = 0;
@@ -1806,33 +1807,6 @@ impl Block {
         // contextual values
         //
         let mut cv: ConsensusValues = block.generate_consensus_values(&blockchain).await;
-
-        //
-        // TODO - remove
-        //
-        // for testing create some VIP transactions
-        //
-        if previous_block_id == 0 {
-            {
-                let initial_token_allocation_slips = Storage::return_token_supply_slips_from_disk();
-
-                let mut transaction = Transaction::new();
-                for i in 0..initial_token_allocation_slips.len() {
-                    transaction.add_output(initial_token_allocation_slips[i].clone());
-                }
-                transaction.set_transaction_type(TransactionType::Issuance);
-                transaction.sign(privatekey);
-                block.add_transaction(transaction);
-            }
-
-            for _i in 0..10 as i32 {
-                let mut transaction =
-                    Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 100000)
-                        .await;
-                transaction.sign(privatekey);
-                block.add_transaction(transaction);
-            }
-        }
 
         //
         // ATR transactions
@@ -2150,33 +2124,8 @@ mod tests {
         assert_eq!(block.transactions.len(), 0);
         assert_eq!(block.get_block_type(), BlockType::Pruned);
 
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+        block.upgrade_block_to_block_type(BlockType::Full).await;
 
-        let privatekey: SaitoPrivateKey;
-        let publickey: SaitoPublicKey;
-        {
-            let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-            privatekey = wallet.get_privatekey();
-        }
-        let golden_ticket = GoldenTicket::new(1, [1; 32], [2; 32], [3; 33]);
-        let mut tx2: Transaction;
-        {
-            let mut wallet = wallet_lock.write().await;
-            tx2 = wallet.create_golden_ticket_transaction(golden_ticket).await;
-        }
-        tx2.generate_metadata(publickey);
-
-        let mut block = test_manager
-            .generate_block([1; 32], create_timestamp(), 1, 1, false, vec![])
-            .await;
-        block.sign(publickey, privatekey);
-
-        let unsigned_block = block.clone();
-
-        assert_eq!(block.transactions.len(), 5);
         assert_eq!(block.get_block_type(), BlockType::Full);
         assert_eq!(
             serialized_full_block,
@@ -2184,6 +2133,5 @@ mod tests {
         );
 
         TestManager::check_block_consistency(&block);
-        TestManager::check_block_consistency(&unsigned_block);
     }
 }
