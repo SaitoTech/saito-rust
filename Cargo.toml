@@ -3,15 +3,12 @@ name = "saito_rust"
 version = "0.1.0"
 authors = [
     "Clayton Rabenda <clay@saito.tech>",
-    "Stephen Peterkins <stephen@saito.tech>"
+    "Stephen Peterkins <stephen@saito.tech>",
+    "David Lancashire <david@saito.tech>"
 ]
 edition = "2018"
 default-run = "saito_rust"
 
-
-[[bin]]
-name = "saito-spammer"
-path = "src/bin/spammer.rs"
 
 [[bin]]
 name = "saitocli"
