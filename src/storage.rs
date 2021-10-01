@@ -99,14 +99,11 @@ impl Storage {
                 .unwrap()
         });
         for (_pos, path) in paths.iter().enumerate() {
-println!("LOADING BLOCK FILE: {:?}", path.path().to_str());
             if !path.path().to_str().unwrap().ends_with(".gitignore") {
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
-                let mut block = Block::deserialize_for_net(&encoded);
-block.generate_hashes();
-println!("block hash - {:?} / {:?}", block.get_hash(), block.get_previous_block_hash());
+                let block = Block::deserialize_for_net(&encoded);
                 let mut blockchain = blockchain_lock.write().await;
                 blockchain.add_block(block).await;
             }

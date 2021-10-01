@@ -106,9 +106,6 @@ impl Blockchain {
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_latest_block_hash();
 
-        //println!("blockring prev hash: {:?}", previous_block_hash);
-        //println!("block     prev hash: {:?}", block.get_previous_block_hash());
-
         //
         // sanity checks
         //
@@ -261,7 +258,6 @@ impl Blockchain {
         // with the BlockRing. We fail if the newly-preferred chain is not
         // viable.
         //
-        //  println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
             if does_new_chain_validate {
@@ -665,9 +661,6 @@ impl Blockchain {
     pub fn print(&self)  {
 
 	let latest_block_id = self.get_latest_block_id();
-
-println!("Latest block id is: {}", latest_block_id);
-
 	let mut current_id = latest_block_id;
 
  	while current_id > 0 {

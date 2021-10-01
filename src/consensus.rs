@@ -165,16 +165,11 @@ impl Consensus {
 
 
         //
-        // load blocks from disk
+        // load blocks from disk and check chain
         //
         Storage::load_blocks_from_disk(blockchain_lock.clone()).await;
 	{
-	    //
-	    // check block longest chain
-	    //
 	    let blockchain = blockchain_lock.read().await;
-println!("blockchain has: {}", blockchain.blocks.len());
-println!("now printing blockchain!");
 	    blockchain.print();
 	}
 
