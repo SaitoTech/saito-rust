@@ -4,21 +4,22 @@ use crate::crypto::SaitoHash;
 
 use super::send_blockchain_message::SyncType;
 
-/// - block_id(starts with latest)
-/// - block_hash(starts with latest)
-/// - fork_id
-/// - synctype(optional)
-
-#[derive(Debug)]
+/// Data Object for REQBLOCK. Is used as a  payload in an APIMessage message field.
+/// - `block_id` - (optional)
+/// - `block_hash` - (optional)
+/// - `synctype` - Full or Lite(SPV)(optional)
 pub struct RequestBlockMessage {
     block_id: Option<u64>,
     block_hash: Option<SaitoHash>,
     sync_type: Option<SyncType>,
 }
+
+/// a bitmask indicating which fields are filled in the RequestBlockMessage.
+pub type RequestBlockMessageOptionsMask = u8;
+
 pub const BLOCK_ID_MASK: u8 = 1;
 pub const BLOCK_HASH_MASK: u8 = 2;
 pub const SYNC_TYPE_MASK: u8 = 4;
-pub type RequestBlockMessageOptionsMask = u8;
 
 trait RequestBlockMessageOptionsMaskTrait {
     fn new(has_block_id: bool, has_block_hash: bool, has_sync_type: bool) -> Self;

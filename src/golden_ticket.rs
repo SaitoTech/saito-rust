@@ -14,6 +14,7 @@ pub struct GoldenTicket {
 }
 
 impl GoldenTicket {
+    #[allow(clippy::new_without_default)]
     pub fn new(vote: u8, target: SaitoHash, random: SaitoHash, publickey: SaitoPublicKey) -> Self {
         return Self {
             vote,
@@ -76,11 +77,5 @@ impl GoldenTicket {
         let random: SaitoHash = bytes[33..65].try_into().unwrap();
         let publickey: SaitoPublicKey = bytes[65..98].try_into().unwrap();
         GoldenTicket::new(vote, target, random, publickey)
-    }
-}
-
-impl Default for GoldenTicket {
-    fn default() -> Self {
-        Self::new(0, [0; 32], [0; 32], [0; 33])
     }
 }

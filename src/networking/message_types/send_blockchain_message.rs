@@ -1,12 +1,11 @@
 use crate::crypto::SaitoHash;
 use macros::TryFromByte;
 use std::convert::{TryFrom, TryInto};
-/// SENDS:
-/// Blocktype/synctype
-/// Starting_hash
-/// array of block data with each entry containing:
-/// block_id: the id of the block
-/// timestamp: the timestamp of the block
+
+/// Data Object for SNDCHAIN. Is used as a payload in an APIMessage message field.
+/// `block_id`
+/// `block_hash`
+/// `timestamp`
 /// (future work) pre_hash: the hash which is hashed with the previous block_hash to generate the hash of the current block.
 /// (future work) number of transactions: the number of transactions in the block for the recipient
 pub const BLOCKCHAIN_BLOCK_DATA_SIZE: usize = 84;
@@ -110,9 +109,6 @@ impl SendBlockchainMessage {
         }
         vbytes
     }
-    // pub fn latest_block_id(&self) -> u64 {
-    //     self.latest_block_id
-    // }
 }
 
 #[cfg(test)]

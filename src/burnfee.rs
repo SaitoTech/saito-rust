@@ -97,12 +97,6 @@ mod tests {
             BurnFee::return_routing_work_needed_to_produce_block_in_nolan(10_0000_0000, 0, 0),
             10_000_000_000_000_000_000,
         );
-
-        // should return 1 * 10^8 * timestamp_diff
-        //        assert_eq!(
-        //            BurnFee::return_work_needed(10.0, HEARTBEAT / 3000, 0),
-        //            10000_0000
-        //        );
     }
 
     #[test]

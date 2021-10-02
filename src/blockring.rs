@@ -217,7 +217,7 @@ impl BlockRing {
         }
     }
 
-    pub fn get_longest_chain_block_id(&self) -> u64 {
+    pub fn get_latest_block_id(&self) -> u64 {
         match self.block_ring_lc_pos {
             Some(block_ring_lc_pos) => match self.block_ring[block_ring_lc_pos].lc_pos {
                 Some(lc_pos) => self.block_ring[block_ring_lc_pos].block_ids[lc_pos],
@@ -230,193 +230,341 @@ impl BlockRing {
 
 #[cfg(test)]
 mod test {
-    use crate::block::Block;
     use crate::blockchain::Blockchain;
-    use crate::test_utilities::mocks::make_mock_block;
+    use crate::test_utilities::test_manager::TestManager;
     use crate::time::create_timestamp;
-    use crate::transaction::Transaction;
     use crate::wallet::Wallet;
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
     use super::*;
-    #[test]
-    fn blockring_reorganization_test() {
+
+    #[tokio::test]
+    // winding / unwinding updates blockring view of longest chain
+    async fn blockring_manual_reorganization_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
         let mut blockring = BlockRing::new();
 
-        //
-        // Good Blocks
-        //
-        let block_1 = make_mock_block(0, 10, [0; 32], 1);
-        let block_2 = make_mock_block(
-            block_1.get_timestamp(),
-            block_1.get_burnfee(),
-            block_1.get_hash(),
-            2,
-        );
-        let block_3 = make_mock_block(
-            block_2.get_timestamp(),
-            block_2.get_burnfee(),
-            block_2.get_hash(),
-            3,
-        );
-        let block_4 = make_mock_block(
-            block_3.get_timestamp(),
-            block_3.get_burnfee(),
-            block_3.get_hash(),
-            4,
-        );
-        let block_3_2 = make_mock_block(
-            block_2.get_timestamp(),
-            block_2.get_burnfee(),
-            block_2.get_hash(),
-            3,
-        );
-        let block_4_2 = make_mock_block(
-            block_3.get_timestamp(),
-            block_3.get_burnfee(),
-            block_3.get_hash(),
-            4,
-        );
-        let block_5_2 = make_mock_block(
-            block_4.get_timestamp(),
-            block_4.get_burnfee(),
-            block_4.get_hash(),
-            5,
-        );
+        let current_timestamp = create_timestamp();
 
-        blockring.add_block(&block_1);
-        blockring.add_block(&block_2);
-        blockring.add_block(&block_3);
-        blockring.add_block(&block_4);
-        blockring.add_block(&block_3_2);
-        blockring.add_block(&block_4_2);
-        blockring.add_block(&block_5_2);
+        // BLOCK 1
+        let mut block1 = test_manager
+            .generate_block_and_metadata([0; 32], current_timestamp, 3, 0, false, vec![])
+            .await;
+        block1.set_id(1);
+
+        // BLOCK 2
+        let mut block2 = test_manager
+            .generate_block_and_metadata(
+                block1.get_hash(),
+                current_timestamp + 120000,
+                0,
+                1,
+                false,
+                vec![],
+            )
+            .await;
+        block2.set_id(2);
+
+        // BLOCK 3
+        let mut block3 = test_manager
+            .generate_block_and_metadata(
+                block2.get_hash(),
+                current_timestamp + 240000,
+                0,
+                1,
+                false,
+                vec![],
+            )
+            .await;
+        block3.set_id(3);
+
+        // BLOCK 4
+        let mut block4 = test_manager
+            .generate_block_and_metadata(
+                block3.get_hash(),
+                current_timestamp + 360000,
+                0,
+                1,
+                false,
+                vec![],
+            )
+            .await;
+        block4.set_id(4);
+
+        // BLOCK 5
+        let mut block5 = test_manager
+            .generate_block_and_metadata(
+                block4.get_hash(),
+                current_timestamp + 480000,
+                0,
+                1,
+                false,
+                vec![],
+            )
+            .await;
+        block5.set_id(5);
+
+        blockring.add_block(&block1);
+        blockring.add_block(&block2);
+        blockring.add_block(&block3);
+        blockring.add_block(&block4);
+        blockring.add_block(&block5);
 
         // do we contain these block hashes?
         assert_eq!(
-            blockring.contains_block_hash_at_block_id(1, block_1.get_hash()),
+            blockring.contains_block_hash_at_block_id(1, block1.get_hash()),
             true
         );
         assert_eq!(
-            blockring.contains_block_hash_at_block_id(2, block_2.get_hash()),
+            blockring.contains_block_hash_at_block_id(2, block2.get_hash()),
             true
         );
         assert_eq!(
-            blockring.contains_block_hash_at_block_id(3, block_3.get_hash()),
+            blockring.contains_block_hash_at_block_id(3, block3.get_hash()),
             true
         );
         assert_eq!(
-            blockring.contains_block_hash_at_block_id(4, block_4.get_hash()),
+            blockring.contains_block_hash_at_block_id(4, block4.get_hash()),
             true
         );
         assert_eq!(
-            blockring.contains_block_hash_at_block_id(3, block_3_2.get_hash()),
+            blockring.contains_block_hash_at_block_id(5, block5.get_hash()),
             true
         );
         assert_eq!(
-            blockring.contains_block_hash_at_block_id(4, block_4_2.get_hash()),
-            true
-        );
-        assert_eq!(
-            blockring.contains_block_hash_at_block_id(5, block_5_2.get_hash()),
-            true
+            blockring.contains_block_hash_at_block_id(2, block4.get_hash()),
+            false
         );
 
         // reorganize longest chain
-        blockring.on_chain_reorganization(1, block_1.get_hash(), true);
-        blockring.on_chain_reorganization(2, block_2.get_hash(), true);
-        blockring.on_chain_reorganization(3, block_3.get_hash(), true);
-        blockring.on_chain_reorganization(4, block_4.get_hash(), true);
-        blockring.on_chain_reorganization(4, block_4.get_hash(), false);
-        blockring.on_chain_reorganization(3, block_3.get_hash(), false);
-        blockring.on_chain_reorganization(3, block_3_2.get_hash(), true);
-        blockring.on_chain_reorganization(4, block_4_2.get_hash(), true);
-        blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
-
-        assert_eq!(blockring.get_longest_chain_block_id(), 5);
+        blockring.on_chain_reorganization(1, block1.get_hash(), true);
+        assert_eq!(blockring.get_latest_block_id(), 1);
+        blockring.on_chain_reorganization(2, block2.get_hash(), true);
+        assert_eq!(blockring.get_latest_block_id(), 2);
+        blockring.on_chain_reorganization(3, block3.get_hash(), true);
+        assert_eq!(blockring.get_latest_block_id(), 3);
+        blockring.on_chain_reorganization(4, block4.get_hash(), true);
+        assert_eq!(blockring.get_latest_block_id(), 4);
+        blockring.on_chain_reorganization(5, block5.get_hash(), false);
+        assert_eq!(blockring.get_latest_block_id(), 4);
+        blockring.on_chain_reorganization(4, block4.get_hash(), false);
+        assert_eq!(blockring.get_latest_block_id(), 3);
+        blockring.on_chain_reorganization(3, block3.get_hash(), false);
+        assert_eq!(blockring.get_latest_block_id(), 2);
 
         // reorg in the wrong block_id location, should not change
-        blockring.on_chain_reorganization(532, block_5_2.get_hash(), false);
-        assert_eq!(blockring.get_longest_chain_block_id(), 5);
+        blockring.on_chain_reorganization(532, block5.get_hash(), false);
+        assert_eq!(blockring.get_latest_block_id(), 2);
 
         // double reorg in correct and should be fine still
-        blockring.on_chain_reorganization(5, block_5_2.get_hash(), true);
-        assert_eq!(blockring.get_longest_chain_block_id(), 5);
+        blockring.on_chain_reorganization(2, block2.get_hash(), true);
+        assert_eq!(blockring.get_latest_block_id(), 2);
     }
 
-    #[test]
-    fn blockring_test() {
-        let mut blockring = BlockRing::new();
-        assert_eq!(0, blockring.get_longest_chain_block_id());
-        let mock_block = make_mock_block(0, 10, [0; 32], 0);
-        blockring.add_block(&mock_block);
+    #[tokio::test]
+    // adding blocks to blockchain wind / unwind blockring view of longest chain
+    async fn blockring_automatic_reorganization_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
 
-        // TODO: These next 3 are also wrong, they should probably return None or panic
-        assert_eq!(0, blockring.get_longest_chain_block_id());
+        let current_timestamp = create_timestamp();
+
+        // BLOCK 1
+        let block1 = test_manager
+            .generate_block_and_metadata([0; 32], current_timestamp, 3, 0, false, vec![])
+            .await;
+        let block1_hash = block1.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block1).await;
+
+        // BLOCK 2
+        let block2 = test_manager
+            .generate_block_and_metadata(
+                block1_hash,
+                current_timestamp + 120000,
+                0,
+                1,
+                false,
+                vec![],
+            )
+            .await;
+        let block2_hash = block2.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block2).await;
+
+        // BLOCK 3
+        let block3 = test_manager
+            .generate_block_and_metadata(
+                block2_hash,
+                current_timestamp + 240000,
+                0,
+                1,
+                false,
+                vec![],
+            )
+            .await;
+        let block3_hash = block3.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block3).await;
+
+        // BLOCK 4
+        let block4 = test_manager
+            .generate_block_and_metadata(
+                block3_hash,
+                current_timestamp + 360000,
+                0,
+                1,
+                false,
+                vec![],
+            )
+            .await;
+        let block4_hash = block4.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block4).await;
+
+        // BLOCK 5
+        let block5 = test_manager
+            .generate_block_and_metadata(
+                block4_hash,
+                current_timestamp + 480000,
+                0,
+                1,
+                false,
+                vec![],
+            )
+            .await;
+        let block5_hash = block5.get_hash();
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block5).await;
+
+        let mut blockchain = blockchain_lock.write().await;
+
+        // do we contain these block hashes?
+        assert_eq!(
+            blockchain
+                .blockring
+                .contains_block_hash_at_block_id(1, block1_hash),
+            true
+        );
+        assert_eq!(
+            blockchain
+                .blockring
+                .contains_block_hash_at_block_id(2, block2_hash),
+            true
+        );
+        assert_eq!(
+            blockchain
+                .blockring
+                .contains_block_hash_at_block_id(3, block3_hash),
+            true
+        );
+        assert_eq!(
+            blockchain
+                .blockring
+                .contains_block_hash_at_block_id(4, block4_hash),
+            true
+        );
+        assert_eq!(
+            blockchain
+                .blockring
+                .contains_block_hash_at_block_id(5, block5_hash),
+            true
+        );
+        assert_eq!(
+            blockchain
+                .blockring
+                .contains_block_hash_at_block_id(2, block4_hash),
+            false
+        );
+
+        // reorganize longest chain
+        assert_ne!(blockchain.blockring.get_latest_block_id(), 1);
+        assert_ne!(blockchain.blockring.get_latest_block_id(), 2);
+        assert_ne!(blockchain.blockring.get_latest_block_id(), 3);
+        assert_ne!(blockchain.blockring.get_latest_block_id(), 4);
+        assert_eq!(blockchain.blockring.get_latest_block_id(), 5);
+        assert_eq!(blockchain.blockring.get_latest_block_hash(), block5_hash);
+
+        // reorg in the wrong block_id location, should not change
+        blockchain
+            .blockring
+            .on_chain_reorganization(532, block5_hash, false);
+        assert_ne!(blockchain.blockring.get_latest_block_id(), 2);
+
+        blockchain
+            .blockring
+            .on_chain_reorganization(5, block5_hash, false);
+        assert_eq!(blockchain.blockring.get_latest_block_id(), 4);
+        assert_eq!(blockchain.blockring.get_latest_block_hash(), block4_hash);
+    }
+
+    #[tokio::test]
+    // confirm adding block changes nothing until on_chain_reorg
+    async fn blockring_add_block_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+        let current_timestamp = create_timestamp();
+
+        let mut blockring = BlockRing::new();
+        assert_eq!(0, blockring.get_latest_block_id());
+
+        // BLOCK 1
+        let block1 = test_manager
+            .generate_block_and_metadata([0; 32], current_timestamp, 3, 0, false, vec![])
+            .await;
+        let block1_hash = block1.get_hash();
+        blockring.add_block(&block1);
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block1).await;
+
+        // BLOCK 2
+        let block2 = test_manager
+            .generate_block_and_metadata(
+                block1_hash,
+                current_timestamp + 120000,
+                0,
+                1,
+                false,
+                vec![],
+            )
+            .await;
+        let block2_hash = block2.get_hash();
+        blockring.add_block(&block2);
+        Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block2).await;
+
+        assert_eq!(0, blockring.get_latest_block_id());
         assert_eq!([0; 32], blockring.get_latest_block_hash());
         assert_eq!(
             [0; 32],
             blockring.get_longest_chain_block_hash_by_block_id(0)
         );
 
-        blockring.on_chain_reorganization(mock_block.get_id(), mock_block.get_hash(), true);
-        assert_eq!(0, blockring.get_longest_chain_block_id());
-        assert_eq!(mock_block.get_hash(), blockring.get_latest_block_hash());
+        blockring.on_chain_reorganization(1, block1_hash, true);
+
+        assert_eq!(1, blockring.get_latest_block_id());
+        assert_eq!(block1_hash, blockring.get_latest_block_hash());
         assert_eq!(
-            mock_block.get_hash(),
+            [0; 32],
             blockring.get_longest_chain_block_hash_by_block_id(0)
         );
-    }
 
-    #[tokio::test]
-    async fn blockring_add_and_delete_block() {
-        let mut blockring = BlockRing::new();
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        {
-            let mut wallet = wallet_lock.write().await;
-            wallet.load_keys("test/testwallet", Some("asdf"));
-        }
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        let publickey;
+        blockring.on_chain_reorganization(1, block1_hash, false);
 
-        let mut transactions: Vec<Transaction> = vec![];
-        let _latest_block_id = 3132;
-        let latest_block_hash = [0; 32];
-
-        {
-            let wallet = wallet_lock.read().await;
-            publickey = wallet.get_publickey();
-        }
-
-        //
-        // Add first GOOD block
-        //
-        let mut tx =
-            Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000).await;
-        tx.generate_metadata(publickey);
-        transactions.push(tx);
-        let block = Block::generate(
-            &mut transactions,
-            latest_block_hash,
-            wallet_lock.clone(),
-            blockchain_lock.clone(),
-            create_timestamp(),
-        )
-        .await;
-
-        blockring.add_block(&block);
-
+        assert_eq!(0, blockring.get_latest_block_id());
+        assert_eq!([0; 32], blockring.get_latest_block_hash());
         assert_eq!(
-            blockring.contains_block_hash_at_block_id(block.get_id(), block.get_hash()),
-            true
+            [0; 32],
+            blockring.get_longest_chain_block_hash_by_block_id(0)
         );
 
-        blockring.delete_block(block.get_id(), block.get_hash());
+        blockring.on_chain_reorganization(1, block1_hash, true);
+        blockring.on_chain_reorganization(2, block2_hash, true);
 
+        assert_eq!(2, blockring.get_latest_block_id());
+        assert_eq!(block2_hash, blockring.get_latest_block_hash());
         assert_eq!(
-            blockring.contains_block_hash_at_block_id(block.get_id(), block.get_hash()),
-            false
+            [0; 32],
+            blockring.get_longest_chain_block_hash_by_block_id(3)
         );
     }
 }

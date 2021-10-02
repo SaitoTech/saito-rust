@@ -1,7 +1,6 @@
 use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
-use crate::networking::network::Network;
 use crate::storage::Storage;
 use crate::wallet::Wallet;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
@@ -162,13 +161,12 @@ impl Consensus {
         //
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-        let network_lock = Arc::new(RwLock::new(Network::new(
-            settings,
-            wallet_lock.clone(),
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
-        )));
-
+        // let network_lock = Arc::new(RwLock::new(Network::new(
+        //     settings,
+        //     wallet_lock.clone(),
+        //     mempool_lock.clone(),
+        //     blockchain_lock.clone(),
+        // )));
         //
         // initialize core classes.
         //
@@ -226,18 +224,15 @@ impl Consensus {
         // Network
         //
             res = crate::networking::network::run(
-        network_lock.clone(),
-        wallet_lock.clone(),
-        mempool_lock.clone(),
-        blockchain_lock.clone(),
-                broadcast_channel_sender.clone(),
-                broadcast_channel_sender.subscribe()
-        ) => {
+                settings,
+                wallet_lock.clone(),
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+            ) => {
                 if let Err(err) = res {
-                    eprintln!("network err {:?}", err)
+                    eprintln!("miner err {:?}", err)
                 }
             },
-
         //
         // Other
         //

@@ -2,7 +2,7 @@ use super::api_message::APIMessage;
 use super::network::CHALLENGE_EXPIRATION_TIME;
 use crate::block::{Block, BlockType};
 use crate::blockchain::{Blockchain, GENESIS_PERIOD};
-use crate::crypto::{hash, sign_blob, verify, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
+use crate::crypto::{hash, verify, SaitoHash, SaitoPublicKey};
 use crate::mempool::Mempool;
 use crate::networking::message_types::handshake_challenge::HandshakeChallenge;
 use crate::networking::message_types::request_block_message::RequestBlockMessage;
@@ -47,18 +47,21 @@ lazy_static::lazy_static! {
     pub static ref OUTBOUND_PEER_CONNECTIONS_GLOBAL: Arc<tokio::sync::RwLock<OutboundPeersDB>> = Arc::new(tokio::sync::RwLock::new(OutboundPeersDB::new()));
 }
 
+/// Settings for remote Peers
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PeerSetting {
     pub host: [u8; 4],
     pub port: u16,
 }
 
+/// Flags for Peer state.
 pub struct PeerFlags {
     is_connected_or_connecting: bool,
     has_completed_handshake: bool,
     is_from_peer_list: bool,
 }
 
+/// A Peer. i.e. another node in the network.
 pub struct SaitoPeer {
     peer_flags: PeerFlags,
     connection_id: SaitoHash,
@@ -71,13 +74,18 @@ pub struct SaitoPeer {
     blockchain_lock: Arc<RwLock<Blockchain>>,
 }
 
-pub trait PeerSocket {
-    fn send(&self, api_message: APIMessage);
-    fn get_next_message();
-}
+/// An inbound Peer. This holds a Stream(Sender/Sink) for a peer which has initialized a connection to us via /wsopen.
 pub struct InboundPeer {
     pub sender: mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>,
 }
+
+/// An outbound Peer. This holds a Stream(Sender/Sink) for a peer which we have connected to via /wsopen.
+/// TODO: Unify InboundPeer and OutboundPeer into a single trait and perhaps integrate it into SaitoPeer.
+///       This has proven to be a very difficult task because of ownership loops that make it very tricky
+///       to interact with a peer by reading messages from a socket which is inside the peer. This is why
+///       we have a separate structure to hold the sockets vs the rest of the peer data. It may be easy
+///       to at least unify Inbound and Outbound into a single Trait though and merge InboundPeersDB and
+///       OutboundPeersDB
 pub struct OutboundPeer {
     pub write_sink:
         SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tungstenite::protocol::Message>,
@@ -87,9 +95,12 @@ pub struct PeerRequest {
     connection_id: SaitoHash,
     request_id: u32,
     // This is here for debugging
-    _api_message_command: String,
+    api_message_command: String,
 }
-
+/// A future which wraps an APIMessage REQUEST->RESPONSE into a Future(e.g. REQBLOCK->RESULT__).
+/// This enables a much cleaner interface for inter-node message relays by allowing a response to
+/// be returned directly from peer.send_command() and to turn an ERROR___ response into an Err()
+/// Result.
 impl PeerRequest {
     pub async fn new(command: &str, message: Vec<u8>, peer: &mut SaitoPeer) -> Self {
         peer.request_count += 1;
@@ -98,7 +109,7 @@ impl PeerRequest {
         PeerRequest {
             connection_id: peer.connection_id,
             request_id: peer.request_count - 1,
-            _api_message_command: String::from(command),
+            api_message_command: String::from(command),
         }
     }
 }
@@ -111,6 +122,11 @@ impl Future for PeerRequest {
         match request_responses.remove(&(self.connection_id, self.request_id)) {
             Some(response) => {
                 // Return from the Future with an important message!
+                event!(
+                    Level::INFO,
+                    "HANDLING RESPONSE {}",
+                    self.api_message_command
+                );
                 Poll::Ready(Ok(response))
             }
             None => {
@@ -122,7 +138,9 @@ impl Future for PeerRequest {
         }
     }
 }
-
+/// Sends an APIMessage to a socket connection. Since Outbound and Inbound peers Streams(Sinks) are
+/// not unified into a single Trait yet, we must check both dbs to find out which sort of sink this
+/// peer is using and send the message through the appopriate stream.
 async fn send_message_to_socket(api_message: APIMessage, connection_id: &SaitoHash) {
     let outbound_peer_connection_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
     let mut outbound_peer_connection_db = outbound_peer_connection_db_global.write().await;
@@ -196,6 +214,9 @@ impl SaitoPeer {
     pub fn get_publickey(&self) -> Option<SaitoPublicKey> {
         self.publickey
     }
+    /// this setter also will reset the appropriate flags on the peer if the peer becomes disconnected.
+    /// Once disconnected, we want to also redo the handshake because this will help avoid IP-based
+    /// connection stealing.
     pub async fn set_is_connected_or_connecting(&mut self, is_connected_or_connecting: bool) {
         // we need to clean out the connections from the connection DBs if we disconnected
         if !is_connected_or_connecting {
@@ -224,27 +245,28 @@ impl SaitoPeer {
     pub fn get_connection_id(&self) -> SaitoHash {
         self.connection_id
     }
-
+    /// This creates a PeerRequest Future(which sends the APIMessage to the peer), await's the response,
+    /// and wraps the returned message into a Result(RESULT__ => Ok(), ERROR___ => Err()).
     #[async_recursion]
-    pub async fn send_command(&mut self, command: &str, message: Vec<u8>) {
+    pub async fn send_command(
+        &mut self,
+        command: &str,
+        message: Vec<u8>,
+    ) -> Result<APIMessage, APIMessage> {
         let peer_request = PeerRequest::new(command, message, self).await;
+        // TODO should we turn this expect into an Err()???
         let response_message = peer_request
             .await
             .expect(&format!("Error returned from {}", command));
-        match response_message.message_name_as_string().as_str() {
-            "RESULT__" => {
-                println!("SEND COMMAND GOT RESULT__ {}", command);
-                self.handle_peer_response_command(command, &response_message)
-                    .await;
-            }
-            "ERROR___" => {
-                self.handle_peer_response_error(command, &response_message);
-            }
+        match response_message.get_message_name_as_string().as_str() {
+            "RESULT__" => Ok(response_message),
+            "ERROR___" => Err(response_message),
             _ => {
                 panic!("Received non-response response");
             }
         }
     }
+    /// Helper function for sending basic OK results.
     pub async fn send_response_from_str(&mut self, message_id: u32, message_str: &str) {
         send_message_to_socket(
             APIMessage::new_from_string("RESULT__", message_id, message_str),
@@ -252,6 +274,7 @@ impl SaitoPeer {
         )
         .await;
     }
+    /// Helper function for sending RESULT__.
     pub async fn send_response(&mut self, message_id: u32, message: Vec<u8>) {
         send_message_to_socket(
             APIMessage::new("RESULT__", message_id, message),
@@ -259,6 +282,7 @@ impl SaitoPeer {
         )
         .await;
     }
+    /// Helper function for sending basic errors with a string message.
     pub async fn send_error_response_from_str(&mut self, message_id: u32, message_str: &str) {
         send_message_to_socket(
             APIMessage::new_from_string("ERROR___", message_id, message_str),
@@ -266,6 +290,7 @@ impl SaitoPeer {
         )
         .await;
     }
+    /// Helper function for sending errors
     pub async fn send_error_response(&mut self, message_id: u32, message: Vec<u8>) {
         send_message_to_socket(
             APIMessage::new("ERROR___", message_id, message),
@@ -273,8 +298,10 @@ impl SaitoPeer {
         )
         .await;
     }
+    /// handle any APIMessage from the socket. RESULT/ERROR will be matched to it's COMMAND via
+    /// the ID and the Future will be polled via it's waker. Normal commands will be handled by handle_peer_command.
     pub async fn handle_peer_message(api_message_orig: APIMessage, connection_id: SaitoHash) {
-        match api_message_orig.message_name_as_string().as_str() {
+        match api_message_orig.get_message_name_as_string().as_str() {
             "RESULT__" | "ERROR___" => {
                 let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
                 let mut request_wakers = request_wakers_lock.write().unwrap();
@@ -300,14 +327,24 @@ impl SaitoPeer {
             }
         }
     }
-
+    // TODO Should this really be here? I don't think it's needed... let's just copy the
+    // code in-place where it's called or at least put this somewhere else...
+    pub async fn add_block_to_mempool(&mut self, block: Block) {
+        {
+            let mut mempool = self.mempool_lock.write().await;
+            mempool.add_block(block);
+        }
+        Mempool::send_blocks_to_blockchain(self.mempool_lock.clone(), self.blockchain_lock.clone())
+            .await;
+    }
+    /// Handlers for all the network API commands, e.g. REQBLOCK.
     pub async fn handle_peer_command(peer: &mut SaitoPeer, api_message_orig: &APIMessage) {
         // TODO eliminate this .clone():
         let api_message = api_message_orig.clone();
         let mempool_lock = peer.mempool_lock.clone();
         let blockchain_lock = peer.blockchain_lock.clone();
-        let command = api_message_orig.message_name_as_string();
-        println!("COMMAND {}", command);
+        let command = api_message_orig.get_message_name_as_string();
+        event!(Level::INFO, "HANDLING COMMAND {}", command);
         match command.as_str() {
             "SHAKINIT" => {
                 if let Ok(serialized_handshake_challenge) =
@@ -317,7 +354,7 @@ impl SaitoPeer {
                         .await;
                 }
             }
-            "SHAKCOMP" => match socket_handshake_verify(&api_message.message_data()) {
+            "SHAKCOMP" => match socket_handshake_verify(&api_message.get_message_data()) {
                 Some(deserialize_challenge) => {
                     peer.set_has_completed_handshake(true);
                     peer.set_publickey(deserialize_challenge.opponent_pubkey());
@@ -340,7 +377,7 @@ impl SaitoPeer {
                 if let Some(bytes) = socket_send_block_header(&api_message, blockchain_lock).await {
                     let message_data = String::from("OK").as_bytes().try_into().unwrap();
                     peer.send_response(message_id, message_data).await;
-                    peer.send_command("SNDBLKHD", bytes).await;
+                    let _result = peer.send_command("SNDBLKHD", bytes).await;
                 } else {
                     peer.send_error_response_from_str(message_id, "ERROR").await;
                 }
@@ -349,7 +386,7 @@ impl SaitoPeer {
                 peer.send_response_from_str(api_message.message_id, "OK")
                     .await;
                 if let Some(send_blockchain_message) = build_send_blockchain_message(
-                    &RequestBlockchainMessage::deserialize(&api_message.message_data()),
+                    &RequestBlockchainMessage::deserialize(&api_message.get_message_data()),
                     blockchain_lock,
                 )
                 .await
@@ -360,11 +397,12 @@ impl SaitoPeer {
                         let mut peer_db = peers_db_global.write().await;
                         let peer = peer_db.get_mut(&connection_id_clone).unwrap();
 
-                        peer.send_command(
-                            &String::from("SNDCHAIN"),
-                            send_blockchain_message.serialize(),
-                        )
-                        .await;
+                        let _result = peer
+                            .send_command(
+                                &String::from("SNDCHAIN"),
+                                send_blockchain_message.serialize(),
+                            )
+                            .await;
                     });
                 } else {
                     peer.send_error_response_from_str(api_message.message_id, "UNKNOWN BLOCK HASH")
@@ -390,7 +428,7 @@ impl SaitoPeer {
                     .await;
 
                 let send_blockchain_message =
-                    SendBlockchainMessage::deserialize(api_message.message_data());
+                    SendBlockchainMessage::deserialize(api_message.get_message_data());
                 for send_blockchain_block_data in
                     send_blockchain_message.get_blocks_data().into_iter()
                 {
@@ -400,15 +438,40 @@ impl SaitoPeer {
                         None,
                     );
                     let connection_id_clone = peer.connection_id.clone();
+                    let mempool_lock = mempool_lock.clone();
                     tokio::spawn(async move {
                         let peers_db_global = PEERS_DB_GLOBAL.clone();
                         let mut peer_db = peers_db_global.write().await;
                         let peer = peer_db.get_mut(&connection_id_clone).unwrap();
-                        peer.send_command(
-                            &String::from("REQBLOCK"),
-                            request_block_message.serialize(),
-                        )
-                        .await;
+                        let result = peer
+                            .send_command(
+                                &String::from("REQBLOCK"),
+                                request_block_message.serialize(),
+                            )
+                            .await;
+                        match result {
+                            Ok(serialized_block_message) => {
+                                let block = Block::deserialize_for_net(
+                                    serialized_block_message.get_message_data(),
+                                );
+                                {
+                                    let mut mempool = mempool_lock.write().await;
+                                    mempool.add_block(block);
+                                }
+                                Mempool::send_blocks_to_blockchain(
+                                    peer.mempool_lock.clone(),
+                                    peer.blockchain_lock.clone(),
+                                )
+                                .await;
+                            }
+                            Err(error_message) => {
+                                event!(
+                                    Level::ERROR,
+                                    "REQBLOCK ERROR: {}",
+                                    error_message.get_message_data_as_str()
+                                );
+                            }
+                        }
                     });
                 }
             }
@@ -424,101 +487,15 @@ impl SaitoPeer {
                 event!(
                     Level::ERROR,
                     "Unhandled command received by client... {}",
-                    &api_message.message_name_as_string()
+                    &api_message.get_message_name_as_string()
                 );
                 peer.send_error_response_from_str(api_message.message_id, "NO SUCH")
                     .await;
             }
         }
     }
-    async fn handle_peer_response_command(
-        &mut self,
-        command_name: &str,
-        response_api_message: &APIMessage,
-    ) {
-        println!("COMMAND RESPONSE {}", command_name);
-        match command_name {
-            "SHAKINIT" => {
-                // We should sign the response and send a SHAKCOMP.
-                // We want to reuse socket_handshake_verify, so we will sign first before
-                // verifying the peer's signature
-                let privatekey: SaitoPrivateKey;
-                {
-                    let wallet = self.wallet_lock.read().await;
-                    privatekey = wallet.get_privatekey();
-                }
-                let signed_challenge =
-                    sign_blob(&mut response_api_message.message_data.to_vec(), privatekey)
-                        .to_owned();
-                match socket_handshake_verify(&signed_challenge) {
-                    Some(deserialize_challenge) => {
-                        self.set_has_completed_handshake(true);
-                        self.set_publickey(deserialize_challenge.challenger_pubkey());
-                        self.send_command(&String::from("SHAKCOMP"), signed_challenge)
-                            .await;
-                    }
-                    None => {
-                        event!(Level::ERROR, "Error verifying peer handshake signature");
-                    }
-                }
-            }
-            "SHAKCOMP" => {
-                // now that we're connected, we want to request the chain from our new peer and see if we're synced
-                // TODO get this data from blockchain.rs or wherever it is...
-                let request_blockchain_message =
-                    RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
-
-                self.send_command(
-                    &String::from("REQCHAIN"),
-                    request_blockchain_message.serialize(),
-                )
-                .await;
-            }
-            "REQBLOCK" => {
-                let block = Block::deserialize_for_net(response_api_message.message_data());
-                let mut mempool = self.mempool_lock.write().await;
-                mempool.add_block(block);
-            }
-            "REQBLKHD" => {
-                println!("IMPLEMENT REQBLKHD RESPONSE?!");
-            }
-            "REQCHAIN" => {
-                println!("IMPLEMENT REQCHAIN RESPONSE?!");
-            }
-            "SNDTRANS" => {
-                println!("IMPLEMENT SNDTRANS RESPONSE?!");
-            }
-            "SNDCHAIN" => {
-                println!("IMPLEMENT SNDCHAIN RESPONSE?!");
-            }
-            "SNDBLKHD" => {
-                println!("IMPLEMENT SNDBLKHD RESPONSE?!");
-            }
-            "SNDKYLST" => {
-                println!("IMPLEMENT SNDKYLST RESPONSE?!");
-            }
-            _ => {}
-        }
-    }
-    fn handle_peer_response_error(
-        &mut self,
-        command_name: &str,
-        response_api_message: &APIMessage,
-    ) {
-        println!(
-            "{} ERROR: {}",
-            command_name,
-            response_api_message.message_data_as_str(),
-        );
-        match command_name {
-            "SHAKCOMP" => {
-                // TODO delete the peer if there is an error here
-            }
-            _ => {}
-        }
-    }
 }
-
+/// spawns a task to read messages from the socket of inbound peers.
 pub async fn handle_inbound_peer_connection(
     ws: WebSocket,
     peer_db_lock: Arc<RwLock<PeersDB>>,
@@ -561,8 +538,6 @@ pub async fn handle_inbound_peer_connection(
         },
     );
 
-    println!("Peer connected!");
-
     tokio::task::spawn(async move {
         while let Some(result) = peer_ws_rcv.next().await {
             let msg = match result {
@@ -576,19 +551,16 @@ pub async fn handle_inbound_peer_connection(
                 let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());
                 SaitoPeer::handle_peer_message(api_message, connection_id).await;
             } else {
-                println!("Message of length 0... why?");
-                println!("This seems to occur if we aren't holding a reference to the sender/stream on the");
-                println!("other end of the connection. I suspect that when the stream goes out of scope,");
-                println!(
-                    "it's deconstructor is being called and sends a 0 length message to indicate"
+                event!(
+                    Level::ERROR,
+                    "Message of length 0... why?\n
+                    This seems to occur if we aren't holding a reference to the sender/stream on the\n
+                    other end of the connection. I suspect that when the stream goes out of scope,\n
+                    it's deconstructor is being called and sends a 0 length message to indicate\n
+                    that the stream has ended... I'm leaving this println here for now because\n
+                    it would be very helpful to see this if starts to occur again. We may want to\n
+                    treat this as a disconnect."
                 );
-                println!(
-                    "that the stream has ended... I'm leaving this println here for now because"
-                );
-                println!(
-                    "it would be very helpful to see this if starts to occur again. We may want to"
-                );
-                println!("treat this as a disconnect.");
             }
         }
         // We had some error. Remove all references to this peer.
@@ -670,7 +642,7 @@ pub async fn build_request_block_response(
     api_message: &APIMessage,
     blockchain_lock: Arc<RwLock<Blockchain>>,
 ) -> APIMessage {
-    let request_block_message = RequestBlockMessage::deserialize(api_message.message_data());
+    let request_block_message = RequestBlockMessage::deserialize(api_message.get_message_data());
     let blockchain = blockchain_lock.read().await;
     if request_block_message.get_block_id().is_some() {
         APIMessage::new_from_string("ERROR___", api_message.message_id, "Unsupported: fetching blocks by id is not yet supported, please fetch the block by hash.")
