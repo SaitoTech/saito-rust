@@ -1,6 +1,25 @@
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 
+/// The core data type for transporting data across the Saito Network.
+/// See the Network module doc for more details.
+///
+/// ```bytes
+/// ERROR___
+/// RESULT__
+/// ```
+///
+/// ```bytes
+/// SHAKINIT
+/// SHAKCOMP
+/// REQCHAIN
+/// SNDCHAIN
+/// REQBLKHD
+/// SNDBLKHD
+/// SNDTRANS
+/// REQBLOCK
+/// SNDKYLST
+/// ```
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct APIMessage {
     pub message_name: [u8; 8],
@@ -27,22 +46,22 @@ impl APIMessage {
             message_string.as_bytes().try_into().unwrap(),
         )
     }
-    pub fn message_name(&self) -> &[u8; 8] {
+    pub fn get_message_name(&self) -> &[u8; 8] {
         &self.message_name
     }
-    pub fn message_name_as_string(&self) -> String {
+    pub fn get_message_name_as_string(&self) -> String {
         String::from_utf8_lossy(&self.message_name).to_string()
     }
-    pub fn message_id(&self) -> u32 {
+    pub fn get_message_id(&self) -> u32 {
         self.message_id
     }
-    pub fn message_data(&self) -> &Vec<u8> {
+    pub fn get_message_data(&self) -> &Vec<u8> {
         &self.message_data
     }
-    pub fn into_message_data(self) -> Vec<u8> {
+    pub fn get_into_message_data(self) -> Vec<u8> {
         self.message_data
     }
-    pub fn message_data_as_str(&self) -> String {
+    pub fn get_message_data_as_str(&self) -> String {
         String::from_utf8_lossy(&self.message_data).to_string()
     }
     pub fn deserialize(bytes: &Vec<u8>) -> APIMessage {

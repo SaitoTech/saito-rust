@@ -3,11 +3,10 @@ use crate::{
     crypto::{SaitoHash, SaitoPublicKey, SaitoUTXOSetKey},
 };
 use ahash::AHashMap;
-use serde::{Deserialize, Serialize};
-
+use bigint::uint::U256;
 use macros::TryFromByte;
+use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
-
 use tracing::{event, Level};
 
 /// The size of a serilized slip in bytes.
@@ -70,11 +69,15 @@ impl Slip {
                     if *value == 1 {
                         true
                     } else {
-                        //println!("value is {} at {:?}", *value, &self.utxoset_key);
+                        println!(
+                            "in utxoset but invalid: value is {} at {:?}",
+                            *value, &self.utxoset_key
+                        );
                         false
                     }
                 }
                 None => {
+                    println!("not in utxoset so invalid");
                     event!(
                         Level::ERROR,
                         "value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}",
@@ -97,12 +100,34 @@ impl Slip {
         _lc: bool,
         slip_value: u64,
     ) {
+        if self.get_slip_type() == SlipType::StakerDeposit {
+            if _lc == true {
+                println!(
+                    " ====> spending deposit: {:?} -- {:?}",
+                    self.get_utxoset_key(),
+                    self.get_slip_type()
+                );
+            }
+        }
+
         if self.get_amount() > 0 {
+            //
             // TODO cleanup once ready
-            //println!("updating utxoset: {:?} value {}", self.utxoset_key, slip_value);
+            //
+            //println!("update utxoset: {:?} value {} lc -> {}", self.utxoset_key, slip_value, lc);
             //println!("slip_ordinal: {}", self.get_slip_ordinal());
             //println!("slip_amount: {}", self.get_amount());
-            utxoset.entry(self.utxoset_key).or_insert(slip_value);
+            //utxoset.entry(self.utxoset_key).or_insert(slip_value);
+            //
+            // TODO find more efficient update operation
+            //
+            // entry().or_insert() does not update
+            //
+            if utxoset.contains_key(&self.utxoset_key) {
+                utxoset.insert(self.utxoset_key, slip_value);
+            } else {
+                utxoset.entry(self.utxoset_key).or_insert(slip_value);
+            }
         }
     }
 
@@ -157,7 +182,9 @@ impl Slip {
         self.slip_type = slip_type;
     }
 
-    // runs when block is purged for good
+    //
+    // runs when block is purged for good or staking slip deleted
+    //
     pub fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_utxoset_key() == [0; 74] {
             event!(
@@ -168,6 +195,45 @@ impl Slip {
         }
         utxoset.remove_entry(&self.get_utxoset_key());
         true
+    }
+    // slip comparison is used when inserting slips (staking slips) into the
+    // staking tables, as the order of the stakers table needs to be identical
+    // regardless of the order in which components are added, lest we get
+    // disagreement.
+    //
+    // 1 = self is bigger
+    // 2 = other is bigger
+    // 3 = same
+    pub fn compare(&self, other: Slip) -> u64 {
+        let x = U256::from_big_endian(&self.get_publickey()[0..32]);
+        let y = U256::from_big_endian(&other.get_publickey()[0..32]);
+
+        if x > y {
+            return 1;
+        }
+        if y > x {
+            return 2;
+        }
+
+        //
+        // use the part of the utxoset key that does not include the
+        // publickey but includes the amount and slip ordinal, so that
+        // testing is happy that manually created slips are somewhat
+        // unique for staker-table insertion..
+        //
+        let a = U256::from_big_endian(&self.get_utxoset_key()[42..74]);
+        let b = U256::from_big_endian(&other.get_utxoset_key()[42..74]);
+
+        println!("{:?} --- {:?}", a, b);
+
+        if a > b {
+            return 1;
+        }
+        if b > a {
+            return 2;
+        }
+
+        return 3;
     }
 
     //
@@ -186,11 +252,14 @@ impl Slip {
     //
     // Serialization
     //
-    // output slips are signed as zero'd out byte arrays. we have
-    // a separate function to handle them as otherwise we may
-    // generate an incorrect signature after we have updated the
-    // transaction outputs with the proper UUID for insertion into
-    // the utxoset.
+    // output slips are signed with the UUIDs set as zero'd-out
+    // byte arrays. we have a separate serialization function
+    // so we do not need to manipulate the UUID to check the validity
+    // of creator-signature.
+    //
+    // this technique avoids our signature not-working after the block
+    // is produced and we have the UUID for the transaction slips
+    // that reflect the position of the block in the chain.
     //
     pub fn serialize_output_for_signature(&self) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
