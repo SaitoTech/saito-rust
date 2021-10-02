@@ -835,8 +835,10 @@ impl Block {
                 cv.expected_difficulty = difficulty;
             }
         } else {
-            // TODO Is this actually an error? What should we do here?
-            event!(Level::ERROR, "CAN'T FIND PREVIOUS BLOCK");
+            //
+            // if there is no previous block, the burn fee is not adjusted. validation
+            // rules will cause the block to fail unless it is the first block.
+            //
         }
 
         //
@@ -1218,9 +1220,8 @@ impl Block {
             create_timestamp(),
         );
 
-	// ensure hashes correct
-	self.generate_hashes();
-
+        // ensure hashes correct
+        self.generate_hashes();
 
         //
         // if we are generating the metadata for a block, we use the
@@ -1648,7 +1649,8 @@ impl Block {
             if hash1 != hash2 {
                 event!(
                     Level::ERROR,
-                    "ERROR 627428: block fee transaction doesn't match cv fee transaction"
+                    "ERROR 627428: block {} fee transaction doesn't match cv fee transaction",
+                    self.get_id()
                 );
                 return false;
             }

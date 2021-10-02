@@ -84,9 +84,20 @@ impl Mempool {
         }
     }
 
-
+    pub async fn add_transaction_if_validates(
+        &mut self,
+        transaction: Transaction,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+    ) {
+        //
+        // validate
+        //
+        let blockchain = blockchain_lock.read().await;
+        if transaction.validate(&blockchain.utxoset, &blockchain.staking) {
+            self.add_transaction(transaction).await;
+        }
+    }
     pub async fn add_transaction(&mut self, mut transaction: Transaction) {
-
         event!(
             Level::INFO,
             "add_transaction {:?}",

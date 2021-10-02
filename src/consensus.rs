@@ -117,9 +117,9 @@ impl Consensus {
                     .takes_value(true)
                     .help("config file name"),
             )
-	    //
-	    // TODO - hook up with Arg
-	    //
+            //
+            // TODO - hook up with Arg
+            //
             //.arg(
             //    Arg::with_name("spammer")
             //        .short("s")
@@ -132,13 +132,13 @@ impl Consensus {
             Some(name) => name,
             None => "config",
         };
-	
-	let is_spammer_enabled = true;
-	//
-	// TODO - hook up with Arg above
-	//
+
+        let is_spammer_enabled = true;
+        //
+        // TODO - hook up with Arg above
+        //
         //if matches.is_present("spammer") {
-	//   enable_spammer = true;
+        //   enable_spammer = true;
         //};
 
         let mut settings = config::Config::default();
@@ -155,23 +155,22 @@ impl Consensus {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
-	//
-	// TODO - load wallet ONLY if keyfile and password provided
-	//
+        //
+        // TODO - load wallet ONLY if keyfile and password provided
+        //
         //{
         //    let mut wallet = wallet_lock.write().await;
         //    wallet.load_keys(key_path, password);
         //}
 
-
         //
         // load blocks from disk and check chain
         //
         Storage::load_blocks_from_disk(blockchain_lock.clone()).await;
-	{
-	    let blockchain = blockchain_lock.read().await;
-	    blockchain.print();
-	}
+        {
+            let blockchain = blockchain_lock.read().await;
+            blockchain.print();
+        }
 
         //
         // instantiate core classes
@@ -184,20 +183,19 @@ impl Consensus {
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
         let network_lock = Arc::new(RwLock::new(Network::new(
-             settings,
-             wallet_lock.clone(),
-             mempool_lock.clone(),
-             blockchain_lock.clone(),
+            settings,
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
         )));
 
-	//
-	// start test_manager spammer
-	//
-	//if is_spammer_enabled {
-	//    let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
-	//    test_manager.spam_mempool(mempool_lock.clone());
-	//}
-
+        //
+        // start test_manager spammer
+        //
+        if is_spammer_enabled {
+            let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+            test_manager.spam_mempool(mempool_lock.clone());
+        }
 
         //
         // initialize core classes.
@@ -271,7 +269,6 @@ impl Consensus {
                 println!("Shutdown message complete")
             }
         }
-
 
         Ok(())
     }

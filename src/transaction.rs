@@ -950,7 +950,6 @@ impl Transaction {
             // publickey associated with the Saito project.
         }
 
-
         //
         // all Transactions
         //

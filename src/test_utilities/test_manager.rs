@@ -14,9 +14,9 @@ use crate::transaction::{Transaction, TransactionType};
 use crate::wallet::Wallet;
 
 use ahash::AHashMap;
-use std::{thread::sleep, time::Duration};
-use std::sync::Arc;
 use rayon::prelude::*;
+use std::sync::Arc;
+use std::{thread::sleep, time::Duration};
 use tokio::sync::RwLock;
 use tracing::{event, Level};
 
@@ -673,36 +673,34 @@ impl TestManager {
         self.latest_block_hash = latest_block_hash;
     }
 
-    pub fn spam_mempool(&mut self, mempool_lock : Arc<RwLock<Mempool>>) {
-
-	let mempool_lock_clone = mempool_lock.clone();
-	let wallet_lock_clone = self.wallet_lock.clone();
+    pub fn spam_mempool(&mut self, mempool_lock: Arc<RwLock<Mempool>>) {
+        let mempool_lock_clone = mempool_lock.clone();
+        let wallet_lock_clone = self.wallet_lock.clone();
+        let blockchain_lock_clone = self.blockchain_lock.clone();
 
         tokio::spawn(async move {
+            let txs_to_generate = 10;
+            let bytes_per_tx = 1024;
+            let publickey;
+            let privatekey;
 
-	    let txs_to_generate = 10;
-	    let bytes_per_tx = 1024;
-	    let publickey;
-	    let privatekey;
+            {
+                let wallet = wallet_lock_clone.read().await;
+                publickey = wallet.get_publickey();
+                privatekey = wallet.get_privatekey();
+            }
 
-	    {
-		let wallet = wallet_lock_clone.read().await;
-		publickey = wallet.get_publickey();
-		privatekey = wallet.get_privatekey();
-	    }
-
-
-	    {
-		let vip_transaction = Transaction::generate_vip_transaction(
-		    wallet_lock_clone.clone(),
-        	    publickey,
-		    100_000_000,
-        	    10
-		).await;
-
-		let mut mempool = mempool_lock_clone.write().await;
-		mempool.add_transaction(vip_transaction).await;
-	    }
+            {
+                let vip_transaction = Transaction::generate_vip_transaction(
+                    wallet_lock_clone.clone(),
+                    publickey,
+                    100_000_000,
+                    10,
+                )
+                .await;
+                let mut mempool = mempool_lock_clone.write().await;
+                mempool.add_transaction(vip_transaction).await;
+            }
 
             loop {
                 for _i in 0..txs_to_generate {
@@ -727,15 +725,20 @@ impl TestManager {
                     transaction
                         .add_hop_to_path(wallet_lock_clone.clone(), publickey)
                         .await;
-		    {
-			let mut mempool = mempool_lock_clone.write().await;
-			mempool.add_transaction(transaction).await;
-		    }
-		}
+                    {
+                        let mut mempool = mempool_lock_clone.write().await;
+                        mempool
+                            .add_transaction_if_validates(
+                                transaction,
+                                blockchain_lock_clone.clone(),
+                            )
+                            .await;
+                    }
+                }
                 sleep(Duration::from_millis(4000));
                 event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
-	    }
-	});
+            }
+        });
     }
 }
 

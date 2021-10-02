@@ -57,7 +57,6 @@ pub async fn run(
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-
     //
     // network gets global broadcast channel and keypair
     //
@@ -71,7 +70,6 @@ pub async fn run(
     // create local broadcast channel
     //
     let (network_channel_sender, mut network_channel_receiver) = mpsc::channel(4);
-
 
     //
     // local channel sender -- send in clone as thread takes ownership
@@ -87,7 +85,6 @@ pub async fn run(
         }
     });
 
-
     //
     // global and local channel receivers
     //
@@ -96,35 +93,34 @@ pub async fn run(
 
              //
              // local broadcast channel receivers
-             // 
+             //
              Some(message) = network_channel_receiver.recv() => {
                  match message {
-                
+
                      //
                      // receive local messages
-                     // 
-		     NetworkMessage::LocalNetworkMonitoring => {
-		     }
+                     //
+             NetworkMessage::LocalNetworkMonitoring => {
+             }
 
 
                  }
              }
-            
-            
+
+
              //
              // global broadcast channel receivers
-             // 
+             //
              Ok(message) = broadcast_channel_receiver.recv() => {
                  match message {
                      SaitoMessage::MinerNewGoldenTicket { ticket : _golden_ticket } => {
-                     },  
+                     },
                      _ => {},
                  }
              }
         }
     }
-}   
-
+}
 
 /****
     //
@@ -166,7 +162,6 @@ impl Network {
             broadcast_channel_sender: None,
         }
     }
-
 
     /// After socket has been connected, the connector begins the handshake via SHAKINIT command.
     /// Once the handshake is complete, we synchronize the peers via REQCHAIN/SENDCHAIN and REQBLOCK.
@@ -417,9 +412,7 @@ impl Network {
             .await;
         Ok(())
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {

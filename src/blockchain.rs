@@ -80,12 +80,10 @@ impl Blockchain {
     }
 
     pub async fn add_block(&mut self, mut block: Block) {
-
-	//
-	// first things first, confirm hashes OK
-	//
-	block.generate_hashes();
-
+        //
+        // first things first, confirm hashes OK
+        //
+        block.generate_hashes();
 
         event!(Level::INFO, "add_block {}", &hex::encode(&block.get_hash()));
         event!(
@@ -95,7 +93,6 @@ impl Blockchain {
             block.get_hash(),
             block.get_id()
         );
-
 
         //
         // start by extracting some variables that we will use
@@ -227,18 +224,30 @@ impl Blockchain {
             }
         } else {
             //
-            // we can hit this point in the code if we have a block without a parent,
-            // in which case we want to process it without unwind/wind chain, or if
-            // we are adding our very first block, in which case we do want to process
-            // it.
+            // we have a block without a parent.
             //
-            // TODO more elegant handling of the first block and other non-longest-chain
-            // blocks.
+            // if this is our first block, the blockring will have no entry yet
+            // and block_ring_lc_pos (longest_chain_position) will be pointing
+            // at None. We use this to determine if we are a new chain instead
+            // of creating a separate variable to manually track entries.
             //
-            event!(
-                Level::ERROR,
-                "We have added a block without a parent block... "
-            );
+            if self.blockring.is_empty() {
+                //
+                // no need for action as fall-through will result in proper default
+                // behavior. we have the comparison here to separate expected from
+                // unexpected / edge-case issues around block receipt.
+                //
+            } else {
+                //
+                // TODO - implement logic to handle once nodes can connect
+                //
+                // if this not our first block, handle edge-case around receiving
+                // block 503 before block 453 when block 453 is our expected proper
+                // next block and we are getting blocks out-of-order because of
+                // connection or network issues.
+                //
+                event!(Level::ERROR, "blocks received out-of-order issue...");
+            }
         }
 
         //
@@ -658,16 +667,19 @@ impl Blockchain {
         0
     }
 
-    pub fn print(&self)  {
+    pub fn print(&self) {
+        let latest_block_id = self.get_latest_block_id();
+        let mut current_id = latest_block_id;
 
-	let latest_block_id = self.get_latest_block_id();
-	let mut current_id = latest_block_id;
-
- 	while current_id > 0 {
-	    println!("{} - {:?}", current_id, self.blockring.get_longest_chain_block_hash_by_block_id(current_id));
-	    current_id -= 1;
-	}
-
+        while current_id > 0 {
+            println!(
+                "{} - {:?}",
+                current_id,
+                self.blockring
+                    .get_longest_chain_block_hash_by_block_id(current_id)
+            );
+            current_id -= 1;
+        }
     }
 
     pub fn get_latest_block(&self) -> Option<&Block> {
@@ -851,7 +863,6 @@ impl Blockchain {
             " ... blockchain.wind_chain strt: {:?}",
             create_timestamp()
         );
-
 
         //
         // if we are winding a non-existent chain with a wind_failure it
