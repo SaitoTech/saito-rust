@@ -696,8 +696,6 @@ impl TestManager {
                 latest_block_id = blockchain.get_latest_block_id();
             }
 
-            println!("Latest block id: {}", latest_block_id);
-
             {
                 if latest_block_id == 0 {
                     let mut vip_transaction = Transaction::generate_vip_transaction(

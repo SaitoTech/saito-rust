@@ -1871,9 +1871,7 @@ impl Block {
         //
         // set difficulty
         //
-        if cv.expected_difficulty != 0 {
-            block.set_difficulty(cv.expected_difficulty);
-        }
+        block.set_difficulty(cv.expected_difficulty);
 
         //
         // set treasury

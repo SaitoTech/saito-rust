@@ -139,7 +139,7 @@ impl Mempool {
         let blockchain = blockchain_lock.read().await;
         let previous_block_hash = blockchain.get_latest_block_hash();
 
-        let block = Block::generate(
+        let mut block = Block::generate(
             &mut self.transactions,
             previous_block_hash,
             self.wallet_lock.clone(),
@@ -147,6 +147,7 @@ impl Mempool {
             current_timestamp,
         )
         .await;
+	block.generate_metadata();
 
         self.routing_work_in_mempool = 0;
 

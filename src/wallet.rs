@@ -53,18 +53,18 @@ impl Wallet {
         }
     }
 
-    pub fn load_keys(&mut self, key_path: &str, password: Option<&str>) {
-        let mut filename = String::from("data/");
-        filename.push_str(key_path);
+    pub fn load(&mut self, walletname: &str, password: Option<&str>) {
+        let mut filename = String::from("data/wallets/");
+        filename.push_str(walletname);
         let path = Path::new(&filename);
 
         let decrypted_buffer: Vec<u8>;
         if !path.exists() {
-            println!("Creating key file at path: {}", key_path);
-            decrypted_buffer = Wallet::create_key_file(&key_path, &password);
+            println!("Creating wallet file at path: {}", walletname);
+            decrypted_buffer = Wallet::create_wallet_file(&walletname, &password);
         } else {
-            println!("Reading key file from path: {}", key_path);
-            decrypted_buffer = Wallet::read_key_file(&key_path, &password);
+            println!("Reading wallet file from path: {}", walletname);
+            decrypted_buffer = Wallet::read_wallet_file(&walletname, &password);
         }
 
         let (publickey, privatekey) = generate_keypair_from_privatekey(&decrypted_buffer);
@@ -73,7 +73,7 @@ impl Wallet {
         self.set_privatekey(privatekey);
     }
 
-    fn create_key_file(key_file_path: &str, opts_password: &Option<&str>) -> Vec<u8> {
+    fn create_wallet_file(wallet_file_path: &str, opts_password: &Option<&str>) -> Vec<u8> {
         let password: String;
         if opts_password.is_none() {
             password = rpassword::prompt_password_stdout("Password: ").unwrap();
@@ -88,14 +88,14 @@ impl Wallet {
         let ciphertext = cipher.encrypt_vec(&privatekey);
         let encrypted_wallet = EncryptedWallet {
             encrypted_privatekey: ciphertext,
-            file_path: key_file_path.to_string().clone(),
+            file_path: wallet_file_path.to_string().clone(),
         };
         encrypted_wallet.save();
 
         privatekey.to_vec()
     }
 
-    fn read_key_file(key_file_path: &str, opts_password: &Option<&str>) -> Vec<u8> {
+    fn read_wallet_file(wallet_file_path: &str, opts_password: &Option<&str>) -> Vec<u8> {
         let password: String;
         if opts_password.is_none() {
             password = rpassword::prompt_password_stdout("Password: ").unwrap();
@@ -103,12 +103,12 @@ impl Wallet {
             password = String::from(opts_password.as_deref().unwrap());
         }
 
-        let encrypted_wallet = EncryptedWallet::load(&key_file_path);
+        let encrypted_wallet = EncryptedWallet::load(&wallet_file_path);
 
-        Wallet::decrypt_key_file(encrypted_wallet.encrypted_privatekey, &password)
+        Wallet::decrypt_wallet_file(encrypted_wallet.encrypted_privatekey, &password)
     }
 
-    fn decrypt_key_file(ciphertext: Vec<u8>, password: &str) -> Vec<u8> {
+    fn decrypt_wallet_file(ciphertext: Vec<u8>, password: &str) -> Vec<u8> {
         let (key, iv) = Wallet::create_primitives_from_password(password);
         let cipher = Aes128Cbc::new_from_slices(&key, &iv).unwrap();
         cipher.decrypt_vec(&ciphertext).unwrap()
