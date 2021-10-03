@@ -13,7 +13,7 @@ use crate::util::format_url_string;
 use crate::wallet::Wallet;
 use futures::StreamExt;
 use secp256k1::PublicKey;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio::time::sleep;
 
 use std::{sync::Arc, time::Duration};
@@ -53,17 +53,81 @@ pub struct Network {
 }
 
 pub async fn run(
-    config_settings: Config,
-    wallet_lock: Arc<RwLock<Wallet>>,
-    mempool_lock: Arc<RwLock<Mempool>>,
-    blockchain_lock: Arc<RwLock<Blockchain>>,
+    network_lock: Arc<RwLock<Network>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-    let network = Network::new(
-        config_settings,
-        wallet_lock.clone(),
-        mempool_lock.clone(),
-        blockchain_lock.clone(),
-    );
+    //
+    // network gets global broadcast channel and keypair
+    //
+    {
+        // do not seize mempool write access
+        let mut network = network_lock.write().await;
+        network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+    }
+
+    //
+    // create local broadcast channel
+    //
+    let (network_channel_sender, mut network_channel_receiver) = mpsc::channel(4);
+
+    //
+    // local channel sender -- send in clone as thread takes ownership
+    //
+    let network_local_sender = network_channel_sender.clone();
+    tokio::spawn(async move {
+        loop {
+            network_local_sender
+                .send(NetworkMessage::LocalNetworkMonitoring)
+                .await
+                .expect("error: LocalNetworkMonitoring message failed to send");
+            sleep(Duration::from_millis(10000)).await;
+        }
+    });
+
+    //
+    // global and local channel receivers
+    //
+    loop {
+        tokio::select! {
+
+             //
+             // local broadcast channel receivers
+             //
+             Some(message) = network_channel_receiver.recv() => {
+                 match message {
+
+                     //
+                     // receive local messages
+                     //
+             NetworkMessage::LocalNetworkMonitoring => {
+             }
+
+
+                 }
+             }
+
+
+             //
+             // global broadcast channel receivers
+             //
+             Ok(message) = broadcast_channel_receiver.recv() => {
+                 match message {
+                     SaitoMessage::MinerNewGoldenTicket { ticket : _golden_ticket } => {
+                     },
+                     _ => {},
+                 }
+             }
+        }
+    }
+}
+
+/****
+    //
+    // this approach seizes the network and never releases it, no?
+    //
+    let mut network = network_lock.write().await;
+
     // TODO: refactor this into two separate classes maybe and split this run() into two...
     tokio::select! {
         res = network.run_client() => {
@@ -77,9 +141,7 @@ pub async fn run(
             }
         },
     }
-
-    Ok(())
-}
+****/
 
 impl Network {
     /// Returns a Network
@@ -100,6 +162,7 @@ impl Network {
             broadcast_channel_sender: None,
         }
     }
+
     /// After socket has been connected, the connector begins the handshake via SHAKINIT command.
     /// Once the handshake is complete, we synchronize the peers via REQCHAIN/SENDCHAIN and REQBLOCK.
     pub async fn handshake_and_synchronize_chain(
@@ -169,9 +232,6 @@ impl Network {
             }
         }
     }
-    /// Create an "outbound" connection to a peer
-    // TODO move this to peer near to handle_inbound_peer_connection and give it a similar name.
-    // these are the two functions which spawn tasks on either end of the socket.
 
     pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
         self.broadcast_channel_sender = Some(bcs);
@@ -324,6 +384,7 @@ impl Network {
         .expect("error: spawn_reconnect_to_configured_peers_task failed");
         Ok(())
     }
+
     /// Runs warp::serve to listen for incoming connections
     pub async fn run_server(&self) -> crate::Result<()> {
         let host: [u8; 4] = self.config_settings.get::<[u8; 4]>("network.host").unwrap();

@@ -114,7 +114,7 @@ impl Slip {
             //
             // TODO cleanup once ready
             //
-            //println!("update utxoset: {:?} value {} lc -> {}", self.utxoset_key, slip_value, lc);
+            //println!("update utxoset: {:?} value {} lc -> {}", self.utxoset_key, slip_value, _lc);
             //println!("slip_ordinal: {}", self.get_slip_ordinal());
             //println!("slip_amount: {}", self.get_amount());
             //utxoset.entry(self.utxoset_key).or_insert(slip_value);

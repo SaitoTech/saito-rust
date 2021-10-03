@@ -844,7 +844,6 @@ impl Transaction {
                 );
                 return false;
             }
-            println!("ERR6");
 
             //
             // validate sender exists
@@ -857,7 +856,6 @@ impl Transaction {
                 return false;
             }
 
-            println!("ERR7");
             //
             // validate routing path sigs
             //
@@ -895,7 +893,6 @@ impl Transaction {
                 );
                 return false;
             }
-            println!("ERR8");
         }
 
         //
@@ -917,7 +914,6 @@ impl Transaction {
         // golden ticket transactions
         //
         if transaction_type == TransactionType::GoldenTicket {}
-        println!("ERR9");
 
         //
         // Staking Withdrawal Transactions
@@ -954,8 +950,6 @@ impl Transaction {
             // publickey associated with the Saito project.
         }
 
-        println!("ERR1");
-
         //
         // all Transactions
         //
@@ -970,7 +964,6 @@ impl Transaction {
                 Level::ERROR,
                 "ERROR 582039: less than 1 output in transaction"
             );
-            println!("ERR2");
             return false;
         }
 
@@ -980,21 +973,18 @@ impl Transaction {
         // tokens it will pass this check, which is conducted inside
         // the slip-level validation logic.
         //
-        for i in 0..self.inputs.len() {
-            let is_valid = self.inputs[i].validate(utxoset);
-            if is_valid != true {
-                println!("tx: {:?}", self);
-                println!(
-                    "this input is invalid: {:?}",
-                    self.inputs[i].get_slip_type()
-                );
-                println!("ERR3");
-                return false;
-            }
-        }
-
+        //for i in 0..self.inputs.len() {
+        //    let is_valid = self.inputs[i].validate(utxoset);
+        //    if is_valid != true {
+        //        //println!("tx: {:?}", self);
+        //        println!(
+        //            "this input is invalid: {:?}",
+        //            self.inputs[i].get_slip_type()
+        //        );
+        //        return false;
+        //    }
+        //}
         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
-        println!("ERR4");
         inputs_validate
     }
 }

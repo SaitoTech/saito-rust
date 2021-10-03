@@ -84,6 +84,19 @@ impl Mempool {
         }
     }
 
+    pub async fn add_transaction_if_validates(
+        &mut self,
+        transaction: Transaction,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+    ) {
+        //
+        // validate
+        //
+        let blockchain = blockchain_lock.read().await;
+        if transaction.validate(&blockchain.utxoset, &blockchain.staking) {
+            self.add_transaction(transaction).await;
+        }
+    }
     pub async fn add_transaction(&mut self, mut transaction: Transaction) {
         event!(
             Level::INFO,
@@ -158,6 +171,12 @@ impl Mempool {
             let work_available = self.get_routing_work_available();
             let work_needed = self.get_routing_work_needed(previous_block, current_timestamp);
             let time_elapsed = current_timestamp - previous_block.get_timestamp();
+            println!(
+                "can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
+                work_available,
+                work_needed,
+                time_elapsed
+            );
             event!(
                 Level::INFO,
                 "can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
@@ -215,38 +234,6 @@ impl Mempool {
         work_needed
     }
 
-    ///
-    /// Check to see if the `Mempool` has enough work to bundle a block
-    ///
-    // pub async fn can_bundle_block(
-    //     &self,
-    //     blockchain_lock: Arc<RwLock<Blockchain>>,
-    //     current_timestamp: u64,
-    // ) -> bool {
-    //     if self.currently_processing_block {
-    //         return false;
-    //     }
-    //     if self.transactions.is_empty() {
-    //         return false;
-    //     }
-
-    //     let blockchain = blockchain_lock.read().await;
-
-    //     if let Some(previous_block) = blockchain.get_latest_block() {
-    //         let work_available = self.calculate_work_available();
-    //         let work_needed = self.calculate_work_needed(previous_block, current_timestamp);
-    //         let time_elapsed = current_timestamp - previous_block.get_timestamp();
-    //         event!(
-    //             Level::INFO,
-    //             "can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
-    //             work_available,
-    //             work_needed,
-    //             time_elapsed
-    //         );
-    //         work_available >= work_needed
-    //     } else {
-    //         true
-    //     }
     pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
         self.broadcast_channel_sender = Some(bcs);
     }

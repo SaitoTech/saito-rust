@@ -79,7 +79,14 @@ impl Blockchain {
         self.fork_id
     }
 
-    pub async fn add_block(&mut self, block: Block) {
+    pub async fn add_block(&mut self, mut block: Block) {
+        //
+        // first things first, confirm hashes OK
+        //
+        block.generate_hashes();
+
+        println!("ADDING BLOCK {}", block.get_id());
+
         event!(Level::INFO, "add_block {}", &hex::encode(&block.get_hash()));
         event!(
             Level::TRACE,
@@ -97,9 +104,6 @@ impl Blockchain {
         let block_hash = block.get_hash();
         let block_id = block.get_id();
         let previous_block_hash = self.blockring.get_latest_block_hash();
-
-        //println!("blockring prev hash: {:?}", previous_block_hash);
-        //println!("block     prev hash: {:?}", block.get_previous_block_hash());
 
         //
         // sanity checks
@@ -222,18 +226,30 @@ impl Blockchain {
             }
         } else {
             //
-            // we can hit this point in the code if we have a block without a parent,
-            // in which case we want to process it without unwind/wind chain, or if
-            // we are adding our very first block, in which case we do want to process
-            // it.
+            // we have a block without a parent.
             //
-            // TODO more elegant handling of the first block and other non-longest-chain
-            // blocks.
+            // if this is our first block, the blockring will have no entry yet
+            // and block_ring_lc_pos (longest_chain_position) will be pointing
+            // at None. We use this to determine if we are a new chain instead
+            // of creating a separate variable to manually track entries.
             //
-            event!(
-                Level::ERROR,
-                "We have added a block without a parent block... "
-            );
+            if self.blockring.is_empty() {
+                //
+                // no need for action as fall-through will result in proper default
+                // behavior. we have the comparison here to separate expected from
+                // unexpected / edge-case issues around block receipt.
+                //
+            } else {
+                //
+                // TODO - implement logic to handle once nodes can connect
+                //
+                // if this not our first block, handle edge-case around receiving
+                // block 503 before block 453 when block 453 is our expected proper
+                // next block and we are getting blocks out-of-order because of
+                // connection or network issues.
+                //
+                event!(Level::ERROR, "blocks received out-of-order issue...");
+            }
         }
 
         //
@@ -253,7 +269,6 @@ impl Blockchain {
         // with the BlockRing. We fail if the newly-preferred chain is not
         // viable.
         //
-        //  println!(" ... start unwind/wind chain:    {:?}", create_timestamp());
         if am_i_the_longest_chain {
             let does_new_chain_validate = self.validate(new_chain, old_chain).await;
             if does_new_chain_validate {
@@ -654,6 +669,21 @@ impl Blockchain {
         0
     }
 
+    pub fn print(&self) {
+        let latest_block_id = self.get_latest_block_id();
+        let mut current_id = latest_block_id;
+
+        while current_id > 0 {
+            println!(
+                "{} - {:?}",
+                current_id,
+                self.blockring
+                    .get_longest_chain_block_hash_by_block_id(current_id)
+            );
+            current_id -= 1;
+        }
+    }
+
     pub fn get_latest_block(&self) -> Option<&Block> {
         let block_hash = self.blockring.get_latest_block_hash();
         self.blocks.get(&block_hash)
@@ -902,8 +932,6 @@ impl Blockchain {
                 " ... before block ocr            {:?}",
                 create_timestamp()
             );
-
-            println!("OCR for block: {}", block.get_id());
 
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);

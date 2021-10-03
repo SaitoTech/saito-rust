@@ -104,7 +104,6 @@ impl Storage {
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
                 let block = Block::deserialize_for_net(&encoded);
-
                 let mut blockchain = blockchain_lock.write().await;
                 blockchain.add_block(block).await;
             }

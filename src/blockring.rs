@@ -128,6 +128,10 @@ impl BlockRing {
         self.block_ring[(insert_pos as usize)].contains_block_hash(block_hash)
     }
 
+    pub fn is_empty(&self) -> bool {
+        return self.block_ring_lc_pos.is_none();
+    }
+
     pub fn add_block(&mut self, block: &Block) {
         let insert_pos = block.get_id() % RING_BUFFER_LENGTH;
         self.block_ring[(insert_pos as usize)].add_block(block.get_id(), block.get_hash());
