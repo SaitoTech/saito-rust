@@ -521,6 +521,67 @@
 <span id="521">521</span>
 <span id="522">522</span>
 <span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::consensus::SaitoMessage</span>;
@@ -537,7 +598,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">futures::StreamExt</span>;
 <span class="kw">use</span> <span class="ident">secp256k1::PublicKey</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">RwLock</span>};
+<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">tokio::time::sleep</span>;
 
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">time::Duration</span>};
@@ -577,33 +638,95 @@
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(
-    <span class="ident">config_settings</span>: <span class="ident">Config</span>,
-    <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">network_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Network</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
+    <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">Network::new</span>(
-        <span class="ident">config_settings</span>,
-        <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-        <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-        <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-    );
-    <span class="comment">// TODO: refactor this into two separate classes maybe and split this run() into two...</span>
-    <span class="macro">tokio::select!</span> {
-        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run_client</span>() <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;network err {:?}&quot;</span>, <span class="ident">err</span>)
+    <span class="comment">//</span>
+    <span class="comment">// network gets global broadcast channel and keypair</span>
+    <span class="comment">//</span>
+    {
+        <span class="comment">// do not seize mempool write access</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">network</span> <span class="op">=</span> <span class="ident">network_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+        <span class="ident">network</span>.<span class="ident">set_broadcast_channel_sender</span>(<span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>());
+    }
+
+    <span class="comment">//</span>
+    <span class="comment">// create local broadcast channel</span>
+    <span class="comment">//</span>
+    <span class="kw">let</span> (<span class="ident">network_channel_sender</span>, <span class="kw-2">mut</span> <span class="ident">network_channel_receiver</span>) <span class="op">=</span> <span class="ident">mpsc::channel</span>(<span class="number">4</span>);
+
+    <span class="comment">//</span>
+    <span class="comment">// local channel sender -- send in clone as thread takes ownership</span>
+    <span class="comment">//</span>
+    <span class="kw">let</span> <span class="ident">network_local_sender</span> <span class="op">=</span> <span class="ident">network_channel_sender</span>.<span class="ident">clone</span>();
+    <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
+        <span class="kw">loop</span> {
+            <span class="ident">network_local_sender</span>
+                .<span class="ident">send</span>(<span class="ident">NetworkMessage::LocalNetworkMonitoring</span>)
+                .<span class="kw">await</span>
+                .<span class="ident">expect</span>(<span class="string">&quot;error: LocalNetworkMonitoring message failed to send&quot;</span>);
+            <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">10000</span>)).<span class="kw">await</span>;
+        }
+    });
+
+    <span class="comment">//</span>
+    <span class="comment">// global and local channel receivers</span>
+    <span class="comment">//</span>
+    <span class="kw">loop</span> {
+        <span class="macro">tokio::select!</span> {
+
+             <span class="comment">//</span>
+             <span class="comment">// local broadcast channel receivers</span>
+             <span class="comment">//</span>
+             <span class="prelude-val">Some</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">network_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                 <span class="kw">match</span> <span class="ident">message</span> {
+
+                     <span class="comment">//</span>
+                     <span class="comment">// receive local messages</span>
+                     <span class="comment">//</span>
+             <span class="ident">NetworkMessage::LocalNetworkMonitoring</span> <span class="op">=</span><span class="op">&gt;</span> {
+             }
+
+
+                 }
+             }
+
+
+             <span class="comment">//</span>
+             <span class="comment">// global broadcast channel receivers</span>
+             <span class="comment">//</span>
+             <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                 <span class="kw">match</span> <span class="ident">message</span> {
+                     <span class="ident">SaitoMessage::MinerNewGoldenTicket</span> { <span class="ident">ticket</span> : <span class="ident">_golden_ticket</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                     },
+                     <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
+                 }
+             }
+        }
+    }
+}
+
+<span class="comment">/****
+    //
+    // this approach seizes the network and never releases it, no?
+    //
+    let mut network = network_lock.write().await;
+
+    // TODO: refactor this into two separate classes maybe and split this run() into two...
+    tokio::select! {
+        res = network.run_client() =&gt; {
+            if let Err(err) = res {
+                eprintln!(&quot;network err {:?}&quot;, err)
             }
         },
-        <span class="ident">res</span> <span class="op">=</span> <span class="ident">network</span>.<span class="ident">run_server</span>() <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;run_server err {:?}&quot;</span>, <span class="ident">err</span>)
+        res = network.run_server() =&gt; {
+            if let Err(err) = res {
+                eprintln!(&quot;run_server err {:?}&quot;, err)
             }
         },
     }
-
-    <span class="prelude-val">Ok</span>(())
-}
+****/</span>
 
 <span class="kw">impl</span> <span class="ident">Network</span> {
     <span class="doccomment">/// Returns a Network</span>
@@ -624,6 +747,7 @@
             <span class="ident">broadcast_channel_sender</span>: <span class="prelude-val">None</span>,
         }
     }
+
     <span class="doccomment">/// After socket has been connected, the connector begins the handshake via SHAKINIT command.</span>
     <span class="doccomment">/// Once the handshake is complete, we synchronize the peers via REQCHAIN/SENDCHAIN and REQBLOCK.</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handshake_and_synchronize_chain</span>(
@@ -693,9 +817,6 @@
             }
         }
     }
-    <span class="doccomment">/// Create an &quot;outbound&quot; connection to a peer</span>
-    <span class="comment">// TODO move this to peer near to handle_inbound_peer_connection and give it a similar name.</span>
-    <span class="comment">// these are the two functions which spawn tasks on either end of the socket.</span>
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_broadcast_channel_sender</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bcs</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">bcs</span>);
@@ -848,6 +969,7 @@
         .<span class="ident">expect</span>(<span class="string">&quot;error: spawn_reconnect_to_configured_peers_task failed&quot;</span>);
         <span class="prelude-val">Ok</span>(())
     }
+
     <span class="doccomment">/// Runs warp::serve to listen for incoming connections</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run_server</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">host</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> <span class="self">self</span>.<span class="ident">config_settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">4</span>]<span class="op">&gt;</span>(<span class="string">&quot;network.host&quot;</span>).<span class="ident">unwrap</span>();

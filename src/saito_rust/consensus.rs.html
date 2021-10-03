@@ -243,11 +243,43 @@
 <span id="243">243</span>
 <span id="244">244</span>
 <span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::network::Network</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::test_manager::TestManager</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">transaction::Transaction</span>};
 <span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">App</span>, <span class="ident">Arg</span>};
@@ -345,14 +377,14 @@
                     .<span class="ident">long</span>(<span class="string">&quot;key_path&quot;</span>)
                     .<span class="ident">default_value</span>(<span class="string">&quot;keyfile&quot;</span>)
                     .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                    .<span class="ident">help</span>(<span class="string">&quot;Path to encrypted key file&quot;</span>),
+                    .<span class="ident">help</span>(<span class="string">&quot;Path to local wallet&quot;</span>),
             )
             .<span class="ident">arg</span>(
                 <span class="ident">Arg::with_name</span>(<span class="string">&quot;password&quot;</span>)
                     .<span class="ident">short</span>(<span class="string">&quot;p&quot;</span>)
                     .<span class="ident">long</span>(<span class="string">&quot;password&quot;</span>)
                     .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                    .<span class="ident">help</span>(<span class="string">&quot;amount to send&quot;</span>),
+                    .<span class="ident">help</span>(<span class="string">&quot;Password to decrypt wallet&quot;</span>),
             )
             .<span class="ident">arg</span>(
                 <span class="ident">Arg::with_name</span>(<span class="string">&quot;config&quot;</span>)
@@ -361,6 +393,15 @@
                     .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
                     .<span class="ident">help</span>(<span class="string">&quot;config file name&quot;</span>),
             )
+            <span class="comment">//</span>
+            <span class="comment">// TODO - hook up with Arg</span>
+            <span class="comment">//</span>
+            <span class="comment">//.arg(</span>
+            <span class="comment">//    Arg::with_name(&quot;spammer&quot;)</span>
+            <span class="comment">//        .short(&quot;s&quot;)</span>
+            <span class="comment">//        .long(&quot;spammer&quot;)</span>
+            <span class="comment">//        .help(&quot;enable tx spamming&quot;),</span>
+            <span class="comment">//)</span>
             .<span class="ident">get_matches</span>();
 
         <span class="kw">let</span> <span class="ident">config_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;config&quot;</span>) {
@@ -368,33 +409,43 @@
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;config&quot;</span>,
         };
 
+        <span class="kw">let</span> <span class="ident">is_spammer_enabled</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        <span class="comment">//</span>
+        <span class="comment">// TODO - hook up with Arg above</span>
+        <span class="comment">//</span>
+        <span class="comment">//if matches.is_present(&quot;spammer&quot;) {</span>
+        <span class="comment">//   enable_spammer = true;</span>
+        <span class="comment">//};</span>
+
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();
         <span class="ident">settings</span>
             .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="ident">config_name</span>))
             .<span class="ident">unwrap</span>();
 
-        <span class="kw">let</span> <span class="ident">key_path</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;key_path&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;password&quot;</span>);
+        <span class="comment">//let key_path = matches.value_of(&quot;key_path&quot;).unwrap();</span>
+        <span class="comment">//let password = matches.value_of(&quot;password&quot;);</span>
 
         <span class="comment">//</span>
-        <span class="comment">// generate/load the wallet</span>
+        <span class="comment">// generate</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
-        {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="ident">key_path</span>, <span class="ident">password</span>);
-        }
+        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
 
         <span class="comment">//</span>
-        <span class="comment">// load blocks from disk</span>
+        <span class="comment">// TODO - load wallet ONLY if keyfile and password provided</span>
         <span class="comment">//</span>
-        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> <span class="ident">load_blocks_from_disk</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">settings</span>.<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>(<span class="string">&quot;storage.load_blocks_from_disk&quot;</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">can_load</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">can_load</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-        };
-        <span class="kw">if</span> <span class="ident">load_blocks_from_disk</span> {
-            <span class="ident">Storage::load_blocks_from_disk</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+        <span class="comment">//{</span>
+        <span class="comment">//    let mut wallet = wallet_lock.write().await;</span>
+        <span class="comment">//    wallet.load_keys(key_path, password);</span>
+        <span class="comment">//}</span>
+
+        <span class="comment">//</span>
+        <span class="comment">// load blocks from disk and check chain</span>
+        <span class="comment">//</span>
+        <span class="ident">Storage::load_blocks_from_disk</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
+        {
+            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+            <span class="ident">blockchain</span>.<span class="ident">print</span>();
         }
 
         <span class="comment">//</span>
@@ -407,12 +458,21 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="comment">// let network_lock = Arc::new(RwLock::new(Network::new(</span>
-        <span class="comment">//     settings,</span>
-        <span class="comment">//     wallet_lock.clone(),</span>
-        <span class="comment">//     mempool_lock.clone(),</span>
-        <span class="comment">//     blockchain_lock.clone(),</span>
-        <span class="comment">// )));</span>
+        <span class="kw">let</span> <span class="ident">network_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Network::new</span>(
+            <span class="ident">settings</span>,
+            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+        )));
+
+        <span class="comment">//</span>
+        <span class="comment">// start test_manager spammer</span>
+        <span class="comment">//</span>
+        <span class="kw">if</span> <span class="ident">is_spammer_enabled</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">test_manager</span> <span class="op">=</span> <span class="ident">TestManager::new</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">wallet_lock</span>.<span class="ident">clone</span>());
+            <span class="ident">test_manager</span>.<span class="ident">spam_mempool</span>(<span class="ident">mempool_lock</span>.<span class="ident">clone</span>());
+        }
+
         <span class="comment">//</span>
         <span class="comment">// initialize core classes.</span>
         <span class="comment">//</span>
@@ -470,10 +530,9 @@
         <span class="comment">// Network</span>
         <span class="comment">//</span>
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::networking::network::run</span>(
-                <span class="ident">settings</span>,
-                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">network_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
+                <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;miner err {:?}&quot;</span>, <span class="ident">err</span>)
@@ -486,6 +545,7 @@
                 <span class="macro">println!</span>(<span class="string">&quot;Shutdown message complete&quot;</span>)
             }
         }
+
         <span class="prelude-val">Ok</span>(())
     }
 }

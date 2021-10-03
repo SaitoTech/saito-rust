@@ -2135,6 +2135,11 @@
 <span id="2135">2135</span>
 <span id="2136">2136</span>
 <span id="2137">2137</span>
+<span id="2138">2138</span>
+<span id="2139">2139</span>
+<span id="2140">2140</span>
+<span id="2141">2141</span>
+<span id="2142">2142</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
@@ -2758,7 +2763,6 @@
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">burnfee</span>.<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">difficulty</span>.<span class="ident">to_be_bytes</span>());
 
-        <span class="macro">println!</span>(<span class="string">&quot;SERIALIZED PRE TXS: {:?}&quot;</span>, <span class="ident">vbytes</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">serialized_txs</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
         <span class="comment">// block headers do not get tx data</span>
@@ -2974,8 +2978,10 @@
                 <span class="ident">cv</span>.<span class="ident">expected_difficulty</span> <span class="op">=</span> <span class="ident">difficulty</span>;
             }
         } <span class="kw">else</span> {
-            <span class="comment">// TODO Is this actually an error? What should we do here?</span>
-            <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;CAN&#39;T FIND PREVIOUS BLOCK&quot;</span>);
+            <span class="comment">//</span>
+            <span class="comment">// if there is no previous block, the burn fee is not adjusted. validation</span>
+            <span class="comment">// rules will cause the block to fail unless it is the first block.</span>
+            <span class="comment">//</span>
         }
 
         <span class="comment">//</span>
@@ -3356,6 +3362,9 @@
             <span class="string">&quot; ... block.prevalid - pre hash:  {:?}&quot;</span>,
             <span class="ident">create_timestamp</span>(),
         );
+
+        <span class="comment">// ensure hashes correct</span>
+        <span class="self">self</span>.<span class="ident">generate_hashes</span>();
 
         <span class="comment">//</span>
         <span class="comment">// if we are generating the metadata for a block, we use the</span>
@@ -3783,7 +3792,8 @@
             <span class="kw">if</span> <span class="ident">hash1</span> <span class="op">!</span><span class="op">=</span> <span class="ident">hash2</span> {
                 <span class="macro">event!</span>(
                     <span class="ident">Level::ERROR</span>,
-                    <span class="string">&quot;ERROR 627428: block fee transaction doesn&#39;t match cv fee transaction&quot;</span>
+                    <span class="string">&quot;ERROR 627428: block {} fee transaction doesn&#39;t match cv fee transaction&quot;</span>,
+                    <span class="self">self</span>.<span class="ident">get_id</span>()
                 );
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }

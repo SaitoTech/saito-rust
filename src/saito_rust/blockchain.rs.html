@@ -1766,6 +1766,34 @@
 <span id="1766">1766</span>
 <span id="1767">1767</span>
 <span id="1768">1768</span>
+<span id="1769">1769</span>
+<span id="1770">1770</span>
+<span id="1771">1771</span>
+<span id="1772">1772</span>
+<span id="1773">1773</span>
+<span id="1774">1774</span>
+<span id="1775">1775</span>
+<span id="1776">1776</span>
+<span id="1777">1777</span>
+<span id="1778">1778</span>
+<span id="1779">1779</span>
+<span id="1780">1780</span>
+<span id="1781">1781</span>
+<span id="1782">1782</span>
+<span id="1783">1783</span>
+<span id="1784">1784</span>
+<span id="1785">1785</span>
+<span id="1786">1786</span>
+<span id="1787">1787</span>
+<span id="1788">1788</span>
+<span id="1789">1789</span>
+<span id="1790">1790</span>
+<span id="1791">1791</span>
+<span id="1792">1792</span>
+<span id="1793">1793</span>
+<span id="1794">1794</span>
+<span id="1795">1795</span>
+<span id="1796">1796</span>
 </pre><pre class="rust">
 <span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
@@ -1848,7 +1876,14 @@
         <span class="self">self</span>.<span class="ident">fork_id</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="ident">Block</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">block</span>: <span class="ident">Block</span>) {
+        <span class="comment">//</span>
+        <span class="comment">// first things first, confirm hashes OK</span>
+        <span class="comment">//</span>
+        <span class="ident">block</span>.<span class="ident">generate_hashes</span>();
+
+        <span class="macro">println!</span>(<span class="string">&quot;ADDING BLOCK {}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_id</span>());
+
         <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;add_block {}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_hash</span>()));
         <span class="macro">event!</span>(
             <span class="ident">Level::TRACE</span>,
@@ -1866,9 +1901,6 @@
         <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_hash</span>();
         <span class="kw">let</span> <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
         <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_latest_block_hash</span>();
-
-        <span class="comment">//println!(&quot;blockring prev hash: {:?}&quot;, previous_block_hash);</span>
-        <span class="comment">//println!(&quot;block     prev hash: {:?}&quot;, block.get_previous_block_hash());</span>
 
         <span class="comment">//</span>
         <span class="comment">// sanity checks</span>
@@ -1991,18 +2023,30 @@
             }
         } <span class="kw">else</span> {
             <span class="comment">//</span>
-            <span class="comment">// we can hit this point in the code if we have a block without a parent,</span>
-            <span class="comment">// in which case we want to process it without unwind/wind chain, or if</span>
-            <span class="comment">// we are adding our very first block, in which case we do want to process</span>
-            <span class="comment">// it.</span>
+            <span class="comment">// we have a block without a parent.</span>
             <span class="comment">//</span>
-            <span class="comment">// TODO more elegant handling of the first block and other non-longest-chain</span>
-            <span class="comment">// blocks.</span>
+            <span class="comment">// if this is our first block, the blockring will have no entry yet</span>
+            <span class="comment">// and block_ring_lc_pos (longest_chain_position) will be pointing</span>
+            <span class="comment">// at None. We use this to determine if we are a new chain instead</span>
+            <span class="comment">// of creating a separate variable to manually track entries.</span>
             <span class="comment">//</span>
-            <span class="macro">event!</span>(
-                <span class="ident">Level::ERROR</span>,
-                <span class="string">&quot;We have added a block without a parent block... &quot;</span>
-            );
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">is_empty</span>() {
+                <span class="comment">//</span>
+                <span class="comment">// no need for action as fall-through will result in proper default</span>
+                <span class="comment">// behavior. we have the comparison here to separate expected from</span>
+                <span class="comment">// unexpected / edge-case issues around block receipt.</span>
+                <span class="comment">//</span>
+            } <span class="kw">else</span> {
+                <span class="comment">//</span>
+                <span class="comment">// TODO - implement logic to handle once nodes can connect</span>
+                <span class="comment">//</span>
+                <span class="comment">// if this not our first block, handle edge-case around receiving</span>
+                <span class="comment">// block 503 before block 453 when block 453 is our expected proper</span>
+                <span class="comment">// next block and we are getting blocks out-of-order because of</span>
+                <span class="comment">// connection or network issues.</span>
+                <span class="comment">//</span>
+                <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;blocks received out-of-order issue...&quot;</span>);
+            }
         }
 
         <span class="comment">//</span>
@@ -2022,7 +2066,6 @@
         <span class="comment">// with the BlockRing. We fail if the newly-preferred chain is not</span>
         <span class="comment">// viable.</span>
         <span class="comment">//</span>
-        <span class="comment">//  println!(&quot; ... start unwind/wind chain:    {:?}&quot;, create_timestamp());</span>
         <span class="kw">if</span> <span class="ident">am_i_the_longest_chain</span> {
             <span class="kw">let</span> <span class="ident">does_new_chain_validate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">validate</span>(<span class="ident">new_chain</span>, <span class="ident">old_chain</span>).<span class="kw">await</span>;
             <span class="kw">if</span> <span class="ident">does_new_chain_validate</span> {
@@ -2423,6 +2466,21 @@
         <span class="number">0</span>
     }
 
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="kw">let</span> <span class="ident">latest_block_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_id</span> <span class="op">=</span> <span class="ident">latest_block_id</span>;
+
+        <span class="kw">while</span> <span class="ident">current_id</span> <span class="op">&gt;</span> <span class="number">0</span> {
+            <span class="macro">println!</span>(
+                <span class="string">&quot;{} - {:?}&quot;</span>,
+                <span class="ident">current_id</span>,
+                <span class="self">self</span>.<span class="ident">blockring</span>
+                    .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="ident">current_id</span>)
+            );
+            <span class="ident">current_id</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
+        }
+    }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_latest_block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Block</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">blockring</span>.<span class="ident">get_latest_block_hash</span>();
         <span class="self">self</span>.<span class="ident">blocks</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>)
@@ -2671,8 +2729,6 @@
                 <span class="string">&quot; ... before block ocr            {:?}&quot;</span>,
                 <span class="ident">create_timestamp</span>()
             );
-
-            <span class="macro">println!</span>(<span class="string">&quot;OCR for block: {}&quot;</span>, <span class="ident">block</span>.<span class="ident">get_id</span>());
 
             <span class="comment">// utxoset update</span>
             <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>);
