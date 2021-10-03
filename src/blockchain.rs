@@ -85,6 +85,8 @@ impl Blockchain {
         //
         block.generate_hashes();
 
+        println!("ADDING BLOCK {}", block.get_id());
+
         event!(Level::INFO, "add_block {}", &hex::encode(&block.get_hash()));
         event!(
             Level::TRACE,

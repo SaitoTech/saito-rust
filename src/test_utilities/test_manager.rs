@@ -400,8 +400,8 @@ impl TestManager {
                         // everything spent in blockchain.utxoset should be spent on longest-chain
                         //
                         if *value > 1 {
-                            println!("comparing key: {:?}", key);
-                            println!("comparing blkchn {} and sanitycheck {}", value, value2);
+                            //println!("comparing key: {:?}", key);
+                            //println!("comparing blkchn {} and sanitycheck {}", value, value2);
                             assert_eq!(value, value2);
                         } else {
                             //
@@ -419,8 +419,8 @@ impl TestManager {
                     // as well if that is reasonably efficient.
                     //
                     if *value > 0 {
-                        println!("Value does not exist in actual blockchain!");
-                        println!("comparing {:?} with on-chain value {}", key, value);
+                        //println!("Value does not exist in actual blockchain!");
+                        //println!("comparing {:?} with on-chain value {}", key, value);
                         assert_eq!(1, 2);
                     }
                 }
@@ -683,6 +683,7 @@ impl TestManager {
             let bytes_per_tx = 1024;
             let publickey;
             let privatekey;
+            let latest_block_id;
 
             {
                 let wallet = wallet_lock_clone.read().await;
@@ -691,15 +692,25 @@ impl TestManager {
             }
 
             {
-                let vip_transaction = Transaction::generate_vip_transaction(
-                    wallet_lock_clone.clone(),
-                    publickey,
-                    100_000_000,
-                    10,
-                )
-                .await;
-                let mut mempool = mempool_lock_clone.write().await;
-                mempool.add_transaction(vip_transaction).await;
+                let blockchain = blockchain_lock_clone.read().await;
+                latest_block_id = blockchain.get_latest_block_id();
+            }
+
+            println!("Latest block id: {}", latest_block_id);
+
+            {
+                if latest_block_id == 0 {
+                    let mut vip_transaction = Transaction::generate_vip_transaction(
+                        wallet_lock_clone.clone(),
+                        publickey,
+                        100_000_000,
+                        10,
+                    )
+                    .await;
+                    vip_transaction.sign(privatekey);
+                    let mut mempool = mempool_lock_clone.write().await;
+                    mempool.add_transaction(vip_transaction).await;
+                }
             }
 
             loop {
@@ -718,6 +729,8 @@ impl TestManager {
                             .collect(),
                     );
                     transaction.sign(privatekey);
+                    // before validation!
+                    transaction.generate_metadata(publickey);
 
                     transaction
                         .add_hop_to_path(wallet_lock_clone.clone(), publickey)

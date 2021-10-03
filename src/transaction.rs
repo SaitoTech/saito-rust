@@ -976,7 +976,7 @@ impl Transaction {
         //for i in 0..self.inputs.len() {
         //    let is_valid = self.inputs[i].validate(utxoset);
         //    if is_valid != true {
-        //        println!("tx: {:?}", self);
+        //        //println!("tx: {:?}", self);
         //        println!(
         //            "this input is invalid: {:?}",
         //            self.inputs[i].get_slip_type()
@@ -984,7 +984,6 @@ impl Transaction {
         //        return false;
         //    }
         //}
-
         let inputs_validate = self.inputs.par_iter().all(|input| input.validate(utxoset));
         inputs_validate
     }
