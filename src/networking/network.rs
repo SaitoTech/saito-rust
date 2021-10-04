@@ -225,8 +225,6 @@ impl Network {
         };
 
         if let Some(peer_settings) = peer_settings {
-            // TODO replace let peer with for peer
-            // This was a problem because of peer_db_lock move in each loop...
             for peer_setting in peer_settings {
                 let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
 
