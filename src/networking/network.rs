@@ -52,8 +52,6 @@ pub struct Network {
     broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
 }
 
-
-
 impl Network {
     /// Returns a Network
     /// # Arguments
@@ -253,18 +251,13 @@ impl Network {
             }
         }
     }
-
-
 }
-
-
 
 pub async fn run(
     network_lock: Arc<RwLock<Network>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-
     let host: [u8; 4];
     let port: u16;
 
@@ -299,7 +292,6 @@ pub async fn run(
         network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
     }
 
-
     //
     // set global broadcast channel and connect to peers
     //
@@ -326,7 +318,6 @@ pub async fn run(
             blockchain_lock_clone.clone(),
         ));
 
-
     //
     // create local broadcast channel
     //
@@ -346,7 +337,6 @@ pub async fn run(
         }
     });
 
-
     //
     // start the server (separate thread)
     //
@@ -354,7 +344,6 @@ pub async fn run(
         println!("warp server running?");
         warp::serve(routes).run((host, port)).await;
     });
-
 
     //
     // global and local channel receivers
@@ -372,8 +361,8 @@ pub async fn run(
                      // receive local messages
                      //
                      NetworkMessage::LocalNetworkMonitoring => {
-			reconnect_to_dropped_peers(wallet_lock_clone.clone()).await;
-             	     }
+            reconnect_to_dropped_peers(wallet_lock_clone.clone()).await;
+                      }
                  }
              }
 
@@ -392,10 +381,9 @@ pub async fn run(
     }
 }
 
-
 pub async fn reconnect_to_dropped_peers(wallet_lock: Arc<RwLock<Wallet>>) {
     let peer_states: Vec<(SaitoHash, bool)>;
-    {   
+    {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let peers_db = peers_db_global.read().await;
         peer_states = peers_db
@@ -416,7 +404,6 @@ pub async fn reconnect_to_dropped_peers(wallet_lock: Arc<RwLock<Wallet>>) {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
