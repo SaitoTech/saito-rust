@@ -578,10 +578,6 @@
 <span id="578">578</span>
 <span id="579">579</span>
 <span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::consensus::SaitoMessage</span>;
@@ -1008,12 +1004,8 @@
         <span class="ident">crypto</span>::{<span class="ident">generate_keys</span>, <span class="ident">hash</span>, <span class="ident">sign_blob</span>, <span class="ident">verify</span>, <span class="ident">SaitoSignature</span>},
         <span class="ident">mempool::Mempool</span>,
         <span class="ident">networking</span>::{
-            <span class="ident">api_message::APIMessage</span>,
-            <span class="ident">filters::ws_upgrade_route_filter</span>,
-            <span class="ident">message_types</span>::{
-                <span class="ident">handshake_challenge::HandshakeChallenge</span>,
-                <span class="ident">request_blockchain_message::RequestBlockchainMessage</span>,
-            },
+            <span class="ident">api_message::APIMessage</span>, <span class="ident">filters::ws_upgrade_route_filter</span>,
+            <span class="ident">message_types::handshake_challenge::HandshakeChallenge</span>,
         },
         <span class="ident">transaction::Transaction</span>,
     };

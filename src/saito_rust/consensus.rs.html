@@ -270,9 +270,6 @@
 <span id="270">270</span>
 <span id="271">271</span>
 <span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
@@ -393,15 +390,12 @@
                     .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
                     .<span class="ident">help</span>(<span class="string">&quot;config file name&quot;</span>),
             )
-            <span class="comment">//</span>
-            <span class="comment">// TODO - hook up with Arg</span>
-            <span class="comment">//</span>
-            <span class="comment">//.arg(</span>
-            <span class="comment">//    Arg::with_name(&quot;spammer&quot;)</span>
-            <span class="comment">//        .short(&quot;s&quot;)</span>
-            <span class="comment">//        .long(&quot;spammer&quot;)</span>
-            <span class="comment">//        .help(&quot;enable tx spamming&quot;),</span>
-            <span class="comment">//)</span>
+            .<span class="ident">arg</span>(
+                <span class="ident">Arg::with_name</span>(<span class="string">&quot;spammer&quot;</span>)
+                    .<span class="ident">short</span>(<span class="string">&quot;s&quot;</span>)
+                    .<span class="ident">long</span>(<span class="string">&quot;spammer&quot;</span>)
+                    .<span class="ident">help</span>(<span class="string">&quot;enable tx spamming&quot;</span>),
+            )
             .<span class="ident">get_matches</span>();
 
         <span class="kw">let</span> <span class="ident">config_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;config&quot;</span>) {
@@ -409,13 +403,13 @@
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;config&quot;</span>,
         };
 
-        <span class="kw">let</span> <span class="ident">is_spammer_enabled</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">is_spammer_enabled</span> <span class="op">=</span> <span class="bool-val">false</span>;
         <span class="comment">//</span>
         <span class="comment">// TODO - hook up with Arg above</span>
         <span class="comment">//</span>
-        <span class="comment">//if matches.is_present(&quot;spammer&quot;) {</span>
-        <span class="comment">//   enable_spammer = true;</span>
-        <span class="comment">//};</span>
+        <span class="kw">if</span> <span class="ident">matches</span>.<span class="ident">is_present</span>(<span class="string">&quot;spammer&quot;</span>) {
+            <span class="ident">is_spammer_enabled</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        };
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();
         <span class="ident">settings</span>
