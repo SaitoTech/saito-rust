@@ -37,7 +37,6 @@ pub fn configure_storage() -> String {
 pub struct Storage {}
 
 impl Storage {
-
     /// read from a path to a Vec<u8>
     pub fn read(path: &str) -> io::Result<Vec<u8>> {
         let mut f = std::fs::File::open(path)?;
@@ -53,7 +52,7 @@ impl Storage {
 
     pub fn file_exists(filename: &str) -> bool {
         let path = Path::new(&filename);
-	path.exists()
+        path.exists()
     }
 
     pub fn generate_block_filename(block: &Block) -> String {

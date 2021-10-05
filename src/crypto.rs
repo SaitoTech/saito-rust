@@ -12,8 +12,6 @@ use block_modes::{BlockMode, Cbc};
 // create an alias for convenience
 type Aes128Cbc = Cbc<Aes128, Pkcs7>;
 
-
-
 pub type SaitoHash = [u8; 32];
 pub type SaitoUTXOSetKey = [u8; 74];
 pub type SaitoPublicKey = [u8; 33];
@@ -22,8 +20,7 @@ pub type SaitoSignature = [u8; 64];
 
 pub const PARALLEL_HASH_BYTE_THRESHOLD: usize = 128_000;
 
-pub fn encrypt_with_password(msg : Vec<u8>, password: &str) -> Vec<u8> {
-
+pub fn encrypt_with_password(msg: Vec<u8>, password: &str) -> Vec<u8> {
     let hash = hash(&password.as_bytes().to_vec());
     let mut key: [u8; 16] = [0; 16];
     let mut iv: [u8; 16] = [0; 16];
@@ -34,10 +31,8 @@ pub fn encrypt_with_password(msg : Vec<u8>, password: &str) -> Vec<u8> {
     let encrypt_msg = cipher.encrypt_vec(&msg);
 
     return encrypt_msg;
-
 }
 pub fn decrypt_with_password(msg: Vec<u8>, password: &str) -> Vec<u8> {
-
     let hash = hash(&password.as_bytes().to_vec());
     let mut key: [u8; 16] = [0; 16];
     let mut iv: [u8; 16] = [0; 16];
@@ -49,11 +44,6 @@ pub fn decrypt_with_password(msg: Vec<u8>, password: &str) -> Vec<u8> {
 
     return decrypt_msg;
 }
-
-
-
-
-
 
 pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
     let (mut secret_key, mut public_key) =
@@ -121,8 +111,6 @@ pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> boo
     SECP256K1.verify(&m, &s, &p).is_ok()
 }
 
-
-
 #[cfg(test)]
 
 mod tests {
@@ -135,14 +123,11 @@ mod tests {
     // test symmetrical encryption works properly
     //
     fn symmetrical_encryption_works_test() {
+        let text = "This is our unencrypted text";
+        let e = encrypt_with_password(text.as_bytes().to_vec(), "asdf");
+        let d = decrypt_with_password(e, "asdf");
+        let dtext = str::from_utf8(&d).unwrap();
 
-	let text  = "This is our unencrypted text";
-	let e      = encrypt_with_password(text.as_bytes().to_vec(), "asdf");
-	let d     = decrypt_with_password(e, "asdf");
-	let dtext = str::from_utf8(&d).unwrap();
-
-	assert_eq!(text, dtext);
-
+        assert_eq!(text, dtext);
     }
 }
-

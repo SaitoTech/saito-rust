@@ -147,7 +147,7 @@ impl Mempool {
             current_timestamp,
         )
         .await;
-	block.generate_metadata();
+        block.generate_metadata();
 
         self.routing_work_in_mempool = 0;
 
@@ -449,4 +449,3 @@ mod tests {
         test_manager.check_blockchain().await;
     }
 }
-

@@ -118,7 +118,7 @@ impl Consensus {
                     .takes_value(true)
                     .help("config file name"),
             )
-	    //
+            //
             // TODO - convert to flag
             //
             .arg(
@@ -129,9 +129,9 @@ impl Consensus {
                     .takes_value(true)
                     .help("enable tx generation"),
             )
-	    //
-	    // TODO - merge cli when appropriate
-	    //
+            //
+            // TODO - merge cli when appropriate
+            //
             .get_matches();
 
         let config_name = match matches.value_of("config") {
@@ -140,8 +140,8 @@ impl Consensus {
         };
 
         let is_spammer_enabled = match matches.value_of("spammer") {
-           Some(_name) => true,
-           None => false,
+            Some(_name) => true,
+            None => false,
         };
 
         let mut settings = config::Config::default();
@@ -158,28 +158,27 @@ impl Consensus {
         //
         // update wallet if walletfile provided
         //
-	// if a wallet and password are provided Saito will attempt to load
-	// it from the /data/wallets directory. If they are not we will create
-	// a new wallet and save it as "default" with the password "password".
-	// this "default" wallet will be over-written every time the software
-	// starts, but can be renamed afterwards if need be since it will 
-	// persist until the software is restarted.
-	//
+        // if a wallet and password are provided Saito will attempt to load
+        // it from the /data/wallets directory. If they are not we will create
+        // a new wallet and save it as "default" with the password "password".
+        // this "default" wallet will be over-written every time the software
+        // starts, but can be renamed afterwards if need be since it will
+        // persist until the software is restarted.
+        //
         {
             let walletname = matches.value_of("wallet").unwrap();
             let password = matches.value_of("password").unwrap();
 
-	    if walletname != "none" {
+            if walletname != "none" {
                 let mut wallet = wallet_lock.write().await;
-		wallet.set_filename(walletname.to_string());
-		wallet.set_password(password.to_string());
+                wallet.set_filename(walletname.to_string());
+                wallet.set_password(password.to_string());
                 wallet.load();
             } else {
                 let mut wallet = wallet_lock.write().await;
                 wallet.save();
-	    }
+            }
         }
-
 
         //
         // load blocks from disk and check chain

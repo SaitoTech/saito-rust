@@ -1,18 +1,16 @@
-use std::convert::TryInto;
 use crate::block::Block;
-use crate::storage::Storage;
 use crate::crypto::{
-    generate_keys, hash, sign, SaitoHash, SaitoPrivateKey,
-    SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
-    decrypt_with_password, encrypt_with_password,
+    decrypt_with_password, encrypt_with_password, generate_keys, hash, sign, SaitoHash,
+    SaitoPrivateKey, SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
 };
 use crate::golden_ticket::GoldenTicket;
 use crate::slip::{Slip, SlipType};
 use crate::staking::Staking;
+use crate::storage::Storage;
 use crate::transaction::{Transaction, TransactionType};
+use std::convert::TryInto;
 
 pub const WALLET_SIZE: usize = 65;
-
 
 /// The `Wallet` manages the public and private keypair of the node and holds the
 /// slips that are used to form transactions on the network.
@@ -40,48 +38,38 @@ impl Wallet {
     }
 
     pub fn load(&mut self) {
-
         let mut filename = String::from("data/wallets/");
         filename.push_str(&self.filename);
 
         if Storage::file_exists(&filename) {
-
-	    let password = self.get_password();
-	    let encoded = Storage::read(&filename).unwrap();
-	    let decrypted_encoded = decrypt_with_password(encoded, &password);
+            let password = self.get_password();
+            let encoded = Storage::read(&filename).unwrap();
+            let decrypted_encoded = decrypt_with_password(encoded, &password);
             self.deserialize_for_disk(&decrypted_encoded);
-
         } else {
-
-	    //
-	    // new wallet, save to disk
-	    //
-	    self.save();
-
-	}
-
+            //
+            // new wallet, save to disk
+            //
+            self.save();
+        }
     }
 
     pub fn load_wallet(&mut self, wallet_path: &str, password: Option<&str>) {
-	self.set_filename(wallet_path.to_string());
-	self.set_password(password.unwrap().to_string());
-	self.load();
+        self.set_filename(wallet_path.to_string());
+        self.set_password(password.unwrap().to_string());
+        self.load();
     }
 
     pub fn save(&mut self) {
-
         let mut filename = String::from("data/wallets/");
         filename.push_str(&self.filename);
 
-	let password = self.get_password();
+        let password = self.get_password();
         let byte_array: Vec<u8> = self.serialize_for_disk();
         let encrypted_wallet = encrypt_with_password((&byte_array[..]).to_vec(), &password);
 
-	Storage::write(encrypted_wallet, &filename);
-
+        Storage::write(encrypted_wallet, &filename);
     }
-
-
 
     /// [privatekey - 32 bytes]
     /// [publickey - 33 bytes]
@@ -94,14 +82,12 @@ impl Wallet {
         vbytes
     }
 
-
     /// [privatekey - 32 bytes
     /// [publickey - 33 bytes]
     pub fn deserialize_for_disk(&mut self, bytes: &Vec<u8>) {
         self.privatekey = bytes[0..32].try_into().unwrap();
         self.publickey = bytes[32..65].try_into().unwrap();
     }
-
 
     pub fn on_chain_reorganization(&mut self, block: &Block, lc: bool) {
         if lc {
@@ -205,11 +191,11 @@ impl Wallet {
         self.publickey = publickey;
     }
 
-    pub fn set_filename(&mut self, filename : String) {
+    pub fn set_filename(&mut self, filename: String) {
         self.filename = filename;
     }
 
-    pub fn set_password(&mut self, filepass : String) {
+    pub fn set_password(&mut self, filepass: String) {
         self.filepass = filepass;
     }
 
@@ -533,31 +519,28 @@ mod tests {
 
     #[test]
     fn wallet_new_test() {
-	let wallet = Wallet::new();
-	assert_ne!(wallet.get_publickey(), [0; 33]);
-	assert_ne!(wallet.get_privatekey(), [0; 32]);
+        let wallet = Wallet::new();
+        assert_ne!(wallet.get_publickey(), [0; 33]);
+        assert_ne!(wallet.get_privatekey(), [0; 32]);
         assert_eq!(wallet.serialize_for_disk().len(), WALLET_SIZE);
     }
 
     #[test]
     fn save_and_restore_wallet_test() {
+        let mut wallet = Wallet::new();
+        let publickey1 = wallet.get_publickey().clone();
+        let privatekey1 = wallet.get_privatekey().clone();
 
-	let mut wallet = Wallet::new();
-	let publickey1 = wallet.get_publickey().clone();
-	let privatekey1 = wallet.get_privatekey().clone();
+        wallet.save();
 
-	wallet.save();
+        wallet = Wallet::new();
 
-	wallet = Wallet::new();
+        assert_ne!(wallet.get_publickey(), publickey1);
+        assert_ne!(wallet.get_privatekey(), privatekey1);
 
-	assert_ne!(wallet.get_publickey(), publickey1);
-	assert_ne!(wallet.get_privatekey(), privatekey1);
+        wallet.load();
 
-	wallet.load();
-
-	assert_eq!(wallet.get_publickey(), publickey1);
-	assert_eq!(wallet.get_privatekey(), privatekey1);
-
+        assert_eq!(wallet.get_publickey(), publickey1);
+        assert_eq!(wallet.get_privatekey(), privatekey1);
     }
-
 }
