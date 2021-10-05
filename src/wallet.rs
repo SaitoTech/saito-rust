@@ -39,11 +39,6 @@ impl Wallet {
         }
     }
 
-    pub fn load_keys(&mut self, key_path: &str, password: Option<&str>) {
-	self.set_filename(key_path.to_string());
-	self.set_password(password.unwrap().to_string());
-	self.load();
-    }
     pub fn load(&mut self) {
 
         let mut filename = String::from("data/wallets/");
@@ -65,6 +60,12 @@ impl Wallet {
 
 	}
 
+    }
+
+    pub fn load_wallet(&mut self, wallet_path: &str, password: Option<&str>) {
+	self.set_filename(wallet_path.to_string());
+	self.set_password(password.unwrap().to_string());
+	self.load();
     }
 
     pub fn save(&mut self) {
