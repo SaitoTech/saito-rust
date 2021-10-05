@@ -455,7 +455,7 @@ mod tests {
     //     let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
     //     {
     //         let mut wallet = wallet_lock.write().await;
-    //         wallet.load_keys("test/testwallet", Some("asdf"));
+    //         wallet.load_keys("data/wallets/testwallet", Some("asdf"));
     //     }
     //     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
     //     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));

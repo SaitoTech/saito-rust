@@ -37,6 +37,7 @@ pub fn configure_storage() -> String {
 pub struct Storage {}
 
 impl Storage {
+
     /// read from a path to a Vec<u8>
     pub fn read(path: &str) -> io::Result<Vec<u8>> {
         let mut f = std::fs::File::open(path)?;
@@ -48,6 +49,11 @@ impl Storage {
     pub fn write(data: Vec<u8>, filename: &str) {
         let mut buffer = File::create(filename).unwrap();
         buffer.write_all(&data[..]).unwrap();
+    }
+
+    pub fn file_exists(filename: &str) -> bool {
+        let path = Path::new(&filename);
+	path.exists()
     }
 
     pub fn generate_block_filename(block: &Block) -> String {
@@ -204,11 +210,6 @@ impl Storage {
 
         return slip;
     }
-}
-
-pub trait Persistable {
-    fn save(&self);
-    fn load(filename: &str) -> Self;
 }
 
 #[cfg(test)]

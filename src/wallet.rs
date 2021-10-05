@@ -1,22 +1,8 @@
-use crate::storage::{Persistable, Storage};
-use aes::Aes128;
-use block_modes::block_padding::Pkcs7;
-use block_modes::{BlockMode, Cbc};
-use macros::Persistable;
-use std::path::Path;
-//
-// TODO - we can move file-access functionality to storage
-//
-// so that all file-access / disk-writes are a single function
-// instead of functions specifically written for block, wallet, etc.
-use std::{
-    fs::{self, File},
-    io::{self, BufRead, Read, Write},
-};
 use std::convert::TryInto;
 use crate::block::Block;
+use crate::storage::Storage;
 use crate::crypto::{
-    generate_keypair_from_privatekey, generate_keys, hash, sign, SaitoHash, SaitoPrivateKey,
+    generate_keys, hash, sign, SaitoHash, SaitoPrivateKey,
     SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
     decrypt_with_password, encrypt_with_password,
 };
@@ -24,17 +10,16 @@ use crate::golden_ticket::GoldenTicket;
 use crate::slip::{Slip, SlipType};
 use crate::staking::Staking;
 use crate::transaction::{Transaction, TransactionType};
-use serde::{Deserialize, Serialize};
 
-// create an alias for convenience
-type Aes128Cbc = Cbc<Aes128, Pkcs7>;
+pub const WALLET_SIZE: usize = 65;
+
 
 /// The `Wallet` manages the public and private keypair of the node and holds the
 /// slips that are used to form transactions on the network.
 #[derive(Clone, Debug)]
 pub struct Wallet {
-    publickey: SaitoPublicKey,
-    privatekey: SaitoPrivateKey,
+    pub publickey: SaitoPublicKey,
+    pub privatekey: SaitoPrivateKey,
     slips: Vec<WalletSlip>,
     staked_slips: Vec<WalletSlip>,
     filename: String,
@@ -64,20 +49,13 @@ impl Wallet {
 
         let mut filename = String::from("data/wallets/");
         filename.push_str(&self.filename);
-        let path = Path::new(&filename);
 
-        let decrypted_buffer: Vec<u8>;
+        if Storage::file_exists(&filename) {
 
-        if path.exists() {
-
-            let file_to_load = &filename;
-            let mut f = File::open(file_to_load).unwrap();
-            let mut encoded = Vec::<u8>::new();
-            f.read_to_end(&mut encoded).unwrap();
-
-	    // decrypt the wallet
 	    let password = self.get_password();
-            self.deserialize_for_disk(&decrypt_with_password(encoded, &password));
+	    let encoded = Storage::read(&filename).unwrap();
+	    let decrypted_encoded = decrypt_with_password(encoded, &password);
+            self.deserialize_for_disk(&decrypted_encoded);
 
         } else {
 
@@ -94,11 +72,12 @@ impl Wallet {
 
         let mut filename = String::from("data/wallets/");
         filename.push_str(&self.filename);
-        let path = Path::new(&filename);
 
-        let mut buffer = File::create(filename).unwrap();
+	let password = self.get_password();
         let byte_array: Vec<u8> = self.serialize_for_disk();
-        buffer.write_all(&byte_array[..]).unwrap();
+        let encrypted_wallet = encrypt_with_password((&byte_array[..]).to_vec(), &password);
+
+	Storage::write(encrypted_wallet, &filename);
 
     }
 
@@ -120,7 +99,7 @@ impl Wallet {
     /// [publickey - 33 bytes]
     pub fn deserialize_for_disk(&mut self, bytes: &Vec<u8>) {
         self.privatekey = bytes[0..32].try_into().unwrap();
-        self.publickey = bytes[32..55].try_into().unwrap();
+        self.publickey = bytes[32..65].try_into().unwrap();
     }
 
 
@@ -550,8 +529,35 @@ impl WalletSlip {
 #[cfg(test)]
 mod tests {
 
+    use super::*;
+
     #[test]
     fn wallet_new_test() {
-        assert_eq!(true, true);
+	let wallet = Wallet::new();
+	assert_ne!(wallet.get_publickey(), [0; 33]);
+	assert_ne!(wallet.get_privatekey(), [0; 32]);
+        assert_eq!(wallet.serialize_for_disk().len(), WALLET_SIZE);
     }
+
+    #[test]
+    fn save_and_restore_wallet_test() {
+
+	let mut wallet = Wallet::new();
+	let publickey1 = wallet.get_publickey().clone();
+	let privatekey1 = wallet.get_privatekey().clone();
+
+	wallet.save();
+
+	wallet = Wallet::new();
+
+	assert_ne!(wallet.get_publickey(), publickey1);
+	assert_ne!(wallet.get_privatekey(), privatekey1);
+
+	wallet.load();
+
+	assert_eq!(wallet.get_publickey(), publickey1);
+	assert_eq!(wallet.get_privatekey(), privatekey1);
+
+    }
+
 }

@@ -1,4 +1,4 @@
-use crate::crypto::{encrypt_with_password, decrypt_with_password, SaitoHash};
+use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
 use crate::networking::network::Network;
@@ -158,11 +158,16 @@ impl Consensus {
         //
         // update wallet if walletfile provided
         //
+	// if a wallet and password are provided Saito will attempt to load
+	// it from the /data/wallets directory. If they are not we will create
+	// a new wallet and save it as "default" with the password "password".
+	// this "default" wallet will be over-written every time the software
+	// starts, but can be renamed afterwards if need be since it will 
+	// persist until the software is restarted.
+	//
         {
             let walletname = matches.value_of("wallet").unwrap();
             let password = matches.value_of("password").unwrap();
-
-println!("walletname = {}", walletname);
 
 	    if walletname != "none" {
                 let mut wallet = wallet_lock.write().await;
@@ -173,13 +178,8 @@ println!("walletname = {}", walletname);
                 let mut wallet = wallet_lock.write().await;
                 wallet.save();
 	    }
-
-	    {
-		let wallet = wallet_lock.read().await;
-		println!("WALLET PUBLICKEY: {:?}", wallet.get_publickey());
-	    }
-
         }
+
 
         //
         // load blocks from disk and check chain
