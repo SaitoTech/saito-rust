@@ -223,6 +223,9 @@ impl TestManager {
             transactions.push(additional_transactions[i].clone());
         }
 
+
+println!("parent hash {:?}", parent_hash);
+
         if golden_ticket {
             let blk = blockchain.get_block(&parent_hash).await.unwrap();
             let last_block_difficulty = blk.get_difficulty();

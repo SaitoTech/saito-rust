@@ -75,6 +75,7 @@ impl Staking {
         &mut self,
         staking_treasury: u64,
     ) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
+
         event!(Level::TRACE, "===========================");
         event!(Level::TRACE, "=== RESET STAKING TABLE ===");
         event!(Level::TRACE, "===========================");
@@ -109,12 +110,6 @@ impl Staking {
         //
         let mut total_staked: u64 = 0;
         for i in 0..self.stakers.len() {
-            // TODO - delete when ready
-            // we do not update the slip type anymore because we need
-            // the slip to be spendable when it is issued.
-            // we update the payout rather than the amount so the slip
-            // can validate as spendable as well.
-            //self.stakers[i].set_slip_type(SlipType::StakerOutput);
             total_staked += self.stakers[i].get_amount();
         }
         let average_staked = total_staked / self.stakers.len() as u64;
@@ -212,7 +207,6 @@ impl Staking {
                 // 2 - self is smaller
                 // insert at position i
                 if how_compares == 2 {
-                    println!("we are bigger than slip at position: {}", i);
                     if self.stakers.len() == (i + 1) {
                         self.stakers.push(slip);
                         return true;
@@ -228,7 +222,6 @@ impl Staking {
                 }
             }
 
-            println!("we were smaller all the way through -- add at end");
             self.stakers.push(slip);
             return true;
         }
@@ -325,7 +318,6 @@ impl Staking {
                         //
                         if longest_chain {
                             self.add_deposit(tx.outputs[i].clone());
-
                         //
                         // roll backward
                         //
@@ -371,6 +363,7 @@ impl Staking {
         // update staking tables
         //
         if block.get_has_fee_transaction() && block.get_has_golden_ticket() {
+
             let fee_transaction =
                 &block.get_transactions()[block.get_fee_transaction_idx() as usize];
 
@@ -389,9 +382,16 @@ impl Staking {
             next_random_number = hash(&next_random_number.to_vec());
             next_random_number = hash(&next_random_number.to_vec());
 
-            if fee_transaction.outputs.len() < 3 {
-                return (res_spend, res_unspend, res_delete);
+	    let mut is_there_a_staker_output = false;
+	    
+            for i in 0..fee_transaction.outputs.len() {
+		if fee_transaction.outputs[i].get_slip_type() == SlipType::StakerOutput {
+		    is_there_a_staker_output = true;
+		}
             }
+	    if is_there_a_staker_output == false {
+                return (res_spend, res_unspend, res_delete);
+	    }
             if fee_transaction.inputs.is_empty() {
                 return (res_spend, res_unspend, res_delete);
             }
@@ -1084,8 +1084,7 @@ mod tests {
             );
         }
     }
-    // TODO fix this test
-    #[ignore]
+
     #[tokio::test]
     async fn blockchain_staking_deposits_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
@@ -1126,7 +1125,7 @@ mod tests {
         let mut transactions: Vec<Transaction> = vec![];
         transactions.push(stx1);
         transactions.push(stx2);
-        let block2 = Block::generate(
+        let mut block2 = Block::generate(
             &mut transactions,
             block1_hash,
             wallet_lock.clone(),
@@ -1134,8 +1133,13 @@ mod tests {
             current_timestamp + 120000,
         )
         .await;
+	block2.generate_metadata();
         let block2_hash = block2.get_hash();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block2).await;
+
+
+        println!("- AFTER BLOCK 2 - deposit");
+
 
         //
         // BLOCK 3 - payout
@@ -1145,12 +1149,36 @@ mod tests {
             .add_block(current_timestamp + 240000, 0, 1, true, vec![])
             .await;
 
+        println!("- AFTER BLOCK 3 - PAYOUT has happened -");
+
+        //
+        // we have yet to find a single golden ticket, so all in stakers
+        //
+        {
+            let blockchain = blockchain_lock.write().await;
+            println!("STAKERS {:?}", blockchain.staking.stakers);
+            println!("PENDING {:?}", blockchain.staking.pending);
+            println!("DEPOSITS {:?}", blockchain.staking.deposits);
+	}
+
+
         //
         // BLOCK 4
         //
         test_manager
             .add_block(current_timestamp + 360000, 0, 1, false, vec![])
             .await;
+
+        //
+        // we have yet to find a single golden ticket, so all in stakers
+        //
+        {
+            let blockchain = blockchain_lock.write().await;
+	    println!("AFTER BLOCK #4");
+            println!("STAKERS {:?}", blockchain.staking.stakers);
+            println!("PENDING {:?}", blockchain.staking.pending);
+            println!("DEPOSITS {:?}", blockchain.staking.deposits);
+	}
 
         //
         // BLOCK 5
@@ -1163,6 +1191,7 @@ mod tests {
             let blockchain = blockchain_lock.read().await;
             block5_hash = blockchain.get_latest_block_hash();
         }
+
 
         //
         // BLOCK 6 -- withdraw a staking deposit
@@ -1178,10 +1207,12 @@ mod tests {
         }
         let mut transactions: Vec<Transaction> = vec![];
         println!("----------");
+        println!("- WITHDRAW STAKER SLIP --");
+        println!("----------");
         println!("---{:?}---", wstx1);
         println!("----------");
         transactions.push(wstx1);
-        let block6 = Block::generate(
+        let mut block6 = Block::generate(
             &mut transactions,
             block5_hash,
             wallet_lock.clone(),
@@ -1189,11 +1220,13 @@ mod tests {
             current_timestamp + 600000,
         )
         .await;
+        block6.generate_metadata();
         let block6_id = block6.get_id();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block6).await;
 
         {
             let blockchain = blockchain_lock.read().await;
+blockchain.print();
             println!(
                 "LATESTID: {} / {}",
                 block6_id,
