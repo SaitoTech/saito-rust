@@ -4,11 +4,21 @@ use block_modes::block_padding::Pkcs7;
 use block_modes::{BlockMode, Cbc};
 use macros::Persistable;
 use std::path::Path;
-
+//
+// TODO - we can move file-access functionality to storage
+//
+// so that all file-access / disk-writes are a single function
+// instead of functions specifically written for block, wallet, etc.
+use std::{
+    fs::{self, File},
+    io::{self, BufRead, Read, Write},
+};
+use std::convert::TryInto;
 use crate::block::Block;
 use crate::crypto::{
     generate_keypair_from_privatekey, generate_keys, hash, sign, SaitoHash, SaitoPrivateKey,
     SaitoPublicKey, SaitoSignature, SaitoUTXOSetKey,
+    decrypt_with_password, encrypt_with_password,
 };
 use crate::golden_ticket::GoldenTicket;
 use crate::slip::{Slip, SlipType};
@@ -27,21 +37,10 @@ pub struct Wallet {
     privatekey: SaitoPrivateKey,
     slips: Vec<WalletSlip>,
     staked_slips: Vec<WalletSlip>,
+    filename: String,
+    filepass: String,
 }
 
-#[serde_with::serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize, Persistable, Default)]
-#[persist_with_name(get_file_name)]
-pub struct EncryptedWallet {
-    encrypted_privatekey: Vec<u8>,
-    #[serde(skip)]
-    file_path: String,
-}
-impl EncryptedWallet {
-    pub fn get_file_name(&self) -> String {
-        self.file_path.clone()
-    }
-}
 impl Wallet {
     pub fn new() -> Wallet {
         let (publickey, privatekey) = generate_keys();
@@ -50,30 +49,87 @@ impl Wallet {
             privatekey,
             slips: vec![],
             staked_slips: vec![],
+            filename: "default".to_string(),
+            filepass: "password".to_string(),
         }
     }
 
-    pub fn load(&mut self, walletname: &str, password: Option<&str>) {
+
+    pub fn load_keys(&mut self, key_path: &str, password: Option<&str>) {
+	self.set_filename(key_path.to_string());
+	self.set_password(password.unwrap().to_string());
+	self.load();
+    }
+    pub fn load(&mut self) {
+
         let mut filename = String::from("data/wallets/");
-        filename.push_str(walletname);
+        filename.push_str(&self.filename);
         let path = Path::new(&filename);
 
         let decrypted_buffer: Vec<u8>;
-        if !path.exists() {
-            println!("Creating wallet file at path: {}", walletname);
-            decrypted_buffer = Wallet::create_wallet_file(&walletname, &password);
+
+        if path.exists() {
+
+            let file_to_load = &filename;
+            let mut f = File::open(file_to_load).unwrap();
+            let mut encoded = Vec::<u8>::new();
+            f.read_to_end(&mut encoded).unwrap();
+
+	    // decrypt the wallet
+	    let password = self.get_password();
+            self.deserialize_for_disk(&decrypt_with_password(encoded, &password));
+
         } else {
-            println!("Reading wallet file from path: {}", walletname);
-            decrypted_buffer = Wallet::read_wallet_file(&walletname, &password);
-        }
 
-        let (publickey, privatekey) = generate_keypair_from_privatekey(&decrypted_buffer);
+	    //
+	    // new wallet, save to disk
+	    //
+	    self.save();
 
-        self.set_publickey(publickey);
-        self.set_privatekey(privatekey);
+	}
+
     }
 
+    pub fn save(&mut self) {
+
+        let mut filename = String::from("data/wallets/");
+        filename.push_str(&self.filename);
+        let path = Path::new(&filename);
+
+        let mut buffer = File::create(filename).unwrap();
+        let byte_array: Vec<u8> = self.serialize_for_disk();
+        buffer.write_all(&byte_array[..]).unwrap();
+
+    }
+
+
+
+    /// [privatekey - 32 bytes]
+    /// [publickey - 33 bytes]
+    pub fn serialize_for_disk(&self) -> Vec<u8> {
+        let mut vbytes: Vec<u8> = vec![];
+
+        vbytes.extend(&self.privatekey);
+        vbytes.extend(&self.publickey);
+
+        vbytes
+    }
+
+
+    /// [privatekey - 32 bytes
+    /// [publickey - 33 bytes]
+    pub fn deserialize_for_disk(&mut self, bytes: &Vec<u8>) {
+        self.privatekey = bytes[0..32].try_into().unwrap();
+        self.publickey = bytes[32..55].try_into().unwrap();
+    }
+
+
+
+
     fn create_wallet_file(wallet_file_path: &str, opts_password: &Option<&str>) -> Vec<u8> {
+
+/***
+
         let password: String;
         if opts_password.is_none() {
             password = rpassword::prompt_password_stdout("Password: ").unwrap();
@@ -86,16 +142,24 @@ impl Wallet {
         let (_publickey, privatekey) = generate_keys();
 
         let ciphertext = cipher.encrypt_vec(&privatekey);
-        let encrypted_wallet = EncryptedWallet {
-            encrypted_privatekey: ciphertext,
-            file_path: wallet_file_path.to_string().clone(),
-        };
+        //let encrypted_wallet = EncryptedWallet {
+        //    encrypted_privatekey: ciphertext,
+        //    file_path: wallet_file_path.to_string().clone(),
+        //};
         encrypted_wallet.save();
 
         privatekey.to_vec()
+**/
+
+	let v = vec![];
+	v
     }
 
-    fn read_wallet_file(wallet_file_path: &str, opts_password: &Option<&str>) -> Vec<u8> {
+
+    fn read_wallet_file(walletfile: &str, password: &str) -> Vec<u8> {
+	let v = vec![];
+	v
+/*
         let password: String;
         if opts_password.is_none() {
             password = rpassword::prompt_password_stdout("Password: ").unwrap();
@@ -103,9 +167,10 @@ impl Wallet {
             password = String::from(opts_password.as_deref().unwrap());
         }
 
-        let encrypted_wallet = EncryptedWallet::load(&wallet_file_path);
+        //let encrypted_wallet = EncryptedWallet::load(&wallet_file_path);
 
-        Wallet::decrypt_wallet_file(encrypted_wallet.encrypted_privatekey, &password)
+        //Wallet::decrypt_wallet_file(encrypted_wallet.encrypted_privatekey, &password)
+*/
     }
 
     fn decrypt_wallet_file(ciphertext: Vec<u8>, password: &str) -> Vec<u8> {
@@ -223,6 +288,22 @@ impl Wallet {
 
     pub fn set_publickey(&mut self, publickey: SaitoPublicKey) {
         self.publickey = publickey;
+    }
+
+    pub fn set_filename(&mut self, filename : String) {
+        self.filename = filename;
+    }
+
+    pub fn set_password(&mut self, filepass : String) {
+        self.filepass = filepass;
+    }
+
+    pub fn get_filename(&mut self) -> String {
+        self.filename.clone()
+    }
+
+    pub fn get_password(&mut self) -> String {
+        self.filepass.clone()
     }
 
     pub fn get_available_balance(&self) -> u64 {

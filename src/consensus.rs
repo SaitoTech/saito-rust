@@ -1,4 +1,4 @@
-use crate::crypto::SaitoHash;
+use crate::crypto::{encrypt_with_password, decrypt_with_password, SaitoHash};
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
 use crate::networking::network::Network;
@@ -107,6 +107,7 @@ impl Consensus {
                 Arg::with_name("password")
                     .short("p")
                     .long("password")
+                    .default_value("password")
                     .takes_value(true)
                     .help("Password to decrypt wallet"),
             )
@@ -148,7 +149,6 @@ impl Consensus {
             .merge(config::File::with_name(config_name))
             .unwrap();
 
-
         //
         // generate
         //
@@ -160,11 +160,25 @@ impl Consensus {
         //
         {
             let walletname = matches.value_of("wallet").unwrap();
-            let password = matches.value_of("password");
+            let password = matches.value_of("password").unwrap();
+
+println!("walletname = {}", walletname);
+
 	    if walletname != "none" {
                 let mut wallet = wallet_lock.write().await;
-                wallet.load(walletname, password);
-            }
+		wallet.set_filename(walletname.to_string());
+		wallet.set_password(password.to_string());
+                wallet.load();
+            } else {
+                let mut wallet = wallet_lock.write().await;
+                wallet.save();
+	    }
+
+	    {
+		let wallet = wallet_lock.read().await;
+		println!("WALLET PUBLICKEY: {:?}", wallet.get_publickey());
+	    }
+
         }
 
         //

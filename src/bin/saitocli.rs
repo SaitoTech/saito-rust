@@ -52,7 +52,6 @@ or
 ```
 cargo run --bin saitocli -- blocks
 ```
-*/
 use base58::FromBase58;
 use clap::{App, Arg};
 use saito_rust::{
@@ -282,3 +281,12 @@ pub async fn main() -> saito_rust::Result<()> {
     }
     Ok(())
 }
+
+*/
+
+
+#[tokio::main]
+pub async fn main() -> saito_rust::Result<()> {
+    Ok(())
+}
+
