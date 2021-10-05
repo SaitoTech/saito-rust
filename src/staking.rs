@@ -75,7 +75,6 @@ impl Staking {
         &mut self,
         staking_treasury: u64,
     ) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
-
         event!(Level::TRACE, "===========================");
         event!(Level::TRACE, "=== RESET STAKING TABLE ===");
         event!(Level::TRACE, "===========================");
@@ -363,7 +362,6 @@ impl Staking {
         // update staking tables
         //
         if block.get_has_fee_transaction() && block.get_has_golden_ticket() {
-
             let fee_transaction =
                 &block.get_transactions()[block.get_fee_transaction_idx() as usize];
 
@@ -382,16 +380,16 @@ impl Staking {
             next_random_number = hash(&next_random_number.to_vec());
             next_random_number = hash(&next_random_number.to_vec());
 
-	    let mut is_there_a_staker_output = false;
-	    
+            let mut is_there_a_staker_output = false;
+
             for i in 0..fee_transaction.outputs.len() {
-		if fee_transaction.outputs[i].get_slip_type() == SlipType::StakerOutput {
-		    is_there_a_staker_output = true;
-		}
+                if fee_transaction.outputs[i].get_slip_type() == SlipType::StakerOutput {
+                    is_there_a_staker_output = true;
+                }
             }
-	    if is_there_a_staker_output == false {
+            if is_there_a_staker_output == false {
                 return (res_spend, res_unspend, res_delete);
-	    }
+            }
             if fee_transaction.inputs.is_empty() {
                 return (res_spend, res_unspend, res_delete);
             }
@@ -1133,13 +1131,11 @@ mod tests {
             current_timestamp + 120000,
         )
         .await;
-	block2.generate_metadata();
+        block2.generate_metadata();
         let block2_hash = block2.get_hash();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block2).await;
 
-
         println!("- AFTER BLOCK 2 - deposit");
-
 
         //
         // BLOCK 3 - payout
@@ -1159,8 +1155,7 @@ mod tests {
             println!("STAKERS {:?}", blockchain.staking.stakers);
             println!("PENDING {:?}", blockchain.staking.pending);
             println!("DEPOSITS {:?}", blockchain.staking.deposits);
-	}
-
+        }
 
         //
         // BLOCK 4
@@ -1174,11 +1169,11 @@ mod tests {
         //
         {
             let blockchain = blockchain_lock.write().await;
-	    println!("AFTER BLOCK #4");
+            println!("AFTER BLOCK #4");
             println!("STAKERS {:?}", blockchain.staking.stakers);
             println!("PENDING {:?}", blockchain.staking.pending);
             println!("DEPOSITS {:?}", blockchain.staking.deposits);
-	}
+        }
 
         //
         // BLOCK 5
@@ -1191,7 +1186,6 @@ mod tests {
             let blockchain = blockchain_lock.read().await;
             block5_hash = blockchain.get_latest_block_hash();
         }
-
 
         //
         // BLOCK 6 -- withdraw a staking deposit
@@ -1226,7 +1220,7 @@ mod tests {
 
         {
             let blockchain = blockchain_lock.read().await;
-blockchain.print();
+            blockchain.print();
             println!(
                 "LATESTID: {} / {}",
                 block6_id,

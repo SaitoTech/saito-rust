@@ -920,7 +920,7 @@ impl Transaction {
         //
         if transaction_type == TransactionType::StakerWithdrawal {
             for i in 0..self.inputs.len() {
-println!("{}", i);
+                println!("{}", i);
                 if self.inputs[i].get_slip_type() == SlipType::StakerWithdrawalPending {
                     if !staking.validate_slip_in_pending(self.inputs[i].clone()) {
                         println!("Staking Withdrawal Pending input slip is not in Pending thus transaction invalid!");

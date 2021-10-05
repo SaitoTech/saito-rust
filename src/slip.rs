@@ -63,7 +63,6 @@ impl Slip {
     }
 
     pub fn validate(&self, utxoset: &UtxoSet) -> bool {
-
         if self.get_amount() > 0 {
             match utxoset.get(&self.utxoset_key) {
                 Some(value) => {
@@ -101,7 +100,6 @@ impl Slip {
         _lc: bool,
         slip_value: u64,
     ) {
-
         if self.get_slip_type() == SlipType::StakerDeposit {
             if _lc == true {
                 println!(
