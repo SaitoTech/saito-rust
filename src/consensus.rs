@@ -117,15 +117,12 @@ impl Consensus {
                     .takes_value(true)
                     .help("config file name"),
             )
-            //
-            // TODO - hook up with Arg
-            //
-            //.arg(
-            //    Arg::with_name("spammer")
-            //        .short("s")
-            //        .long("spammer")
-            //        .help("enable tx spamming"),
-            //)
+            .arg(
+                Arg::with_name("spammer")
+                    .short("s")
+                    .long("spammer")
+                    .help("enable tx spamming"),
+            )
             .get_matches();
 
         let config_name = match matches.value_of("config") {
@@ -133,13 +130,13 @@ impl Consensus {
             None => "config",
         };
 
-        let is_spammer_enabled = true;
+        let mut is_spammer_enabled = false;
         //
         // TODO - hook up with Arg above
         //
-        //if matches.is_present("spammer") {
-        //   enable_spammer = true;
-        //};
+        if matches.is_present("spammer") {
+            is_spammer_enabled = true;
+        };
 
         let mut settings = config::Config::default();
         settings
