@@ -39,7 +39,6 @@ impl Wallet {
         }
     }
 
-
     pub fn load_keys(&mut self, key_path: &str, password: Option<&str>) {
 	self.set_filename(key_path.to_string());
 	self.set_password(password.unwrap().to_string());
