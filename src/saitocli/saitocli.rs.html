@@ -282,6 +282,12 @@
 <span id="282">282</span>
 <span id="283">283</span>
 <span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
 </pre><pre class="rust">
 <span class="doccomment">/*!
 # Saito Command Line Wallet Interface
@@ -337,234 +343,240 @@ or
 ```
 cargo run --bin saitocli -- blocks
 ```
-*/</span>
-<span class="kw">use</span> <span class="ident">base58::FromBase58</span>;
-<span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">App</span>, <span class="ident">Arg</span>};
-<span class="kw">use</span> <span class="ident">saito_rust</span>::{
-    <span class="ident">block::Block</span>,
-    <span class="ident">crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>},
-    <span class="ident">slip::Slip</span>,
-    <span class="ident">storage</span>::{<span class="ident">Storage</span>, <span class="ident">BLOCKS_DIR_PATH</span>},
-    <span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>},
-    <span class="ident">wallet::Wallet</span>,
+use base58::FromBase58;
+use clap::{App, Arg};
+use saito_rust::{
+    block::Block,
+    crypto::{hash, SaitoHash},
+    slip::Slip,
+    storage::{Storage, BLOCKS_DIR_PATH},
+    transaction::{Transaction, TransactionType},
+    wallet::Wallet,
 };
-<span class="kw">use</span> <span class="ident">secp256k1::PublicKey</span>;
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">fs</span>::{<span class="self">self</span>, <span class="ident">File</span>},
-    <span class="ident">io</span>::{<span class="ident">Read</span>, <span class="ident">Write</span>},
+use secp256k1::PublicKey;
+use std::{
+    fs::{self, File},
+    io::{Read, Write},
 };
 
-<span class="comment">// TODO Combine this into the main binary?</span>
-<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">saito_rust::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">command_matches</span> <span class="op">=</span> <span class="ident">App::new</span>(<span class="string">&quot;Saito Command Line Interface&quot;</span>)
-        .<span class="ident">about</span>(<span class="string">&quot;Interact with your wallet and the Saito blockchain through the command line&quot;</span>)
-        .<span class="ident">subcommand</span>(
-            <span class="ident">App::new</span>(<span class="string">&quot;print&quot;</span>)
-                .<span class="ident">about</span>(<span class="string">&quot;prints the keypair&quot;</span>)
-                .<span class="ident">arg</span>(
-                    <span class="ident">Arg::with_name</span>(<span class="string">&quot;keyfile&quot;</span>)
-                        .<span class="ident">short</span>(<span class="string">&quot;k&quot;</span>)
-                        .<span class="ident">long</span>(<span class="string">&quot;keyfile&quot;</span>)
-                        .<span class="ident">required</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">help</span>(<span class="string">&quot;path to keyfile&quot;</span>),
+// TODO Combine this into the main binary?
+#[tokio::main]
+pub async fn main() -&gt; saito_rust::Result&lt;()&gt; {
+    let command_matches = App::new(&quot;Saito Command Line Interface&quot;)
+        .about(&quot;Interact with your wallet and the Saito blockchain through the command line&quot;)
+        .subcommand(
+            App::new(&quot;print&quot;)
+                .about(&quot;prints the keypair&quot;)
+                .arg(
+                    Arg::with_name(&quot;keyfile&quot;)
+                        .short(&quot;k&quot;)
+                        .long(&quot;keyfile&quot;)
+                        .required(true)
+                        .takes_value(true)
+                        .help(&quot;path to keyfile&quot;),
                 )
-                .<span class="ident">arg</span>(
-                    <span class="ident">Arg::with_name</span>(<span class="string">&quot;password&quot;</span>)
-                        .<span class="ident">short</span>(<span class="string">&quot;p&quot;</span>)
-                        .<span class="ident">long</span>(<span class="string">&quot;password&quot;</span>)
-                        .<span class="ident">required</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">help</span>(<span class="string">&quot;password of keyfile&quot;</span>),
+                .arg(
+                    Arg::with_name(&quot;password&quot;)
+                        .short(&quot;p&quot;)
+                        .long(&quot;password&quot;)
+                        .required(true)
+                        .takes_value(true)
+                        .help(&quot;password of keyfile&quot;),
                 ),
         )
-        .<span class="ident">subcommand</span>(
-            <span class="ident">App::new</span>(<span class="string">&quot;tx&quot;</span>)
-                .<span class="ident">about</span>(<span class="string">&quot;creates transactions using the wallet&quot;</span>)
-                .<span class="ident">arg</span>(
-                    <span class="ident">Arg::with_name</span>(<span class="string">&quot;keyfile&quot;</span>)
-                        .<span class="ident">short</span>(<span class="string">&quot;k&quot;</span>)
-                        .<span class="ident">long</span>(<span class="string">&quot;keyfile&quot;</span>)
-                        .<span class="ident">required</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">help</span>(<span class="string">&quot;path to keyfile&quot;</span>),
+        .subcommand(
+            App::new(&quot;tx&quot;)
+                .about(&quot;creates transactions using the wallet&quot;)
+                .arg(
+                    Arg::with_name(&quot;keyfile&quot;)
+                        .short(&quot;k&quot;)
+                        .long(&quot;keyfile&quot;)
+                        .required(true)
+                        .takes_value(true)
+                        .help(&quot;path to keyfile&quot;),
                 )
-                .<span class="ident">arg</span>(
-                    <span class="ident">Arg::with_name</span>(<span class="string">&quot;password&quot;</span>)
-                        .<span class="ident">short</span>(<span class="string">&quot;p&quot;</span>)
-                        .<span class="ident">long</span>(<span class="string">&quot;password&quot;</span>)
-                        .<span class="ident">required</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">help</span>(<span class="string">&quot;password of keyfile&quot;</span>),
+                .arg(
+                    Arg::with_name(&quot;password&quot;)
+                        .short(&quot;p&quot;)
+                        .long(&quot;password&quot;)
+                        .required(true)
+                        .takes_value(true)
+                        .help(&quot;password of keyfile&quot;),
                 )
-                .<span class="ident">arg</span>(
-                    <span class="ident">Arg::with_name</span>(<span class="string">&quot;amount&quot;</span>)
-                        .<span class="ident">short</span>(<span class="string">&quot;a&quot;</span>)
-                        .<span class="ident">long</span>(<span class="string">&quot;amount&quot;</span>)
-                        .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">required</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">help</span>(<span class="string">&quot;amount to send&quot;</span>),
+                .arg(
+                    Arg::with_name(&quot;amount&quot;)
+                        .short(&quot;a&quot;)
+                        .long(&quot;amount&quot;)
+                        .takes_value(true)
+                        .required(true)
+                        .help(&quot;amount to send&quot;),
                 )
-                .<span class="ident">arg</span>(
-                    <span class="ident">Arg::with_name</span>(<span class="string">&quot;to&quot;</span>)
-                        .<span class="ident">short</span>(<span class="string">&quot;t&quot;</span>)
-                        .<span class="ident">long</span>(<span class="string">&quot;to&quot;</span>)
-                        .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">required</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">help</span>(<span class="string">&quot;amount to send&quot;</span>),
+                .arg(
+                    Arg::with_name(&quot;to&quot;)
+                        .short(&quot;t&quot;)
+                        .long(&quot;to&quot;)
+                        .takes_value(true)
+                        .required(true)
+                        .help(&quot;amount to send&quot;),
                 )
-                .<span class="ident">arg</span>(
-                    <span class="ident">Arg::with_name</span>(<span class="string">&quot;filename&quot;</span>)
-                        .<span class="ident">short</span>(<span class="string">&quot;f&quot;</span>)
-                        .<span class="ident">long</span>(<span class="string">&quot;filename&quot;</span>)
-                        .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">help</span>(<span class="string">&quot;output file&quot;</span>),
+                .arg(
+                    Arg::with_name(&quot;filename&quot;)
+                        .short(&quot;f&quot;)
+                        .long(&quot;filename&quot;)
+                        .takes_value(true)
+                        .help(&quot;output file&quot;),
                 ),
         )
-        .<span class="ident">subcommand</span>(
-            <span class="ident">App::new</span>(<span class="string">&quot;block&quot;</span>)
-                .<span class="ident">about</span>(<span class="string">&quot;print info about a block file&quot;</span>)
-                .<span class="ident">arg</span>(
-                    <span class="ident">Arg::with_name</span>(<span class="string">&quot;filename&quot;</span>)
-                        .<span class="ident">short</span>(<span class="string">&quot;f&quot;</span>)
-                        .<span class="ident">long</span>(<span class="string">&quot;filename&quot;</span>)
-                        .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">required</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">help</span>(<span class="string">&quot;amount to send&quot;</span>),
+        .subcommand(
+            App::new(&quot;block&quot;)
+                .about(&quot;print info about a block file&quot;)
+                .arg(
+                    Arg::with_name(&quot;filename&quot;)
+                        .short(&quot;f&quot;)
+                        .long(&quot;filename&quot;)
+                        .takes_value(true)
+                        .required(true)
+                        .help(&quot;amount to send&quot;),
                 ),
         )
-        .<span class="ident">subcommand</span>(
-            <span class="ident">App::new</span>(<span class="string">&quot;blocks&quot;</span>)
-                .<span class="ident">about</span>(<span class="string">&quot;print info about all blocks in the data directory&quot;</span>)
-                .<span class="ident">arg</span>(
-                    <span class="ident">Arg::with_name</span>(<span class="string">&quot;path&quot;</span>)
-                        .<span class="ident">short</span>(<span class="string">&quot;p&quot;</span>)
-                        .<span class="ident">long</span>(<span class="string">&quot;path&quot;</span>)
-                        .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                        .<span class="ident">help</span>(<span class="string">&quot;path to blocks directory&quot;</span>),
+        .subcommand(
+            App::new(&quot;blocks&quot;)
+                .about(&quot;print info about all blocks in the data directory&quot;)
+                .arg(
+                    Arg::with_name(&quot;path&quot;)
+                        .short(&quot;p&quot;)
+                        .long(&quot;path&quot;)
+                        .takes_value(true)
+                        .help(&quot;path to blocks directory&quot;),
                 ),
         )
-        .<span class="ident">get_matches</span>();
+        .get_matches();
 
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">matches</span>) <span class="op">=</span> <span class="ident">command_matches</span>.<span class="ident">subcommand_matches</span>(<span class="string">&quot;print&quot;</span>) {
-        <span class="kw">let</span> <span class="ident">key_file</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;keyfile&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;password&quot;</span>);
+    if let Some(matches) = command_matches.subcommand_matches(&quot;print&quot;) {
+        let key_file = matches.value_of(&quot;keyfile&quot;).unwrap();
+        let password = matches.value_of(&quot;password&quot;);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
-        <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="ident">key_file</span>, <span class="ident">password</span>);
+        let mut wallet = Wallet::new();
+        wallet.load(key_file, password);
 
-        <span class="macro">println!</span>(<span class="string">&quot;public key : {}&quot;</span>, <span class="ident">hex::encode</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>()));
-        <span class="macro">println!</span>(<span class="string">&quot;private key : {}&quot;</span>, <span class="ident">hex::encode</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>()));
+        println!(&quot;public key : {}&quot;, hex::encode(wallet.get_publickey()));
+        println!(&quot;private key : {}&quot;, hex::encode(wallet.get_privatekey()));
     }
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">matches</span>) <span class="op">=</span> <span class="ident">command_matches</span>.<span class="ident">subcommand_matches</span>(<span class="string">&quot;block&quot;</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">filename</span> <span class="op">=</span> <span class="ident">BLOCKS_DIR_PATH</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">block_filename</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;filename&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="ident">block_filename</span>);
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Storage::load_block_from_disk</span>(<span class="ident">filename</span>).<span class="kw">await</span>;
-        <span class="macro">println!</span>(<span class="string">&quot;hash: {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_hash</span>()));
-        <span class="macro">println!</span>(
-            <span class="string">&quot;prev hash: {:?}&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>())
+    if let Some(matches) = command_matches.subcommand_matches(&quot;block&quot;) {
+        let mut filename = BLOCKS_DIR_PATH.clone();
+        let block_filename = matches.value_of(&quot;filename&quot;).unwrap();
+        filename.push_str(block_filename);
+        let block = Storage::load_block_from_disk(filename).await;
+        println!(&quot;hash: {:?}&quot;, &amp;hex::encode(&amp;block.get_hash()));
+        println!(
+            &quot;prev hash: {:?}&quot;,
+            &amp;hex::encode(&amp;block.get_previous_block_hash())
         );
     }
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">matches</span>) <span class="op">=</span> <span class="ident">command_matches</span>.<span class="ident">subcommand_matches</span>(<span class="string">&quot;blocks&quot;</span>) {
-        <span class="kw">let</span> <span class="ident">blocks_dir</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;path&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">String::from</span>(<span class="ident">path</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">BLOCKS_DIR_PATH</span>.<span class="ident">clone</span>(),
+    if let Some(matches) = command_matches.subcommand_matches(&quot;blocks&quot;) {
+        let blocks_dir = match matches.value_of(&quot;path&quot;) {
+            Some(path) =&gt; String::from(path),
+            None =&gt; BLOCKS_DIR_PATH.clone(),
         };
-        <span class="macro">println!</span>(<span class="string">&quot;blocks_dir {} {:?}&quot;</span>, <span class="ident">blocks_dir</span>, <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;path&quot;</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">paths</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">fs::read_dir</span>(<span class="ident">blocks_dir</span>.<span class="ident">clone</span>())
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="ident">r</span>.<span class="ident">unwrap</span>())
-            .<span class="ident">collect</span>();
-        <span class="ident">paths</span>.<span class="ident">sort_by</span>(<span class="op">|</span><span class="ident">a</span>, <span class="ident">b</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">a_metadata</span> <span class="op">=</span> <span class="ident">fs::metadata</span>(<span class="ident">a</span>.<span class="ident">path</span>()).<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">b_metadata</span> <span class="op">=</span> <span class="ident">fs::metadata</span>(<span class="ident">b</span>.<span class="ident">path</span>()).<span class="ident">unwrap</span>();
-            <span class="ident">a_metadata</span>
-                .<span class="ident">modified</span>()
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">partial_cmp</span>(<span class="kw-2">&amp;</span><span class="ident">b_metadata</span>.<span class="ident">modified</span>().<span class="ident">unwrap</span>())
-                .<span class="ident">unwrap</span>()
+        println!(&quot;blocks_dir {} {:?}&quot;, blocks_dir, matches.value_of(&quot;path&quot;));
+        let mut paths: Vec&lt;_&gt; = fs::read_dir(blocks_dir.clone())
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        paths.sort_by(|a, b| {
+            let a_metadata = fs::metadata(a.path()).unwrap();
+            let b_metadata = fs::metadata(b.path()).unwrap();
+            a_metadata
+                .modified()
+                .unwrap()
+                .partial_cmp(&amp;b_metadata.modified().unwrap())
+                .unwrap()
         });
-        <span class="kw">for</span> (<span class="ident">_pos</span>, <span class="ident">path</span>) <span class="kw">in</span> <span class="ident">paths</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="macro">println!</span>(<span class="string">&quot;path: {:?}&quot;</span>, <span class="ident">path</span>.<span class="ident">path</span>());
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">path</span>.<span class="ident">path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>().<span class="ident">ends_with</span>(<span class="string">&quot;.gitignore&quot;</span>) {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">File::open</span>(<span class="ident">path</span>.<span class="ident">path</span>()).<span class="ident">unwrap</span>();
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="ident">::new</span>();
-                <span class="ident">f</span>.<span class="ident">read_to_end</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">encoded</span>).<span class="ident">unwrap</span>();
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::deserialize_for_net</span>(<span class="kw-2">&amp;</span><span class="ident">encoded</span>);
-                <span class="macro">println!</span>(<span class="string">&quot;--------------------------------------------------------------&quot;</span>);
-                <span class="macro">println!</span>(<span class="string">&quot;filename: {:?}&quot;</span>, <span class="ident">path</span>);
-                <span class="macro">println!</span>(<span class="string">&quot;hash on disk  : {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_hash</span>()));
-                <span class="macro">println!</span>(
-                    <span class="string">&quot;prev hash     : {:?}&quot;</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_previous_block_hash</span>())
+        for (_pos, path) in paths.iter().enumerate() {
+            println!(&quot;path: {:?}&quot;, path.path());
+            if !path.path().to_str().unwrap().ends_with(&quot;.gitignore&quot;) {
+                let mut f = File::open(path.path()).unwrap();
+                let mut encoded = Vec::&lt;u8&gt;::new();
+                f.read_to_end(&amp;mut encoded).unwrap();
+                let mut block = Block::deserialize_for_net(&amp;encoded);
+                println!(&quot;--------------------------------------------------------------&quot;);
+                println!(&quot;filename: {:?}&quot;, path);
+                println!(&quot;hash on disk  : {:?}&quot;, &amp;hex::encode(&amp;block.get_hash()));
+                println!(
+                    &quot;prev hash     : {:?}&quot;,
+                    &amp;hex::encode(&amp;block.get_previous_block_hash())
                 );
-                <span class="ident">block</span>.<span class="ident">generate_hashes</span>();
-                <span class="macro">println!</span>(<span class="string">&quot;computed hash : {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>.<span class="ident">get_hash</span>()));
+                block.generate_hashes();
+                println!(&quot;computed hash : {:?}&quot;, &amp;hex::encode(&amp;block.get_hash()));
             }
         }
     }
-    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">matches</span>) <span class="op">=</span> <span class="ident">command_matches</span>.<span class="ident">subcommand_matches</span>(<span class="string">&quot;tx&quot;</span>) {
-        <span class="kw">let</span> <span class="ident">key_file</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;keyfile&quot;</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;password&quot;</span>);
+    if let Some(matches) = command_matches.subcommand_matches(&quot;tx&quot;) {
+        let key_file = matches.value_of(&quot;keyfile&quot;).unwrap();
+        let password = matches.value_of(&quot;password&quot;);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
-        <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="ident">key_file</span>, <span class="ident">password</span>);
+        let mut wallet = Wallet::new();
+        wallet.load(key_file, password);
 
-        <span class="kw">let</span> <span class="ident">filename</span>: <span class="ident">String</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;filename&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">filename</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">String::from</span>(<span class="ident">filename</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">String::from</span>(<span class="string">&quot;transaction.out&quot;</span>),
+        let filename: String = match matches.value_of(&quot;filename&quot;) {
+            Some(filename) =&gt; String::from(filename),
+            None =&gt; String::from(&quot;transaction.out&quot;),
         };
-        <span class="kw">let</span> <span class="ident">amount</span>: <span class="ident">f32</span> <span class="op">=</span> <span class="ident">matches</span>
-            .<span class="ident">value_of</span>(<span class="string">&quot;amount&quot;</span>)
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">parse</span>()
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">_error</span><span class="op">|</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;amount must be a float&quot;</span>);
-                <span class="macro">println!</span>(<span class="string">&quot;got {}&quot;</span>, <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;amount&quot;</span>).<span class="ident">unwrap</span>());
-                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+        let amount: f32 = matches
+            .value_of(&quot;amount&quot;)
+            .unwrap()
+            .parse()
+            .unwrap_or_else(|_error| {
+                println!(&quot;amount must be a float&quot;);
+                println!(&quot;got {}&quot;, matches.value_of(&quot;amount&quot;).unwrap());
+                std::process::exit(1);
             });
-        <span class="kw">let</span> <span class="ident">to_pubkey</span> <span class="op">=</span>
-            <span class="ident">PublicKey::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;to&quot;</span>).<span class="ident">unwrap</span>().<span class="ident">from_base58</span>().<span class="ident">unwrap</span>())
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">_error</span><span class="op">|</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;Invalid pubkey in to field. Should be based58 encoded.&quot;</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+        let to_pubkey =
+            PublicKey::from_slice(&amp;matches.value_of(&quot;to&quot;).unwrap().from_base58().unwrap())
+                .unwrap_or_else(|_error| {
+                    println!(&quot;Invalid pubkey in to field. Should be based58 encoded.&quot;);
+                    std::process::exit(1);
                 });
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
-        <span class="ident">transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::Normal</span>);
+        let mut transaction = Transaction::new();
+        transaction.set_transaction_type(TransactionType::Normal);
 
-        <span class="comment">// TODO: get inputs from the wallet and use the amount specified</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
-        <span class="ident">input1</span>.<span class="ident">set_publickey</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>());
-        <span class="ident">input1</span>.<span class="ident">set_amount</span>(<span class="number">0</span>);
-        <span class="ident">input1</span>.<span class="ident">set_uuid</span>([<span class="number">0</span>; <span class="number">32</span>]);
+        // TODO: get inputs from the wallet and use the amount specified
+        let mut input1 = Slip::new();
+        input1.set_publickey(wallet.get_publickey());
+        input1.set_amount(0);
+        input1.set_uuid([0; 32]);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output1</span> <span class="op">=</span> <span class="ident">Slip::new</span>();
-        <span class="ident">output1</span>.<span class="ident">set_publickey</span>(<span class="ident">to_pubkey</span>.<span class="ident">serialize</span>());
-        <span class="ident">output1</span>.<span class="ident">set_amount</span>(<span class="number">0</span>);
-        <span class="ident">output1</span>.<span class="ident">set_uuid</span>([<span class="number">0</span>; <span class="number">32</span>]);
+        let mut output1 = Slip::new();
+        output1.set_publickey(to_pubkey.serialize());
+        output1.set_amount(0);
+        output1.set_uuid([0; 32]);
 
-        <span class="ident">transaction</span>.<span class="ident">add_input</span>(<span class="ident">input1</span>);
-        <span class="ident">transaction</span>.<span class="ident">add_output</span>(<span class="ident">output1</span>);
+        transaction.add_input(input1);
+        transaction.add_output(output1);
 
-        <span class="kw">let</span> <span class="ident">hash_for_signature</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">transaction</span>.<span class="ident">serialize_for_signature</span>());
-        <span class="ident">transaction</span>.<span class="ident">set_hash_for_signature</span>(<span class="ident">hash_for_signature</span>);
+        let hash_for_signature: SaitoHash = hash(&amp;transaction.serialize_for_signature());
+        transaction.set_hash_for_signature(hash_for_signature);
 
-        <span class="ident">transaction</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());
+        transaction.sign(wallet.get_privatekey());
 
-        <span class="macro">println!</span>(<span class="string">&quot;Writing transaction&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;Amount: {}&quot;</span>, <span class="ident">amount</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;To: {}&quot;</span>, <span class="ident">to_pubkey</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;====&gt; {}&quot;</span>, <span class="ident">filename</span>);
+        println!(&quot;Writing transaction&quot;);
+        println!(&quot;Amount: {}&quot;, amount);
+        println!(&quot;To: {}&quot;, to_pubkey);
+        println!(&quot;====&gt; {}&quot;, filename);
 
-        <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">serialize_for_net</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">File::create</span>(<span class="ident">filename</span>).<span class="ident">unwrap</span>();
-        <span class="ident">buffer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">output</span>[..]).<span class="ident">unwrap</span>();
-        <span class="ident">buffer</span>.<span class="ident">flush</span>()<span class="question-mark">?</span>;
+        let output = transaction.serialize_for_net();
+        let mut buffer = File::create(filename).unwrap();
+        buffer.write_all(&amp;output[..]).unwrap();
+        buffer.flush()?;
     }
+    Ok(())
+}
+
+*/</span>
+
+<span class="attribute">#[<span class="ident">tokio::main</span>]</span>
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">saito_rust::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="prelude-val">Ok</span>(())
 }
 </pre></div>

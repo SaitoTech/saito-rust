@@ -538,51 +538,39 @@
 <span id="538">538</span>
 <span id="539">539</span>
 <span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
 </pre><pre class="rust">
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage</span>::{<span class="ident">Persistable</span>, <span class="ident">Storage</span>};
-<span class="kw">use</span> <span class="ident">aes::Aes128</span>;
-<span class="kw">use</span> <span class="ident">block_modes::block_padding::Pkcs7</span>;
-<span class="kw">use</span> <span class="ident">block_modes</span>::{<span class="ident">BlockMode</span>, <span class="ident">Cbc</span>};
-<span class="kw">use</span> <span class="ident">macros::Persistable</span>;
-<span class="kw">use</span> <span class="ident">std::path::Path</span>;
-
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::Block</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto</span>::{
-    <span class="ident">generate_keypair_from_privatekey</span>, <span class="ident">generate_keys</span>, <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>,
-    <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>,
+    <span class="ident">decrypt_with_password</span>, <span class="ident">encrypt_with_password</span>, <span class="ident">generate_keys</span>, <span class="ident">hash</span>, <span class="ident">sign</span>, <span class="ident">SaitoHash</span>,
+    <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>, <span class="ident">SaitoSignature</span>, <span class="ident">SaitoUTXOSetKey</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipType</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::staking::Staking</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>};
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
-<span class="comment">// create an alias for convenience</span>
-<span class="kw">type</span> <span class="ident">Aes128Cbc</span> <span class="op">=</span> <span class="ident">Cbc</span><span class="op">&lt;</span><span class="ident">Aes128</span>, <span class="ident">Pkcs7</span><span class="op">&gt;</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">WALLET_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">65</span>;
 
 <span class="doccomment">/// The `Wallet` manages the public and private keypair of the node and holds the</span>
 <span class="doccomment">/// slips that are used to form transactions on the network.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Wallet</span> {
-    <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>,
-    <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>,
+    <span class="kw">pub</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>,
+    <span class="kw">pub</span> <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>,
     <span class="ident">slips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WalletSlip</span><span class="op">&gt;</span>,
     <span class="ident">staked_slips</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WalletSlip</span><span class="op">&gt;</span>,
+    <span class="ident">filename</span>: <span class="ident">String</span>,
+    <span class="ident">filepass</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Persistable</span>, <span class="ident">Default</span>)]</span>
-<span class="attribute">#[<span class="ident">persist_with_name</span>(<span class="ident">get_file_name</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EncryptedWallet</span> {
-    <span class="ident">encrypted_privatekey</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
-    <span class="ident">file_path</span>: <span class="ident">String</span>,
-}
-<span class="kw">impl</span> <span class="ident">EncryptedWallet</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_file_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
-        <span class="self">self</span>.<span class="ident">file_path</span>.<span class="ident">clone</span>()
-    }
-}
 <span class="kw">impl</span> <span class="ident">Wallet</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Wallet</span> {
         <span class="kw">let</span> (<span class="ident">publickey</span>, <span class="ident">privatekey</span>) <span class="op">=</span> <span class="ident">generate_keys</span>();
@@ -591,77 +579,61 @@
             <span class="ident">privatekey</span>,
             <span class="ident">slips</span>: <span class="macro">vec!</span>[],
             <span class="ident">staked_slips</span>: <span class="macro">vec!</span>[],
+            <span class="ident">filename</span>: <span class="string">&quot;default&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="ident">filepass</span>: <span class="string">&quot;password&quot;</span>.<span class="ident">to_string</span>(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load_keys</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">key_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">filename</span> <span class="op">=</span> <span class="ident">String::from</span>(<span class="string">&quot;data/&quot;</span>);
-        <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="ident">key_path</span>);
-        <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="kw-2">&amp;</span><span class="ident">filename</span>);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">filename</span> <span class="op">=</span> <span class="ident">String::from</span>(<span class="string">&quot;data/wallets/&quot;</span>);
+        <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">filename</span>);
 
-        <span class="kw">let</span> <span class="ident">decrypted_buffer</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>;
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">path</span>.<span class="ident">exists</span>() {
-            <span class="macro">println!</span>(<span class="string">&quot;Creating key file at path: {}&quot;</span>, <span class="ident">key_path</span>);
-            <span class="ident">decrypted_buffer</span> <span class="op">=</span> <span class="ident">Wallet::create_key_file</span>(<span class="kw-2">&amp;</span><span class="ident">key_path</span>, <span class="kw-2">&amp;</span><span class="ident">password</span>);
+        <span class="kw">if</span> <span class="ident">Storage::file_exists</span>(<span class="kw-2">&amp;</span><span class="ident">filename</span>) {
+            <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_password</span>();
+            <span class="kw">let</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">Storage::read</span>(<span class="kw-2">&amp;</span><span class="ident">filename</span>).<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">decrypted_encoded</span> <span class="op">=</span> <span class="ident">decrypt_with_password</span>(<span class="ident">encoded</span>, <span class="kw-2">&amp;</span><span class="ident">password</span>);
+            <span class="self">self</span>.<span class="ident">deserialize_for_disk</span>(<span class="kw-2">&amp;</span><span class="ident">decrypted_encoded</span>);
         } <span class="kw">else</span> {
-            <span class="macro">println!</span>(<span class="string">&quot;Reading key file from path: {}&quot;</span>, <span class="ident">key_path</span>);
-            <span class="ident">decrypted_buffer</span> <span class="op">=</span> <span class="ident">Wallet::read_key_file</span>(<span class="kw-2">&amp;</span><span class="ident">key_path</span>, <span class="kw-2">&amp;</span><span class="ident">password</span>);
+            <span class="comment">//</span>
+            <span class="comment">// new wallet, save to disk</span>
+            <span class="comment">//</span>
+            <span class="self">self</span>.<span class="ident">save</span>();
         }
-
-        <span class="kw">let</span> (<span class="ident">publickey</span>, <span class="ident">privatekey</span>) <span class="op">=</span> <span class="ident">generate_keypair_from_privatekey</span>(<span class="kw-2">&amp;</span><span class="ident">decrypted_buffer</span>);
-
-        <span class="self">self</span>.<span class="ident">set_publickey</span>(<span class="ident">publickey</span>);
-        <span class="self">self</span>.<span class="ident">set_privatekey</span>(<span class="ident">privatekey</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">create_key_file</span>(<span class="ident">key_file_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">opts_password</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">password</span>: <span class="ident">String</span>;
-        <span class="kw">if</span> <span class="ident">opts_password</span>.<span class="ident">is_none</span>() {
-            <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password_stdout</span>(<span class="string">&quot;Password: &quot;</span>).<span class="ident">unwrap</span>();
-        } <span class="kw">else</span> {
-            <span class="ident">password</span> <span class="op">=</span> <span class="ident">String::from</span>(<span class="ident">opts_password</span>.<span class="ident">as_deref</span>().<span class="ident">unwrap</span>());
-        }
-
-        <span class="kw">let</span> (<span class="ident">key</span>, <span class="ident">iv</span>) <span class="op">=</span> <span class="ident">Wallet::create_primitives_from_password</span>(<span class="kw-2">&amp;</span><span class="ident">password</span>);
-        <span class="kw">let</span> <span class="ident">cipher</span> <span class="op">=</span> <span class="ident">Aes128Cbc::new_from_slices</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>, <span class="kw-2">&amp;</span><span class="ident">iv</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> (<span class="ident">_publickey</span>, <span class="ident">privatekey</span>) <span class="op">=</span> <span class="ident">generate_keys</span>();
-
-        <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">cipher</span>.<span class="ident">encrypt_vec</span>(<span class="kw-2">&amp;</span><span class="ident">privatekey</span>);
-        <span class="kw">let</span> <span class="ident">encrypted_wallet</span> <span class="op">=</span> <span class="ident">EncryptedWallet</span> {
-            <span class="ident">encrypted_privatekey</span>: <span class="ident">ciphertext</span>,
-            <span class="ident">file_path</span>: <span class="ident">key_file_path</span>.<span class="ident">to_string</span>().<span class="ident">clone</span>(),
-        };
-        <span class="ident">encrypted_wallet</span>.<span class="ident">save</span>();
-
-        <span class="ident">privatekey</span>.<span class="ident">to_vec</span>()
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load_wallet</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">wallet_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">password</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">set_filename</span>(<span class="ident">wallet_path</span>.<span class="ident">to_string</span>());
+        <span class="self">self</span>.<span class="ident">set_password</span>(<span class="ident">password</span>.<span class="ident">unwrap</span>().<span class="ident">to_string</span>());
+        <span class="self">self</span>.<span class="ident">load</span>();
     }
 
-    <span class="kw">fn</span> <span class="ident">read_key_file</span>(<span class="ident">key_file_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">opts_password</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">password</span>: <span class="ident">String</span>;
-        <span class="kw">if</span> <span class="ident">opts_password</span>.<span class="ident">is_none</span>() {
-            <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password_stdout</span>(<span class="string">&quot;Password: &quot;</span>).<span class="ident">unwrap</span>();
-        } <span class="kw">else</span> {
-            <span class="ident">password</span> <span class="op">=</span> <span class="ident">String::from</span>(<span class="ident">opts_password</span>.<span class="ident">as_deref</span>().<span class="ident">unwrap</span>());
-        }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">save</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">filename</span> <span class="op">=</span> <span class="ident">String::from</span>(<span class="string">&quot;data/wallets/&quot;</span>);
+        <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">filename</span>);
 
-        <span class="kw">let</span> <span class="ident">encrypted_wallet</span> <span class="op">=</span> <span class="ident">EncryptedWallet::load</span>(<span class="kw-2">&amp;</span><span class="ident">key_file_path</span>);
+        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_password</span>();
+        <span class="kw">let</span> <span class="ident">byte_array</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">serialize_for_disk</span>();
+        <span class="kw">let</span> <span class="ident">encrypted_wallet</span> <span class="op">=</span> <span class="ident">encrypt_with_password</span>((<span class="kw-2">&amp;</span><span class="ident">byte_array</span>[..]).<span class="ident">to_vec</span>(), <span class="kw-2">&amp;</span><span class="ident">password</span>);
 
-        <span class="ident">Wallet::decrypt_key_file</span>(<span class="ident">encrypted_wallet</span>.<span class="ident">encrypted_privatekey</span>, <span class="kw-2">&amp;</span><span class="ident">password</span>)
+        <span class="ident">Storage::write</span>(<span class="ident">encrypted_wallet</span>, <span class="kw-2">&amp;</span><span class="ident">filename</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">decrypt_key_file</span>(<span class="ident">ciphertext</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> (<span class="ident">key</span>, <span class="ident">iv</span>) <span class="op">=</span> <span class="ident">Wallet::create_primitives_from_password</span>(<span class="ident">password</span>);
-        <span class="kw">let</span> <span class="ident">cipher</span> <span class="op">=</span> <span class="ident">Aes128Cbc::new_from_slices</span>(<span class="kw-2">&amp;</span><span class="ident">key</span>, <span class="kw-2">&amp;</span><span class="ident">iv</span>).<span class="ident">unwrap</span>();
-        <span class="ident">cipher</span>.<span class="ident">decrypt_vec</span>(<span class="kw-2">&amp;</span><span class="ident">ciphertext</span>).<span class="ident">unwrap</span>()
+    <span class="doccomment">/// [privatekey - 32 bytes]</span>
+    <span class="doccomment">/// [publickey - 33 bytes]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_disk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">privatekey</span>);
+        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">publickey</span>);
+
+        <span class="ident">vbytes</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">create_primitives_from_password</span>(<span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> ([<span class="ident">u8</span>; <span class="number">16</span>], [<span class="ident">u8</span>; <span class="number">16</span>]) {
-        <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">password</span>.<span class="ident">as_bytes</span>().<span class="ident">to_vec</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key</span>: [<span class="ident">u8</span>; <span class="number">16</span>] <span class="op">=</span> [<span class="number">0</span>; <span class="number">16</span>];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">iv</span>: [<span class="ident">u8</span>; <span class="number">16</span>] <span class="op">=</span> [<span class="number">0</span>; <span class="number">16</span>];
-        <span class="ident">key</span>.<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>[<span class="number">0</span>..<span class="number">16</span>]);
-        <span class="ident">iv</span>.<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">hash</span>[<span class="number">16</span>..<span class="number">32</span>]);
-        (<span class="ident">key</span>, <span class="ident">iv</span>)
+    <span class="doccomment">/// [privatekey - 32 bytes</span>
+    <span class="doccomment">/// [publickey - 33 bytes]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_for_disk</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">privatekey</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">0</span>..<span class="number">32</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
+        <span class="self">self</span>.<span class="ident">publickey</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">32</span>..<span class="number">65</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>, <span class="ident">lc</span>: <span class="ident">bool</span>) {
@@ -764,6 +736,22 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_publickey</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>) {
         <span class="self">self</span>.<span class="ident">publickey</span> <span class="op">=</span> <span class="ident">publickey</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_filename</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">filename</span>: <span class="ident">String</span>) {
+        <span class="self">self</span>.<span class="ident">filename</span> <span class="op">=</span> <span class="ident">filename</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_password</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">filepass</span>: <span class="ident">String</span>) {
+        <span class="self">self</span>.<span class="ident">filepass</span> <span class="op">=</span> <span class="ident">filepass</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_filename</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+        <span class="self">self</span>.<span class="ident">filename</span>.<span class="ident">clone</span>()
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_password</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+        <span class="self">self</span>.<span class="ident">filepass</span>.<span class="ident">clone</span>()
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_available_balance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
@@ -1074,9 +1062,33 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
 
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">wallet_new_test</span>() {
-        <span class="macro">assert_eq!</span>(<span class="bool-val">true</span>, <span class="bool-val">true</span>);
+        <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
+        <span class="macro">assert_ne!</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>(), [<span class="number">0</span>; <span class="number">33</span>]);
+        <span class="macro">assert_ne!</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>(), [<span class="number">0</span>; <span class="number">32</span>]);
+        <span class="macro">assert_eq!</span>(<span class="ident">wallet</span>.<span class="ident">serialize_for_disk</span>().<span class="ident">len</span>(), <span class="ident">WALLET_SIZE</span>);
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">save_and_restore_wallet_test</span>() {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
+        <span class="kw">let</span> <span class="ident">publickey1</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>().<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">privatekey1</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_privatekey</span>().<span class="ident">clone</span>();
+
+        <span class="ident">wallet</span>.<span class="ident">save</span>();
+
+        <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
+
+        <span class="macro">assert_ne!</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>(), <span class="ident">publickey1</span>);
+        <span class="macro">assert_ne!</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>(), <span class="ident">privatekey1</span>);
+
+        <span class="ident">wallet</span>.<span class="ident">load</span>();
+
+        <span class="macro">assert_eq!</span>(<span class="ident">wallet</span>.<span class="ident">get_publickey</span>(), <span class="ident">publickey1</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>(), <span class="ident">privatekey1</span>);
     }
 }
 </pre></div>

@@ -1254,6 +1254,33 @@
 <span id="1254">1254</span>
 <span id="1255">1255</span>
 <span id="1256">1256</span>
+<span id="1257">1257</span>
+<span id="1258">1258</span>
+<span id="1259">1259</span>
+<span id="1260">1260</span>
+<span id="1261">1261</span>
+<span id="1262">1262</span>
+<span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
+<span id="1267">1267</span>
+<span id="1268">1268</span>
+<span id="1269">1269</span>
+<span id="1270">1270</span>
+<span id="1271">1271</span>
+<span id="1272">1272</span>
+<span id="1273">1273</span>
+<span id="1274">1274</span>
+<span id="1275">1275</span>
+<span id="1276">1276</span>
+<span id="1277">1277</span>
+<span id="1278">1278</span>
+<span id="1279">1279</span>
+<span id="1280">1280</span>
+<span id="1281">1281</span>
+<span id="1282">1282</span>
+<span id="1283">1283</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TODO</span>
@@ -1366,12 +1393,6 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_staked</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {
-            <span class="comment">// TODO - delete when ready</span>
-            <span class="comment">// we do not update the slip type anymore because we need</span>
-            <span class="comment">// the slip to be spendable when it is issued.</span>
-            <span class="comment">// we update the payout rather than the amount so the slip</span>
-            <span class="comment">// can validate as spendable as well.</span>
-            <span class="comment">//self.stakers[i].set_slip_type(SlipType::StakerOutput);</span>
             <span class="ident">total_staked</span> <span class="op">+</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_amount</span>();
         }
         <span class="kw">let</span> <span class="ident">average_staked</span> <span class="op">=</span> <span class="ident">total_staked</span> <span class="op">/</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u64</span>;
@@ -1469,7 +1490,6 @@
                 <span class="comment">// 2 - self is smaller</span>
                 <span class="comment">// insert at position i</span>
                 <span class="kw">if</span> <span class="ident">how_compares</span> <span class="op">=</span><span class="op">=</span> <span class="number">2</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;we are bigger than slip at position: {}&quot;</span>, <span class="ident">i</span>);
                     <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> (<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>) {
                         <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">push</span>(<span class="ident">slip</span>);
                         <span class="kw">return</span> <span class="bool-val">true</span>;
@@ -1485,7 +1505,6 @@
                 }
             }
 
-            <span class="macro">println!</span>(<span class="string">&quot;we were smaller all the way through -- add at end&quot;</span>);
             <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">push</span>(<span class="ident">slip</span>);
             <span class="kw">return</span> <span class="bool-val">true</span>;
         }
@@ -1582,7 +1601,6 @@
                         <span class="comment">//</span>
                         <span class="kw">if</span> <span class="ident">longest_chain</span> {
                             <span class="self">self</span>.<span class="ident">add_deposit</span>(<span class="ident">tx</span>.<span class="ident">outputs</span>[<span class="ident">i</span>].<span class="ident">clone</span>());
-
                         <span class="comment">//</span>
                         <span class="comment">// roll backward</span>
                         <span class="comment">//</span>
@@ -1646,7 +1664,14 @@
             <span class="ident">next_random_number</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">next_random_number</span>.<span class="ident">to_vec</span>());
             <span class="ident">next_random_number</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">next_random_number</span>.<span class="ident">to_vec</span>());
 
-            <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">outputs</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="number">3</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">is_there_a_staker_output</span> <span class="op">=</span> <span class="bool-val">false</span>;
+
+            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">fee_transaction</span>.<span class="ident">outputs</span>.<span class="ident">len</span>() {
+                <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">outputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+                    <span class="ident">is_there_a_staker_output</span> <span class="op">=</span> <span class="bool-val">true</span>;
+                }
+            }
+            <span class="kw">if</span> <span class="ident">is_there_a_staker_output</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span> {
                 <span class="kw">return</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>);
             }
             <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">inputs</span>.<span class="ident">is_empty</span>() {
@@ -2341,8 +2366,7 @@
             );
         }
     }
-    <span class="comment">// TODO fix this test</span>
-    <span class="attribute">#[<span class="ident">ignore</span>]</span>
+
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_staking_deposits_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
@@ -2383,7 +2407,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">stx1</span>);
         <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">stx2</span>);
-        <span class="kw">let</span> <span class="ident">block2</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block2</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
             <span class="ident">block1_hash</span>,
             <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
@@ -2391,8 +2415,11 @@
             <span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">120000</span>,
         )
         .<span class="kw">await</span>;
+        <span class="ident">block2</span>.<span class="ident">generate_metadata</span>();
         <span class="kw">let</span> <span class="ident">block2_hash</span> <span class="op">=</span> <span class="ident">block2</span>.<span class="ident">get_hash</span>();
         <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block2</span>).<span class="kw">await</span>;
+
+        <span class="macro">println!</span>(<span class="string">&quot;- AFTER BLOCK 2 - deposit&quot;</span>);
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 3 - payout</span>
@@ -2402,12 +2429,35 @@
             .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">240000</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="bool-val">true</span>, <span class="macro">vec!</span>[])
             .<span class="kw">await</span>;
 
+        <span class="macro">println!</span>(<span class="string">&quot;- AFTER BLOCK 3 - PAYOUT has happened -&quot;</span>);
+
+        <span class="comment">//</span>
+        <span class="comment">// we have yet to find a single golden ticket, so all in stakers</span>
+        <span class="comment">//</span>
+        {
+            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+            <span class="macro">println!</span>(<span class="string">&quot;STAKERS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">stakers</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;PENDING {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">pending</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;DEPOSITS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">deposits</span>);
+        }
+
         <span class="comment">//</span>
         <span class="comment">// BLOCK 4</span>
         <span class="comment">//</span>
         <span class="ident">test_manager</span>
             .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">360000</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="bool-val">false</span>, <span class="macro">vec!</span>[])
             .<span class="kw">await</span>;
+
+        <span class="comment">//</span>
+        <span class="comment">// we have yet to find a single golden ticket, so all in stakers</span>
+        <span class="comment">//</span>
+        {
+            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+            <span class="macro">println!</span>(<span class="string">&quot;AFTER BLOCK #4&quot;</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;STAKERS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">stakers</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;PENDING {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">pending</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;DEPOSITS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">deposits</span>);
+        }
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 5</span>
@@ -2435,10 +2485,12 @@
         }
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="macro">println!</span>(<span class="string">&quot;----------&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;- WITHDRAW STAKER SLIP --&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;----------&quot;</span>);
         <span class="macro">println!</span>(<span class="string">&quot;---{:?}---&quot;</span>, <span class="ident">wstx1</span>);
         <span class="macro">println!</span>(<span class="string">&quot;----------&quot;</span>);
         <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">wstx1</span>);
-        <span class="kw">let</span> <span class="ident">block6</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block6</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
             <span class="ident">block5_hash</span>,
             <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
@@ -2446,11 +2498,13 @@
             <span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">600000</span>,
         )
         .<span class="kw">await</span>;
+        <span class="ident">block6</span>.<span class="ident">generate_metadata</span>();
         <span class="kw">let</span> <span class="ident">block6_id</span> <span class="op">=</span> <span class="ident">block6</span>.<span class="ident">get_id</span>();
         <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block6</span>).<span class="kw">await</span>;
 
         {
             <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+            <span class="ident">blockchain</span>.<span class="ident">print</span>();
             <span class="macro">println!</span>(
                 <span class="string">&quot;LATESTID: {} / {}&quot;</span>,
                 <span class="ident">block6_id</span>,

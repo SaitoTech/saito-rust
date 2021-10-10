@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["saito_rust"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.55.0/core/default/trait.Default.html\" title=\"trait core::default::Default\">Default</a> for <a class=\"struct\" href=\"saito_rust/wallet/struct.EncryptedWallet.html\" title=\"struct saito_rust::wallet::EncryptedWallet\">EncryptedWallet</a>","synthetic":false,"types":["saito_rust::wallet::EncryptedWallet"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

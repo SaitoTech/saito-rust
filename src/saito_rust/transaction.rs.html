@@ -1066,6 +1066,7 @@
 <span id="1066">1066</span>
 <span id="1067">1067</span>
 <span id="1068">1068</span>
+<span id="1069">1069</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -1989,6 +1990,7 @@
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::StakerWithdrawal</span> {
             <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() {
+                <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">i</span>);
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalPending</span> {
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">staking</span>.<span class="ident">validate_slip_in_pending</span>(<span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">clone</span>()) {
                         <span class="macro">println!</span>(<span class="string">&quot;Staking Withdrawal Pending input slip is not in Pending thus transaction invalid!&quot;</span>);
@@ -2085,7 +2087,7 @@
     <span class="kw">fn</span> <span class="ident">transaction_sign_test</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tx</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">Wallet::new</span>();
-        <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
+        <span class="ident">wallet</span>.<span class="ident">load_wallet</span>(<span class="string">&quot;testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;password&quot;</span>));
 
         <span class="ident">tx</span>.<span class="ident">set_outputs</span>(<span class="macro">vec!</span>[<span class="ident">Slip::new</span>()]);
         <span class="ident">tx</span>.<span class="ident">sign</span>(<span class="ident">wallet</span>.<span class="ident">get_privatekey</span>());

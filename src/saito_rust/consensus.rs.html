@@ -270,6 +270,21 @@
 <span id="270">270</span>
 <span id="271">271</span>
 <span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
@@ -369,10 +384,10 @@
         <span class="kw">let</span> <span class="ident">matches</span> <span class="op">=</span> <span class="ident">App::new</span>(<span class="string">&quot;Saito Runtime&quot;</span>)
             .<span class="ident">about</span>(<span class="string">&quot;Runs a Saito Node&quot;</span>)
             .<span class="ident">arg</span>(
-                <span class="ident">Arg::with_name</span>(<span class="string">&quot;key_path&quot;</span>)
-                    .<span class="ident">short</span>(<span class="string">&quot;k&quot;</span>)
-                    .<span class="ident">long</span>(<span class="string">&quot;key_path&quot;</span>)
-                    .<span class="ident">default_value</span>(<span class="string">&quot;keyfile&quot;</span>)
+                <span class="ident">Arg::with_name</span>(<span class="string">&quot;wallet&quot;</span>)
+                    .<span class="ident">short</span>(<span class="string">&quot;w&quot;</span>)
+                    .<span class="ident">long</span>(<span class="string">&quot;wallet&quot;</span>)
+                    .<span class="ident">default_value</span>(<span class="string">&quot;none&quot;</span>)
                     .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
                     .<span class="ident">help</span>(<span class="string">&quot;Path to local wallet&quot;</span>),
             )
@@ -380,6 +395,7 @@
                 <span class="ident">Arg::with_name</span>(<span class="string">&quot;password&quot;</span>)
                     .<span class="ident">short</span>(<span class="string">&quot;p&quot;</span>)
                     .<span class="ident">long</span>(<span class="string">&quot;password&quot;</span>)
+                    .<span class="ident">default_value</span>(<span class="string">&quot;password&quot;</span>)
                     .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
                     .<span class="ident">help</span>(<span class="string">&quot;Password to decrypt wallet&quot;</span>),
             )
@@ -416,9 +432,6 @@
             .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="ident">config_name</span>))
             .<span class="ident">unwrap</span>();
 
-        <span class="comment">//let key_path = matches.value_of(&quot;key_path&quot;).unwrap();</span>
-        <span class="comment">//let password = matches.value_of(&quot;password&quot;);</span>
-
         <span class="comment">//</span>
         <span class="comment">// generate</span>
         <span class="comment">//</span>
@@ -426,12 +439,29 @@
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
 
         <span class="comment">//</span>
-        <span class="comment">// TODO - load wallet ONLY if keyfile and password provided</span>
+        <span class="comment">// update wallet if walletfile provided</span>
         <span class="comment">//</span>
-        <span class="comment">//{</span>
-        <span class="comment">//    let mut wallet = wallet_lock.write().await;</span>
-        <span class="comment">//    wallet.load_keys(key_path, password);</span>
-        <span class="comment">//}</span>
+        <span class="comment">// if a wallet and password are provided Saito will attempt to load</span>
+        <span class="comment">// it from the /data/wallets directory. If they are not we will create</span>
+        <span class="comment">// a new wallet and save it as &quot;default&quot; with the password &quot;password&quot;.</span>
+        <span class="comment">// this &quot;default&quot; wallet will be over-written every time the software</span>
+        <span class="comment">// starts, but can be renamed afterwards if need be since it will</span>
+        <span class="comment">// persist until the software is restarted.</span>
+        <span class="comment">//</span>
+        {
+            <span class="kw">let</span> <span class="ident">walletname</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;wallet&quot;</span>).<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;password&quot;</span>).<span class="ident">unwrap</span>();
+
+            <span class="kw">if</span> <span class="ident">walletname</span> <span class="op">!</span><span class="op">=</span> <span class="string">&quot;none&quot;</span> {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                <span class="ident">wallet</span>.<span class="ident">set_filename</span>(<span class="ident">walletname</span>.<span class="ident">to_string</span>());
+                <span class="ident">wallet</span>.<span class="ident">set_password</span>(<span class="ident">password</span>.<span class="ident">to_string</span>());
+                <span class="ident">wallet</span>.<span class="ident">load</span>();
+            } <span class="kw">else</span> {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+                <span class="ident">wallet</span>.<span class="ident">save</span>();
+            }
+        }
 
         <span class="comment">//</span>
         <span class="comment">// load blocks from disk and check chain</span>

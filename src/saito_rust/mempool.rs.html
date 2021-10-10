@@ -449,123 +449,6 @@
 <span id="449">449</span>
 <span id="450">450</span>
 <span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
-<span id="516">516</span>
-<span id="517">517</span>
-<span id="518">518</span>
-<span id="519">519</span>
-<span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
-<span id="553">553</span>
-<span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -708,7 +591,7 @@
         <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="ident">blockchain</span>.<span class="ident">get_latest_block_hash</span>();
 
-        <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">transactions</span>,
             <span class="ident">previous_block_hash</span>,
             <span class="self">self</span>.<span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
@@ -716,6 +599,7 @@
             <span class="ident">current_timestamp</span>,
         )
         .<span class="kw">await</span>;
+        <span class="ident">block</span>.<span class="ident">generate_metadata</span>();
 
         <span class="self">self</span>.<span class="ident">routing_work_in_mempool</span> <span class="op">=</span> <span class="number">0</span>;
 
@@ -1016,124 +900,6 @@
         <span class="comment">// check chain consistence</span>
         <span class="ident">test_manager</span>.<span class="ident">check_blockchain</span>().<span class="kw">await</span>;
     }
-    <span class="comment">// TODO fix this test</span>
-    <span class="comment">// #[ignore]</span>
-    <span class="comment">// #[tokio::test]</span>
-    <span class="comment">// async fn mempool_bundle_and_send_blocks_to_blockchain_test() {</span>
-    <span class="comment">//     let wallet_lock = Arc::new(RwLock::new(Wallet::new()));</span>
-    <span class="comment">//     {</span>
-    <span class="comment">//         let mut wallet = wallet_lock.write().await;</span>
-    <span class="comment">//         wallet.load_keys(&quot;test/testwallet&quot;, Some(&quot;asdf&quot;));</span>
-    <span class="comment">//     }</span>
-    <span class="comment">//     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));</span>
-    <span class="comment">//     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));</span>
-    <span class="comment">//     let publickey;</span>
-    <span class="comment">//     let mut prev_block;</span>
-    <span class="comment">//     {</span>
-    <span class="comment">//         let wallet = wallet_lock.read().await;</span>
-    <span class="comment">//         publickey = wallet.get_publickey();</span>
-    <span class="comment">//     }</span>
-    <span class="comment">//     add_vip_block(</span>
-    <span class="comment">//         publickey,</span>
-    <span class="comment">//         [0; 32],</span>
-    <span class="comment">//         blockchain_lock.clone(),</span>
-    <span class="comment">//         wallet_lock.clone(),</span>
-    <span class="comment">//     )</span>
-    <span class="comment">//     .await;</span>
-    <span class="comment">//     // make sure to create the mock_timestamp_generator after the VIP block.</span>
-    <span class="comment">//     let mut mock_timestamp_generator = MockTimestampGenerator::new();</span>
-    <span class="comment">//     {</span>
-    <span class="comment">//         let blockchain = blockchain_lock.read().await;</span>
-    <span class="comment">//         prev_block = blockchain.get_latest_block().unwrap().clone();</span>
-    <span class="comment">//         assert_eq!(prev_block.get_id(), 1);</span>
-    <span class="comment">//     }</span>
-    <span class="comment">// }</span>
-    <span class="comment">/*******
-        #[tokio::test]
-        async fn mempool_bundle_and_send_blocks_to_blockchain_test() {
-            let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-            let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-            let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-
-            let publickey;
-            let mut prev_block;
-            {
-                let wallet = wallet_lock.read().await;
-                publickey = wallet.get_publickey();
-            }
-            add_vip_block(
-                publickey,
-                [0; 32],
-                blockchain_lock.clone(),
-                wallet_lock.clone(),
-            )
-            .await;
-
-            let current_timestamp = create_timestamp();
-            {
-                let blockchain = blockchain_lock.read().await;
-                prev_block = blockchain.get_latest_block().unwrap().clone();
-                assert_eq!(prev_block.get_id(), 1);
-            }
-
-            for i in 0..4 {
-                let block = make_block_with_mempool(
-                    current_timestamp + (i * 120000),
-                    mempool_lock.clone(),
-                    blockchain_lock.clone(),
-                    wallet_lock.clone(),
-                )
-                .await;
-                assert_eq!(prev_block.get_hash(), block.get_previous_block_hash());
-
-                let latest_block_id = block.get_id();
-                let latest_block_hash = block.get_hash();
-                let latest_block_prev_hash = block.get_previous_block_hash();
-                {
-                    let prev_hash_before = block.get_previous_block_hash();
-                    {
-                        let mut mempool = mempool_lock.write().await;
-                        mempool.add_block(block);
-                    }
-                    Mempool::send_blocks_to_blockchain(mempool_lock.clone(), blockchain_lock.clone()).await;
-                    let blockchain = blockchain_lock.read().await;
-                    let latest_block = blockchain.get_latest_block().unwrap();
-
-                    TestManager::check_block_consistency(&amp;latest_block);
-
-                    let serialized_latest_block = latest_block.serialize_for_net(BlockType::Full);
-                    let deserialize_latest_block = Block::deserialize_for_net(&amp;serialized_latest_block);
-                    assert_eq!(latest_block.get_hash(), deserialize_latest_block.get_hash());
-
-                    let prev_hash_after = latest_block.get_previous_block_hash();
-                    assert_eq!(prev_hash_before, prev_hash_after);
-
-                    assert_eq!(latest_block_id, blockchain.get_latest_block_id());
-                    assert_eq!(latest_block_hash, blockchain.get_latest_block_hash());
-                    assert_eq!(latest_block.get_hash(), blockchain.get_latest_block_hash());
-
-                    assert!(blockchain.get_block_sync(&amp;prev_hash_before).is_some());
-                    assert!(blockchain.get_block(&amp;prev_hash_before).await.is_some());
-
-                    assert_eq!(
-                        prev_block.get_hash(),
-                        blockchain
-                            .get_latest_block()
-                            .unwrap()
-                            .get_previous_block_hash()
-                    );
-                    assert_eq!(
-                        latest_block_prev_hash,
-                        blockchain
-                            .get_latest_block()
-                            .unwrap()
-                            .get_previous_block_hash()
-                    );
-                    prev_block = blockchain.get_latest_block().unwrap().clone();
-                }
-            }
-        }
-    *******/</span>
 }
 </pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>

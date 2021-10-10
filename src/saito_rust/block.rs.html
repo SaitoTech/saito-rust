@@ -2138,8 +2138,6 @@
 <span id="2138">2138</span>
 <span id="2139">2139</span>
 <span id="2140">2140</span>
-<span id="2141">2141</span>
-<span id="2142">2142</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
@@ -4014,9 +4012,7 @@
         <span class="comment">//</span>
         <span class="comment">// set difficulty</span>
         <span class="comment">//</span>
-        <span class="kw">if</span> <span class="ident">cv</span>.<span class="ident">expected_difficulty</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
-            <span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="ident">cv</span>.<span class="ident">expected_difficulty</span>);
-        }
+        <span class="ident">block</span>.<span class="ident">set_difficulty</span>(<span class="ident">cv</span>.<span class="ident">expected_difficulty</span>);
 
         <span class="comment">//</span>
         <span class="comment">// set treasury</span>

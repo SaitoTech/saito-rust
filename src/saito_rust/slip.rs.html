@@ -403,6 +403,18 @@
 <span id="403">403</span>
 <span id="404">404</span>
 <span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::UtxoSet</span>,
@@ -509,9 +521,20 @@
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span> {
             <span class="kw">if</span> <span class="ident">_lc</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">true</span> {
                 <span class="macro">println!</span>(
-                    <span class="string">&quot; ====&gt; spending deposit: {:?} -- {:?}&quot;</span>,
+                    <span class="string">&quot; ====&gt; update deposit to {}: {:?} -- {:?}&quot;</span>,
+                    <span class="ident">slip_value</span>,
                     <span class="self">self</span>.<span class="ident">get_utxoset_key</span>(),
                     <span class="self">self</span>.<span class="ident">get_slip_type</span>()
+                );
+            }
+        }
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+            <span class="kw">if</span> <span class="ident">_lc</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">true</span> {
+                <span class="macro">println!</span>(
+                    <span class="string">&quot; ====&gt; update output to {}: {:?} -- {:?}&quot;</span>,
+                    <span class="ident">slip_value</span>,
+                    <span class="self">self</span>.<span class="ident">get_utxoset_key</span>(),
+                    <span class="self">self</span>.<span class="ident">get_slip_type</span>(),
                 );
             }
         }
@@ -610,6 +633,7 @@
     <span class="comment">// 1 = self is bigger</span>
     <span class="comment">// 2 = other is bigger</span>
     <span class="comment">// 3 = same</span>
+    <span class="comment">//</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compare</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
         <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">U256::from_big_endian</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_publickey</span>()[<span class="number">0</span>..<span class="number">32</span>]);
         <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">U256::from_big_endian</span>(<span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">get_publickey</span>()[<span class="number">0</span>..<span class="number">32</span>]);
@@ -782,7 +806,7 @@
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="ident">wallet</span>.<span class="ident">load_keys</span>(<span class="string">&quot;test/testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;asdf&quot;</span>));
+            <span class="ident">wallet</span>.<span class="ident">load_wallet</span>(<span class="string">&quot;testwallet&quot;</span>, <span class="prelude-val">Some</span>(<span class="string">&quot;password&quot;</span>));
         }
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
