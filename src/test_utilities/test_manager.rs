@@ -223,6 +223,8 @@ impl TestManager {
             transactions.push(additional_transactions[i].clone());
         }
 
+        println!("parent hash {:?}", parent_hash);
+
         if golden_ticket {
             let blk = blockchain.get_block(&parent_hash).await.unwrap();
             let last_block_difficulty = blk.get_difficulty();
@@ -695,8 +697,6 @@ impl TestManager {
                 let blockchain = blockchain_lock_clone.read().await;
                 latest_block_id = blockchain.get_latest_block_id();
             }
-
-            println!("Latest block id: {}", latest_block_id);
 
             {
                 if latest_block_id == 0 {

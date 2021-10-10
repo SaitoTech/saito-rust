@@ -920,6 +920,7 @@ impl Transaction {
         //
         if transaction_type == TransactionType::StakerWithdrawal {
             for i in 0..self.inputs.len() {
+                println!("{}", i);
                 if self.inputs[i].get_slip_type() == SlipType::StakerWithdrawalPending {
                     if !staking.validate_slip_in_pending(self.inputs[i].clone()) {
                         println!("Staking Withdrawal Pending input slip is not in Pending thus transaction invalid!");
@@ -1016,7 +1017,7 @@ mod tests {
     fn transaction_sign_test() {
         let mut tx = Transaction::new();
         let mut wallet = Wallet::new();
-        wallet.load_keys("test/testwallet", Some("asdf"));
+        wallet.load_wallet("testwallet", Some("password"));
 
         tx.set_outputs(vec![Slip::new()]);
         tx.sign(wallet.get_privatekey());

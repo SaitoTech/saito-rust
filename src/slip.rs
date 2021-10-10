@@ -103,9 +103,20 @@ impl Slip {
         if self.get_slip_type() == SlipType::StakerDeposit {
             if _lc == true {
                 println!(
-                    " ====> spending deposit: {:?} -- {:?}",
+                    " ====> update deposit to {}: {:?} -- {:?}",
+                    slip_value,
                     self.get_utxoset_key(),
                     self.get_slip_type()
+                );
+            }
+        }
+        if self.get_slip_type() == SlipType::StakerOutput {
+            if _lc == true {
+                println!(
+                    " ====> update output to {}: {:?} -- {:?}",
+                    slip_value,
+                    self.get_utxoset_key(),
+                    self.get_slip_type(),
                 );
             }
         }
@@ -204,6 +215,7 @@ impl Slip {
     // 1 = self is bigger
     // 2 = other is bigger
     // 3 = same
+    //
     pub fn compare(&self, other: Slip) -> u64 {
         let x = U256::from_big_endian(&self.get_publickey()[0..32]);
         let y = U256::from_big_endian(&other.get_publickey()[0..32]);
@@ -376,7 +388,7 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         {
             let mut wallet = wallet_lock.write().await;
-            wallet.load_keys("test/testwallet", Some("asdf"));
+            wallet.load_wallet("testwallet", Some("password"));
         }
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let mut blockchain = blockchain_lock.write().await;

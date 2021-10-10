@@ -52,7 +52,6 @@ or
 ```
 cargo run --bin saitocli -- blocks
 ```
-*/
 use base58::FromBase58;
 use clap::{App, Arg};
 use saito_rust::{
@@ -167,7 +166,7 @@ pub async fn main() -> saito_rust::Result<()> {
         let password = matches.value_of("password");
 
         let mut wallet = Wallet::new();
-        wallet.load_keys(key_file, password);
+        wallet.load(key_file, password);
 
         println!("public key : {}", hex::encode(wallet.get_publickey()));
         println!("private key : {}", hex::encode(wallet.get_privatekey()));
@@ -226,7 +225,7 @@ pub async fn main() -> saito_rust::Result<()> {
         let password = matches.value_of("password");
 
         let mut wallet = Wallet::new();
-        wallet.load_keys(key_file, password);
+        wallet.load(key_file, password);
 
         let filename: String = match matches.value_of("filename") {
             Some(filename) => String::from(filename),
@@ -280,5 +279,12 @@ pub async fn main() -> saito_rust::Result<()> {
         buffer.write_all(&output[..]).unwrap();
         buffer.flush()?;
     }
+    Ok(())
+}
+
+*/
+
+#[tokio::main]
+pub async fn main() -> saito_rust::Result<()> {
     Ok(())
 }

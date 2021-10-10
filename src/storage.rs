@@ -50,6 +50,11 @@ impl Storage {
         buffer.write_all(&data[..]).unwrap();
     }
 
+    pub fn file_exists(filename: &str) -> bool {
+        let path = Path::new(&filename);
+        path.exists()
+    }
+
     pub fn generate_block_filename(block: &Block) -> String {
         let mut filename = BLOCKS_DIR_PATH.clone();
 
@@ -103,8 +108,9 @@ impl Storage {
                 let mut f = File::open(path.path()).unwrap();
                 let mut encoded = Vec::<u8>::new();
                 f.read_to_end(&mut encoded).unwrap();
-                let block = Block::deserialize_for_net(&encoded);
+                let mut block = Block::deserialize_for_net(&encoded);
                 let mut blockchain = blockchain_lock.write().await;
+                block.generate_metadata();
                 blockchain.add_block(block).await;
             }
         }
@@ -203,11 +209,6 @@ impl Storage {
 
         return slip;
     }
-}
-
-pub trait Persistable {
-    fn save(&self);
-    fn load(filename: &str) -> Self;
 }
 
 #[cfg(test)]

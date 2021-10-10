@@ -5,6 +5,13 @@ pub use secp256k1::{Message, PublicKey, SecretKey, Signature, SECP256K1};
 pub static SHA256: &Algorithm = &sha256;
 pub use merkle::MerkleTree;
 
+// symmetrical encryption
+use aes::Aes128;
+use block_modes::block_padding::Pkcs7;
+use block_modes::{BlockMode, Cbc};
+// create an alias for convenience
+type Aes128Cbc = Cbc<Aes128, Pkcs7>;
+
 pub type SaitoHash = [u8; 32];
 pub type SaitoUTXOSetKey = [u8; 74];
 pub type SaitoPublicKey = [u8; 33];
@@ -12,6 +19,31 @@ pub type SaitoPrivateKey = [u8; 32]; // 256-bit key
 pub type SaitoSignature = [u8; 64];
 
 pub const PARALLEL_HASH_BYTE_THRESHOLD: usize = 128_000;
+
+pub fn encrypt_with_password(msg: Vec<u8>, password: &str) -> Vec<u8> {
+    let hash = hash(&password.as_bytes().to_vec());
+    let mut key: [u8; 16] = [0; 16];
+    let mut iv: [u8; 16] = [0; 16];
+    key.clone_from_slice(&hash[0..16]);
+    iv.clone_from_slice(&hash[16..32]);
+
+    let cipher = Aes128Cbc::new_from_slices(&key, &iv).unwrap();
+    let encrypt_msg = cipher.encrypt_vec(&msg);
+
+    return encrypt_msg;
+}
+pub fn decrypt_with_password(msg: Vec<u8>, password: &str) -> Vec<u8> {
+    let hash = hash(&password.as_bytes().to_vec());
+    let mut key: [u8; 16] = [0; 16];
+    let mut iv: [u8; 16] = [0; 16];
+    key.clone_from_slice(&hash[0..16]);
+    iv.clone_from_slice(&hash[16..32]);
+
+    let cipher = Aes128Cbc::new_from_slices(&key, &iv).unwrap();
+    let decrypt_msg = cipher.decrypt_vec(&msg).unwrap();
+
+    return decrypt_msg;
+}
 
 pub fn generate_keys() -> (SaitoPublicKey, SaitoPrivateKey) {
     let (mut secret_key, mut public_key) =
@@ -77,4 +109,25 @@ pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> boo
     let p = PublicKey::from_slice(&publickey).unwrap();
     let s = Signature::from_compact(&sig).unwrap();
     SECP256K1.verify(&m, &s, &p).is_ok()
+}
+
+#[cfg(test)]
+
+mod tests {
+
+    use super::*;
+    use std::str;
+
+    #[test]
+    //
+    // test symmetrical encryption works properly
+    //
+    fn symmetrical_encryption_works_test() {
+        let text = "This is our unencrypted text";
+        let e = encrypt_with_password(text.as_bytes().to_vec(), "asdf");
+        let d = decrypt_with_password(e, "asdf");
+        let dtext = str::from_utf8(&d).unwrap();
+
+        assert_eq!(text, dtext);
+    }
 }

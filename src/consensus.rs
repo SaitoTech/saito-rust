@@ -96,10 +96,10 @@ impl Consensus {
         let matches = App::new("Saito Runtime")
             .about("Runs a Saito Node")
             .arg(
-                Arg::with_name("key_path")
-                    .short("k")
-                    .long("key_path")
-                    .default_value("keyfile")
+                Arg::with_name("wallet")
+                    .short("w")
+                    .long("wallet")
+                    .default_value("none")
                     .takes_value(true)
                     .help("Path to local wallet"),
             )
@@ -107,6 +107,7 @@ impl Consensus {
                 Arg::with_name("password")
                     .short("p")
                     .long("password")
+                    .default_value("password")
                     .takes_value(true)
                     .help("Password to decrypt wallet"),
             )
@@ -143,9 +144,6 @@ impl Consensus {
             .merge(config::File::with_name(config_name))
             .unwrap();
 
-        //let key_path = matches.value_of("key_path").unwrap();
-        //let password = matches.value_of("password");
-
         //
         // generate
         //
@@ -153,12 +151,29 @@ impl Consensus {
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
         //
-        // TODO - load wallet ONLY if keyfile and password provided
+        // update wallet if walletfile provided
         //
-        //{
-        //    let mut wallet = wallet_lock.write().await;
-        //    wallet.load_keys(key_path, password);
-        //}
+        // if a wallet and password are provided Saito will attempt to load
+        // it from the /data/wallets directory. If they are not we will create
+        // a new wallet and save it as "default" with the password "password".
+        // this "default" wallet will be over-written every time the software
+        // starts, but can be renamed afterwards if need be since it will
+        // persist until the software is restarted.
+        //
+        {
+            let walletname = matches.value_of("wallet").unwrap();
+            let password = matches.value_of("password").unwrap();
+
+            if walletname != "none" {
+                let mut wallet = wallet_lock.write().await;
+                wallet.set_filename(walletname.to_string());
+                wallet.set_password(password.to_string());
+                wallet.load();
+            } else {
+                let mut wallet = wallet_lock.write().await;
+                wallet.save();
+            }
+        }
 
         //
         // load blocks from disk and check chain
