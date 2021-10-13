@@ -369,11 +369,11 @@ pub async fn run(
              // global broadcast channel receivers
              //
              Ok(message) = broadcast_channel_receiver.recv() => {
-                 match message {
-                     SaitoMessage::MinerNewGoldenTicket { ticket : _golden_ticket } => {
-                     },
-                     _ => {},
-                 }
+                match message {
+                    SaitoMessage::MinerNewGoldenTicket { ticket : _golden_ticket } => {
+                    },
+                    _ => {},
+                }
              }
         }
     }
@@ -438,10 +438,6 @@ mod tests {
         settings.merge(config::File::with_name("config")).unwrap();
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        {
-            let mut wallet = wallet_lock.write().await;
-            wallet.load_wallet("testwallet", Some("password"));
-        }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
@@ -526,10 +522,6 @@ mod tests {
         settings.merge(config::File::with_name("config")).unwrap();
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        {
-            let mut wallet = wallet_lock.write().await;
-            wallet.load_wallet("testwallet", Some("password"));
-        }
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
