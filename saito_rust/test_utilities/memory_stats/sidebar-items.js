@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["MemoryStats",""]]});
+initSidebarItems({});
