@@ -28,8 +28,6 @@ config = "0.11"
 clap = "2.33.3"
 futures = { version = "0.3", default-features = false }
 hex = "0.4.3"
-jemallocator = "0.1.9"
-jemalloc-ctl = "0.2.0"
 lazy_static = "1.4.0"
 macros = { path = "macros" }
 merkle = "1.11.0"
