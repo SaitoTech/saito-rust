@@ -867,7 +867,7 @@
     <span class="comment">//</span>
     <span class="comment">// initialize routes for server</span>
     <span class="comment">//</span>
-    <span class="kw">let</span> <span class="ident">routes</span> <span class="op">=</span> <span class="ident">get_block_route_filter</span>()
+    <span class="kw">let</span> <span class="ident">routes</span> <span class="op">=</span> <span class="ident">get_block_route_filter</span>(<span class="ident">blockchain_lock_clone</span>.<span class="ident">clone</span>())
         .<span class="ident">or</span>(<span class="ident">post_transaction_route_filter</span>(
             <span class="ident">mempool_lock_clone</span>.<span class="ident">clone</span>(),
             <span class="ident">blockchain_lock_clone</span>.<span class="ident">clone</span>(),
@@ -901,7 +901,7 @@
     <span class="comment">// start the server (separate thread)</span>
     <span class="comment">//</span>
     <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-        <span class="macro">println!</span>(<span class="string">&quot;warp server running?&quot;</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;warp running on port {}&quot;</span>, <span class="ident">port</span>);
         <span class="ident">warp::serve</span>(<span class="ident">routes</span>).<span class="ident">run</span>((<span class="ident">host</span>, <span class="ident">port</span>)).<span class="kw">await</span>;
     });
 
