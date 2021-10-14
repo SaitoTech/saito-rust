@@ -1,7 +1,7 @@
+use crate::block::BlockType;
 use crate::blockchain::Blockchain;
 use crate::mempool::Mempool;
 use crate::networking::network::Result;
-use crate::storage::Storage;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use base58::ToBase58;
@@ -86,13 +86,23 @@ pub async fn post_transaction_handler(
 }
 
 /// get block handler.
-/// TODO remove this? I believe we want ot use the socket for everything...
-pub async fn get_block_handler(str_block_hash: String) -> Result<impl Reply> {
+// TODO remove this. For now it is just in place as a simple means to transfer blocks to saito-lite so we
+// can test the ability to serialize/deserialize blocks.
+pub async fn get_block_handler(
+    str_block_hash: String,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> Result<impl Reply> {
     let mut block_hash = [0u8; 32];
-    hex::decode_to_slice(str_block_hash, &mut block_hash).expect("Failed to parse hash");
-
-    match Storage::stream_block_from_disk(block_hash).await {
-        Ok(block_bytes) => Ok(block_bytes),
-        Err(_err) => Err(warp::reject()),
+    hex::decode_to_slice(str_block_hash.clone(), &mut block_hash).expect("Failed to parse hash");
+    {
+        let blockchain = blockchain_lock.read().await;
+        let block = blockchain.get_block(&block_hash).await;
+        match block {
+            Some(block) => {
+                let block_bytes = block.serialize_for_net(BlockType::Full);
+                Ok(block_bytes)
+            }
+            None => Err(warp::reject()),
+        }
     }
 }

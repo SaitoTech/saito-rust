@@ -26,8 +26,13 @@ pub fn ws_upgrade_route_filter(
 /// get block filter.
 /// TODO remove this? I believe we want ot use the socket for everything...
 pub fn get_block_route_filter(
-) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Copy {
-    warp::path("block").and(warp::path::param().and_then(get_block_handler))
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
+    warp::path("block").and(
+        warp::path::param()
+            .and(with_blockchain(blockchain_lock))
+            .and_then(get_block_handler),
+    )
 }
 
 /// POST tx filter.
