@@ -305,7 +305,7 @@ pub async fn run(
     //
     // initialize routes for server
     //
-    let routes = get_block_route_filter()
+    let routes = get_block_route_filter(blockchain_lock_clone.clone())
         .or(post_transaction_route_filter(
             mempool_lock_clone.clone(),
             blockchain_lock_clone.clone(),
@@ -339,7 +339,7 @@ pub async fn run(
     // start the server (separate thread)
     //
     tokio::spawn(async move {
-        println!("warp server running?");
+        println!("warp running on port {}", port);
         warp::serve(routes).run((host, port)).await;
     });
 

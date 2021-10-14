@@ -13,7 +13,6 @@ use tokio::sync::RwLock;
 use crate::{
     block::{Block, BlockType},
     blockchain::Blockchain,
-    crypto::SaitoHash,
 };
 
 lazy_static::lazy_static! {
@@ -74,19 +73,6 @@ impl Storage {
             let byte_array: Vec<u8> = block.serialize_for_net(BlockType::Full);
             buffer.write_all(&byte_array[..]).unwrap();
         }
-    }
-
-    pub async fn stream_block_from_disk(block_hash: SaitoHash) -> io::Result<Vec<u8>> {
-        let mut filename = BLOCKS_DIR_PATH.clone();
-
-        filename.push_str(&hex::encode(block_hash));
-        filename.push_str(&".sai");
-
-        let mut f = tokio::fs::File::open(filename).await?;
-        let mut encoded = Vec::<u8>::new();
-        tokio::io::AsyncReadExt::read_to_end(&mut f, &mut encoded).await?;
-
-        Ok(encoded)
     }
 
     pub async fn load_blocks_from_disk(blockchain_lock: Arc<RwLock<Blockchain>>) {
