@@ -7,6 +7,7 @@ use crate::mempool::Mempool;
 use crate::networking::message_types::handshake_challenge::HandshakeChallenge;
 use crate::networking::message_types::request_block_message::RequestBlockMessage;
 use crate::networking::message_types::request_blockchain_message::RequestBlockchainMessage;
+use crate::networking::message_types::send_block_head_message::SendBlockHeadMessage;
 use crate::networking::message_types::send_blockchain_message::{
     SendBlockchainBlockData, SendBlockchainMessage, SyncType,
 };
@@ -141,7 +142,7 @@ impl Future for PeerRequest {
 /// Sends an APIMessage to a socket connection. Since Outbound and Inbound peers Streams(Sinks) are
 /// not unified into a single Trait yet, we must check both dbs to find out which sort of sink this
 /// peer is using and send the message through the appopriate stream.
-async fn send_message_to_socket(api_message: APIMessage, connection_id: &SaitoHash) {
+pub async fn send_message_to_socket(api_message: APIMessage, connection_id: &SaitoHash) {
     let outbound_peer_connection_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
     let mut outbound_peer_connection_db = outbound_peer_connection_db_global.write().await;
     let inbound_peer_connection_db_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
@@ -157,17 +158,21 @@ async fn send_message_to_socket(api_message: APIMessage, connection_id: &SaitoHa
         panic!("Peer has neither outbound nor inbound connection");
     }
     if outbound_peer_connection.is_some() {
-        let _foo = outbound_peer_connection
+        outbound_peer_connection
             .unwrap()
             .write_sink
             .send(api_message.serialize().into())
-            .await;
+            .await
+            .expect("unable to send to outbound_peer_connection... It may be that the socket\n
+            was closed but the outbound peer was not cleaned up. If this occurs, it should be investigated.");
     }
     if inbound_peer_connection.is_some() {
-        let _foo = inbound_peer_connection
+        inbound_peer_connection
             .unwrap()
             .sender
-            .send(Ok(Message::binary(api_message.serialize())));
+            .send(Ok(Message::binary(api_message.serialize())))
+            .expect("unable to send to outbound_peer_connection... It may be that the socket\n
+            was closed but the inbount peer was not cleaned up. If this occurs, it should be investigated.");
     }
 }
 
@@ -266,6 +271,13 @@ impl SaitoPeer {
             }
         }
     }
+    /// sends a command to the peer's socket but doesn't not await the response
+    pub async fn send_command_fire_and_forget(&mut self, command: &str, message: Vec<u8>) {
+        // Create a PeerRequest(Future), but do not await it.
+        let _peer_request = PeerRequest::new(command, message, self).await;
+        // TODO: low priority. Ensure that commands sent this way are actually cleaned from PEERS_REQUEST_RESPONSES_GLOBAL and PEERS_REQUEST_WAKERS_GLOBAL.
+        //       I'm quite sure this isn't a problem, but did not confirm.
+    }
     /// Helper function for sending basic OK results.
     pub async fn send_response_from_str(&mut self, message_id: u32, message_str: &str) {
         send_message_to_socket(
@@ -327,18 +339,45 @@ impl SaitoPeer {
             }
         }
     }
-    // TODO Should this really be here? I don't think it's needed... let's just copy the
-    // code in-place where it's called or at least put this somewhere else...
-    pub async fn add_block_to_mempool(&mut self, block: Block) {
-        {
-            let mut mempool = self.mempool_lock.write().await;
-            mempool.add_block(block);
-        }
-        Mempool::send_blocks_to_blockchain(self.mempool_lock.clone(), self.blockchain_lock.clone())
-            .await;
+    // REQBLOCK is a response to both SNDCHAIN and SNDBLKHD. This function simply wraps shared functionality.
+    async fn do_reqblock(&self, block_hash: SaitoHash) {
+        let request_block_message = RequestBlockMessage::new(None, Some(block_hash), None);
+        let connection_id_clone = self.connection_id.clone();
+        let mempool_lock = self.mempool_lock.clone();
+
+        tokio::spawn(async move {
+            let peers_db_global = PEERS_DB_GLOBAL.clone();
+            let mut peer_db = peers_db_global.write().await;
+            let peer = peer_db.get_mut(&connection_id_clone).unwrap();
+            let result = peer
+                .send_command(&String::from("REQBLOCK"), request_block_message.serialize())
+                .await;
+            match result {
+                Ok(serialized_block_message) => {
+                    let block =
+                        Block::deserialize_for_net(serialized_block_message.get_message_data());
+                    {
+                        let mut mempool = mempool_lock.write().await;
+                        mempool.add_block(block);
+                    }
+                    Mempool::send_blocks_to_blockchain(
+                        peer.mempool_lock.clone(),
+                        peer.blockchain_lock.clone(),
+                    )
+                    .await;
+                }
+                Err(error_message) => {
+                    event!(
+                        Level::ERROR,
+                        "REQBLOCK ERROR: {}",
+                        error_message.get_message_data_as_string()
+                    );
+                }
+            }
+        });
     }
-    /// Handlers for all the network API commands, e.g. REQBLOCK.
-    pub async fn handle_peer_command(peer: &mut SaitoPeer, api_message_orig: &APIMessage) {
+    // Handlers for all the network API commands, e.g. REQBLOCK.
+    async fn handle_peer_command(peer: &mut SaitoPeer, api_message_orig: &APIMessage) {
         // TODO eliminate this .clone():
         let api_message = api_message_orig.clone();
         let mempool_lock = peer.mempool_lock.clone();
@@ -409,20 +448,6 @@ impl SaitoPeer {
                         .await;
                 }
             }
-            "SNDTRANS" => {
-                if let Some(tx) = socket_receive_transaction(api_message.clone()) {
-                    let mut mempool = mempool_lock.write().await;
-                    mempool.add_transaction(tx).await;
-                    peer.send_response_from_str(api_message.message_id, "OK")
-                        .await;
-                    // in event of error
-                    //peer.send_error_response(
-                    //            api_message.message_id,
-                    //            String::from("Invalid").as_bytes().try_into().unwrap(),
-                    //        )
-                    //        .await;
-                }
-            }
             "SNDCHAIN" => {
                 peer.send_response_from_str(api_message.message_id, "OK")
                     .await;
@@ -432,52 +457,42 @@ impl SaitoPeer {
                 for send_blockchain_block_data in
                     send_blockchain_message.get_blocks_data().into_iter()
                 {
-                    let request_block_message = RequestBlockMessage::new(
-                        None,
-                        Some(send_blockchain_block_data.block_hash),
-                        None,
-                    );
-                    let connection_id_clone = peer.connection_id.clone();
-                    let mempool_lock = mempool_lock.clone();
-                    tokio::spawn(async move {
-                        let peers_db_global = PEERS_DB_GLOBAL.clone();
-                        let mut peer_db = peers_db_global.write().await;
-                        let peer = peer_db.get_mut(&connection_id_clone).unwrap();
-                        let result = peer
-                            .send_command(
-                                &String::from("REQBLOCK"),
-                                request_block_message.serialize(),
-                            )
-                            .await;
-                        match result {
-                            Ok(serialized_block_message) => {
-                                let block = Block::deserialize_for_net(
-                                    serialized_block_message.get_message_data(),
-                                );
-                                {
-                                    let mut mempool = mempool_lock.write().await;
-                                    mempool.add_block(block);
-                                }
-                                Mempool::send_blocks_to_blockchain(
-                                    peer.mempool_lock.clone(),
-                                    peer.blockchain_lock.clone(),
-                                )
-                                .await;
-                            }
-                            Err(error_message) => {
-                                event!(
-                                    Level::ERROR,
-                                    "REQBLOCK ERROR: {}",
-                                    error_message.get_message_data_as_str()
-                                );
-                            }
-                        }
-                    });
+                    peer.do_reqblock(send_blockchain_block_data.block_hash)
+                        .await;
                 }
             }
             "SNDBLKHD" => {
-                peer.send_error_response_from_str(api_message.message_id, "UNHANDLED COMMAND")
-                    .await;
+                let send_block_head_message =
+                    SendBlockHeadMessage::deserialize(api_message.get_message_data());
+                send_block_head_message.get_block_hash();
+                let blockchain = blockchain_lock.read().await;
+                match blockchain
+                    .get_block(send_block_head_message.get_block_hash())
+                    .await
+                {
+                    Some(_block) => {
+                        event!(
+                            Level::INFO,
+                            "SNDBLKHD hash already known: {}",
+                            hex::encode(send_block_head_message.get_block_hash()),
+                        );
+                    }
+                    None => {
+                        let message_data = String::from("OK").as_bytes().try_into().unwrap();
+                        peer.send_response(api_message.get_message_id(), message_data)
+                            .await;
+                        peer.do_reqblock(send_block_head_message.get_block_hash().clone())
+                            .await
+                    }
+                }
+            }
+            "SNDTRANS" => {
+                if let Some(tx) = socket_receive_transaction(api_message.clone()) {
+                    let mut mempool = mempool_lock.write().await;
+                    mempool.add_transaction(tx).await;
+                    peer.send_response_from_str(api_message.message_id, "OK")
+                        .await;
+                }
             }
             "SNDKYLST" => {
                 peer.send_error_response_from_str(api_message.message_id, "UNHANDLED COMMAND")
@@ -611,7 +626,6 @@ pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChalle
     }
     // we verify both signatures even though one is "ours". This function is called during both
     // "SHAKCOMP" and the "RESULT__" on the other end, so we just verify everything.
-
     if !verify(
         &hash(&message_data[..CHALLENGE_SIZE + 64].to_vec()),
         challenge.opponent_sig().unwrap(),

@@ -666,7 +666,6 @@ impl Blockchain {
         //
         0
     }
-
     pub fn print(&self) {
         let latest_block_id = self.get_latest_block_id();
         let mut current_id = latest_block_id;
@@ -1344,7 +1343,7 @@ pub async fn run(
         //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
-                    SaitoMessage::NetworkNewBlock { hash: _hash } => {
+                    SaitoMessage::MempoolNewBlock { hash: _hash } => {
                         println!("Blockchain aware network has received new block! -- we might use for this congestion tracking");
                     },
                     _ => {},

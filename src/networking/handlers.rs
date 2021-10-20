@@ -58,6 +58,9 @@ pub async fn ws_upgrade_handler(
 }
 /// POST tx filter.
 /// TODO remove this? I believe we want ot use the socket for everything...
+/// There is a SNDTRANS command which does this, but is currently unused
+/// Let's keep this around for now in case we want to resurrect the spammer...
+/// Once SNDBLKHD is being actively used, this should be deleted.
 pub async fn post_transaction_handler(
     mut body: impl Buf,
     mempool_lock: Arc<RwLock<Mempool>>,

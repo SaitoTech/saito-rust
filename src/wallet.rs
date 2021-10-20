@@ -524,8 +524,7 @@ mod tests {
         assert_ne!(wallet.get_privatekey(), [0; 32]);
         assert_eq!(wallet.serialize_for_disk().len(), WALLET_SIZE);
     }
-    // This test panics on github for some reason...
-    #[ignore]
+
     #[test]
     fn save_and_restore_wallet_test() {
         let mut wallet = Wallet::new();
