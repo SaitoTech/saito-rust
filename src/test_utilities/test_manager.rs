@@ -14,11 +14,11 @@ use crate::transaction::{Transaction, TransactionType};
 use crate::wallet::Wallet;
 
 use ahash::AHashMap;
+use log::info;
 use rayon::prelude::*;
 use std::sync::Arc;
 use std::{thread::sleep, time::Duration};
 use tokio::sync::RwLock;
-use tracing::{event, Level};
 
 //
 //
@@ -61,7 +61,7 @@ impl TestManager {
         additional_txs: Vec<Transaction>,
     ) {
         let parent_hash = self.latest_block_hash;
-        //println!("ADDING BLOCK 2! {:?}", parent_hash);
+        //info!("ADDING BLOCK 2! {:?}", parent_hash);
         let _block = self
             .add_block_on_hash(
                 timestamp,
@@ -223,7 +223,7 @@ impl TestManager {
             transactions.push(additional_transactions[i].clone());
         }
 
-        println!("parent hash {:?}", parent_hash);
+        info!("parent hash {:?}", parent_hash);
 
         if golden_ticket {
             let blk = blockchain.get_block(&parent_hash).await.unwrap();
@@ -368,16 +368,16 @@ impl TestManager {
         let mut utxoset: AHashMap<SaitoUTXOSetKey, u64> = AHashMap::new();
         let latest_block_id = blockchain.get_latest_block_id();
 
-        println!("----");
-        println!("----");
-        println!("---- check utxoset ");
-        println!("----");
-        println!("----");
+        info!("----");
+        info!("----");
+        info!("---- check utxoset ");
+        info!("----");
+        info!("----");
         for i in 1..=latest_block_id {
             let block_hash = blockchain
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(i as u64);
-            println!("WINDING ID HASH - {} {:?}", i, block_hash);
+            info!("WINDING ID HASH - {} {:?}", i, block_hash);
             let block = blockchain.get_block(&block_hash).await.unwrap();
             for j in 0..block.get_transactions().len() {
                 block.get_transactions()[j].on_chain_reorganization(&mut utxoset, true, i as u64);
@@ -394,16 +394,16 @@ impl TestManager {
                     // everything spendable in blockchain.utxoset should be spendable on longest-chain
                     //
                     if *value == 1 {
-                        //println!("for key: {:?}", key);
-                        //println!("comparing {} and {}", value, value2);
+                        //info!("for key: {:?}", key);
+                        //info!("comparing {} and {}", value, value2);
                         assert_eq!(value, value2);
                     } else {
                         //
                         // everything spent in blockchain.utxoset should be spent on longest-chain
                         //
                         if *value > 1 {
-                            //println!("comparing key: {:?}", key);
-                            //println!("comparing blkchn {} and sanitycheck {}", value, value2);
+                            //info!("comparing key: {:?}", key);
+                            //info!("comparing blkchn {} and sanitycheck {}", value, value2);
                             assert_eq!(value, value2);
                         } else {
                             //
@@ -421,8 +421,8 @@ impl TestManager {
                     // as well if that is reasonably efficient.
                     //
                     if *value > 0 {
-                        //println!("Value does not exist in actual blockchain!");
-                        //println!("comparing {:?} with on-chain value {}", key, value);
+                        //info!("Value does not exist in actual blockchain!");
+                        //info!("comparing {:?} with on-chain value {}", key, value);
                         assert_eq!(1, 2);
                     }
                 }
@@ -433,21 +433,21 @@ impl TestManager {
         // check longest-chain matches utxoset
         //
         for (key, value) in &utxoset {
-            //println!("{:?} / {}", key, value);
+            //info!("{:?} / {}", key, value);
             match blockchain.utxoset.get(key) {
                 Some(value2) => {
                     //
                     // everything spendable in longest-chain should be spendable on blockchain.utxoset
                     //
                     if *value == 1 {
-                        //                        println!("comparing {} and {}", value, value2);
+                        //                        info!("comparing {} and {}", value, value2);
                         assert_eq!(value, value2);
                     } else {
                         //
                         // everything spent in longest-chain should be spendable on blockchain.utxoset
                         //
                         if *value > 1 {
-                            //                            println!("comparing {} and {}", value, value2);
+                            //                            info!("comparing {} and {}", value, value2);
                             assert_eq!(value, value2);
                         } else {
                             //
@@ -457,8 +457,8 @@ impl TestManager {
                     }
                 }
                 None => {
-                    println!("comparing {:?} with expected value {}", key, value);
-                    println!("Value does not exist in actual blockchain!");
+                    info!("comparing {:?} with expected value {}", key, value);
+                    info!("Value does not exist in actual blockchain!");
                     assert_eq!(1, 2);
                 }
             }
@@ -749,7 +749,7 @@ impl TestManager {
                     }
                 }
                 sleep(Duration::from_millis(4000));
-                event!(Level::INFO, "TXS TO GENERATE: {:?}", txs_to_generate);
+                info!("TXS TO GENERATE: {:?}", txs_to_generate);
             }
         });
     }

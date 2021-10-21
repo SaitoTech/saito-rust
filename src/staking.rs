@@ -12,7 +12,7 @@ use crate::{
     transaction::TransactionType,
 };
 use bigint::uint::U256;
-use tracing::{event, Level};
+use log::{info, trace};
 
 #[derive(Debug, Clone)]
 pub struct Staking {
@@ -75,9 +75,9 @@ impl Staking {
         &mut self,
         staking_treasury: u64,
     ) -> (Vec<Slip>, Vec<Slip>, Vec<Slip>) {
-        event!(Level::TRACE, "===========================");
-        event!(Level::TRACE, "=== RESET STAKING TABLE ===");
-        event!(Level::TRACE, "===========================");
+        info!("===========================");
+        info!("=== RESET STAKING TABLE ===");
+        info!("===========================");
 
         let res_spend: Vec<Slip> = vec![];
         let res_unspend: Vec<Slip> = vec![];
@@ -406,8 +406,7 @@ impl Staking {
                 // vacillations in on_chain_reorg, such as resetting the table and
                 // then non-longest-chaining the same block
                 //
-                event!(
-                    Level::TRACE,
+                trace!(
                     "Rolling forward and moving into pending: {}!",
                     self.stakers.len()
                 );
@@ -440,9 +439,8 @@ impl Staking {
                         let lucky_staker_option = self.find_winning_staker(next_random_number); // use first
 
                         if let Some(lucky_staker) = lucky_staker_option {
-                            event!(Level::TRACE, "the lucky staker is: {:?}", lucky_staker);
-                            event!(
-                                Level::TRACE,
+                            info!("the lucky staker is: {:?}", lucky_staker);
+                            trace!(
                                 "moving from staker into pending: {}",
                                 lucky_staker.get_amount()
                             );
@@ -481,7 +479,7 @@ impl Staking {
             // roll backward
             //
             } else {
-                event!(Level::TRACE, "roll backward...");
+                info!("roll backward...");
 
                 //
                 // reset pending if necessary
@@ -563,6 +561,7 @@ mod tests {
         time::create_timestamp,
         wallet::Wallet,
     };
+    use log::info;
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
@@ -618,7 +617,7 @@ mod tests {
         assert_eq!(staking2.stakers.len(), 5);
 
         for i in 0..staking2.stakers.len() {
-            println!(
+            info!(
                 "{} -- {}",
                 staking1.stakers[i].get_amount(),
                 staking2.stakers[i].get_amount()
@@ -1135,7 +1134,7 @@ mod tests {
         let block2_hash = block2.get_hash();
         Blockchain::add_block_to_blockchain(blockchain_lock.clone(), block2).await;
 
-        println!("- AFTER BLOCK 2 - deposit");
+        info!("- AFTER BLOCK 2 - deposit");
 
         //
         // BLOCK 3 - payout
@@ -1145,16 +1144,16 @@ mod tests {
             .add_block(current_timestamp + 240000, 0, 1, true, vec![])
             .await;
 
-        println!("- AFTER BLOCK 3 - PAYOUT has happened -");
+        info!("- AFTER BLOCK 3 - PAYOUT has happened -");
 
         //
         // we have yet to find a single golden ticket, so all in stakers
         //
         {
             let blockchain = blockchain_lock.write().await;
-            println!("STAKERS {:?}", blockchain.staking.stakers);
-            println!("PENDING {:?}", blockchain.staking.pending);
-            println!("DEPOSITS {:?}", blockchain.staking.deposits);
+            info!("STAKERS {:?}", blockchain.staking.stakers);
+            info!("PENDING {:?}", blockchain.staking.pending);
+            info!("DEPOSITS {:?}", blockchain.staking.deposits);
         }
 
         //
@@ -1169,10 +1168,10 @@ mod tests {
         //
         {
             let blockchain = blockchain_lock.write().await;
-            println!("AFTER BLOCK #4");
-            println!("STAKERS {:?}", blockchain.staking.stakers);
-            println!("PENDING {:?}", blockchain.staking.pending);
-            println!("DEPOSITS {:?}", blockchain.staking.deposits);
+            info!("AFTER BLOCK #4");
+            info!("STAKERS {:?}", blockchain.staking.stakers);
+            info!("PENDING {:?}", blockchain.staking.pending);
+            info!("DEPOSITS {:?}", blockchain.staking.deposits);
         }
 
         //
@@ -1200,11 +1199,11 @@ mod tests {
             wstx1.generate_metadata(publickey);
         }
         let mut transactions: Vec<Transaction> = vec![];
-        println!("----------");
-        println!("- WITHDRAW STAKER SLIP --");
-        println!("----------");
-        println!("---{:?}---", wstx1);
-        println!("----------");
+        info!("----------");
+        info!("- WITHDRAW STAKER SLIP --");
+        info!("----------");
+        info!("---{:?}---", wstx1);
+        info!("----------");
         transactions.push(wstx1);
         let mut block6 = Block::generate(
             &mut transactions,
@@ -1221,7 +1220,7 @@ mod tests {
         {
             let blockchain = blockchain_lock.read().await;
             blockchain.print();
-            println!(
+            info!(
                 "LATESTID: {} / {}",
                 block6_id,
                 blockchain.get_latest_block_id()
@@ -1246,7 +1245,7 @@ mod tests {
         {
             let wallet = wallet_lock.read().await;
             publickey = wallet.get_publickey();
-            println!("publickey: {:?}", publickey);
+            info!("publickey: {:?}", publickey);
         }
 
         //

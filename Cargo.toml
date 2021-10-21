@@ -29,6 +29,7 @@ clap = "2.33.3"
 futures = { version = "0.3", default-features = false }
 hex = "0.4.3"
 lazy_static = "1.4.0"
+log = "0.4.14"
 macros = { path = "macros" }
 merkle = "1.11.0"
 rand = "0.8.4"

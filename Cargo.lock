@@ -1632,6 +1632,7 @@ dependencies = [
  "futures",
  "hex",
  "lazy_static",
+ "log",
  "macros",
  "merkle",
  "rand 0.8.4",
