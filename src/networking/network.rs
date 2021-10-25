@@ -15,6 +15,7 @@ use futures::StreamExt;
 use secp256k1::PublicKey;
 use tokio::sync::{broadcast, RwLock};
 use tokio::time::sleep;
+use tracing::log::info;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -298,7 +299,7 @@ impl Network {
                 peer.send_command_fire_and_forget("SNDBLKHD", send_block_head_message.serialize())
                     .await;
             } else {
-                println!("Hasn't completed handshake, will not send block??");
+                info!("Hasn't completed handshake, will not send block??");
             }
         }
     }
@@ -317,7 +318,7 @@ impl Network {
                 self.mempool_lock.clone(),
                 self.blockchain_lock.clone(),
             ));
-        println!("HTTP listening on port {}", port);
+        println!("Listening for HTTP on port {}", port);
         warp::serve(routes).run((host, port)).await;
         Ok(())
     }
@@ -334,23 +335,22 @@ impl Network {
         &self,
         mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
     ) {
-        tokio::spawn(async move {
-            loop {
-                while let Ok(message) = broadcast_channel_receiver.recv().await {
-                    match message {
-                        SaitoMessage::MinerNewGoldenTicket {
-                            ticket: _golden_ticket,
-                        } => {
-                            println!("MinerNewGoldenTicket");
-                        }
-                        SaitoMessage::MempoolNewBlock { hash: block_hash } => {
-                            Network::send_my_block_to_peers(block_hash).await;
-                        }
-                        _ => {}
+        loop {
+            while let Ok(message) = broadcast_channel_receiver.recv().await {
+                match message {
+                    SaitoMessage::MinerNewGoldenTicket {
+                        ticket: _golden_ticket,
+                    } => {
+                        // TODO implement this...
+                        println!("MinerNewGoldenTicket");
                     }
+                    SaitoMessage::MempoolNewBlock { hash: block_hash } => {
+                        Network::send_my_block_to_peers(block_hash).await;
+                    }
+                    _ => {}
                 }
             }
-        });
+        }
     }
 }
 
