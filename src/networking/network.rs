@@ -13,16 +13,18 @@ use crate::util::format_url_string;
 use crate::wallet::Wallet;
 use futures::StreamExt;
 use secp256k1::PublicKey;
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::sync::{broadcast, RwLock};
 use tokio::time::sleep;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
+use std::time::Duration;
 use tokio_tungstenite::connect_async;
 use tracing::{event, Level};
 use uuid::Uuid;
 
 use warp::{Filter, Rejection};
 
+use super::message_types::send_block_head_message::SendBlockHeadMessage;
 use super::peer::{PeerSetting, OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL};
 
 use config::Config;
@@ -45,30 +47,22 @@ pub enum NetworkMessage {
 }
 
 pub struct Network {
-    config_settings: Config,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>,
 }
 
 impl Network {
-    /// Returns a Network
-    /// # Arguments
-    ///
-    /// * `config_settings` - config::config::Config
+    /// Create a Network
     pub fn new(
-        config_settings: Config,
         wallet_lock: Arc<RwLock<Wallet>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
     ) -> Network {
         Network {
-            config_settings,
             wallet_lock,
             mempool_lock,
             blockchain_lock,
-            broadcast_channel_sender: None,
         }
     }
 
@@ -127,9 +121,17 @@ impl Network {
                             )
                             .await
                             .unwrap();
-                        // TODO IMMEDIATE
-                        // let block = Block::deserialize_for_net(req_chain_result.message_data());
-                        // peer.add_block_to_mempool(block).await;
+                        //
+                        // TODO _req_chain_result will be an OK message. We could verify it here, but it's not very useful.
+                        // However, if we are finding issues, it may be useful to retry if we don't receive an OK soon.
+                        //
+                        // It's a bit difficult overly complex because the state needs to be tracked by the peer between here and
+                        // the receipt of the SNDCHAIN. I.E. we may receive an OK here, but not receive a REQCHAIN
+                        // message later.
+                        //
+                        // A simpler solution may be to redesign the API so that the response
+                        // is sent directly at this point, rather than as a seperate APIMessage.
+                        //
                     } else {
                         // TODO delete the peer if there is an error here
                     }
@@ -141,12 +143,9 @@ impl Network {
             }
         }
     }
-
-    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
-        self.broadcast_channel_sender = Some(bcs);
-    }
-
-    pub async fn connect_to_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
+    // Connect to a peer via websocket and spawn a Task to handle message received on the socket
+    // and pipe them to handle_peer_message().
+    async fn connect_to_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let peer_url;
         {
@@ -172,7 +171,7 @@ impl Network {
                         .insert(connection_id, OutboundPeer { write_sink });
                 }
 
-                let _foo = tokio::spawn(async move {
+                tokio::spawn(async move {
                     while let Some(result) = read_stream.next().await {
                         match result {
                             Ok(message) => {
@@ -184,7 +183,6 @@ impl Network {
                                     event!(
                                         Level::ERROR,
                                         "Message of length 0... why?\n
-                                        This seems to occur if we aren't holding a reference to the sender/stream on the\n
                                         This seems to occur if we aren't holding a reference to the sender/stream on the\n
                                         other end of the connection. I suspect that when the stream goes out of scope,\n
                                         it's deconstructor is being called and sends a 0 length message to indicate\n
@@ -214,12 +212,11 @@ impl Network {
             }
         }
     }
-
-    pub async fn connect_to_configured_peers(&self) {
-        let peer_settings = match self
-            .config_settings
-            .get::<Vec<PeerSetting>>("network.peers")
-        {
+    // Initialize configured peers(peers set in the config.yml). This does not connect to the peers, it only sets their
+    // state and inserts them into PEERS_DB_GLOBAL so that the Task created by
+    // spawn_reconnect_to_configured_peers_task will open the connection.
+    async fn initialize_configured_peers(&self, config_settings: Config) {
+        let peer_settings = match config_settings.get::<Vec<PeerSetting>>("network.peers") {
             Ok(peer_settings) => Some(peer_settings),
             Err(_) => None,
         };
@@ -249,158 +246,144 @@ impl Network {
             }
         }
     }
+    // Launch a task which will monitor peers and make sure they stay connected. If a peer in our
+    // configured "peers list" becomes disconnected, this task will reconnect to the peer and
+    // redo the handshake and blockchain synchronization. For convenience, this task is also
+    // used to make initial connections with peers(not only to reconnect).
+    async fn spawn_reconnect_to_configured_peers_task(
+        &self,
+        wallet_lock: Arc<RwLock<Wallet>>,
+    ) -> crate::Result<()> {
+        tokio::spawn(async move {
+            loop {
+                let peer_states: Vec<(SaitoHash, bool)>;
+                {
+                    let peers_db_global = PEERS_DB_GLOBAL.clone();
+                    let peers_db = peers_db_global.read().await;
+                    peer_states = peers_db
+                        .keys()
+                        .map(|connection_id| {
+                            let peer = peers_db.get(connection_id).unwrap();
+                            let should_try_reconnect = peer.get_is_from_peer_list()
+                                && !peer.get_is_connected_or_connecting();
+                            (*connection_id, should_try_reconnect)
+                        })
+                        .collect::<Vec<(SaitoHash, bool)>>();
+                }
+                for (connection_id, should_try_reconnect) in peer_states {
+                    if should_try_reconnect {
+                        event!(
+                            Level::INFO,
+                            "found disconnected peer in peer settings, (re)connecting..."
+                        );
+                        Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
+                    }
+                }
+                sleep(Duration::from_millis(1000)).await;
+            }
+        })
+        .await
+        .expect("error: spawn_reconnect_to_configured_peers_task failed");
+        Ok(())
+    }
+    // For sending blocks made by mempool to all peers
+    async fn send_my_block_to_peers(block_hash: SaitoHash) {
+        let peers_db_global = PEERS_DB_GLOBAL.clone();
+        let mut peers_db_mut = peers_db_global.write().await;
+        // We need a stream iterator for async(to await send_command_fire_and_forget)
+        let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
+        while let Some(peer) = peers_iterator_stream.next().await {
+            if peer.get_has_completed_handshake() {
+                let send_block_head_message = SendBlockHeadMessage::new(block_hash);
+                peer.send_command_fire_and_forget("SNDBLKHD", send_block_head_message.serialize())
+                    .await;
+            } else {
+                println!("Hasn't completed handshake, will not send block??");
+            }
+        }
+    }
+    // Runs warp::serve to listen for incoming connections
+    async fn run_server(&self, config_settings: Config) -> crate::Result<()> {
+        let host: [u8; 4] = config_settings.get::<[u8; 4]>("network.host").unwrap();
+        let port: u16 = config_settings.get::<u16>("network.port").unwrap();
+
+        let routes = get_block_route_filter(self.blockchain_lock.clone())
+            .or(post_transaction_route_filter(
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ))
+            .or(ws_upgrade_route_filter(
+                self.wallet_lock.clone(),
+                self.mempool_lock.clone(),
+                self.blockchain_lock.clone(),
+            ));
+        println!("HTTP listening on port {}", port);
+        warp::serve(routes).run((host, port)).await;
+        Ok(())
+    }
+    // connects to any peers configured in our peers list. Opens a socket, does handshake, sychronizes, etc.
+    async fn run_client(&self, config_settings: Config) -> crate::Result<()> {
+        self.initialize_configured_peers(config_settings).await;
+        self.spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
+            .await
+            .unwrap();
+        Ok(())
+    }
+    // listen for message from the rest of the codebase
+    pub async fn listen_for_messages(
+        &self,
+        mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
+    ) {
+        tokio::spawn(async move {
+            loop {
+                while let Ok(message) = broadcast_channel_receiver.recv().await {
+                    match message {
+                        SaitoMessage::MinerNewGoldenTicket {
+                            ticket: _golden_ticket,
+                        } => {
+                            println!("MinerNewGoldenTicket");
+                        }
+                        SaitoMessage::MempoolNewBlock { hash: block_hash } => {
+                            Network::send_my_block_to_peers(block_hash).await;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        });
+    }
 }
 
 pub async fn run(
-    network_lock: Arc<RwLock<Network>>,
-    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
-    mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
+    config_settings: Config,
+    wallet_lock: Arc<RwLock<Wallet>>,
+    mempool_lock: Arc<RwLock<Mempool>>,
+    blockchain_lock: Arc<RwLock<Blockchain>>,
+    broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-    let host: [u8; 4];
-    let port: u16;
+    let network = Network::new(
+        wallet_lock.clone(),
+        mempool_lock.clone(),
+        blockchain_lock.clone(),
+    );
+    // TODO: maybe refactor this into two separate classes maybe and split this run() into two...
+    tokio::select! {
+        res = network.run_client(config_settings.clone()) => {
+            if let Err(err) = res {
+                eprintln!("run_client err {:?}", err)
+            }
+        },
+        res = network.run_server(config_settings.clone()) => {
+            if let Err(err) = res {
+                eprintln!("run_server err {:?}", err)
+            }
+        },
+        () = network.listen_for_messages(broadcast_channel_receiver) => {
 
-    let wallet_lock_clone;
-    let blockchain_lock_clone;
-    let mempool_lock_clone;
-
-    //
-    // get network settings from  configuation file
-    //
-    {
-        let network = network_lock.read().await;
-
-        host = network
-            .config_settings
-            .get::<[u8; 4]>("network.host")
-            .unwrap();
-
-        port = network.config_settings.get::<u16>("network.port").unwrap();
-
-        wallet_lock_clone = network.wallet_lock.clone();
-        mempool_lock_clone = network.mempool_lock.clone();
-        blockchain_lock_clone = network.blockchain_lock.clone();
+        },
     }
 
-    //
-    // network gets global broadcast channel and keypair
-    //
-    {
-        // do not seize mempool write access
-        let mut network = network_lock.write().await;
-        network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
-    }
-
-    //
-    // set global broadcast channel and connect to peers
-    //
-    {
-        //
-        // set global broadcast channel and connect to peers
-        //
-        let mut network = network_lock.write().await;
-        network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
-        network.connect_to_configured_peers().await;
-    }
-
-    //
-    // initialize routes for server
-    //
-    let routes = get_block_route_filter(blockchain_lock_clone.clone())
-        .or(post_transaction_route_filter(
-            mempool_lock_clone.clone(),
-            blockchain_lock_clone.clone(),
-        ))
-        .or(ws_upgrade_route_filter(
-            wallet_lock_clone.clone(),
-            mempool_lock_clone.clone(),
-            blockchain_lock_clone.clone(),
-        ));
-
-    //
-    // create local broadcast channel
-    //
-    let (network_channel_sender, mut network_channel_receiver) = mpsc::channel(4);
-
-    //
-    // local channel sender -- send in clone as thread takes ownership
-    //
-    let network_local_sender = network_channel_sender.clone();
-    tokio::spawn(async move {
-        loop {
-            network_local_sender
-                .send(NetworkMessage::LocalNetworkMonitoring)
-                .await
-                .expect("error: LocalNetworkMonitoring message failed to send");
-            sleep(Duration::from_millis(10000)).await;
-        }
-    });
-
-    //
-    // start the server (separate thread)
-    //
-    tokio::spawn(async move {
-        println!("warp running on port {}", port);
-        warp::serve(routes).run((host, port)).await;
-    });
-
-    //
-    // global and local channel receivers
-    //
-    loop {
-        tokio::select! {
-
-             //
-             // local broadcast channel receivers
-             //
-             Some(message) = network_channel_receiver.recv() => {
-                 match message {
-
-                     //
-                     // receive local messages
-                     //
-                     NetworkMessage::LocalNetworkMonitoring => {
-            reconnect_to_dropped_peers(wallet_lock_clone.clone()).await;
-                      }
-                 }
-             }
-
-
-             //
-             // global broadcast channel receivers
-             //
-             Ok(message) = broadcast_channel_receiver.recv() => {
-                match message {
-                    SaitoMessage::MinerNewGoldenTicket { ticket : _golden_ticket } => {
-                    },
-                    _ => {},
-                }
-             }
-        }
-    }
-}
-
-pub async fn reconnect_to_dropped_peers(wallet_lock: Arc<RwLock<Wallet>>) {
-    let peer_states: Vec<(SaitoHash, bool)>;
-    {
-        let peers_db_global = PEERS_DB_GLOBAL.clone();
-        let peers_db = peers_db_global.read().await;
-        peer_states = peers_db
-            .keys()
-            .map(|connection_id| {
-                let peer = peers_db.get(connection_id).unwrap();
-                let should_try_reconnect =
-                    peer.get_is_from_peer_list() && !peer.get_is_connected_or_connecting();
-                (*connection_id, should_try_reconnect)
-            })
-            .collect::<Vec<(SaitoHash, bool)>>();
-    }
-
-    for (connection_id, should_try_reconnect) in peer_states {
-        if should_try_reconnect {
-            println!("found disconnected peer in peer settings, connecting...");
-            Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
-        }
-    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -409,52 +392,84 @@ mod tests {
 
     use super::*;
     use crate::{
+        block::{Block, BlockType},
         crypto::{generate_keys, hash, sign_blob, verify, SaitoSignature},
         mempool::Mempool,
         networking::{
-            api_message::APIMessage, filters::ws_upgrade_route_filter,
-            message_types::handshake_challenge::HandshakeChallenge,
+            api_message::APIMessage,
+            filters::ws_upgrade_route_filter,
+            message_types::{
+                handshake_challenge::HandshakeChallenge,
+                request_block_message::RequestBlockMessage,
+                send_block_head_message::SendBlockHeadMessage,
+                send_blockchain_message::{
+                    SendBlockchainBlockData, SendBlockchainMessage, SyncType,
+                },
+            },
+            peer::{
+                INBOUND_PEER_CONNECTIONS_GLOBAL, OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL,
+                PEERS_REQUEST_RESPONSES_GLOBAL, PEERS_REQUEST_WAKERS_GLOBAL,
+            },
         },
-        transaction::Transaction,
     };
     use secp256k1::PublicKey;
-    use warp::ws::Message;
+    use warp::{test::WsClient, ws::Message};
 
     #[tokio::test]
-    async fn test_message_serialize() {
-        let api_message = APIMessage {
-            message_name: String::from("HLLOWRLD").as_bytes().try_into().unwrap(),
-            message_id: 1,
-            message_data: String::from("SOMEDATA").as_bytes().try_into().unwrap(),
-        };
-        let serialized_api_message = api_message.serialize();
-
-        let deserialized_api_message = APIMessage::deserialize(&serialized_api_message);
-        assert_eq!(api_message, deserialized_api_message);
+    async fn test_be_sure_threads_equals_1() {
+        let mut filtered_args_iter = std::env::args().filter(|arg| arg == "--test-threads=1");
+        if filtered_args_iter.next() != Some(String::from("--test-threads=1")) {
+            panic!(
+                "\n
+                    ***************************************\n
+                    TESTS MUST BE RUN WITH --test-threads=1\n
+                    ***************************************\n
+                    "
+            );
+        }
     }
-    #[tokio::test]
-    async fn test_handshake_new() {
-        let mut settings = config::Config::default();
-        settings.merge(config::File::with_name("config")).unwrap();
+    // This doesn't currently seem to create a problem, but I think
+    async fn clean_peers_dbs() {
+        let peers_db_global = PEERS_DB_GLOBAL.clone();
+        let mut peer_db = peers_db_global.write().await;
 
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
+        let mut request_responses = request_responses_lock.write().unwrap();
 
+        let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
+        let mut request_wakers = request_wakers_lock.write().unwrap();
+
+        let outbound_peer_connection_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+        let mut outbound_peer_connection_db = outbound_peer_connection_db_global.write().await;
+        let inbound_peer_connection_db_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+        let mut inbound_peer_connection_db = inbound_peer_connection_db_global.write().await;
+
+        peer_db.drain();
+        request_responses.drain();
+        request_wakers.drain();
+        outbound_peer_connection_db.drain();
+        inbound_peer_connection_db.drain();
+    }
+    // This function will be used in mosts test of network, it will open a socket, negotiate a handshake,
+    // and return the socket so we are ready to start sending APIMessages through the socket, which
+    // we can use as a mock peer.
+    async fn create_socket_and_do_handshake(
+        wallet_arc: Arc<RwLock<Wallet>>,
+        mempool_arc: Arc<RwLock<Mempool>>,
+        blockchain_arc: Arc<RwLock<Blockchain>>,
+    ) -> WsClient {
+        // mock things:
         let (publickey, privatekey) = generate_keys();
 
-        let socket_filter = ws_upgrade_route_filter(
-            wallet_lock.clone(),
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
-        );
+        // use Warp test to open a socket:
+        let socket_filter = ws_upgrade_route_filter(wallet_arc, mempool_arc, blockchain_arc);
         let mut ws_client = warp::test::ws()
             .path("/wsopen")
             .handshake(socket_filter)
             .await
             .expect("handshake");
 
-        // let base58_pubkey = PublicKey::from_slice(&publickey).unwrap().serialize().to_base58();
+        // create a SHAKINIT message
         let mut message_data = vec![127, 0, 0, 1];
         message_data.extend(
             PublicKey::from_slice(&publickey)
@@ -464,19 +479,19 @@ mod tests {
         );
         let api_message = APIMessage::new("SHAKINIT", 42, message_data);
 
-        let serialized_api_message = api_message.serialize();
-
-        let _socket_resp = ws_client
-            .send(Message::binary(serialized_api_message))
+        // send SHAKINIT through the socket
+        ws_client
+            .send(Message::binary(api_message.serialize()))
             .await;
-        let resp = ws_client.recv().await.unwrap();
 
+        // read a message from the socket, it should be a RESULT__ with the same id as our SHAKINIT command
+        let resp = ws_client.recv().await.unwrap();
         let command = String::from_utf8_lossy(&resp.as_bytes()[0..8]);
         let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());
-
         assert_eq!(command, "RESULT__");
         assert_eq!(index, 42);
 
+        // deserialize the HandshakeChallenge message:
         let deserialize_challenge =
             HandshakeChallenge::deserialize(&resp.as_bytes()[12..].to_vec());
         let raw_challenge: [u8; CHALLENGE_SIZE] =
@@ -485,6 +500,7 @@ mod tests {
             .try_into()
             .unwrap();
 
+        // confirm the HandshakeChallenge has all the right data and the signature is correct:
         assert_eq!(
             deserialize_challenge.challenger_ip_address(),
             [127, 0, 0, 1]
@@ -497,65 +513,222 @@ mod tests {
             deserialize_challenge.challenger_pubkey()
         ));
 
+        // sign the raw challenge and create a SHAKCOMP message from it
         let signed_challenge =
             sign_blob(&mut resp.as_bytes()[12..].to_vec(), privatekey).to_owned();
-
         let api_message = APIMessage::new("SHAKCOMP", 43, signed_challenge);
-        let serialized_api_message = api_message.serialize();
 
-        let _socket_resp = ws_client
-            .send(Message::binary(serialized_api_message))
+        // send SHAKCOMP through the socket
+        ws_client
+            .send(Message::binary(api_message.serialize()))
             .await;
-        let resp = ws_client.recv().await.unwrap();
 
+        // read a message from the socket and confirm that the RESULT__ is OK
+        let resp = ws_client.recv().await.unwrap();
         let command = String::from_utf8_lossy(&resp.as_bytes()[0..8]);
         let index: u32 = u32::from_be_bytes(resp.as_bytes()[8..12].try_into().unwrap());
         let msg = String::from_utf8_lossy(&resp.as_bytes()[12..]);
         assert_eq!(command, "RESULT__");
         assert_eq!(index, 43);
         assert_eq!(msg, "OK");
+
+        ws_client
+    }
+    #[tokio::test]
+    async fn test_sndchain() {
+        // mock things:
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        // create a mock peer/socket:
+        clean_peers_dbs().await;
+        let mut ws_client = create_socket_and_do_handshake(
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        )
+        .await;
+
+        // Build a SNDCHAIN request
+        let mut blocks_data: Vec<SendBlockchainBlockData> = vec![];
+        blocks_data.push(SendBlockchainBlockData {
+            block_id: 1,
+            block_hash: [1; 32],
+            timestamp: 0,
+            pre_hash: [0; 32],
+            number_of_transactions: 0,
+        });
+        blocks_data.push(SendBlockchainBlockData {
+            block_id: 2,
+            block_hash: [2; 32],
+            timestamp: 1,
+            pre_hash: [1; 32],
+            number_of_transactions: 0,
+        });
+        let send_chain_message = SendBlockchainMessage::new(SyncType::Full, [0; 32], blocks_data);
+        let api_message = APIMessage::new("SNDCHAIN", 12345, send_chain_message.serialize());
+        // send SNDCHAIN request
+        ws_client
+            .send(Message::binary(api_message.serialize()))
+            .await;
+        let resp = ws_client.recv().await.unwrap();
+
+        let api_message_resp = APIMessage::deserialize(&resp.as_bytes().to_vec());
+
+        assert_eq!(
+            api_message_resp.get_message_name_as_string(),
+            String::from("RESULT__")
+        );
+        assert_eq!(api_message_resp.get_message_id(), 12345);
+        assert_eq!(
+            api_message_resp.get_message_data_as_string(),
+            String::from("OK")
+        );
+        // After "OK", we expect the peer to start doing REQBLOCK requests
+        // Read the next message from the socket... should be REQBLOCK
+        let resp = ws_client.recv().await.unwrap();
+        let api_message_request = APIMessage::deserialize(&resp.as_bytes().to_vec());
+        assert_eq!(api_message_request.get_message_name_as_string(), "REQBLOCK");
+        let request_block_request =
+            RequestBlockMessage::deserialize(api_message_request.get_message_data());
+        assert_eq!(request_block_request.get_block_hash().unwrap(), [1; 32]);
+
+        // Send a mock response to the first REQBLOCK request
+        let block = Block::new();
+        let request_block_response = APIMessage::new(
+            "RESULT__",
+            api_message_request.get_message_id(),
+            block.serialize_for_net(BlockType::Full),
+        );
+        // We should get another REQBLOCK request for the 2nd block in SNDCHAIN
+        ws_client
+            .send(Message::binary(request_block_response.serialize()))
+            .await;
+
+        let resp = ws_client.recv().await.unwrap();
+
+        let api_message_request = APIMessage::deserialize(&resp.as_bytes().to_vec());
+        assert_eq!(api_message_request.get_message_name_as_string(), "REQBLOCK");
+        let request_block_request =
+            RequestBlockMessage::deserialize(api_message_request.get_message_data());
+        assert_eq!(request_block_request.get_block_hash().unwrap(), [2; 32]);
     }
 
     #[tokio::test]
-    async fn test_send_transaction() {
+    async fn test_sndblkhd() {
+        // mock things:
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        // create a mock peer/socket:
+        clean_peers_dbs().await;
+        let mut ws_client = create_socket_and_do_handshake(
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        )
+        .await;
+
+        // create a SNDBLKHD message
+        let mock_hash = [3; 32];
+        let send_chain_message = SendBlockHeadMessage::new(mock_hash);
+        let api_message = APIMessage::new("SNDBLKHD", 12345, send_chain_message.serialize());
+
+        // send SNDBLKHD message through the socket
+        ws_client
+            .send(Message::binary(api_message.serialize()))
+            .await;
+
+        // read a message off the socket, it should be a RESULT__ for the SNDBLKHD message
+        let resp = ws_client.recv().await.unwrap();
+        let api_message_response = APIMessage::deserialize(&resp.as_bytes().to_vec());
+        assert_eq!(
+            api_message_response.get_message_name_as_string(),
+            String::from("RESULT__")
+        );
+        assert_eq!(api_message_response.get_message_id(), 12345);
+        assert_eq!(
+            api_message_response.get_message_data_as_string(),
+            String::from("OK")
+        );
+
+        // read another message from the socket, this should be a REQBLOCK command with the hash
+        // we sent with SNDBLKHD
+        let resp = ws_client.recv().await.unwrap();
+        let api_message_request = APIMessage::deserialize(&resp.as_bytes().to_vec());
+        assert_eq!(
+            api_message_request.get_message_name_as_string(),
+            String::from("REQBLOCK")
+        );
+        let request_block_request =
+            RequestBlockMessage::deserialize(api_message_request.get_message_data());
+        assert_eq!(request_block_request.get_block_hash().unwrap(), [3; 32]);
+    }
+
+    #[tokio::test]
+    async fn test_mempool_does_sndblkhd() {
+        // TODO add a test here that triggers mempool/blockchain to send the MempoolNewBlock message.
+        //      The goal is to test send_my_block_to_peers.
+        //
+        //      1) connect a ws_client or 2
+        //      2) get mempool to make a block and do MempoolNewBlock
+        //      3) and then assert that the clients receive SNDBLKHD messages
+        //
+        //      This is difficult at the moment because mempool uses and internal broadcast channel to coordinate
+        //      between try_bundle_block() and the natural place to send the MempoolNewBlock would be inside
+        //      the MempoolMessage::LocalTryBundleBlock arm of mempool_channel_receiver.recv().
+        //      There is no easy way to send a message to mempool_channel external to mempool and therefore
+        //      no way to exercise the code in the match arm during testing.
+    }
+
+    #[tokio::test]
+    async fn test_network_message_sending() {
+        // mock things:
         let mut settings = config::Config::default();
-        settings.merge(config::File::with_name("config")).unwrap();
+        settings.set("network.host", vec![127, 0, 0, 1]).unwrap();
+        settings.set("network.port", 3002).unwrap();
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-
-        let (publickey, _privatekey) = generate_keys();
-
-        let socket_filter = ws_upgrade_route_filter(
+        let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
+        // connect a peer to the client
+        clean_peers_dbs().await;
+        let mut ws_client = create_socket_and_do_handshake(
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
-        );
-        let mut ws_client = warp::test::ws()
-            .path("/wsopen")
-            .handshake(socket_filter)
+        )
+        .await;
+        // network object under test:
+        tokio::spawn(async move {
+            crate::networking::network::run(
+                settings,
+                wallet_lock.clone(),
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
+                broadcast_channel_receiver,
+            )
             .await
-            .expect("transaction websocket");
-
-        let mut message_data = vec![127, 0, 0, 1];
-        message_data.extend(
-            PublicKey::from_slice(&publickey)
-                .unwrap()
-                .serialize()
-                .to_vec(),
-        );
-        let transaction = Transaction::new();
-        let api_message = APIMessage::new("SNDTRANS", 0, transaction.serialize_for_net());
-        let serialized_api_message = api_message.serialize();
-
-        // TODO repair this test
-        let _socket_resp = ws_client
-            .send(Message::binary(serialized_api_message))
-            .await;
-        // let _resp = ws_client.recv().await.unwrap();
-
-        // let mempool = mempool_lock.read().await;
-        // assert_eq!(mempool.transactions.len(), 1);
+            .unwrap();
+        });
+        // send 2 message to network:
+        tokio::spawn(async move {
+            broadcast_channel_sender
+                .send(SaitoMessage::MempoolNewBlock { hash: [0; 32] })
+                .expect("error: BlockchainAddBlockFailure message failed to send");
+            broadcast_channel_sender
+                .send(SaitoMessage::MempoolNewBlock { hash: [0; 32] })
+                .expect("error: BlockchainAddBlockFailure message failed to send");
+        });
+        // Thesse messages should prompt SNDBLKHD commands to each peer
+        for _i in 0..2 {
+            let resp = ws_client.recv().await.unwrap();
+            let api_message_request = APIMessage::deserialize(&resp.as_bytes().to_vec());
+            assert_eq!(
+                api_message_request.get_message_name_as_string(),
+                String::from("SNDBLKHD")
+            );
+        }
     }
 }

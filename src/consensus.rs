@@ -1,7 +1,6 @@
 use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
-use crate::networking::network::Network;
 use crate::storage::Storage;
 use crate::test_utilities::test_manager::TestManager;
 use crate::wallet::Wallet;
@@ -28,7 +27,7 @@ pub enum SaitoMessage {
     // broadcast when the miner finds a golden ticket
     MinerNewGoldenTicket { ticket: GoldenTicket },
     // broadcast when the mempool produces a new block
-    NetworkNewBlock { hash: SaitoHash },
+    MempoolNewBlock { hash: SaitoHash },
     // broadcast when the mempool adds a new transaction
     NetworkNewTransaction { transaction: Transaction },
 }
@@ -179,10 +178,6 @@ impl Consensus {
         // load blocks from disk and check chain
         //
         Storage::load_blocks_from_disk(blockchain_lock.clone()).await;
-        {
-            let blockchain = blockchain_lock.read().await;
-            blockchain.print();
-        }
 
         //
         // instantiate core classes
@@ -194,12 +189,6 @@ impl Consensus {
         //
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-        let network_lock = Arc::new(RwLock::new(Network::new(
-            settings,
-            wallet_lock.clone(),
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
-        )));
 
         //
         // start test_manager spammer
@@ -266,8 +255,10 @@ impl Consensus {
         // Network
         //
             res = crate::networking::network::run(
-                network_lock.clone(),
-                broadcast_channel_sender.clone(),
+                settings,
+                wallet_lock.clone(),
+                mempool_lock.clone(),
+                blockchain_lock.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
                 if let Err(err) = res {

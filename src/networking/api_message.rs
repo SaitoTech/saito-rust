@@ -61,7 +61,7 @@ impl APIMessage {
     pub fn get_into_message_data(self) -> Vec<u8> {
         self.message_data
     }
-    pub fn get_message_data_as_str(&self) -> String {
+    pub fn get_message_data_as_string(&self) -> String {
         String::from_utf8_lossy(&self.message_data).to_string()
     }
     pub fn deserialize(bytes: &Vec<u8>) -> APIMessage {
@@ -80,5 +80,24 @@ impl APIMessage {
         vbytes.extend(&self.message_id.to_be_bytes());
         vbytes.extend(&self.message_data);
         vbytes
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::networking::api_message::APIMessage;
+    use std::convert::TryInto;
+
+    #[tokio::test]
+    async fn test_message_serialize() {
+        let api_message = APIMessage {
+            message_name: String::from("HLLOWRLD").as_bytes().try_into().unwrap(),
+            message_id: 1,
+            message_data: String::from("SOMEDATA").as_bytes().try_into().unwrap(),
+        };
+        let serialized_api_message = api_message.serialize();
+
+        let deserialized_api_message = APIMessage::deserialize(&serialized_api_message);
+        assert_eq!(api_message, deserialized_api_message);
     }
 }
