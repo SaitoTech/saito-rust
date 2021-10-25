@@ -1895,7 +1895,7 @@ impl Block {
             } else {
                 adjusted_staking_treasury += cv.staking_treasury as u64;
             }
-            // println!(
+            // info!(
             //     "adjusted staking treasury written into block {}",
             //     adjusted_staking_treasury
             // );
