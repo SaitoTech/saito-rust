@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["SendBlockHeadMessage","Data Object for SNDBLKHD `block_hash` - hash of block we wish to inform our peer about"]]});

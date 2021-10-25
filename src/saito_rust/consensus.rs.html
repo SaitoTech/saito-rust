@@ -276,20 +276,10 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::networking::network::Network</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::test_manager::TestManager</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
@@ -316,7 +306,7 @@
     <span class="comment">// broadcast when the miner finds a golden ticket</span>
     <span class="ident">MinerNewGoldenTicket</span> { <span class="ident">ticket</span>: <span class="ident">GoldenTicket</span> },
     <span class="comment">// broadcast when the mempool produces a new block</span>
-    <span class="ident">NetworkNewBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
+    <span class="ident">MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
     <span class="comment">// broadcast when the mempool adds a new transaction</span>
     <span class="ident">NetworkNewTransaction</span> { <span class="ident">transaction</span>: <span class="ident">Transaction</span> },
 }
@@ -467,10 +457,6 @@
         <span class="comment">// load blocks from disk and check chain</span>
         <span class="comment">//</span>
         <span class="ident">Storage::load_blocks_from_disk</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
-        {
-            <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-            <span class="ident">blockchain</span>.<span class="ident">print</span>();
-        }
 
         <span class="comment">//</span>
         <span class="comment">// instantiate core classes</span>
@@ -482,12 +468,6 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
-        <span class="kw">let</span> <span class="ident">network_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Network::new</span>(
-            <span class="ident">settings</span>,
-            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
-        )));
 
         <span class="comment">//</span>
         <span class="comment">// start test_manager spammer</span>
@@ -554,8 +534,10 @@
         <span class="comment">// Network</span>
         <span class="comment">//</span>
             <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::networking::network::run</span>(
-                <span class="ident">network_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
+                <span class="ident">settings</span>,
+                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {

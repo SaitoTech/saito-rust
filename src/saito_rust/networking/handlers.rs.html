@@ -106,6 +106,9 @@
 <span id="106">106</span>
 <span id="107">107</span>
 <span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::block::BlockType</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::blockchain::Blockchain</span>;
@@ -167,6 +170,9 @@
 }
 <span class="doccomment">/// POST tx filter.</span>
 <span class="doccomment">/// TODO remove this? I believe we want ot use the socket for everything...</span>
+<span class="doccomment">/// There is a SNDTRANS command which does this, but is currently unused</span>
+<span class="doccomment">/// Let&#39;s keep this around for now in case we want to resurrect the spammer...</span>
+<span class="doccomment">/// Once SNDBLKHD is being actively used, this should be deleted.</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">post_transaction_handler</span>(
     <span class="kw-2">mut</span> <span class="ident">body</span>: <span class="kw">impl</span> <span class="ident">Buf</span>,
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
