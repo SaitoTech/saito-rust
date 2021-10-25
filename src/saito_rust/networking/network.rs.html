@@ -750,6 +750,7 @@
 <span class="kw">use</span> <span class="ident">secp256k1::PublicKey</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">tokio::time::sleep</span>;
+<span class="kw">use</span> <span class="ident">tracing::log::info</span>;
 
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
@@ -1033,7 +1034,7 @@
                 <span class="ident">peer</span>.<span class="ident">send_command_fire_and_forget</span>(<span class="string">&quot;SNDBLKHD&quot;</span>, <span class="ident">send_block_head_message</span>.<span class="ident">serialize</span>())
                     .<span class="kw">await</span>;
             } <span class="kw">else</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;Hasn&#39;t completed handshake, will not send block??&quot;</span>);
+                <span class="macro">info!</span>(<span class="string">&quot;Hasn&#39;t completed handshake, will not send block??&quot;</span>);
             }
         }
     }
@@ -1052,7 +1053,7 @@
                 <span class="self">self</span>.<span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                 <span class="self">self</span>.<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
             ));
-        <span class="macro">println!</span>(<span class="string">&quot;HTTP listening on port {}&quot;</span>, <span class="ident">port</span>);
+        <span class="macro">println!</span>(<span class="string">&quot;Listening for HTTP on port {}&quot;</span>, <span class="ident">port</span>);
         <span class="ident">warp::serve</span>(<span class="ident">routes</span>).<span class="ident">run</span>((<span class="ident">host</span>, <span class="ident">port</span>)).<span class="kw">await</span>;
         <span class="prelude-val">Ok</span>(())
     }
@@ -1069,23 +1070,22 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">broadcast_channel_receiver</span>: <span class="ident">broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
     ) {
-        <span class="ident">tokio::spawn</span>(<span class="kw">async</span> <span class="kw">move</span> {
-            <span class="kw">loop</span> {
-                <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
-                    <span class="kw">match</span> <span class="ident">message</span> {
-                        <span class="ident">SaitoMessage::MinerNewGoldenTicket</span> {
-                            <span class="ident">ticket</span>: <span class="ident">_golden_ticket</span>,
-                        } <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="macro">println!</span>(<span class="string">&quot;MinerNewGoldenTicket&quot;</span>);
-                        }
-                        <span class="ident">SaitoMessage::MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">block_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">Network::send_my_block_to_peers</span>(<span class="ident">block_hash</span>).<span class="kw">await</span>;
-                        }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
+        <span class="kw">loop</span> {
+            <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
+                <span class="kw">match</span> <span class="ident">message</span> {
+                    <span class="ident">SaitoMessage::MinerNewGoldenTicket</span> {
+                        <span class="ident">ticket</span>: <span class="ident">_golden_ticket</span>,
+                    } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="comment">// TODO implement this...</span>
+                        <span class="macro">println!</span>(<span class="string">&quot;MinerNewGoldenTicket&quot;</span>);
                     }
+                    <span class="ident">SaitoMessage::MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">block_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">Network::send_my_block_to_peers</span>(<span class="ident">block_hash</span>).<span class="kw">await</span>;
+                    }
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {}
                 }
             }
-        });
+        }
     }
 }
 
