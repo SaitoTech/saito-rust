@@ -12,7 +12,7 @@ use crate::util::format_url_string;
 
 use crate::wallet::Wallet;
 use futures::StreamExt;
-use log::{error, info};
+use log::{error, info, warn};
 use secp256k1::PublicKey;
 use tokio::sync::{broadcast, RwLock};
 use tokio::time::sleep;
@@ -339,7 +339,8 @@ impl Network {
                         // TODO implement this...
                         println!("MinerNewGoldenTicket");
                     }
-                    SaitoMessage::MempoolNewBlock { hash: block_hash } => {
+                    SaitoMessage::NetworkNewBlock { hash: block_hash } => {
+                        warn!("SaitoMessage::NetworkNewBlock recv'ed by network");
                         Network::send_my_block_to_peers(block_hash).await;
                     }
                     _ => {}
@@ -662,15 +663,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_mempool_does_sndblkhd() {
-        // TODO add a test here that triggers mempool/blockchain to send the MempoolNewBlock message.
+        // TODO add a test here that triggers mempool/blockchain to send the NetworkNewBlock message.
         //      The goal is to test send_my_block_to_peers.
         //
         //      1) connect a ws_client or 2
-        //      2) get mempool to make a block and do MempoolNewBlock
+        //      2) get mempool to make a block and do NetworkNewBlock
         //      3) and then assert that the clients receive SNDBLKHD messages
         //
         //      This is difficult at the moment because mempool uses and internal broadcast channel to coordinate
-        //      between try_bundle_block() and the natural place to send the MempoolNewBlock would be inside
+        //      between try_bundle_block() and the natural place to send the NetworkNewBlock would be inside
         //      the MempoolMessage::LocalTryBundleBlock arm of mempool_channel_receiver.recv().
         //      There is no easy way to send a message to mempool_channel external to mempool and therefore
         //      no way to exercise the code in the match arm during testing.
@@ -710,10 +711,10 @@ mod tests {
         // send 2 message to network:
         tokio::spawn(async move {
             broadcast_channel_sender
-                .send(SaitoMessage::MempoolNewBlock { hash: [0; 32] })
+                .send(SaitoMessage::NetworkNewBlock { hash: [0; 32] })
                 .expect("error: BlockchainAddBlockFailure message failed to send");
             broadcast_channel_sender
-                .send(SaitoMessage::MempoolNewBlock { hash: [0; 32] })
+                .send(SaitoMessage::NetworkNewBlock { hash: [0; 32] })
                 .expect("error: BlockchainAddBlockFailure message failed to send");
         });
         // Thesse messages should prompt SNDBLKHD commands to each peer
