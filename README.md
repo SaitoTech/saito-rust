@@ -25,15 +25,10 @@ https://trello.com/b/gWPiQFZ1/saito-rust-project-management
 - (If on OSX: `xcode-select --install`)
 - [Install Rust](https://www.rust-lang.org/tools/install)
 
-```
-rustup component add rustfmt
-rustup component add clippy
-```
-
 ### Run the node
 
 ```
-RUST_LOG=debug cargo run --bin saito_rust
+RUST_LOG=debug cargo run
 ```
 
 Possible log levels are Error, Warn, Info, Debug, Trace.
@@ -47,7 +42,7 @@ scripts/test.sh
 or
 
 ```
-cargo test
+cargo test --test-threads=1
 ```
 
 ### Code formatting
