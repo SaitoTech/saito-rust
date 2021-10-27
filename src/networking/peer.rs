@@ -331,7 +331,7 @@ impl SaitoPeer {
                 let peers_db_global = PEERS_DB_GLOBAL.clone();
                 let mut peer_db = peers_db_global.write().await;
                 let peer = peer_db.get_mut(&connection_id).unwrap();
-                SaitoPeer::handle_peer_command(peer, &api_message_orig).await;
+                SaitoPeer::handle_peer_command(peer, api_message_orig).await;
             }
         }
     }
@@ -372,12 +372,12 @@ impl SaitoPeer {
         });
     }
     // Handlers for all the network API commands, e.g. REQBLOCK.
-    async fn handle_peer_command(peer: &mut SaitoPeer, api_message_orig: &APIMessage) {
+    async fn handle_peer_command(peer: &mut SaitoPeer, api_message_orig: APIMessage) {
         // TODO eliminate this .clone():
-        let api_message = api_message_orig.clone();
+        let api_message = api_message_orig;
         let mempool_lock = peer.mempool_lock.clone();
         let blockchain_lock = peer.blockchain_lock.clone();
-        let command = api_message_orig.get_message_name_as_string();
+        let command = api_message.get_message_name_as_string();
         info!("HANDLING COMMAND {}", command);
         match command.as_str() {
             "SHAKINIT" => {
