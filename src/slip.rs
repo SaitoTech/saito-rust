@@ -4,10 +4,10 @@ use crate::{
 };
 use ahash::AHashMap;
 use bigint::uint::U256;
+use log::{error, info};
 use macros::TryFromByte;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
-use tracing::{event, Level};
 
 /// The size of a serilized slip in bytes.
 pub const SLIP_SIZE: usize = 75;
@@ -69,7 +69,7 @@ impl Slip {
                     if *value == 1 {
                         true
                     } else {
-                        println!(
+                        info!(
                             "in utxoset but invalid: value is {} at {:?}",
                             *value, &self.utxoset_key
                         );
@@ -77,9 +77,8 @@ impl Slip {
                     }
                 }
                 None => {
-                    println!("not in utxoset so invalid");
-                    event!(
-                        Level::ERROR,
+                    info!("not in utxoset so invalid");
+                    error!(
                         "value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}",
                         self.utxoset_key,
                         self.get_slip_type(),
@@ -102,7 +101,7 @@ impl Slip {
     ) {
         if self.get_slip_type() == SlipType::StakerDeposit {
             if _lc == true {
-                println!(
+                info!(
                     " ====> update deposit to {}: {:?} -- {:?}",
                     slip_value,
                     self.get_utxoset_key(),
@@ -112,7 +111,7 @@ impl Slip {
         }
         if self.get_slip_type() == SlipType::StakerOutput {
             if _lc == true {
-                println!(
+                info!(
                     " ====> update output to {}: {:?} -- {:?}",
                     slip_value,
                     self.get_utxoset_key(),
@@ -125,9 +124,9 @@ impl Slip {
             //
             // TODO cleanup once ready
             //
-            //println!("update utxoset: {:?} value {} lc -> {}", self.utxoset_key, slip_value, _lc);
-            //println!("slip_ordinal: {}", self.get_slip_ordinal());
-            //println!("slip_amount: {}", self.get_amount());
+            //info!("update utxoset: {:?} value {} lc -> {}", self.utxoset_key, slip_value, _lc);
+            //info!("slip_ordinal: {}", self.get_slip_ordinal());
+            //info!("slip_amount: {}", self.get_amount());
             //utxoset.entry(self.utxoset_key).or_insert(slip_value);
             //
             // TODO find more efficient update operation
@@ -198,10 +197,7 @@ impl Slip {
     //
     pub fn delete(&self, utxoset: &mut AHashMap<SaitoUTXOSetKey, u64>) -> bool {
         if self.get_utxoset_key() == [0; 74] {
-            event!(
-                Level::ERROR,
-                "ERROR 572034: asked to remove a slip without its utxoset_key properly set!"
-            );
+            error!("ERROR 572034: asked to remove a slip without its utxoset_key properly set!");
             false;
         }
         utxoset.remove_entry(&self.get_utxoset_key());
@@ -236,7 +232,7 @@ impl Slip {
         let a = U256::from_big_endian(&self.get_utxoset_key()[42..74]);
         let b = U256::from_big_endian(&other.get_utxoset_key()[42..74]);
 
-        println!("{:?} --- {:?}", a, b);
+        info!("{:?} --- {:?}", a, b);
 
         if a > b {
             return 1;

@@ -4,7 +4,7 @@ use crate::crypto::SaitoHash;
 
 pub const RING_BUFFER_LENGTH: u64 = 2 * GENESIS_PERIOD;
 
-use tracing::{event, Level};
+use log::trace;
 
 //
 // This is an index with shorthand information on the block_ids and hashes of the blocks
@@ -113,8 +113,7 @@ impl BlockRing {
     pub fn print_lc(&self) {
         for i in 0..GENESIS_PERIOD {
             if !self.block_ring[(i as usize)].block_hashes.is_empty() {
-                event!(
-                    Level::TRACE,
+                trace!(
                     "Block {:?}: {:?}",
                     i,
                     self.get_longest_chain_block_hash_by_block_id(i)

@@ -20,7 +20,7 @@ use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::transaction::TransactionType;
 use crate::wallet::Wallet;
-use tracing::{event, Level};
+use log::{error, info, trace};
 
 use async_recursion::async_recursion;
 
@@ -85,9 +85,8 @@ impl Blockchain {
         //
         block.generate_hashes();
 
-        event!(Level::INFO, "add_block {}", &hex::encode(&block.get_hash()));
-        event!(
-            Level::TRACE,
+        info!("add_block {}", &hex::encode(&block.get_hash()));
+        trace!(
             " ... blockchain.add_block start: {:?} hash: {:?}, and id {}",
             create_timestamp(),
             block.get_hash(),
@@ -107,8 +106,7 @@ impl Blockchain {
         // sanity checks
         //
         if self.blocks.contains_key(&block_hash) {
-            event!(
-                Level::ERROR,
+            error!(
                 "ERROR: block exists in blockchain {:?}",
                 &hex::encode(&block.get_hash())
             );
@@ -162,8 +160,7 @@ impl Blockchain {
         if !self.blocks.contains_key(&block_hash) {
             self.blocks.insert(block_hash, block);
         } else {
-            event!(
-                Level::ERROR,
+            error!(
                 "BLOCK IS ALREADY IN THE BLOCKCHAIN, WHY ARE WE ADDING IT????? {:?}",
                 block.get_hash()
             );
@@ -246,7 +243,7 @@ impl Blockchain {
                 // next block and we are getting blocks out-of-order because of
                 // connection or network issues.
                 //
-                event!(Level::ERROR, "blocks received out-of-order issue...");
+                error!("blocks received out-of-order issue...");
             }
         }
 
@@ -331,8 +328,7 @@ impl Blockchain {
     }
 
     pub async fn add_block_success(&mut self, block_hash: SaitoHash) {
-        event!(
-            Level::TRACE,
+        trace!(
             " ... blockchain.add_block_success: {:?}",
             create_timestamp()
         );
@@ -349,11 +345,7 @@ impl Blockchain {
             }
         }
 
-        event!(
-            Level::TRACE,
-            " ... block save done:            {:?}",
-            create_timestamp()
-        );
+        trace!(" ... block save done:            {:?}", create_timestamp());
 
         //
         // update_genesis_period and prune old data
@@ -671,7 +663,7 @@ impl Blockchain {
         let mut current_id = latest_block_id;
 
         while current_id > 0 {
-            println!(
+            info!(
                 "{} - {:?}",
                 current_id,
                 self.blockring
@@ -724,10 +716,7 @@ impl Blockchain {
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
         if old_chain.len() > new_chain.len() {
-            event!(
-                Level::ERROR,
-                "ERROR: old chain length is greater than new chain length"
-            );
+            error!("ERROR: old chain length is greater than new chain length");
             return false;
         }
 
@@ -857,11 +846,7 @@ impl Blockchain {
         current_wind_index: usize,
         wind_failure: bool,
     ) -> bool {
-        event!(
-            Level::TRACE,
-            " ... blockchain.wind_chain strt: {:?}",
-            create_timestamp()
-        );
+        trace!(" ... blockchain.wind_chain strt: {:?}", create_timestamp());
 
         //
         // if we are winding a non-existent chain with a wind_failure it
@@ -909,34 +894,21 @@ impl Blockchain {
         }
 
         let block = self.blocks.get(&new_chain[current_wind_index]).unwrap();
-        event!(
-            Level::TRACE,
-            " ... before block.validate:      {:?}",
-            create_timestamp()
-        );
+        trace!(" ... before block.validate:      {:?}", create_timestamp());
         let does_block_validate = block.validate(&self, &self.utxoset, &self.staking).await;
 
-        event!(
-            Level::TRACE,
+        trace!(
             " ... after block.validate:       {:?} {}",
             create_timestamp(),
             does_block_validate
         );
 
         if does_block_validate {
-            event!(
-                Level::TRACE,
-                " ... before block ocr            {:?}",
-                create_timestamp()
-            );
+            trace!(" ... before block ocr            {:?}", create_timestamp());
 
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
-            event!(
-                Level::TRACE,
-                " ... before blockring ocr:       {:?}",
-                create_timestamp()
-            );
+            trace!(" ... before blockring ocr:       {:?}", create_timestamp());
 
             // blockring update
             self.blockring
@@ -953,18 +925,10 @@ impl Blockchain {
             // more efficiently handled by lite-nodes.
             //
             {
-                event!(
-                    Level::TRACE,
-                    " ... wallet processing start:    {}",
-                    create_timestamp()
-                );
+                trace!(" ... wallet processing start:    {}", create_timestamp());
                 let mut wallet = self.wallet_lock.write().await;
                 wallet.on_chain_reorganization(&block, true);
-                event!(
-                    Level::TRACE,
-                    " ... wallet processing stop:     {}",
-                    create_timestamp()
-                );
+                trace!(" ... wallet processing stop:     {}", create_timestamp());
             }
 
             //
@@ -1016,7 +980,7 @@ impl Blockchain {
             // will know it has rewound the old chain successfully instead of
             // successfully added the new chain.
             //
-            event!(Level::ERROR, "ERROR: this block does not validate!");
+            error!("ERROR: this block does not validate!");
             if current_wind_index == new_chain.len() - 1 {
                 //
                 // this is the first block we have tried to add
@@ -1039,7 +1003,7 @@ impl Blockchain {
                 // which requires us to start at the END of the new chain vector.
                 //
                 if old_chain.len() > 0 {
-                    println!("old chain len: {}", old_chain.len());
+                    info!("old chain len: {}", old_chain.len());
                     let res = self
                         .wind_chain(old_chain, new_chain, old_chain.len() - 1, true)
                         .await;
@@ -1201,8 +1165,7 @@ impl Blockchain {
     // deletes all blocks at a single block_id
     //
     pub async fn delete_blocks(&mut self, delete_block_id: u64) {
-        event!(
-            Level::TRACE,
+        trace!(
             "removing data including from disk at id {}",
             delete_block_id
         );
@@ -1216,11 +1179,7 @@ impl Blockchain {
             }
         }
 
-        event!(
-            Level::TRACE,
-            "number of hashes to remove {}",
-            block_hashes_copy.len()
-        );
+        trace!("number of hashes to remove {}", block_hashes_copy.len());
 
         for hash in block_hashes_copy {
             self.delete_block(delete_block_id, hash).await;

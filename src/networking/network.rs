@@ -12,15 +12,14 @@ use crate::util::format_url_string;
 
 use crate::wallet::Wallet;
 use futures::StreamExt;
+use log::{error, info};
 use secp256k1::PublicKey;
 use tokio::sync::{broadcast, RwLock};
 use tokio::time::sleep;
-use tracing::log::info;
 
 use std::sync::Arc;
 use std::time::Duration;
 use tokio_tungstenite::connect_async;
-use tracing::{event, Level};
 use uuid::Uuid;
 
 use warp::{Filter, Rejection};
@@ -136,10 +135,10 @@ impl Network {
                     } else {
                         // TODO delete the peer if there is an error here
                     }
-                    event!(Level::INFO, "SHAKECOMPLETE!");
+                    info!("Handshake complete!");
                 }
                 None => {
-                    event!(Level::ERROR, "Error verifying peer handshake signature");
+                    error!("Error verifying peer handshake signature");
                 }
             }
         }
@@ -181,8 +180,7 @@ impl Network {
                                     SaitoPeer::handle_peer_message(api_message, connection_id)
                                         .await;
                                 } else {
-                                    event!(
-                                        Level::ERROR,
+                                    error!(
                                         "Message of length 0... why?\n
                                         This seems to occur if we aren't holding a reference to the sender/stream on the\n
                                         other end of the connection. I suspect that when the stream goes out of scope,\n
@@ -194,7 +192,7 @@ impl Network {
                                 }
                             }
                             Err(error) => {
-                                event!(Level::ERROR, "Error reading from peer socket {}", error);
+                                error!("Error reading from peer socket {}", error);
                                 let peers_db_global = PEERS_DB_GLOBAL.clone();
                                 let mut peer_db = peers_db_global.write().await;
                                 let peer = peer_db.get_mut(&connection_id).unwrap();
@@ -206,7 +204,7 @@ impl Network {
                 Network::handshake_and_synchronize_chain(&connection_id, wallet_lock).await;
             }
             Err(error) => {
-                event!(Level::ERROR, "Error connecting to peer {}", error);
+                error!("Error connecting to peer {}", error);
                 let mut peer_db = peers_db_global.write().await;
                 let peer = peer_db.get_mut(&connection_id).unwrap();
                 peer.set_is_connected_or_connecting(false).await;
@@ -273,10 +271,7 @@ impl Network {
                 }
                 for (connection_id, should_try_reconnect) in peer_states {
                     if should_try_reconnect {
-                        event!(
-                            Level::INFO,
-                            "found disconnected peer in peer settings, (re)connecting..."
-                        );
+                        info!("found disconnected peer in peer settings, (re)connecting...");
                         Network::connect_to_peer(connection_id, wallet_lock.clone()).await;
                     }
                 }

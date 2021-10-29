@@ -13,6 +13,7 @@ use crate::{
 };
 use ahash::AHashMap;
 use bigint::uint::U256;
+use log::{error, info};
 use macros::TryFromByte;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -20,8 +21,6 @@ use std::convert::TryFrom;
 use rayon::prelude::*;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
-use tracing::{event, Level};
 
 pub const TRANSACTION_SIZE: usize = 89;
 
@@ -155,7 +154,7 @@ impl Transaction {
 
         let available_balance = wallet.get_available_balance();
         let total_requested = with_payment + with_fee;
-        // println!("in generate transaction ab: {} and pr: {} and fr: {}", available_balance, with_payment, with_fee);
+        // info!("in generate transaction ab: {} and pr: {} and fr: {}", available_balance, with_payment, with_fee);
 
         if available_balance >= total_requested {
             let mut transaction = Transaction::new();
@@ -828,7 +827,7 @@ impl Transaction {
                 let sig: SaitoSignature = self.get_signature();
                 let publickey: SaitoPublicKey = self.get_inputs()[0].get_publickey();
                 if !verify(&hash_for_signature, sig, publickey) {
-                    event!(Level::ERROR, "message verifies not");
+                    error!("message verifies not");
                     return false;
                 }
             } else {
@@ -838,10 +837,7 @@ impl Transaction {
                 // it here, we choose to throw an error to raise visibility of
                 // unexpected behavior.
                 //
-                event!(
-                    Level::ERROR,
-                    "ERROR 757293: there is no hash for signature in a transaction"
-                );
+                error!("ERROR 757293: there is no hash for signature in a transaction");
                 return false;
             }
 
@@ -849,10 +845,7 @@ impl Transaction {
             // validate sender exists
             //
             if self.get_inputs().is_empty() {
-                event!(
-                    Level::ERROR,
-                    "ERROR 582039: less than 1 input in transaction"
-                );
+                error!("ERROR 582039: less than 1 input in transaction");
                 return false;
             }
 
@@ -864,10 +857,7 @@ impl Transaction {
             // routing path is fraudulent.
             //
             if !self.validate_routing_path() {
-                event!(
-                    Level::ERROR,
-                    "ERROR 482033: routing paths do not validate, transaction invalid"
-                );
+                error!("ERROR 482033: routing paths do not validate, transaction invalid");
                 return false;
             }
 
@@ -878,19 +868,11 @@ impl Transaction {
                 && self.get_transaction_type() != TransactionType::Fee
                 && self.get_transaction_type() != TransactionType::Vip
             {
-                event!(
-                    Level::TRACE,
-                    "{} in and {} out",
-                    self.total_in,
-                    self.total_out
-                );
+                info!("{} in and {} out", self.total_in, self.total_out);
                 for z in self.get_outputs() {
-                    event!(Level::TRACE, "{:?} --- ", z.get_amount());
+                    info!("{:?} --- ", z.get_amount());
                 }
-                event!(
-                    Level::TRACE,
-                    "ERROR 672941: transaction spends more than it has available"
-                );
+                info!("ERROR 672941: transaction spends more than it has available");
                 return false;
             }
         }
@@ -920,18 +902,18 @@ impl Transaction {
         //
         if transaction_type == TransactionType::StakerWithdrawal {
             for i in 0..self.inputs.len() {
-                println!("{}", i);
+                info!("{}", i);
                 if self.inputs[i].get_slip_type() == SlipType::StakerWithdrawalPending {
                     if !staking.validate_slip_in_pending(self.inputs[i].clone()) {
-                        println!("Staking Withdrawal Pending input slip is not in Pending thus transaction invalid!");
+                        info!("Staking Withdrawal Pending input slip is not in Pending thus transaction invalid!");
                         return false;
                     }
                 }
                 if self.inputs[i].get_slip_type() == SlipType::StakerWithdrawalStaking {
                     if !staking.validate_slip_in_stakers(self.inputs[i].clone()) {
-                        println!("Staking Withdrawal Staker input slip is not in Staker thus transaction invalid!");
-                        println!("STAKING SLIP WE HAVE: {:?}", self.inputs[i]);
-                        println!("STAKING TABLE: {:?}", staking.stakers);
+                        info!("Staking Withdrawal Staker input slip is not in Staker thus transaction invalid!");
+                        info!("STAKING SLIP WE HAVE: {:?}", self.inputs[i]);
+                        info!("STAKING TABLE: {:?}", staking.stakers);
                         return false;
                     }
                 }
@@ -961,10 +943,7 @@ impl Transaction {
         // all transactions must have outputs
         //
         if self.get_outputs().is_empty() {
-            event!(
-                Level::ERROR,
-                "ERROR 582039: less than 1 output in transaction"
-            );
+            error!("ERROR 582039: less than 1 output in transaction");
             return false;
         }
 
@@ -977,8 +956,8 @@ impl Transaction {
         //for i in 0..self.inputs.len() {
         //    let is_valid = self.inputs[i].validate(utxoset);
         //    if is_valid != true {
-        //        //println!("tx: {:?}", self);
-        //        println!(
+        //        //info!("tx: {:?}", self);
+        //        info!(
         //            "this input is invalid: {:?}",
         //            self.inputs[i].get_slip_type()
         //        );

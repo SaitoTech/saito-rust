@@ -17,12 +17,13 @@ use crate::{
 };
 use ahash::AHashMap;
 use bigint::uint::U256;
+use log::{error, info, trace};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::{mem, sync::Arc};
 use tokio::sync::RwLock;
-use tracing::{event, span, Level};
+use tracing::{span, Level};
 
 pub const BLOCK_HEADER_SIZE: usize = 213;
 
@@ -469,11 +470,7 @@ impl Block {
     //
     pub async fn upgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
         let _span = span!(Level::TRACE, "UPGRADE BLOCK");
-        event!(
-            Level::TRACE,
-            "UPGRADE_BLOCK_TO_BLOCK_TYPE {:?}",
-            self.block_type
-        );
+        trace!("UPGRADE_BLOCK_TO_BLOCK_TYPE {:?}", self.block_type);
         if self.block_type == block_type {
             return true;
         }
@@ -518,7 +515,7 @@ impl Block {
     //
     pub async fn downgrade_block_to_block_type(&mut self, block_type: BlockType) -> bool {
         let _span = span!(Level::TRACE, "DOWNGRADE BLOCK");
-        event!(Level::TRACE, "BLOCK_ID {:?}", self.get_id());
+        info!("BLOCK_ID {:?}", self.get_id());
 
         if self.block_type == block_type {
             return true;
@@ -1214,11 +1211,7 @@ impl Block {
     // cumulative block fees they contain.
     //
     pub fn generate_metadata(&mut self) -> bool {
-        event!(
-            Level::TRACE,
-            " ... block.prevalid - pre hash:  {:?}",
-            create_timestamp(),
-        );
+        trace!(" ... block.prevalid - pre hash:  {:?}", create_timestamp(),);
 
         // ensure hashes correct
         self.generate_hashes();
@@ -1236,11 +1229,7 @@ impl Block {
             .all(|tx| tx.generate_metadata(creator_publickey));
 
         let _span = span!(Level::TRACE, "PREVALIDATION");
-        event!(
-            Level::TRACE,
-            " ... block.prevalid - pst hash:  {:?}",
-            create_timestamp()
-        );
+        trace!(" ... block.prevalid - pst hash:  {:?}", create_timestamp());
 
         //
         // we need to calculate the cumulative figures AFTER the
@@ -1340,8 +1329,7 @@ impl Block {
         self.set_total_fees(cumulative_fees);
         self.set_routing_work_for_creator(cumulative_work);
 
-        event!(
-            Level::TRACE,
+        trace!(
             " ... block.pre_validation_done:  {:?}",
             create_timestamp(),
             // tracing_tracker.time_since_last();
@@ -1360,15 +1348,11 @@ impl Block {
         // no transactions? no thank you
         //
         if self.transactions.is_empty() {
-            event!(
-                Level::ERROR,
-                "ERROR 424342: block does not validate as it has no transactions",
-            );
+            error!("ERROR 424342: block does not validate as it has no transactions",);
             return false;
         }
 
-        event!(
-            Level::TRACE,
+        trace!(
             " ... block.validate: (burn fee)  {:?}",
             create_timestamp(),
             // tracing_tracker.time_since_last();
@@ -1382,10 +1366,7 @@ impl Block {
             self.get_signature(),
             self.get_creator(),
         ) {
-            event!(
-                Level::ERROR,
-                "ERROR 582039: block is not signed by creator or signature does not validate",
-            );
+            error!("ERROR 582039: block is not signed by creator or signature does not validate",);
             return false;
         }
 
@@ -1408,10 +1389,7 @@ impl Block {
         // only block #1 can have an issuance transaction
         //
         if cv.it_num > 0 && self.get_id() > 1 {
-            event!(
-                Level::ERROR,
-                "ERROR: blockchain contains issuance after block 1 in chain",
-            );
+            error!("ERROR: blockchain contains issuance after block 1 in chain",);
             return false;
         }
 
@@ -1430,8 +1408,7 @@ impl Block {
             // validate treasury
             //
             if self.get_treasury() != previous_block.get_treasury() + cv.nolan_falling_off_chain {
-                event!(
-                    Level::ERROR,
+                error!(
                     "ERROR: treasury does not validate: {} expected versus {} found",
                     (previous_block.get_treasury() + cv.nolan_falling_off_chain),
                     self.get_treasury(),
@@ -1457,8 +1434,7 @@ impl Block {
             }
 
             if self.get_staking_treasury() != adjusted_staking_treasury {
-                event!(
-                    Level::ERROR,
+                error!(
                     "ERROR: staking treasury does not validate: {} expected versus {} found",
                     adjusted_staking_treasury,
                     self.get_staking_treasury(),
@@ -1479,19 +1455,14 @@ impl Block {
                     previous_block.get_timestamp(),
                 );
             if new_burnfee != self.get_burnfee() {
-                event!(
-                    Level::ERROR,
+                error!(
                     "ERROR: burn fee does not validate, expected: {}",
                     new_burnfee
                 );
                 return false;
             }
 
-            event!(
-                Level::TRACE,
-                " ... burn fee in blk validated:  {:?}",
-                create_timestamp()
-            );
+            trace!(" ... burn fee in blk validated:  {:?}", create_timestamp());
 
             //
             // validate routing work required
@@ -1506,18 +1477,11 @@ impl Block {
                     previous_block.get_timestamp(),
                 );
             if self.routing_work_for_creator < amount_of_routing_work_needed {
-                event!(
-                    Level::ERROR,
-                    "Error 510293: block lacking adequate routing work from creator"
-                );
+                error!("Error 510293: block lacking adequate routing work from creator");
                 return false;
             }
 
-            event!(
-                Level::TRACE,
-                " ... done routing work required: {:?}",
-                create_timestamp()
-            );
+            trace!(" ... done routing work required: {:?}", create_timestamp());
 
             //
             // validate golden ticket
@@ -1546,25 +1510,16 @@ impl Block {
                     solution,
                     previous_block.get_difficulty(),
                 ) {
-                    event!(
-                        Level::ERROR,
+                    error!(
                         "ERROR: Golden Ticket solution does not validate against previous block hash and difficulty"
                     );
                     return false;
                 }
             }
-            event!(
-                Level::TRACE,
-                " ... golden ticket: (validated)  {:?}",
-                create_timestamp()
-            );
+            trace!(" ... golden ticket: (validated)  {:?}", create_timestamp());
         }
 
-        event!(
-            Level::TRACE,
-            " ... block.validate: (merkle rt) {:?}",
-            create_timestamp()
-        );
+        trace!(" ... block.validate: (merkle rt) {:?}", create_timestamp());
 
         //
         // validate atr
@@ -1580,24 +1535,15 @@ impl Block {
         // expected number given the consensus values we calculated earlier.
         //
         if cv.total_rebroadcast_slips != self.total_rebroadcast_slips {
-            event!(
-                Level::ERROR,
-                "ERROR 624442: rebroadcast slips total incorrect"
-            );
+            error!("ERROR 624442: rebroadcast slips total incorrect");
             return false;
         }
         if cv.total_rebroadcast_nolan != self.total_rebroadcast_nolan {
-            event!(
-                Level::ERROR,
-                "ERROR 294018: rebroadcast nolan amount incorrect"
-            );
+            error!("ERROR 294018: rebroadcast nolan amount incorrect");
             return false;
         }
         if cv.rebroadcast_hash != self.rebroadcast_hash {
-            event!(
-                Level::ERROR,
-                "ERROR 123422: hash of rebroadcast transactions incorrect"
-            );
+            error!("ERROR 123422: hash of rebroadcast transactions incorrect");
             return false;
         }
 
@@ -1607,15 +1553,11 @@ impl Block {
         if self.get_merkle_root() == [0; 32]
             && self.get_merkle_root() != self.generate_merkle_root()
         {
-            event!(Level::ERROR, "merkle root is unset or is invalid false 1");
+            error!("merkle root is unset or is invalid false 1");
             return false;
         }
 
-        event!(
-            Level::TRACE,
-            " ... block.validate: (cv-data)   {:?}",
-            create_timestamp()
-        );
+        trace!(" ... block.validate: (cv-data)   {:?}", create_timestamp());
 
         //
         // validate fee transactions
@@ -1630,10 +1572,7 @@ impl Block {
             // no golden ticket? invalid
             //
             if cv.gt_idx.is_none() {
-                event!(
-                    Level::ERROR,
-                    "ERROR 48203: block appears to have fee transaction without golden ticket"
-                );
+                error!("ERROR 48203: block appears to have fee transaction without golden ticket");
                 return false;
             }
 
@@ -1647,8 +1586,7 @@ impl Block {
             let hash1 = hash(&fee_transaction.serialize_for_signature());
             let hash2 = hash(&self.transactions[ft_idx].serialize_for_signature());
             if hash1 != hash2 {
-                event!(
-                    Level::ERROR,
+                error!(
                     "ERROR 627428: block {} fee transaction doesn't match cv fee transaction",
                     self.get_id()
                 );
@@ -1670,8 +1608,7 @@ impl Block {
         // distinction is in practice less clean.
         //
         if cv.expected_difficulty != self.get_difficulty() {
-            event!(
-                Level::ERROR,
+            error!(
                 "difficulty is false {} vs {}",
                 cv.expected_difficulty,
                 self.get_difficulty()
@@ -1679,11 +1616,7 @@ impl Block {
             return false;
         }
 
-        event!(
-            Level::TRACE,
-            " ... block.validate: (txs valid) {:?}",
-            create_timestamp()
-        );
+        trace!(" ... block.validate: (txs valid) {:?}", create_timestamp());
 
         //
         // validate transactions
@@ -1713,8 +1646,8 @@ impl Block {
         for i in 0..self.transactions.len() {
             let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
             if !transactions_valid2 {
-                println!("TType: {:?}", self.transactions[i].get_transaction_type());
-                println!("Data {:?}", self.transactions[i]);
+                info!("Type: {:?}", self.transactions[i].get_transaction_type());
+                info!("Data {:?}", self.transactions[i]);
             }
         }
         //true
@@ -1724,12 +1657,6 @@ impl Block {
             .par_iter()
             .all(|tx| tx.validate(utxoset, staking));
 
-        // println!(" ... block.validate: (done all)  {:?}", create_timestamp());
-
-        //
-        // and if our transactions are valid, so is the block...
-        //
-        // println!(" ... are txs valid: {}", transactions_valid);
         transactions_valid
     }
 

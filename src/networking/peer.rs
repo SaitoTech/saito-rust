@@ -17,6 +17,7 @@ use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use async_recursion::async_recursion;
 use futures::stream::SplitSink;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
@@ -32,7 +33,6 @@ use warp::ws::{Message, WebSocket};
 use futures::{Future, FutureExt, SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
-use tracing::{event, Level};
 
 pub type PeersDB = HashMap<SaitoHash, SaitoPeer>;
 pub type RequestResponses = HashMap<(SaitoHash, u32), APIMessage>;
@@ -123,11 +123,7 @@ impl Future for PeerRequest {
         match request_responses.remove(&(self.connection_id, self.request_id)) {
             Some(response) => {
                 // Return from the Future with an important message!
-                event!(
-                    Level::INFO,
-                    "HANDLING RESPONSE {}",
-                    self.api_message_command
-                );
+                info!("HANDLING RESPONSE {}", self.api_message_command);
                 Poll::Ready(Ok(response))
             }
             None => {
@@ -335,7 +331,7 @@ impl SaitoPeer {
                 let peers_db_global = PEERS_DB_GLOBAL.clone();
                 let mut peer_db = peers_db_global.write().await;
                 let peer = peer_db.get_mut(&connection_id).unwrap();
-                SaitoPeer::handle_peer_command(peer, &api_message_orig).await;
+                SaitoPeer::handle_peer_command(peer, api_message_orig).await;
             }
         }
     }
@@ -367,8 +363,7 @@ impl SaitoPeer {
                     .await;
                 }
                 Err(error_message) => {
-                    event!(
-                        Level::ERROR,
+                    error!(
                         "REQBLOCK ERROR: {}",
                         error_message.get_message_data_as_string()
                     );
@@ -377,13 +372,13 @@ impl SaitoPeer {
         });
     }
     // Handlers for all the network API commands, e.g. REQBLOCK.
-    async fn handle_peer_command(peer: &mut SaitoPeer, api_message_orig: &APIMessage) {
+    async fn handle_peer_command(peer: &mut SaitoPeer, api_message_orig: APIMessage) {
         // TODO eliminate this .clone():
-        let api_message = api_message_orig.clone();
+        let api_message = api_message_orig;
         let mempool_lock = peer.mempool_lock.clone();
         let blockchain_lock = peer.blockchain_lock.clone();
-        let command = api_message_orig.get_message_name_as_string();
-        event!(Level::INFO, "HANDLING COMMAND {}", command);
+        let command = api_message.get_message_name_as_string();
+        info!("HANDLING COMMAND {}", command);
         match command.as_str() {
             "SHAKINIT" => {
                 if let Ok(serialized_handshake_challenge) =
@@ -404,7 +399,7 @@ impl SaitoPeer {
                     .await;
                 }
                 None => {
-                    event!(Level::ERROR, "Error verifying peer handshake signature");
+                    error!("Error verifying peer handshake signature");
                 }
             },
             "REQBLOCK" => {
@@ -471,8 +466,7 @@ impl SaitoPeer {
                     .await
                 {
                     Some(_block) => {
-                        event!(
-                            Level::INFO,
+                        info!(
                             "SNDBLKHD hash already known: {}",
                             hex::encode(send_block_head_message.get_block_hash()),
                         );
@@ -499,8 +493,7 @@ impl SaitoPeer {
                     .await;
             }
             _ => {
-                event!(
-                    Level::ERROR,
+                error!(
                     "Unhandled command received by client... {}",
                     &api_message.get_message_name_as_string()
                 );
@@ -566,8 +559,7 @@ pub async fn handle_inbound_peer_connection(
                 let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());
                 SaitoPeer::handle_peer_message(api_message, connection_id).await;
             } else {
-                event!(
-                    Level::ERROR,
+                error!(
                     "Message of length 0... why?\n
                     This seems to occur if we aren't holding a reference to the sender/stream on the\n
                     other end of the connection. I suspect that when the stream goes out of scope,\n
@@ -618,10 +610,7 @@ pub async fn build_serialized_challenge(
 pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChallenge> {
     let challenge = HandshakeChallenge::deserialize(message_data);
     if challenge.timestamp() < create_timestamp() - CHALLENGE_EXPIRATION_TIME {
-        event!(
-            Level::ERROR,
-            "Error validating timestamp for handshake complete"
-        );
+        error!("Error validating timestamp for handshake complete");
         return None;
     }
     // we verify both signatures even though one is "ours". This function is called during both
@@ -631,7 +620,7 @@ pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChalle
         challenge.opponent_sig().unwrap(),
         challenge.opponent_pubkey(),
     ) {
-        event!(Level::ERROR, "Error with validating opponent sig");
+        error!("Error with validating opponent sig");
         return None;
     }
     if !verify(
@@ -640,7 +629,7 @@ pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChalle
         challenge.challenger_pubkey(),
     ) {
         // TODO figure out how to return more meaningful errors from Warp and replace all the warp::reject
-        event!(Level::ERROR, "Error with validating challenger sig");
+        error!("Error with validating challenger sig");
         return None;
     }
 

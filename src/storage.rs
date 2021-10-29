@@ -211,7 +211,7 @@ mod tests {
                 if !path.path().to_str().unwrap().ends_with(".gitignore") {
                     match std::fs::remove_file(path.path()) {
                         Err(err) => {
-                            println!("Error cleaning up after tests {}", err);
+                            eprintln!("Error cleaning up after tests {}", err);
                         }
                         _ => {}
                     }

@@ -9,9 +9,9 @@ use crate::{
     transaction::Transaction,
     wallet::Wallet,
 };
+use log::info;
 use std::{collections::HashMap, collections::VecDeque, sync::Arc, thread::sleep, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
-use tracing::{event, Level};
 
 //
 // In addition to responding to global broadcast messages, the
@@ -79,7 +79,7 @@ impl Mempool {
             .any(|transaction| transaction.is_golden_ticket())
         {
         } else {
-            event!(Level::TRACE, "adding golden ticket to mempool...");
+            info!("adding golden ticket to mempool...");
             self.transactions.push(transaction);
         }
     }
@@ -98,11 +98,7 @@ impl Mempool {
         }
     }
     pub async fn add_transaction(&mut self, mut transaction: Transaction) {
-        event!(
-            Level::INFO,
-            "add_transaction {:?}",
-            transaction.get_transaction_type()
-        );
+        info!("add_transaction {:?}", transaction.get_transaction_type());
         let tx_sig_to_insert = transaction.get_signature();
 
         //
@@ -172,14 +168,7 @@ impl Mempool {
             let work_available = self.get_routing_work_available();
             let work_needed = self.get_routing_work_needed(previous_block, current_timestamp);
             let time_elapsed = current_timestamp - previous_block.get_timestamp();
-            println!(
-                "can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
-                work_available,
-                work_needed,
-                time_elapsed
-            );
-            event!(
-                Level::INFO,
+            info!(
                 "can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} ",
                 work_available,
                 work_needed,
@@ -267,12 +256,12 @@ pub async fn try_bundle_block(
     blockchain_lock: Arc<RwLock<Blockchain>>,
     current_timestamp: u64,
 ) -> Option<Block> {
-    event!(Level::INFO, "try_bundle_block");
+    info!("try_bundle_block");
     // We use a boolean here so we can avoid taking the write lock most of the time
     let can_bundle;
     {
         let mempool = mempool_lock.read().await;
-        event!(Level::INFO, "got mempool_lock");
+        info!("got mempool_lock");
         can_bundle = mempool
             .can_bundle_block(blockchain_lock.clone(), current_timestamp)
             .await;

@@ -1,3 +1,5 @@
+use log::info;
+
 use crate::block::Block;
 use crate::crypto::{
     decrypt_with_password, encrypt_with_password, generate_keys, hash, sign, SaitoHash,
@@ -383,11 +385,11 @@ impl Wallet {
         input.set_slip_type(SlipType::StakerWithdrawalStaking);
 
         if staking.validate_slip_in_stakers(input.clone()) {
-            println!("this slip is in stakers");
+            info!("this slip is in stakers");
             input.set_slip_type(SlipType::StakerWithdrawalStaking);
         }
         if staking.validate_slip_in_pending(input.clone()) {
-            println!("this slip is in pending");
+            info!("this slip is in pending");
             input.set_slip_type(SlipType::StakerWithdrawalPending);
         }
 
