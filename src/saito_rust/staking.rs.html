@@ -1280,7 +1280,6 @@
 <span id="1280">1280</span>
 <span id="1281">1281</span>
 <span id="1282">1282</span>
-<span id="1283">1283</span>
 </pre><pre class="rust">
 <span class="comment">//</span>
 <span class="comment">// TODO</span>
@@ -1296,7 +1295,7 @@
     <span class="ident">transaction::TransactionType</span>,
 };
 <span class="kw">use</span> <span class="ident">bigint::uint::U256</span>;
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">info</span>, <span class="ident">trace</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Staking</span> {
@@ -1359,9 +1358,9 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">staking_treasury</span>: <span class="ident">u64</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
-        <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;===========================&quot;</span>);
-        <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;=== RESET STAKING TABLE ===&quot;</span>);
-        <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;===========================&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;===========================&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;=== RESET STAKING TABLE ===&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;===========================&quot;</span>);
 
         <span class="kw">let</span> <span class="ident">res_spend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="ident">res_unspend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
@@ -1690,8 +1689,7 @@
                 <span class="comment">// vacillations in on_chain_reorg, such as resetting the table and</span>
                 <span class="comment">// then non-longest-chaining the same block</span>
                 <span class="comment">//</span>
-                <span class="macro">event!</span>(
-                    <span class="ident">Level::TRACE</span>,
+                <span class="macro">trace!</span>(
                     <span class="string">&quot;Rolling forward and moving into pending: {}!&quot;</span>,
                     <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>()
                 );
@@ -1724,9 +1722,8 @@
                         <span class="kw">let</span> <span class="ident">lucky_staker_option</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">find_winning_staker</span>(<span class="ident">next_random_number</span>); <span class="comment">// use first</span>
 
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lucky_staker</span>) <span class="op">=</span> <span class="ident">lucky_staker_option</span> {
-                            <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;the lucky staker is: {:?}&quot;</span>, <span class="ident">lucky_staker</span>);
-                            <span class="macro">event!</span>(
-                                <span class="ident">Level::TRACE</span>,
+                            <span class="macro">info!</span>(<span class="string">&quot;the lucky staker is: {:?}&quot;</span>, <span class="ident">lucky_staker</span>);
+                            <span class="macro">trace!</span>(
                                 <span class="string">&quot;moving from staker into pending: {}&quot;</span>,
                                 <span class="ident">lucky_staker</span>.<span class="ident">get_amount</span>()
                             );
@@ -1765,7 +1762,7 @@
             <span class="comment">// roll backward</span>
             <span class="comment">//</span>
             } <span class="kw">else</span> {
-                <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;roll backward...&quot;</span>);
+                <span class="macro">info!</span>(<span class="string">&quot;roll backward...&quot;</span>);
 
                 <span class="comment">//</span>
                 <span class="comment">// reset pending if necessary</span>
@@ -1847,6 +1844,7 @@
         <span class="ident">time::create_timestamp</span>,
         <span class="ident">wallet::Wallet</span>,
     };
+    <span class="kw">use</span> <span class="ident">log::info</span>;
     <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
     <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 
@@ -1902,7 +1900,7 @@
         <span class="macro">assert_eq!</span>(<span class="ident">staking2</span>.<span class="ident">stakers</span>.<span class="ident">len</span>(), <span class="number">5</span>);
 
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">staking2</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {
-            <span class="macro">println!</span>(
+            <span class="macro">info!</span>(
                 <span class="string">&quot;{} -- {}&quot;</span>,
                 <span class="ident">staking1</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_amount</span>(),
                 <span class="ident">staking2</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_amount</span>()
@@ -2419,7 +2417,7 @@
         <span class="kw">let</span> <span class="ident">block2_hash</span> <span class="op">=</span> <span class="ident">block2</span>.<span class="ident">get_hash</span>();
         <span class="ident">Blockchain::add_block_to_blockchain</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">block2</span>).<span class="kw">await</span>;
 
-        <span class="macro">println!</span>(<span class="string">&quot;- AFTER BLOCK 2 - deposit&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;- AFTER BLOCK 2 - deposit&quot;</span>);
 
         <span class="comment">//</span>
         <span class="comment">// BLOCK 3 - payout</span>
@@ -2429,16 +2427,16 @@
             .<span class="ident">add_block</span>(<span class="ident">current_timestamp</span> <span class="op">+</span> <span class="number">240000</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="bool-val">true</span>, <span class="macro">vec!</span>[])
             .<span class="kw">await</span>;
 
-        <span class="macro">println!</span>(<span class="string">&quot;- AFTER BLOCK 3 - PAYOUT has happened -&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;- AFTER BLOCK 3 - PAYOUT has happened -&quot;</span>);
 
         <span class="comment">//</span>
         <span class="comment">// we have yet to find a single golden ticket, so all in stakers</span>
         <span class="comment">//</span>
         {
             <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="macro">println!</span>(<span class="string">&quot;STAKERS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">stakers</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;PENDING {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">pending</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;DEPOSITS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">deposits</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;STAKERS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">stakers</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;PENDING {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">pending</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;DEPOSITS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">deposits</span>);
         }
 
         <span class="comment">//</span>
@@ -2453,10 +2451,10 @@
         <span class="comment">//</span>
         {
             <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-            <span class="macro">println!</span>(<span class="string">&quot;AFTER BLOCK #4&quot;</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;STAKERS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">stakers</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;PENDING {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">pending</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;DEPOSITS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">deposits</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;AFTER BLOCK #4&quot;</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;STAKERS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">stakers</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;PENDING {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">pending</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;DEPOSITS {:?}&quot;</span>, <span class="ident">blockchain</span>.<span class="ident">staking</span>.<span class="ident">deposits</span>);
         }
 
         <span class="comment">//</span>
@@ -2484,11 +2482,11 @@
             <span class="ident">wstx1</span>.<span class="ident">generate_metadata</span>(<span class="ident">publickey</span>);
         }
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transactions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="macro">println!</span>(<span class="string">&quot;----------&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;- WITHDRAW STAKER SLIP --&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;----------&quot;</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;---{:?}---&quot;</span>, <span class="ident">wstx1</span>);
-        <span class="macro">println!</span>(<span class="string">&quot;----------&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;----------&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;- WITHDRAW STAKER SLIP --&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;----------&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;---{:?}---&quot;</span>, <span class="ident">wstx1</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;----------&quot;</span>);
         <span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">wstx1</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block6</span> <span class="op">=</span> <span class="ident">Block::generate</span>(
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">transactions</span>,
@@ -2505,7 +2503,7 @@
         {
             <span class="kw">let</span> <span class="ident">blockchain</span> <span class="op">=</span> <span class="ident">blockchain_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="ident">blockchain</span>.<span class="ident">print</span>();
-            <span class="macro">println!</span>(
+            <span class="macro">info!</span>(
                 <span class="string">&quot;LATESTID: {} / {}&quot;</span>,
                 <span class="ident">block6_id</span>,
                 <span class="ident">blockchain</span>.<span class="ident">get_latest_block_id</span>()
@@ -2530,7 +2528,7 @@
         {
             <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
             <span class="ident">publickey</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_publickey</span>();
-            <span class="macro">println!</span>(<span class="string">&quot;publickey: {:?}&quot;</span>, <span class="ident">publickey</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;publickey: {:?}&quot;</span>, <span class="ident">publickey</span>);
         }
 
         <span class="comment">//</span>

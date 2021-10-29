@@ -741,17 +741,6 @@
 <span id="741">741</span>
 <span id="742">742</span>
 <span id="743">743</span>
-<span id="744">744</span>
-<span id="745">745</span>
-<span id="746">746</span>
-<span id="747">747</span>
-<span id="748">748</span>
-<span id="749">749</span>
-<span id="750">750</span>
-<span id="751">751</span>
-<span id="752">752</span>
-<span id="753">753</span>
-<span id="754">754</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::api_message::APIMessage</span>;
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::network::CHALLENGE_EXPIRATION_TIME</span>;
@@ -772,6 +761,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">async_recursion::async_recursion</span>;
 <span class="kw">use</span> <span class="ident">futures::stream::SplitSink</span>;
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">error</span>, <span class="ident">info</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
@@ -787,7 +777,6 @@
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">Future</span>, <span class="ident">FutureExt</span>, <span class="ident">SinkExt</span>, <span class="ident">StreamExt</span>};
 <span class="kw">use</span> <span class="ident">tokio::net::TcpStream</span>;
 <span class="kw">use</span> <span class="ident">tokio_tungstenite</span>::{<span class="ident">tungstenite</span>, <span class="ident">MaybeTlsStream</span>, <span class="ident">WebSocketStream</span>};
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">PeersDB</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">SaitoHash</span>, <span class="ident">SaitoPeer</span><span class="op">&gt;</span>;
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">RequestResponses</span> <span class="op">=</span> <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">SaitoHash</span>, <span class="ident">u32</span>), <span class="ident">APIMessage</span><span class="op">&gt;</span>;
@@ -878,11 +867,7 @@
         <span class="kw">match</span> <span class="ident">request_responses</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span>(<span class="self">self</span>.<span class="ident">connection_id</span>, <span class="self">self</span>.<span class="ident">request_id</span>)) {
             <span class="prelude-val">Some</span>(<span class="ident">response</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="comment">// Return from the Future with an important message!</span>
-                <span class="macro">event!</span>(
-                    <span class="ident">Level::INFO</span>,
-                    <span class="string">&quot;HANDLING RESPONSE {}&quot;</span>,
-                    <span class="self">self</span>.<span class="ident">api_message_command</span>
-                );
+                <span class="macro">info!</span>(<span class="string">&quot;HANDLING RESPONSE {}&quot;</span>, <span class="self">self</span>.<span class="ident">api_message_command</span>);
                 <span class="ident">Poll::Ready</span>(<span class="prelude-val">Ok</span>(<span class="ident">response</span>))
             }
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
@@ -1090,7 +1075,7 @@
                 <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">peer_db</span> <span class="op">=</span> <span class="ident">peers_db_global</span>.<span class="ident">write</span>().<span class="kw">await</span>;
                 <span class="kw">let</span> <span class="ident">peer</span> <span class="op">=</span> <span class="ident">peer_db</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">connection_id</span>).<span class="ident">unwrap</span>();
-                <span class="ident">SaitoPeer::handle_peer_command</span>(<span class="ident">peer</span>, <span class="kw-2">&amp;</span><span class="ident">api_message_orig</span>).<span class="kw">await</span>;
+                <span class="ident">SaitoPeer::handle_peer_command</span>(<span class="ident">peer</span>, <span class="ident">api_message_orig</span>).<span class="kw">await</span>;
             }
         }
     }
@@ -1122,8 +1107,7 @@
                     .<span class="kw">await</span>;
                 }
                 <span class="prelude-val">Err</span>(<span class="ident">error_message</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">event!</span>(
-                        <span class="ident">Level::ERROR</span>,
+                    <span class="macro">error!</span>(
                         <span class="string">&quot;REQBLOCK ERROR: {}&quot;</span>,
                         <span class="ident">error_message</span>.<span class="ident">get_message_data_as_string</span>()
                     );
@@ -1132,13 +1116,13 @@
         });
     }
     <span class="comment">// Handlers for all the network API commands, e.g. REQBLOCK.</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_peer_command</span>(<span class="ident">peer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SaitoPeer</span>, <span class="ident">api_message_orig</span>: <span class="kw-2">&amp;</span><span class="ident">APIMessage</span>) {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_peer_command</span>(<span class="ident">peer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SaitoPeer</span>, <span class="ident">api_message_orig</span>: <span class="ident">APIMessage</span>) {
         <span class="comment">// TODO eliminate this .clone():</span>
-        <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">api_message_orig</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">api_message_orig</span>;
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">mempool_lock</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">peer</span>.<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">command</span> <span class="op">=</span> <span class="ident">api_message_orig</span>.<span class="ident">get_message_name_as_string</span>();
-        <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;HANDLING COMMAND {}&quot;</span>, <span class="ident">command</span>);
+        <span class="kw">let</span> <span class="ident">command</span> <span class="op">=</span> <span class="ident">api_message</span>.<span class="ident">get_message_name_as_string</span>();
+        <span class="macro">info!</span>(<span class="string">&quot;HANDLING COMMAND {}&quot;</span>, <span class="ident">command</span>);
         <span class="kw">match</span> <span class="ident">command</span>.<span class="ident">as_str</span>() {
             <span class="string">&quot;SHAKINIT&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">serialized_handshake_challenge</span>) <span class="op">=</span>
@@ -1159,7 +1143,7 @@
                     .<span class="kw">await</span>;
                 }
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;Error verifying peer handshake signature&quot;</span>);
+                    <span class="macro">error!</span>(<span class="string">&quot;Error verifying peer handshake signature&quot;</span>);
                 }
             },
             <span class="string">&quot;REQBLOCK&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
@@ -1226,8 +1210,7 @@
                     .<span class="kw">await</span>
                 {
                     <span class="prelude-val">Some</span>(<span class="ident">_block</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="macro">event!</span>(
-                            <span class="ident">Level::INFO</span>,
+                        <span class="macro">info!</span>(
                             <span class="string">&quot;SNDBLKHD hash already known: {}&quot;</span>,
                             <span class="ident">hex::encode</span>(<span class="ident">send_block_head_message</span>.<span class="ident">get_block_hash</span>()),
                         );
@@ -1254,8 +1237,7 @@
                     .<span class="kw">await</span>;
             }
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">event!</span>(
-                    <span class="ident">Level::ERROR</span>,
+                <span class="macro">error!</span>(
                     <span class="string">&quot;Unhandled command received by client... {}&quot;</span>,
                     <span class="kw-2">&amp;</span><span class="ident">api_message</span>.<span class="ident">get_message_name_as_string</span>()
                 );
@@ -1321,8 +1303,7 @@
                 <span class="kw">let</span> <span class="ident">api_message</span> <span class="op">=</span> <span class="ident">APIMessage::deserialize</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>.<span class="ident">as_bytes</span>().<span class="ident">to_vec</span>());
                 <span class="ident">SaitoPeer::handle_peer_message</span>(<span class="ident">api_message</span>, <span class="ident">connection_id</span>).<span class="kw">await</span>;
             } <span class="kw">else</span> {
-                <span class="macro">event!</span>(
-                    <span class="ident">Level::ERROR</span>,
+                <span class="macro">error!</span>(
                     <span class="string">&quot;Message of length 0... why?\n
                     This seems to occur if we aren&#39;t holding a reference to the sender/stream on the\n
                     other end of the connection. I suspect that when the stream goes out of scope,\n
@@ -1373,10 +1354,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">socket_handshake_verify</span>(<span class="ident">message_data</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">HandshakeChallenge</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">challenge</span> <span class="op">=</span> <span class="ident">HandshakeChallenge::deserialize</span>(<span class="ident">message_data</span>);
     <span class="kw">if</span> <span class="ident">challenge</span>.<span class="ident">timestamp</span>() <span class="op">&lt;</span> <span class="ident">create_timestamp</span>() <span class="op">-</span> <span class="ident">CHALLENGE_EXPIRATION_TIME</span> {
-        <span class="macro">event!</span>(
-            <span class="ident">Level::ERROR</span>,
-            <span class="string">&quot;Error validating timestamp for handshake complete&quot;</span>
-        );
+        <span class="macro">error!</span>(<span class="string">&quot;Error validating timestamp for handshake complete&quot;</span>);
         <span class="kw">return</span> <span class="prelude-val">None</span>;
     }
     <span class="comment">// we verify both signatures even though one is &quot;ours&quot;. This function is called during both</span>
@@ -1386,7 +1364,7 @@
         <span class="ident">challenge</span>.<span class="ident">opponent_sig</span>().<span class="ident">unwrap</span>(),
         <span class="ident">challenge</span>.<span class="ident">opponent_pubkey</span>(),
     ) {
-        <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;Error with validating opponent sig&quot;</span>);
+        <span class="macro">error!</span>(<span class="string">&quot;Error with validating opponent sig&quot;</span>);
         <span class="kw">return</span> <span class="prelude-val">None</span>;
     }
     <span class="kw">if</span> <span class="op">!</span><span class="ident">verify</span>(
@@ -1395,7 +1373,7 @@
         <span class="ident">challenge</span>.<span class="ident">challenger_pubkey</span>(),
     ) {
         <span class="comment">// TODO figure out how to return more meaningful errors from Warp and replace all the warp::reject</span>
-        <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;Error with validating challenger sig&quot;</span>);
+        <span class="macro">error!</span>(<span class="string">&quot;Error with validating challenger sig&quot;</span>);
         <span class="kw">return</span> <span class="prelude-val">None</span>;
     }
 

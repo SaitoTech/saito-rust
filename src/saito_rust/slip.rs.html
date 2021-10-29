@@ -407,10 +407,6 @@
 <span id="407">407</span>
 <span id="408">408</span>
 <span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
-<span id="413">413</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain::UtxoSet</span>,
@@ -418,10 +414,10 @@
 };
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
 <span class="kw">use</span> <span class="ident">bigint::uint::U256</span>;
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">error</span>, <span class="ident">info</span>};
 <span class="kw">use</span> <span class="ident">macros::TryFromByte</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>};
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="doccomment">/// The size of a serilized slip in bytes.</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SLIP_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">75</span>;
@@ -483,7 +479,7 @@
                     <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">value</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
                         <span class="bool-val">true</span>
                     } <span class="kw">else</span> {
-                        <span class="macro">println!</span>(
+                        <span class="macro">info!</span>(
                             <span class="string">&quot;in utxoset but invalid: value is {} at {:?}&quot;</span>,
                             <span class="kw-2">*</span><span class="ident">value</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxoset_key</span>
                         );
@@ -491,9 +487,8 @@
                     }
                 }
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;not in utxoset so invalid&quot;</span>);
-                    <span class="macro">event!</span>(
-                        <span class="ident">Level::ERROR</span>,
+                    <span class="macro">info!</span>(<span class="string">&quot;not in utxoset so invalid&quot;</span>);
+                    <span class="macro">error!</span>(
                         <span class="string">&quot;value is returned false: {:?} w/ type {:?}  ordinal {} and amount {}&quot;</span>,
                         <span class="self">self</span>.<span class="ident">utxoset_key</span>,
                         <span class="self">self</span>.<span class="ident">get_slip_type</span>(),
@@ -516,7 +511,7 @@
     ) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span> {
             <span class="kw">if</span> <span class="ident">_lc</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">true</span> {
-                <span class="macro">println!</span>(
+                <span class="macro">info!</span>(
                     <span class="string">&quot; ====&gt; update deposit to {}: {:?} -- {:?}&quot;</span>,
                     <span class="ident">slip_value</span>,
                     <span class="self">self</span>.<span class="ident">get_utxoset_key</span>(),
@@ -526,7 +521,7 @@
         }
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
             <span class="kw">if</span> <span class="ident">_lc</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">true</span> {
-                <span class="macro">println!</span>(
+                <span class="macro">info!</span>(
                     <span class="string">&quot; ====&gt; update output to {}: {:?} -- {:?}&quot;</span>,
                     <span class="ident">slip_value</span>,
                     <span class="self">self</span>.<span class="ident">get_utxoset_key</span>(),
@@ -539,9 +534,9 @@
             <span class="comment">//</span>
             <span class="comment">// TODO cleanup once ready</span>
             <span class="comment">//</span>
-            <span class="comment">//println!(&quot;update utxoset: {:?} value {} lc -&gt; {}&quot;, self.utxoset_key, slip_value, _lc);</span>
-            <span class="comment">//println!(&quot;slip_ordinal: {}&quot;, self.get_slip_ordinal());</span>
-            <span class="comment">//println!(&quot;slip_amount: {}&quot;, self.get_amount());</span>
+            <span class="comment">//info!(&quot;update utxoset: {:?} value {} lc -&gt; {}&quot;, self.utxoset_key, slip_value, _lc);</span>
+            <span class="comment">//info!(&quot;slip_ordinal: {}&quot;, self.get_slip_ordinal());</span>
+            <span class="comment">//info!(&quot;slip_amount: {}&quot;, self.get_amount());</span>
             <span class="comment">//utxoset.entry(self.utxoset_key).or_insert(slip_value);</span>
             <span class="comment">//</span>
             <span class="comment">// TODO find more efficient update operation</span>
@@ -612,10 +607,7 @@
     <span class="comment">//</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">utxoset</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AHashMap</span><span class="op">&lt;</span><span class="ident">SaitoUTXOSetKey</span>, <span class="ident">u64</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_utxoset_key</span>() <span class="op">=</span><span class="op">=</span> [<span class="number">0</span>; <span class="number">74</span>] {
-            <span class="macro">event!</span>(
-                <span class="ident">Level::ERROR</span>,
-                <span class="string">&quot;ERROR 572034: asked to remove a slip without its utxoset_key properly set!&quot;</span>
-            );
+            <span class="macro">error!</span>(<span class="string">&quot;ERROR 572034: asked to remove a slip without its utxoset_key properly set!&quot;</span>);
             <span class="bool-val">false</span>;
         }
         <span class="ident">utxoset</span>.<span class="ident">remove_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_utxoset_key</span>());
@@ -650,7 +642,7 @@
         <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">U256::from_big_endian</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_utxoset_key</span>()[<span class="number">42</span>..<span class="number">74</span>]);
         <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">U256::from_big_endian</span>(<span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">get_utxoset_key</span>()[<span class="number">42</span>..<span class="number">74</span>]);
 
-        <span class="macro">println!</span>(<span class="string">&quot;{:?} --- {:?}&quot;</span>, <span class="ident">a</span>, <span class="ident">b</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;{:?} --- {:?}&quot;</span>, <span class="ident">a</span>, <span class="ident">b</span>);
 
         <span class="kw">if</span> <span class="ident">a</span> <span class="op">&gt;</span> <span class="ident">b</span> {
             <span class="kw">return</span> <span class="number">1</span>;

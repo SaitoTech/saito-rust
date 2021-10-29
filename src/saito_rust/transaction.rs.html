@@ -1045,27 +1045,6 @@
 <span id="1045">1045</span>
 <span id="1046">1046</span>
 <span id="1047">1047</span>
-<span id="1048">1048</span>
-<span id="1049">1049</span>
-<span id="1050">1050</span>
-<span id="1051">1051</span>
-<span id="1052">1052</span>
-<span id="1053">1053</span>
-<span id="1054">1054</span>
-<span id="1055">1055</span>
-<span id="1056">1056</span>
-<span id="1057">1057</span>
-<span id="1058">1058</span>
-<span id="1059">1059</span>
-<span id="1060">1060</span>
-<span id="1061">1061</span>
-<span id="1062">1062</span>
-<span id="1063">1063</span>
-<span id="1064">1064</span>
-<span id="1065">1065</span>
-<span id="1066">1066</span>
-<span id="1067">1067</span>
-<span id="1068">1068</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
@@ -1082,6 +1061,7 @@
 };
 <span class="kw">use</span> <span class="ident">ahash::AHashMap</span>;
 <span class="kw">use</span> <span class="ident">bigint::uint::U256</span>;
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">error</span>, <span class="ident">info</span>};
 <span class="kw">use</span> <span class="ident">macros::TryFromByte</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
@@ -1089,8 +1069,6 @@
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
-
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">TRANSACTION_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">89</span>;
 
@@ -1224,7 +1202,7 @@
 
         <span class="kw">let</span> <span class="ident">available_balance</span> <span class="op">=</span> <span class="ident">wallet</span>.<span class="ident">get_available_balance</span>();
         <span class="kw">let</span> <span class="ident">total_requested</span> <span class="op">=</span> <span class="ident">with_payment</span> <span class="op">+</span> <span class="ident">with_fee</span>;
-        <span class="comment">// println!(&quot;in generate transaction ab: {} and pr: {} and fr: {}&quot;, available_balance, with_payment, with_fee);</span>
+        <span class="comment">// info!(&quot;in generate transaction ab: {} and pr: {} and fr: {}&quot;, available_balance, with_payment, with_fee);</span>
 
         <span class="kw">if</span> <span class="ident">available_balance</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">total_requested</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
@@ -1897,7 +1875,7 @@
                 <span class="kw">let</span> <span class="ident">sig</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_signature</span>();
                 <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_inputs</span>()[<span class="number">0</span>].<span class="ident">get_publickey</span>();
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">hash_for_signature</span>, <span class="ident">sig</span>, <span class="ident">publickey</span>) {
-                    <span class="macro">event!</span>(<span class="ident">Level::ERROR</span>, <span class="string">&quot;message verifies not&quot;</span>);
+                    <span class="macro">error!</span>(<span class="string">&quot;message verifies not&quot;</span>);
                     <span class="kw">return</span> <span class="bool-val">false</span>;
                 }
             } <span class="kw">else</span> {
@@ -1907,10 +1885,7 @@
                 <span class="comment">// it here, we choose to throw an error to raise visibility of</span>
                 <span class="comment">// unexpected behavior.</span>
                 <span class="comment">//</span>
-                <span class="macro">event!</span>(
-                    <span class="ident">Level::ERROR</span>,
-                    <span class="string">&quot;ERROR 757293: there is no hash for signature in a transaction&quot;</span>
-                );
+                <span class="macro">error!</span>(<span class="string">&quot;ERROR 757293: there is no hash for signature in a transaction&quot;</span>);
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
 
@@ -1918,10 +1893,7 @@
             <span class="comment">// validate sender exists</span>
             <span class="comment">//</span>
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_inputs</span>().<span class="ident">is_empty</span>() {
-                <span class="macro">event!</span>(
-                    <span class="ident">Level::ERROR</span>,
-                    <span class="string">&quot;ERROR 582039: less than 1 input in transaction&quot;</span>
-                );
+                <span class="macro">error!</span>(<span class="string">&quot;ERROR 582039: less than 1 input in transaction&quot;</span>);
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
 
@@ -1933,10 +1905,7 @@
             <span class="comment">// routing path is fraudulent.</span>
             <span class="comment">//</span>
             <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">validate_routing_path</span>() {
-                <span class="macro">event!</span>(
-                    <span class="ident">Level::ERROR</span>,
-                    <span class="string">&quot;ERROR 482033: routing paths do not validate, transaction invalid&quot;</span>
-                );
+                <span class="macro">error!</span>(<span class="string">&quot;ERROR 482033: routing paths do not validate, transaction invalid&quot;</span>);
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
 
@@ -1947,19 +1916,11 @@
                 <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">get_transaction_type</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">TransactionType::Fee</span>
                 <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">get_transaction_type</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">TransactionType::Vip</span>
             {
-                <span class="macro">event!</span>(
-                    <span class="ident">Level::TRACE</span>,
-                    <span class="string">&quot;{} in and {} out&quot;</span>,
-                    <span class="self">self</span>.<span class="ident">total_in</span>,
-                    <span class="self">self</span>.<span class="ident">total_out</span>
-                );
+                <span class="macro">info!</span>(<span class="string">&quot;{} in and {} out&quot;</span>, <span class="self">self</span>.<span class="ident">total_in</span>, <span class="self">self</span>.<span class="ident">total_out</span>);
                 <span class="kw">for</span> <span class="ident">z</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">get_outputs</span>() {
-                    <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;{:?} --- &quot;</span>, <span class="ident">z</span>.<span class="ident">get_amount</span>());
+                    <span class="macro">info!</span>(<span class="string">&quot;{:?} --- &quot;</span>, <span class="ident">z</span>.<span class="ident">get_amount</span>());
                 }
-                <span class="macro">event!</span>(
-                    <span class="ident">Level::TRACE</span>,
-                    <span class="string">&quot;ERROR 672941: transaction spends more than it has available&quot;</span>
-                );
+                <span class="macro">info!</span>(<span class="string">&quot;ERROR 672941: transaction spends more than it has available&quot;</span>);
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
         }
@@ -1989,18 +1950,18 @@
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="ident">transaction_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::StakerWithdrawal</span> {
             <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() {
-                <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">i</span>);
+                <span class="macro">info!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">i</span>);
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalPending</span> {
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">staking</span>.<span class="ident">validate_slip_in_pending</span>(<span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">clone</span>()) {
-                        <span class="macro">println!</span>(<span class="string">&quot;Staking Withdrawal Pending input slip is not in Pending thus transaction invalid!&quot;</span>);
+                        <span class="macro">info!</span>(<span class="string">&quot;Staking Withdrawal Pending input slip is not in Pending thus transaction invalid!&quot;</span>);
                         <span class="kw">return</span> <span class="bool-val">false</span>;
                     }
                 }
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalStaking</span> {
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">staking</span>.<span class="ident">validate_slip_in_stakers</span>(<span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>].<span class="ident">clone</span>()) {
-                        <span class="macro">println!</span>(<span class="string">&quot;Staking Withdrawal Staker input slip is not in Staker thus transaction invalid!&quot;</span>);
-                        <span class="macro">println!</span>(<span class="string">&quot;STAKING SLIP WE HAVE: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>]);
-                        <span class="macro">println!</span>(<span class="string">&quot;STAKING TABLE: {:?}&quot;</span>, <span class="ident">staking</span>.<span class="ident">stakers</span>);
+                        <span class="macro">info!</span>(<span class="string">&quot;Staking Withdrawal Staker input slip is not in Staker thus transaction invalid!&quot;</span>);
+                        <span class="macro">info!</span>(<span class="string">&quot;STAKING SLIP WE HAVE: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">inputs</span>[<span class="ident">i</span>]);
+                        <span class="macro">info!</span>(<span class="string">&quot;STAKING TABLE: {:?}&quot;</span>, <span class="ident">staking</span>.<span class="ident">stakers</span>);
                         <span class="kw">return</span> <span class="bool-val">false</span>;
                     }
                 }
@@ -2030,10 +1991,7 @@
         <span class="comment">// all transactions must have outputs</span>
         <span class="comment">//</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_outputs</span>().<span class="ident">is_empty</span>() {
-            <span class="macro">event!</span>(
-                <span class="ident">Level::ERROR</span>,
-                <span class="string">&quot;ERROR 582039: less than 1 output in transaction&quot;</span>
-            );
+            <span class="macro">error!</span>(<span class="string">&quot;ERROR 582039: less than 1 output in transaction&quot;</span>);
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
 
@@ -2046,8 +2004,8 @@
         <span class="comment">//for i in 0..self.inputs.len() {</span>
         <span class="comment">//    let is_valid = self.inputs[i].validate(utxoset);</span>
         <span class="comment">//    if is_valid != true {</span>
-        <span class="comment">//        //println!(&quot;tx: {:?}&quot;, self);</span>
-        <span class="comment">//        println!(</span>
+        <span class="comment">//        //info!(&quot;tx: {:?}&quot;, self);</span>
+        <span class="comment">//        info!(</span>
         <span class="comment">//            &quot;this input is invalid: {:?}&quot;,</span>
         <span class="comment">//            self.inputs[i].get_slip_type()</span>
         <span class="comment">//        );</span>

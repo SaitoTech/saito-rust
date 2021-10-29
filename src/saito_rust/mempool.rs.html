@@ -438,17 +438,6 @@
 <span id="438">438</span>
 <span id="439">439</span>
 <span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
@@ -461,9 +450,9 @@
     <span class="ident">transaction::Transaction</span>,
     <span class="ident">wallet::Wallet</span>,
 };
+<span class="kw">use</span> <span class="ident">log::info</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashMap</span>, <span class="ident">collections::VecDeque</span>, <span class="ident">sync::Arc</span>, <span class="ident">thread::sleep</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">mpsc</span>, <span class="ident">RwLock</span>};
-<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">event</span>, <span class="ident">Level</span>};
 
 <span class="comment">//</span>
 <span class="comment">// In addition to responding to global broadcast messages, the</span>
@@ -531,7 +520,7 @@
             .<span class="ident">any</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> <span class="ident">transaction</span>.<span class="ident">is_golden_ticket</span>())
         {
         } <span class="kw">else</span> {
-            <span class="macro">event!</span>(<span class="ident">Level::TRACE</span>, <span class="string">&quot;adding golden ticket to mempool...&quot;</span>);
+            <span class="macro">info!</span>(<span class="string">&quot;adding golden ticket to mempool...&quot;</span>);
             <span class="self">self</span>.<span class="ident">transactions</span>.<span class="ident">push</span>(<span class="ident">transaction</span>);
         }
     }
@@ -550,11 +539,7 @@
         }
     }
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">add_transaction</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">transaction</span>: <span class="ident">Transaction</span>) {
-        <span class="macro">event!</span>(
-            <span class="ident">Level::INFO</span>,
-            <span class="string">&quot;add_transaction {:?}&quot;</span>,
-            <span class="ident">transaction</span>.<span class="ident">get_transaction_type</span>()
-        );
+        <span class="macro">info!</span>(<span class="string">&quot;add_transaction {:?}&quot;</span>, <span class="ident">transaction</span>.<span class="ident">get_transaction_type</span>());
         <span class="kw">let</span> <span class="ident">tx_sig_to_insert</span> <span class="op">=</span> <span class="ident">transaction</span>.<span class="ident">get_signature</span>();
 
         <span class="comment">//</span>
@@ -624,14 +609,7 @@
             <span class="kw">let</span> <span class="ident">work_available</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_routing_work_available</span>();
             <span class="kw">let</span> <span class="ident">work_needed</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_routing_work_needed</span>(<span class="ident">previous_block</span>, <span class="ident">current_timestamp</span>);
             <span class="kw">let</span> <span class="ident">time_elapsed</span> <span class="op">=</span> <span class="ident">current_timestamp</span> <span class="op">-</span> <span class="ident">previous_block</span>.<span class="ident">get_timestamp</span>();
-            <span class="macro">println!</span>(
-                <span class="string">&quot;can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} &quot;</span>,
-                <span class="ident">work_available</span>,
-                <span class="ident">work_needed</span>,
-                <span class="ident">time_elapsed</span>
-            );
-            <span class="macro">event!</span>(
-                <span class="ident">Level::INFO</span>,
+            <span class="macro">info!</span>(
                 <span class="string">&quot;can_bundle_block. work available: {:?} -- work needed: {:?} -- time elapsed: {:?} &quot;</span>,
                 <span class="ident">work_available</span>,
                 <span class="ident">work_needed</span>,
@@ -719,12 +697,12 @@
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">current_timestamp</span>: <span class="ident">u64</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Block</span><span class="op">&gt;</span> {
-    <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;try_bundle_block&quot;</span>);
+    <span class="macro">info!</span>(<span class="string">&quot;try_bundle_block&quot;</span>);
     <span class="comment">// We use a boolean here so we can avoid taking the write lock most of the time</span>
     <span class="kw">let</span> <span class="ident">can_bundle</span>;
     {
         <span class="kw">let</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-        <span class="macro">event!</span>(<span class="ident">Level::INFO</span>, <span class="string">&quot;got mempool_lock&quot;</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;got mempool_lock&quot;</span>);
         <span class="ident">can_bundle</span> <span class="op">=</span> <span class="ident">mempool</span>
             .<span class="ident">can_bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">current_timestamp</span>)
             .<span class="kw">await</span>;
