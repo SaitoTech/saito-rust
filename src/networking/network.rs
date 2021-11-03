@@ -716,7 +716,7 @@ mod tests {
                 .send(SaitoMessage::MempoolNewBlock { hash: [0; 32] })
                 .expect("error: BlockchainAddBlockFailure message failed to send");
         });
-        // Thesse messages should prompt SNDBLKHD commands to each peer
+        // These messages should prompt SNDBLKHD commands to each peer
         for _i in 0..2 {
             let resp = ws_client.recv().await.unwrap();
             let api_message_request = APIMessage::deserialize(&resp.as_bytes().to_vec());
