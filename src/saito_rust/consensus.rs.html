@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src&#x2F;consensus.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>consensus.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../saito_rust/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input"name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src&#x2F;consensus.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>consensus.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../saito_rust/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -276,13 +276,12 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
-</pre><pre class="rust">
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::crypto::SaitoHash</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::golden_ticket::GoldenTicket</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::miner::Miner</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::storage::Storage</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::test_utilities::test_manager::TestManager</span>;
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::wallet::Wallet</span>;
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto::SaitoHash</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::golden_ticket::GoldenTicket</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::miner::Miner</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::storage::Storage</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::test_utilities::test_manager::TestManager</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">blockchain::Blockchain</span>, <span class="ident">mempool::Mempool</span>, <span class="ident">transaction::Transaction</span>};
 <span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">App</span>, <span class="ident">Arg</span>};
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -314,7 +313,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// The entry point to the Saito consensus runtime</span>
 <span class="doccomment">///</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="comment">//</span>
     <span class="comment">// handle shutdown messages w/ broadcast channel</span>
     <span class="comment">//</span>
@@ -358,7 +357,7 @@
     <span class="comment">//</span>
     <span class="comment">// Run consensus</span>
     <span class="comment">//</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">crate</span><span class="ident">::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="comment">//</span>
         <span class="comment">// create main broadcast channel</span>
         <span class="comment">//</span>
@@ -493,7 +492,7 @@
         <span class="comment">//</span>
         <span class="comment">// Mempool</span>
         <span class="comment">//</span>
-            <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::mempool::run</span>(
+            <span class="ident">res</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::mempool::run</span>(
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
@@ -507,7 +506,7 @@
         <span class="comment">//</span>
         <span class="comment">// Blockchain</span>
         <span class="comment">//</span>
-            <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::blockchain::run</span>(
+            <span class="ident">res</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::blockchain::run</span>(
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
@@ -520,7 +519,7 @@
         <span class="comment">//</span>
         <span class="comment">// Miner</span>
         <span class="comment">//</span>
-            <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::miner::run</span>(
+            <span class="ident">res</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::miner::run</span>(
                 <span class="ident">miner_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
@@ -533,7 +532,7 @@
         <span class="comment">//</span>
         <span class="comment">// Network</span>
         <span class="comment">//</span>
-            <span class="ident">res</span> <span class="op">=</span> <span class="kw">crate</span><span class="ident">::networking::network::run</span>(
+            <span class="ident">res</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::networking::network::run</span>(
                 <span class="ident">settings</span>,
                 <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
@@ -555,7 +554,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 }
-</pre></div>
+</code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script>
 </body></html>
