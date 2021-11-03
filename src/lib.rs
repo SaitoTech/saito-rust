@@ -49,6 +49,7 @@ extern crate tracing;
 //   i.e. uncomment this line:
 // [cfg(feature = "test-utilities")]
 pub mod test_utilities;
+pub mod test_setup;
 
 /// Error returned by most functions.
 ///
