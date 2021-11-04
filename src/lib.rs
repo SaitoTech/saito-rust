@@ -48,6 +48,7 @@ extern crate tracing;
 // TODO put test_utilities behind a feature flag so it's not built into non-test builds
 //   i.e. uncomment this line:
 // [cfg(feature = "test-utilities")]
+pub mod test_setup;
 pub mod test_utilities;
 
 /// Error returned by most functions.
