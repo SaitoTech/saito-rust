@@ -348,7 +348,7 @@ impl Blockchain {
             self.broadcast_channel_sender
                 .as_ref()
                 .unwrap()
-                .send(SaitoMessage::NetworkNewBlock { hash: [0; 32] })
+                .send(SaitoMessage::NetworkNewBlock { hash: block_hash })
                 .expect("error: BlockchainAddBlockFailure message failed to send");
         }
         trace!(" ... block save done:            {:?}", create_timestamp());
