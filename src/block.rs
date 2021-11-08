@@ -1506,10 +1506,7 @@ impl Block {
                     golden_ticket.get_random(),
                     golden_ticket.get_publickey(),
                 );
-                if !GoldenTicket::is_valid_solution(
-                    solution,
-                    previous_block.get_difficulty(),
-                ) {
+                if !GoldenTicket::is_valid_solution(solution, previous_block.get_difficulty()) {
                     error!(
                         "ERROR: Golden Ticket solution does not validate against previous block hash and difficulty"
                     );
