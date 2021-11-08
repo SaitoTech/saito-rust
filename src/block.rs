@@ -1502,11 +1502,11 @@ impl Block {
                     self.get_transactions()[gt_idx].get_message().to_vec(),
                 );
                 let solution = GoldenTicket::generate_solution(
+                    previous_block.get_hash(),
                     golden_ticket.get_random(),
                     golden_ticket.get_publickey(),
                 );
                 if !GoldenTicket::is_valid_solution(
-                    previous_block.get_hash(),
                     solution,
                     previous_block.get_difficulty(),
                 ) {

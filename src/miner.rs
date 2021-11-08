@@ -47,9 +47,8 @@ impl Miner {
             }
 
             let random_bytes = hash(&generate_random_bytes(32));
-            let solution = GoldenTicket::generate_solution(random_bytes, publickey);
-
-            if GoldenTicket::is_valid_solution(self.target, solution, self.difficulty) {
+            let solution = GoldenTicket::generate_solution(self.target, random_bytes, publickey);
+            if GoldenTicket::is_valid_solution(solution, self.difficulty) {
                 {
                     let vote = 0;
                     let gt = GoldenTicket::new(vote, self.target, random_bytes, publickey);
@@ -78,11 +77,11 @@ impl Miner {
         let wallet = self.wallet_lock.read().await;
         let publickey = wallet.get_publickey();
         let mut random_bytes = hash(&generate_random_bytes(32));
-        let mut solution = GoldenTicket::generate_solution(random_bytes, publickey);
+        let mut solution = GoldenTicket::generate_solution(self.target, random_bytes, publickey);
 
-        while !GoldenTicket::is_valid_solution(block_hash, solution, block_difficulty) {
+        while !GoldenTicket::is_valid_solution(solution, block_difficulty) {
             random_bytes = hash(&generate_random_bytes(32));
-            solution = GoldenTicket::generate_solution(random_bytes, publickey);
+            solution = GoldenTicket::generate_solution(block_hash, random_bytes, publickey);
         }
 
         let vote = 0;
