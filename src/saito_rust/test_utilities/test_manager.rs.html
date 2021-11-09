@@ -757,6 +757,7 @@
 <span id="757">757</span>
 <span id="758">758</span>
 <span id="759">759</span>
+<span id="760">760</span>
 </pre><pre class="rust"><code><span class="comment">//</span>
 <span class="comment">// TestManager provides a set of functions to simplify testing. It&#39;s goal is to</span>
 <span class="comment">// help make tests more succinct.</span>
@@ -818,7 +819,7 @@
         <span class="ident">normal_txs</span>: <span class="ident">usize</span>,
         <span class="ident">has_golden_ticket</span>: <span class="ident">bool</span>,
         <span class="ident">additional_txs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Transaction</span><span class="op">&gt;</span>,
-    ) {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
         <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">latest_block_hash</span>;
         <span class="comment">//info!(&quot;ADDING BLOCK 2! {:?}&quot;, parent_hash);</span>
         <span class="kw">let</span> <span class="ident">_block</span> <span class="op">=</span> <span class="self">self</span>
@@ -831,6 +832,7 @@
                 <span class="ident">parent_hash</span>,
             )
             .<span class="kw">await</span>;
+        <span class="ident">_block</span>
     }
 
     <span class="comment">//</span>
