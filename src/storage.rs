@@ -63,16 +63,17 @@ impl Storage {
         filename.push_str(&".sai");
         filename
     }
-    pub fn write_block_to_disk(block: &mut Block) {
+    pub fn write_block_to_disk(block: &mut Block) -> String {
         if block.get_block_type() == BlockType::Pruned {
             panic!("pruned blocks cannot be saved");
         }
         let filename = Storage::generate_block_filename(block);
         if !Path::new(&filename).exists() {
-            let mut buffer = File::create(filename).unwrap();
+            let mut buffer = File::create(filename.clone()).unwrap();
             let byte_array: Vec<u8> = block.serialize_for_net(BlockType::Full);
             buffer.write_all(&byte_array[..]).unwrap();
         }
+        filename
     }
 
     pub async fn load_blocks_from_disk(blockchain_lock: Arc<RwLock<Blockchain>>) {
@@ -200,6 +201,9 @@ impl Storage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utilities::test_manager::TestManager;
+    use crate::time::create_timestamp;
+    use crate::wallet::Wallet;
 
     impl Drop for Blockchain {
         fn drop(&mut self) {
@@ -213,7 +217,12 @@ mod tests {
                         Err(err) => {
                             eprintln!("Error cleaning up after tests {}", err);
                         }
-                        _ => {}
+                        _ => {
+                            log::trace!(
+                                "block removed from disk : {}",
+                                path.path().to_str().unwrap()
+                            );
+                        }
                     }
                 }
             }
@@ -230,5 +239,24 @@ mod tests {
         }
 
         assert_eq!(total_issuance, MAX_TOKEN_SUPPLY);
+    }
+
+    #[tokio::test]
+    async fn write_read_block_to_file_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+        let current_timestamp = create_timestamp();
+
+        let mut block = test_manager
+            .generate_block_and_metadata([0; 32], current_timestamp, 0, 1, false, vec![])
+            .await;
+
+        let filename = Storage::write_block_to_disk(&mut block);
+        log::trace!("block written to file : {}", filename);
+        let retrieved_block = Storage::load_block_from_disk(filename).await;
+
+        assert_eq!(block.get_hash(), retrieved_block.get_hash());
     }
 }
