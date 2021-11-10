@@ -59,7 +59,7 @@ impl TestManager {
         normal_txs: usize,
         has_golden_ticket: bool,
         additional_txs: Vec<Transaction>,
-    ) {
+    ) -> SaitoHash {
         let parent_hash = self.latest_block_hash;
         //info!("ADDING BLOCK 2! {:?}", parent_hash);
         let _block = self
@@ -72,6 +72,7 @@ impl TestManager {
                 parent_hash,
             )
             .await;
+        _block
     }
 
     //
