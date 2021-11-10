@@ -1321,7 +1321,6 @@ pub async fn run(
 #[cfg(test)]
 
 mod tests {
-
     use super::*;
     use crate::test_utilities::test_manager::TestManager;
 
@@ -1753,6 +1752,54 @@ mod tests {
                 block15_hash
             );
             assert_eq!(blockchain.get_latest_block_hash(), block15_hash);
+        }
+    }
+
+    /// Loading blocks into a blockchain which was were created from another blockchain instance
+    #[tokio::test]
+    async fn load_blocks_from_another_blockchain_test() {
+        let wallet_lock1 = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock1 = Arc::new(RwLock::new(Blockchain::new(wallet_lock1.clone())));
+        let mut test_manager1 = TestManager::new(blockchain_lock1.clone(), wallet_lock1.clone());
+
+        let current_timestamp = create_timestamp();
+
+        let block1_hash = test_manager1
+            .add_block(current_timestamp + 100000, 0, 10, false, vec![])
+            .await;
+        let block2_hash = test_manager1
+            .add_block(current_timestamp + 200000, 0, 20, true, vec![])
+            .await;
+
+        let wallet_lock2 = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock2 = Arc::new(RwLock::new(Blockchain::new(wallet_lock2.clone())));
+        let _test_manager2 = TestManager::new(blockchain_lock2.clone(), wallet_lock2.clone());
+
+        Storage::load_blocks_from_disk(blockchain_lock2.clone()).await;
+
+        {
+            let blockchain1 = blockchain_lock1.read().await;
+            let blockchain2 = blockchain_lock2.read().await;
+
+            let block1_chain1 = blockchain1.get_block(&block1_hash).await.unwrap();
+            let block1_chain2 = blockchain2.get_block(&block1_hash).await.unwrap();
+
+            let block2_chain1 = blockchain1.get_block(&block2_hash).await.unwrap();
+            let block2_chain2 = blockchain2.get_block(&block2_hash).await.unwrap();
+
+            for (block_new, block_old) in [
+                (block1_chain2, block1_chain1),
+                (block2_chain2, block2_chain1),
+            ] {
+                assert_eq!(block_new.get_hash(), block_old.get_hash());
+                assert_eq!(block_new.has_golden_ticket, block_old.has_golden_ticket);
+                assert_eq!(
+                    block_new.get_previous_block_hash(),
+                    block_old.get_previous_block_hash()
+                );
+                assert_eq!(block_new.get_block_type(), block_old.get_block_type());
+                assert_eq!(block_new.get_signature(), block_old.get_signature());
+            }
         }
     }
 }
