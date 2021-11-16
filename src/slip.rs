@@ -29,7 +29,6 @@ pub enum SlipType {
     StakerDeposit,
     StakerWithdrawalPending,
     StakerWithdrawalStaking,
-    Other, // need more than one value for TryFromBytes
 }
 
 #[serde_with::serde_as]
