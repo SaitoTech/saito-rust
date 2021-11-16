@@ -26,6 +26,7 @@ use warp::{Filter, Rejection};
 
 use super::message_types::send_block_head_message::SendBlockHeadMessage;
 use super::peer::{PeerSetting, OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL};
+use super::signals::signal_for_shutdown;
 
 use config::Config;
 
@@ -192,7 +193,7 @@ impl Network {
                                 }
                             }
                             Err(error) => {
-                                error!("Error reading from peer socket {}", error);
+                                error!("Error reading from peer socket {:?}", error);
                                 let peers_db_global = PEERS_DB_GLOBAL.clone();
                                 let mut peer_db = peers_db_global.write().await;
                                 let peer = peer_db.get_mut(&connection_id).unwrap();
@@ -204,7 +205,7 @@ impl Network {
                 Network::handshake_and_synchronize_chain(&connection_id, wallet_lock).await;
             }
             Err(error) => {
-                error!("Error connecting to peer {}", error);
+                error!("Error connecting to peer {:?}", error);
                 let mut peer_db = peers_db_global.write().await;
                 let peer = peer_db.get_mut(&connection_id).unwrap();
                 peer.set_is_connected_or_connecting(false).await;
@@ -314,7 +315,9 @@ impl Network {
                 self.blockchain_lock.clone(),
             ));
         println!("Listening for HTTP on port {}", port);
-        warp::serve(routes).run((host, port)).await;
+        let (_, server) =
+            warp::serve(routes).bind_with_graceful_shutdown((host, port), signal_for_shutdown());
+        server.await;
         Ok(())
     }
     // connects to any peers configured in our peers list. Opens a socket, does handshake, sychronizes, etc.
@@ -716,7 +719,7 @@ mod tests {
                 .send(SaitoMessage::MempoolNewBlock { hash: [0; 32] })
                 .expect("error: BlockchainAddBlockFailure message failed to send");
         });
-        // Thesse messages should prompt SNDBLKHD commands to each peer
+        // These messages should prompt SNDBLKHD commands to each peer
         for _i in 0..2 {
             let resp = ws_client.recv().await.unwrap();
             let api_message_request = APIMessage::deserialize(&resp.as_bytes().to_vec());

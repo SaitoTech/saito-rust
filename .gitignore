@@ -3,3 +3,5 @@
 /test_data
 /src/data
 *.swp
+.idea/
+.vscode/

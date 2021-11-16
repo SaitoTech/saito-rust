@@ -372,9 +372,7 @@ impl SaitoPeer {
         });
     }
     // Handlers for all the network API commands, e.g. REQBLOCK.
-    async fn handle_peer_command(peer: &mut SaitoPeer, api_message_orig: APIMessage) {
-        // TODO eliminate this .clone():
-        let api_message = api_message_orig;
+    async fn handle_peer_command(peer: &mut SaitoPeer, api_message: APIMessage) {
         let mempool_lock = peer.mempool_lock.clone();
         let blockchain_lock = peer.blockchain_lock.clone();
         let command = api_message.get_message_name_as_string();
