@@ -12,7 +12,7 @@ use crate::util::format_url_string;
 
 use crate::wallet::Wallet;
 use futures::StreamExt;
-use log::{error, info};
+use log::{error, info, warn};
 use secp256k1::PublicKey;
 use tokio::sync::{broadcast, RwLock};
 use tokio::time::sleep;
@@ -26,6 +26,7 @@ use warp::{Filter, Rejection};
 
 use super::message_types::send_block_head_message::SendBlockHeadMessage;
 use super::peer::{PeerSetting, OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL};
+use super::signals::signal_for_shutdown;
 
 use config::Config;
 
@@ -192,7 +193,7 @@ impl Network {
                                 }
                             }
                             Err(error) => {
-                                error!("Error reading from peer socket {}", error);
+                                error!("Error reading from peer socket {:?}", error);
                                 let peers_db_global = PEERS_DB_GLOBAL.clone();
                                 let mut peer_db = peers_db_global.write().await;
                                 let peer = peer_db.get_mut(&connection_id).unwrap();
@@ -204,7 +205,7 @@ impl Network {
                 Network::handshake_and_synchronize_chain(&connection_id, wallet_lock).await;
             }
             Err(error) => {
-                error!("Error connecting to peer {}", error);
+                error!("Error connecting to peer {:?}", error);
                 let mut peer_db = peers_db_global.write().await;
                 let peer = peer_db.get_mut(&connection_id).unwrap();
                 peer.set_is_connected_or_connecting(false).await;
@@ -314,7 +315,9 @@ impl Network {
                 self.blockchain_lock.clone(),
             ));
         println!("Listening for HTTP on port {}", port);
-        warp::serve(routes).run((host, port)).await;
+        let (_, server) =
+            warp::serve(routes).bind_with_graceful_shutdown((host, port), signal_for_shutdown());
+        server.await;
         Ok(())
     }
     // connects to any peers configured in our peers list. Opens a socket, does handshake, sychronizes, etc.
@@ -339,7 +342,8 @@ impl Network {
                         // TODO implement this...
                         println!("MinerNewGoldenTicket");
                     }
-                    SaitoMessage::MempoolNewBlock { hash: block_hash } => {
+                    SaitoMessage::BlockchainSavedBlock { hash: block_hash } => {
+                        warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
                         Network::send_my_block_to_peers(block_hash).await;
                     }
                     _ => {}
@@ -406,6 +410,8 @@ mod tests {
                 PEERS_REQUEST_RESPONSES_GLOBAL, PEERS_REQUEST_WAKERS_GLOBAL,
             },
         },
+        test_utilities::test_manager::TestManager,
+        time::create_timestamp,
     };
     use secp256k1::PublicKey;
     use warp::{test::WsClient, ws::Message};
@@ -661,19 +667,69 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_mempool_does_sndblkhd() {
-        // TODO add a test here that triggers mempool/blockchain to send the MempoolNewBlock message.
-        //      The goal is to test send_my_block_to_peers.
-        //
-        //      1) connect a ws_client or 2
-        //      2) get mempool to make a block and do MempoolNewBlock
-        //      3) and then assert that the clients receive SNDBLKHD messages
-        //
-        //      This is difficult at the moment because mempool uses and internal broadcast channel to coordinate
-        //      between try_bundle_block() and the natural place to send the MempoolNewBlock would be inside
-        //      the MempoolMessage::LocalTryBundleBlock arm of mempool_channel_receiver.recv().
-        //      There is no easy way to send a message to mempool_channel external to mempool and therefore
-        //      no way to exercise the code in the match arm during testing.
+    async fn test_blockchain_causes_sndblkhd() {
+        // initialize peers db:
+        clean_peers_dbs().await;
+        // mock things:
+        let mut settings = config::Config::default();
+        settings.set("network.host", vec![127, 0, 0, 1]).unwrap();
+        settings.set("network.port", 3002).unwrap();
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
+
+        // TODO
+        // This should be in the blockchain contructor.
+        // Normally this is done in Network::run, but we need to set the broadcast_channel_sender here.
+        {
+            let mut blockchain = blockchain_lock.write().await;
+            blockchain.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+        }
+
+        // connect a peer
+        let mut ws_client = create_socket_and_do_handshake(
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        )
+        .await;
+
+        // Start the network listening for messages on the global broadcast channel.
+        // TODO All these things should also perhaps be passed to the network constructor
+        let wallet_lock_for_task = wallet_lock.clone();
+        let mempool_lock_for_task = mempool_lock.clone();
+        let blockchain_lock_for_task = blockchain_lock.clone();
+        tokio::spawn(async move {
+            crate::networking::network::run(
+                settings,
+                wallet_lock_for_task,
+                mempool_lock_for_task,
+                blockchain_lock_for_task,
+                broadcast_channel_receiver,
+            )
+            .await
+            .unwrap();
+        });
+
+        // make a block add add it to blockchain
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+        let current_timestamp = create_timestamp();
+        test_manager
+            .add_block(current_timestamp, 3, 0, false, vec![])
+            .await;
+
+        let blockchain = blockchain_lock.read().await;
+        assert_eq!(1, blockchain.get_latest_block_id());
+
+        // during add_block the blockchain should send a BlockchainSavedBlock message to the network which should cause
+        // a SNDBLKHD message to be sent to every peer that has completed handshake.
+        let resp = ws_client.recv().await.unwrap();
+        let api_message_request = APIMessage::deserialize(&resp.as_bytes().to_vec());
+        assert_eq!(
+            api_message_request.get_message_name_as_string(),
+            String::from("SNDBLKHD")
+        );
     }
 
     #[tokio::test]
@@ -710,10 +766,10 @@ mod tests {
         // send 2 message to network:
         tokio::spawn(async move {
             broadcast_channel_sender
-                .send(SaitoMessage::MempoolNewBlock { hash: [0; 32] })
+                .send(SaitoMessage::BlockchainSavedBlock { hash: [0; 32] })
                 .expect("error: BlockchainAddBlockFailure message failed to send");
             broadcast_channel_sender
-                .send(SaitoMessage::MempoolNewBlock { hash: [0; 32] })
+                .send(SaitoMessage::BlockchainSavedBlock { hash: [0; 32] })
                 .expect("error: BlockchainAddBlockFailure message failed to send");
         });
         // These messages should prompt SNDBLKHD commands to each peer
