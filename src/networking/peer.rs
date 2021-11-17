@@ -455,6 +455,7 @@ impl SaitoPeer {
                 }
             }
             "SNDBLKHD" => {
+                println!("handle_peer_command SNDBLKHD");
                 let send_block_head_message =
                     SendBlockHeadMessage::deserialize(api_message.get_message_data());
                 send_block_head_message.get_block_hash();
