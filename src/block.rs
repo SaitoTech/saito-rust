@@ -1851,7 +1851,6 @@ impl Block {
 #[cfg(test)]
 
 mod tests {
-
     use super::*;
     use crate::{
         slip::Slip,
@@ -1860,6 +1859,7 @@ mod tests {
         transaction::{Transaction, TransactionType},
         wallet::Wallet,
     };
+    use hex::FromHex;
 
     #[test]
     fn block_new_test() {
@@ -1924,6 +1924,35 @@ mod tests {
     // confirm we have not modified the length of the serialized block
     fn block_serialize_for_signature_hash() {
         let block = Block::new();
+        let serialized_body = block.serialize_for_signature();
+        assert_eq!(serialized_body.len(), 145);
+        TestManager::check_block_consistency(&block);
+    }
+
+    #[test]
+    fn block_serialize_for_signature_hash_with_data() {
+        let mut block = Block::new();
+
+        block.id = 10;
+        block.timestamp = 1637034582666;
+        block.previous_block_hash = <[u8; 32]>::from_hex(
+            "bcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8b",
+        )
+        .unwrap();
+        block.merkle_root = <[u8; 32]>::from_hex(
+            "ccf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8b",
+        )
+        .unwrap();
+        block.creator = <[u8; 33]>::from_hex(
+            "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8bcc",
+        )
+        .unwrap();
+        block.burnfee = 50000000;
+        block.difficulty = 0;
+        block.treasury = 0;
+        block.staking_treasury = 0;
+        block.signature = <[u8; 64]>::from_hex("c9a6c2d0bf884be6933878577171a3c8094c2bf6e0bc1b4ec3535a4a55224d186d4d891e254736cae6c0d2002c8dfc0ddfc7fcdbe4bc583f96fa5b273b9d63f4").unwrap();
+
         let serialized_body = block.serialize_for_signature();
         assert_eq!(serialized_body.len(), 145);
         TestManager::check_block_consistency(&block);

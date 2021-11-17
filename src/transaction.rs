@@ -973,6 +973,7 @@ impl Transaction {
 mod tests {
     use super::*;
     use crate::{slip::Slip, time::create_timestamp, wallet::Wallet};
+    use hex::FromHex;
 
     #[test]
     fn transaction_new_test() {
@@ -1009,6 +1010,66 @@ mod tests {
     fn test_serialize_for_signature() {
         let tx = Transaction::new();
         assert_eq!(tx.serialize_for_signature(), vec![0; 12]);
+    }
+
+    #[test]
+    fn test_serialize_for_signature_with_data() {
+        let mut tx = Transaction::new();
+        tx.timestamp = 1637034582666;
+        tx.transaction_type = TransactionType::ATR;
+        tx.message = vec![1, 2, 3];
+
+        let mut input_slip = Slip::new();
+        input_slip.set_publickey(
+            <[u8; 33]>::from_hex(
+                "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8bcc",
+            )
+            .unwrap(),
+        );
+        input_slip.set_uuid(
+            <[u8; 32]>::from_hex(
+                "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8b",
+            )
+            .unwrap(),
+        );
+        input_slip.set_amount(123);
+        input_slip.set_slip_ordinal(10);
+        input_slip.set_slip_type(SlipType::ATR);
+
+        let mut output_slip = Slip::new();
+        output_slip.set_publickey(
+            <[u8; 33]>::from_hex(
+                "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8bcc",
+            )
+            .unwrap(),
+        );
+        output_slip.set_uuid(
+            <[u8; 32]>::from_hex(
+                "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8b",
+            )
+            .unwrap(),
+        );
+        output_slip.set_amount(345);
+        output_slip.set_slip_ordinal(23);
+        output_slip.set_slip_type(SlipType::Normal);
+
+        tx.inputs.push(input_slip);
+        tx.outputs.push(output_slip);
+
+        assert_eq!(
+            tx.serialize_for_signature(),
+            vec![
+                0, 0, 1, 125, 38, 221, 98, 138, 220, 246, 204, 235, 116, 113, 127, 152, 195, 247,
+                35, 148, 89, 187, 54, 253, 205, 143, 53, 14, 237, 191, 204, 251, 235, 247, 192,
+                176, 22, 31, 205, 139, 204, 220, 246, 204, 235, 116, 113, 127, 152, 195, 247, 35,
+                148, 89, 187, 54, 253, 205, 143, 53, 14, 237, 191, 204, 251, 235, 247, 192, 176,
+                22, 31, 205, 139, 0, 0, 0, 0, 0, 0, 0, 123, 10, 0, 0, 0, 1, 220, 246, 204, 235,
+                116, 113, 127, 152, 195, 247, 35, 148, 89, 187, 54, 253, 205, 143, 53, 14, 237,
+                191, 204, 251, 235, 247, 192, 176, 22, 31, 205, 139, 204, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 1, 89, 23, 0, 0, 0, 0, 0, 0, 0, 3, 1, 2, 3
+            ]
+        );
     }
 
     #[test]
