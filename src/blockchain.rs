@@ -1787,7 +1787,7 @@ mod tests {
             let block2_chain1 = blockchain1.get_block(&block2_hash).await.unwrap();
             let block2_chain2 = blockchain2.get_block(&block2_hash).await.unwrap();
 
-            for (block_new, block_old) in [
+            for (block_new, block_old) in &[
                 (block1_chain2, block1_chain1),
                 (block2_chain2, block2_chain1),
             ] {
