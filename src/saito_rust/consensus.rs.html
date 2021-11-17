@@ -276,6 +276,8 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::miner::Miner</span>;
@@ -304,9 +306,11 @@
     <span class="ident">BlockchainAddBlockFailure</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
     <span class="comment">// broadcast when the miner finds a golden ticket</span>
     <span class="ident">MinerNewGoldenTicket</span> { <span class="ident">ticket</span>: <span class="ident">GoldenTicket</span> },
-    <span class="comment">// broadcast when the mempool produces a new block</span>
-    <span class="ident">MempoolNewBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
-    <span class="comment">// broadcast when the mempool adds a new transaction</span>
+    <span class="comment">// broadcast when the blockchain wants to broadcast a block to peers</span>
+    <span class="ident">NetworkNewBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
+    <span class="comment">// TODO this is unused and it&#39;s unclear when this will be done, fill</span>
+    <span class="comment">// this in when the message&#39;s use is clearer:</span>
+    <span class="comment">// broadcast when....?</span>
     <span class="ident">NetworkNewTransaction</span> { <span class="ident">transaction</span>: <span class="ident">Transaction</span> },
 }
 

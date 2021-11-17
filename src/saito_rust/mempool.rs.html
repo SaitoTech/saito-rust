@@ -437,7 +437,6 @@
 <span id="437">437</span>
 <span id="438">438</span>
 <span id="439">439</span>
-<span id="440">440</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
     <span class="ident">blockchain::Blockchain</span>,
@@ -701,7 +700,6 @@
     <span class="kw">let</span> <span class="ident">can_bundle</span>;
     {
         <span class="kw">let</span> <span class="ident">mempool</span> <span class="op">=</span> <span class="ident">mempool_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-        <span class="macro">info!</span>(<span class="string">&quot;got mempool_lock&quot;</span>);
         <span class="ident">can_bundle</span> <span class="op">=</span> <span class="ident">mempool</span>
             .<span class="ident">can_bundle_block</span>(<span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(), <span class="ident">current_timestamp</span>)
             .<span class="kw">await</span>;
