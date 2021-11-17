@@ -70,6 +70,7 @@ pub fn generate_keypair_from_privatekey(slice: &[u8]) -> (SaitoPublicKey, SaitoP
     }
     (public_key.serialize(), secret_bytes)
 }
+
 pub fn sign_blob(vbytes: &mut Vec<u8>, privatekey: SaitoPrivateKey) -> &mut Vec<u8> {
     let sig = sign(&hash(vbytes.as_ref()), privatekey);
     vbytes.extend(&sig);
