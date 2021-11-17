@@ -2062,9 +2062,6 @@
 <span id="2062">2062</span>
 <span id="2063">2063</span>
 <span id="2064">2064</span>
-<span id="2065">2065</span>
-<span id="2066">2066</span>
-<span id="2067">2067</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
     <span class="ident">burnfee::BurnFee</span>,
@@ -3569,14 +3566,11 @@
                     <span class="self">self</span>.<span class="ident">get_transactions</span>()[<span class="ident">gt_idx</span>].<span class="ident">get_message</span>().<span class="ident">to_vec</span>(),
                 );
                 <span class="kw">let</span> <span class="ident">solution</span> <span class="op">=</span> <span class="ident">GoldenTicket::generate_solution</span>(
+                    <span class="ident">previous_block</span>.<span class="ident">get_hash</span>(),
                     <span class="ident">golden_ticket</span>.<span class="ident">get_random</span>(),
                     <span class="ident">golden_ticket</span>.<span class="ident">get_publickey</span>(),
                 );
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">GoldenTicket::is_valid_solution</span>(
-                    <span class="ident">previous_block</span>.<span class="ident">get_hash</span>(),
-                    <span class="ident">solution</span>,
-                    <span class="ident">previous_block</span>.<span class="ident">get_difficulty</span>(),
-                ) {
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">GoldenTicket::is_valid_solution</span>(<span class="ident">solution</span>, <span class="ident">previous_block</span>.<span class="ident">get_difficulty</span>()) {
                     <span class="macro">error!</span>(
                         <span class="string">&quot;ERROR: Golden Ticket solution does not validate against previous block hash and difficulty&quot;</span>
                     );
