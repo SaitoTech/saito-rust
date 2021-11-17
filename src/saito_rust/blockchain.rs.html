@@ -2153,8 +2153,8 @@
             <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>
                 .<span class="ident">as_ref</span>()
                 .<span class="ident">unwrap</span>()
-                .<span class="ident">send</span>(<span class="ident">SaitoMessage::NetworkNewBlock</span> { <span class="ident">hash</span>: <span class="ident">block_hash</span> })
-                .<span class="ident">expect</span>(<span class="string">&quot;error: BlockchainAddBlockFailure message failed to send&quot;</span>);
+                .<span class="ident">send</span>(<span class="ident">SaitoMessage::BlockchainSavedBlock</span> { <span class="ident">hash</span>: <span class="ident">block_hash</span> })
+                .<span class="ident">expect</span>(<span class="string">&quot;error: BlockchainSavedBlock message failed to send&quot;</span>);
         }
         <span class="macro">trace!</span>(<span class="string">&quot; ... block save done:            {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
@@ -3113,7 +3113,7 @@
         <span class="comment">//</span>
             <span class="prelude-val">Ok</span>(<span class="ident">message</span>) <span class="op">=</span> <span class="ident">broadcast_channel_receiver</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">match</span> <span class="ident">message</span> {
-                    <span class="ident">SaitoMessage::NetworkNewBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SaitoMessage::BlockchainSavedBlock</span> { <span class="ident">hash</span>: <span class="ident">_hash</span> } <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="macro">println!</span>(<span class="string">&quot;Blockchain aware network has received new block! -- we might use for this congestion tracking&quot;</span>);
                     },
                     <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {},
