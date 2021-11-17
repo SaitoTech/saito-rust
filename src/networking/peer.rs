@@ -455,7 +455,6 @@ impl SaitoPeer {
                 }
             }
             "SNDBLKHD" => {
-                println!("handle_peer_command SNDBLKHD");
                 let send_block_head_message =
                     SendBlockHeadMessage::deserialize(api_message.get_message_data());
                 send_block_head_message.get_block_hash();
@@ -515,7 +514,7 @@ pub async fn handle_inbound_peer_connection(
     let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
     tokio::task::spawn(peer_rcv.forward(peer_ws_sender).map(|result| {
         if let Err(e) = result {
-            eprintln!("error sending websocket msg: {}", e);
+            error!("error sending websocket msg: {}", e);
         }
     }));
 

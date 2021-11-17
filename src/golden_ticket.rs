@@ -112,19 +112,10 @@ impl GoldenTicket {
         let sol = U256::from_big_endian(&solution);
         let tgt = U256::from_big_endian(&target_hash);
 
-        println!("sol: {:?}", sol);
-        println!("tgt: {:?}", tgt);
-
         if sol <= tgt {
-            //println!("SUCCESSFUL SOLUTION: ");
-            //println!("sol: {:?}", sol);
-            //println!("tgt: {:?}", tgt);
             return true;
         }
 
-        //println!("FAILED SOLUTION: ");
-        //println!("sol: {:?}", sol);
-        //println!("tgt: {:?}", tgt);
         return false;
     }
 

@@ -348,8 +348,8 @@ impl Blockchain {
             self.broadcast_channel_sender
                 .as_ref()
                 .unwrap()
-                .send(SaitoMessage::NetworkNewBlock { hash: block_hash })
-                .expect("error: BlockchainAddBlockFailure message failed to send");
+                .send(SaitoMessage::BlockchainSavedBlock { hash: block_hash })
+                .expect("error: BlockchainSavedBlock message failed to send");
         }
         trace!(" ... block save done:            {:?}", create_timestamp());
 
@@ -1308,7 +1308,7 @@ pub async fn run(
         //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
-                    SaitoMessage::NetworkNewBlock { hash: _hash } => {
+                    SaitoMessage::BlockchainSavedBlock { hash: _hash } => {
                         println!("Blockchain aware network has received new block! -- we might use for this congestion tracking");
                     },
                     _ => {},

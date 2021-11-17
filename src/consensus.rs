@@ -27,7 +27,7 @@ pub enum SaitoMessage {
     // broadcast when the miner finds a golden ticket
     MinerNewGoldenTicket { ticket: GoldenTicket },
     // broadcast when the blockchain wants to broadcast a block to peers
-    NetworkNewBlock { hash: SaitoHash },
+    BlockchainSavedBlock { hash: SaitoHash },
     // TODO this is unused and it's unclear when this will be done, fill
     // this in when the message's use is clearer:
     // broadcast when....?
