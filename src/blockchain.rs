@@ -344,7 +344,13 @@ impl Blockchain {
                 Storage::write_block_to_disk(block);
             }
         }
-
+        if self.broadcast_channel_sender.is_some() {
+            self.broadcast_channel_sender
+                .as_ref()
+                .unwrap()
+                .send(SaitoMessage::NetworkNewBlock { hash: block_hash })
+                .expect("error: BlockchainAddBlockFailure message failed to send");
+        }
         trace!(" ... block save done:            {:?}", create_timestamp());
 
         //
@@ -1302,7 +1308,7 @@ pub async fn run(
         //
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
-                    SaitoMessage::MempoolNewBlock { hash: _hash } => {
+                    SaitoMessage::NetworkNewBlock { hash: _hash } => {
                         println!("Blockchain aware network has received new block! -- we might use for this congestion tracking");
                     },
                     _ => {},
