@@ -125,3 +125,4 @@ pub mod handlers;
 pub mod message_types;
 pub mod network;
 pub mod peer;
+pub mod signals;
