@@ -1,0 +1,53 @@
+version: "3.7"
+
+services:
+  main:
+    container_name: saito_app
+    build: .
+    volumes:
+      - .:/app
+    extra_hosts:
+      - "docker.for.linux.localhost:$DOCKERHOST"
+    environment:
+      LOG_LEVEL: "DEBUG"
+      APP_ENVIRONMENT: "development"
+      JAEGER_HOST: jaeger
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    command: [
+      "bash", "-c",
+      'RUST_LOG=${LOG_LEVEL} cargo run
+      '
+    ]
+    networks: 
+      - saito_net
+
+#  node1:
+#    container_name: saito_app_node1
+#    build: .
+#    volumes:
+#      - ./saito-node1:/app
+#    extra_hosts:
+#      - "docker.for.linux.localhost:$DOCKERHOST"
+#    environment:
+#      LOG_LEVEL: "DEBUG"
+#      APP_ENVIRONMENT: "development"
+#    depends_on:
+#      - main
+#    restart: unless-stopped
+#    ports:
+#      - "3001:3001"
+#    command: [
+#      "bash", "-c",
+#      'cargo run --bin saitocli tx --amount 1 --to gYsu1fVHjP6Z8CHCzti9K9xb5JPqpEL7zi7arvLiVANm \
+#      --keyfile test/testwallet --password asdf --input-tx data/test/tx.out --input-ordinal 0 --filename data/test/tx2.out
+#      '
+#    ]
+#    networks:
+#      - saito_net
+
+networks:
+  saito_net:
+    name: saito_net
+    driver: bridge

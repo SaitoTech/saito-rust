@@ -129,7 +129,7 @@ pub async fn main() -> saito_rust::Result<()> {
                         .long("to")
                         .takes_value(true)
                         .required(true)
-                        .help("amount to send"),
+                        .help("the recipient"),
                 )
                 .arg(
                     Arg::with_name("filename")
@@ -137,7 +137,31 @@ pub async fn main() -> saito_rust::Result<()> {
                         .long("filename")
                         .takes_value(true)
                         .help("output file"),
-                ),
+                )
+                .arg(
+                    Arg::with_name("input-tx")
+                        .takes_value(true)
+                        .help("input transaction hash"),
+                )
+                .arg(
+                    Arg::with_name("input-ordinal")
+                        .takes_value(true)
+                        .help("order of an input"),
+                )
+                // .arg(Arg::with_name("log-output-path")
+                //         .short("lop")
+                //         .long("log-output-path")
+                //         .takes_value(true)
+                //         .help("log output file path"),
+                //
+                // )
+                // .arg(Arg::with_name("log-level")
+                //         .short("ll")
+                //         .long("log-level")
+                //         .takes_value(true)
+                //         .help("log level"),
+                //
+                // ),
         )
         .subcommand(
             App::new("block")
@@ -228,6 +252,9 @@ pub async fn main() -> saito_rust::Result<()> {
         let key_file = matches.value_of("keyfile").unwrap();
         let password = matches.value_of("password");
 
+        // let log_file = matches.value_of("log-output-path").to_str().unwrap();
+        // let log_level = matches.value_of("log-level");
+
         let mut wallet = Wallet::new();
         wallet.load_wallet(key_file, password);
 
@@ -235,7 +262,7 @@ pub async fn main() -> saito_rust::Result<()> {
             Some(filename) => String::from(filename),
             None => String::from("transaction.out"),
         };
-        let amount: f32 = matches
+        let amount: u64 = matches
             .value_of("amount")
             .unwrap()
             .parse()
@@ -251,18 +278,29 @@ pub async fn main() -> saito_rust::Result<()> {
                     std::process::exit(1);
                 });
 
+        // let input_ordinal: u8 = matches
+        //     .value_of("input-ordinal")
+        //     .unwrap()
+        //     .parse()
+        //     .unwrap_or_else(|_error| {
+        //         println!("input_ordinal must be a float");
+        //         println!("got {}", matches.value_of("input-ordinal").unwrap());
+        //         std::process::exit(1);
+        //     });
+
         let mut transaction = Transaction::new();
         transaction.set_transaction_type(TransactionType::Normal);
 
-        // TODO: get inputs from the wallet and use the amount specified
+        // get inputs from the wallet and use the amount specified
         let mut input1 = Slip::new();
         input1.set_publickey(wallet.get_publickey());
-        input1.set_amount(0);
+        input1.set_amount(amount);
+        // input1.set_slip_ordinal(input_ordinal);
         input1.set_uuid([0; 32]);
 
         let mut output1 = Slip::new();
         output1.set_publickey(to_pubkey.serialize());
-        output1.set_amount(0);
+        output1.set_amount(amount);
         output1.set_uuid([0; 32]);
 
         transaction.add_input(input1);
