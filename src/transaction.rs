@@ -73,7 +73,7 @@ impl Transaction {
             timestamp: 0,
             inputs: vec![],
             outputs: vec![],
-            message: vec![],
+            message: vec![123, 125], // to match with JS {}
             transaction_type: TransactionType::Normal,
             signature: [0; 64],
             hash_for_signature: None,
@@ -980,7 +980,7 @@ mod tests {
         assert_eq!(tx.timestamp, 0);
         assert_eq!(tx.inputs, vec![]);
         assert_eq!(tx.outputs, vec![]);
-        assert_eq!(tx.message, Vec::<u8>::new());
+        assert_eq!(tx.message, vec![123, 125]);
         assert_eq!(tx.transaction_type, TransactionType::Normal);
         assert_eq!(tx.signature, [0; 64]);
         assert_eq!(tx.hash_for_signature, None);
@@ -1008,7 +1008,10 @@ mod tests {
     #[test]
     fn test_serialize_for_signature() {
         let tx = Transaction::new();
-        assert_eq!(tx.serialize_for_signature(), vec![0; 12]);
+        assert_eq!(
+            tx.serialize_for_signature(),
+            vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 123, 125]
+        );
     }
 
     #[test]
@@ -1016,7 +1019,9 @@ mod tests {
         let mut tx = Transaction::new();
         tx.timestamp = 1637034582666;
         tx.transaction_type = TransactionType::ATR;
-        tx.message = vec![1, 2, 3];
+        tx.message = vec![
+            123, 34, 116, 101, 115, 116, 34, 58, 34, 116, 101, 115, 116, 34, 125,
+        ];
 
         let mut input_slip = Slip::new();
         input_slip.set_publickey(
@@ -1066,7 +1071,73 @@ mod tests {
                 116, 113, 127, 152, 195, 247, 35, 148, 89, 187, 54, 253, 205, 143, 53, 14, 237,
                 191, 204, 251, 235, 247, 192, 176, 22, 31, 205, 139, 204, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 1, 89, 23, 0, 0, 0, 0, 0, 0, 0, 3, 1, 2, 3
+                0, 0, 1, 89, 23, 0, 0, 0, 0, 0, 0, 0, 3, 123, 34, 116, 101, 115, 116, 34, 58, 34,
+                116, 101, 115, 116, 34, 125
+            ]
+        );
+    }
+
+    #[test]
+    fn tx_sign_with_data() {
+        let mut tx = Transaction::new();
+        tx.timestamp = 1637034582666;
+        tx.transaction_type = TransactionType::ATR;
+        tx.message = vec![
+            123, 34, 116, 101, 115, 116, 34, 58, 34, 116, 101, 115, 116, 34, 125,
+        ];
+
+        let mut input_slip = Slip::new();
+        input_slip.set_publickey(
+            <[u8; 33]>::from_hex(
+                "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8bcc",
+            )
+            .unwrap(),
+        );
+        input_slip.set_uuid(
+            <[u8; 32]>::from_hex(
+                "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8b",
+            )
+            .unwrap(),
+        );
+        input_slip.set_amount(123);
+        input_slip.set_slip_ordinal(10);
+        input_slip.set_slip_type(SlipType::ATR);
+
+        let mut output_slip = Slip::new();
+        output_slip.set_publickey(
+            <[u8; 33]>::from_hex(
+                "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8bcc",
+            )
+            .unwrap(),
+        );
+        output_slip.set_uuid(
+            <[u8; 32]>::from_hex(
+                "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8b",
+            )
+            .unwrap(),
+        );
+        output_slip.set_amount(345);
+        output_slip.set_slip_ordinal(23);
+        output_slip.set_slip_type(SlipType::Normal);
+
+        tx.inputs.push(input_slip);
+        tx.outputs.push(output_slip);
+
+        tx.sign(
+            <[u8; 32]>::from_hex(
+                "854702489d49c7fb2334005b903580c7a48fe81121ff16ee6d1a528ad32f235d",
+            )
+            .unwrap(),
+        );
+
+        assert_eq!(tx.signature.len(), 64);
+        assert_eq!(
+            tx.signature,
+            [
+                209, 217, 122, 116, 63, 234, 152, 214, 162, 107, 132, 66, 7, 179, 237, 146, 138,
+                159, 205, 119, 94, 123, 207, 207, 130, 106, 48, 31, 101, 4, 62, 68, 122, 235, 103,
+                24, 158, 82, 178, 251, 91, 248, 236, 61, 188, 28, 219, 9, 15, 63, 5, 200, 4, 78,
+                193, 14, 84, 50, 203, 70, 102, 19, 205, 21
             ]
         );
     }
