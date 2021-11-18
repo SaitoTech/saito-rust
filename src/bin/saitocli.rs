@@ -141,27 +141,15 @@ pub async fn main() -> saito_rust::Result<()> {
                 .arg(
                     Arg::with_name("input-tx")
                         .takes_value(true)
+                        .required(false)
                         .help("input transaction hash"),
                 )
                 .arg(
                     Arg::with_name("input-ordinal")
                         .takes_value(true)
+                        .required(false)
                         .help("order of an input"),
-                )
-                // .arg(Arg::with_name("log-output-path")
-                //         .short("lop")
-                //         .long("log-output-path")
-                //         .takes_value(true)
-                //         .help("log output file path"),
-                //
-                // )
-                // .arg(Arg::with_name("log-level")
-                //         .short("ll")
-                //         .long("log-level")
-                //         .takes_value(true)
-                //         .help("log level"),
-                //
-                // ),
+                ),
         )
         .subcommand(
             App::new("block")
@@ -184,6 +172,17 @@ pub async fn main() -> saito_rust::Result<()> {
                         .long("path")
                         .takes_value(true)
                         .help("path to blocks directory"),
+                ),
+        )
+        .subcommand(
+            App::new("read_tx")
+                .about("read content of the previous tx out & use the hash as next input tx")
+                .arg(
+                    Arg::with_name("filename")
+                        .short("f")
+                        .long("filename")
+                        .takes_value(true)
+                        .help("the previous tx output"),
                 ),
         )
         .get_matches();
@@ -320,6 +319,19 @@ pub async fn main() -> saito_rust::Result<()> {
         let mut buffer = File::create(filename).unwrap();
         buffer.write_all(&output[..]).unwrap();
         buffer.flush()?;
+    }
+    if let Some(matches) = command_matches.subcommand_matches("read_tx") {
+        let filename: String = match matches.value_of("filename") {
+            Some(filename) => String::from(filename),
+            None => String::from("transaction.out"),
+        };
+        let mut f = File::open(&filename).unwrap();
+        let mut encoded = Vec::<u8>::new();
+        f.read_to_end(&mut encoded).unwrap();
+        let block = Block::deserialize_for_net(&encoded);
+        println!("--------------------------------------------------------------");
+        println!("previous tx file: {:?}", &filename);
+        println!("{:?}", &hex::encode(&block.get_hash()));
     }
     Ok(())
 }

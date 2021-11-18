@@ -14,21 +14,4 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 
 # Build project
-RUN cargo build --release --bin saitocli
-
-#FROM debian:bullseye-slim AS runtime
-#WORKDIR /app
-
-
-#RUN apt-get update -y \
-#    && apt-get install -y --no-install-recommends openssl \
-#    # Clean up
-#    && apt-get autoremove -y \
-#    && apt-get clean -y \
-#    && rm -rf /var/lib/apt/lists/*
-
-#COPY --from=builder /app/target/release/saitocli saitocli
-
-#ENTRYPOINT ["./saitocli"]
-#CMD ["/bin/bash", "-c", "cargo run --bin saitocli tx --amount 1 --to gYsu1fVHjP6Z8CHCzti9K9xb5JPqpEL7zi7arvLiVANm \
-#--filename data/test/tx.out --keyfile test/testwallet --password asdf --log-app-path saito-node.log --log-level info"]
+RUN cargo build --release
