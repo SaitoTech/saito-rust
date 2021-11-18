@@ -1,12 +1,13 @@
 use crate::block::BlockType;
 use crate::blockchain::Blockchain;
+use crate::consensus::SaitoMessage;
 use crate::mempool::Mempool;
 use crate::networking::network::Result;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use base58::ToBase58;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{broadcast, RwLock};
 use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
@@ -45,6 +46,7 @@ pub async fn ws_upgrade_handler(
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
 ) -> std::result::Result<impl Reply, Rejection> {
     Ok(ws.on_upgrade(move |socket| {
         handle_inbound_peer_connection(
@@ -53,6 +55,7 @@ pub async fn ws_upgrade_handler(
             wallet_lock,
             mempool_lock,
             blockchain_lock,
+            broadcast_channel_sender,
         )
     }))
 }
