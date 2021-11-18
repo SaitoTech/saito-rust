@@ -29,8 +29,6 @@ RUN cargo build --release --bin saitocli
 
 #COPY --from=builder /app/target/release/saitocli saitocli
 
-ENV APP_ENVIRONMENT development
-
-#ENTRYPOINT ["./saito_rust"]
+#ENTRYPOINT ["./saitocli"]
 #CMD ["/bin/bash", "-c", "cargo run --bin saitocli tx --amount 1 --to gYsu1fVHjP6Z8CHCzti9K9xb5JPqpEL7zi7arvLiVANm \
 #--filename data/test/tx.out --keyfile test/testwallet --password asdf --log-app-path saito-node.log --log-level info"]

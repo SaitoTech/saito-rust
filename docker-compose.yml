@@ -6,19 +6,20 @@ services:
     build: .
     volumes:
       - .:/app
+      - /app/target
     extra_hosts:
       - "docker.for.linux.localhost:$DOCKERHOST"
     environment:
-      LOG_LEVEL: "DEBUG"
+      RUST_LOG: "DEBUG"
       APP_ENVIRONMENT: "development"
-      JAEGER_HOST: jaeger
     restart: unless-stopped
     ports:
       - "3000:3000"
     command: [
-      "bash", "-c",
-      'RUST_LOG=${LOG_LEVEL} cargo run
-      '
+        "bash", "-c",
+        "cargo run --release --bin saitocli tx --amount 1 --to gYsu1fVHjP6Z8CHCzti9K9xb5JPqpEL7zi7arvLiVANm
+        --filename data/test/tx.out --keyfile test/testwallet --password asdf
+        "
     ]
     networks: 
       - saito_net
