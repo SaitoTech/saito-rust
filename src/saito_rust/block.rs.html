@@ -2062,6 +2062,35 @@
 <span id="2062">2062</span>
 <span id="2063">2063</span>
 <span id="2064">2064</span>
+<span id="2065">2065</span>
+<span id="2066">2066</span>
+<span id="2067">2067</span>
+<span id="2068">2068</span>
+<span id="2069">2069</span>
+<span id="2070">2070</span>
+<span id="2071">2071</span>
+<span id="2072">2072</span>
+<span id="2073">2073</span>
+<span id="2074">2074</span>
+<span id="2075">2075</span>
+<span id="2076">2076</span>
+<span id="2077">2077</span>
+<span id="2078">2078</span>
+<span id="2079">2079</span>
+<span id="2080">2080</span>
+<span id="2081">2081</span>
+<span id="2082">2082</span>
+<span id="2083">2083</span>
+<span id="2084">2084</span>
+<span id="2085">2085</span>
+<span id="2086">2086</span>
+<span id="2087">2087</span>
+<span id="2088">2088</span>
+<span id="2089">2089</span>
+<span id="2090">2090</span>
+<span id="2091">2091</span>
+<span id="2092">2092</span>
+<span id="2093">2093</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
     <span class="ident">burnfee::BurnFee</span>,
@@ -3912,7 +3941,6 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 
 <span class="kw">mod</span> <span class="ident">tests</span> {
-
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::{
         <span class="ident">slip::Slip</span>,
@@ -3921,6 +3949,7 @@
         <span class="ident">transaction</span>::{<span class="ident">Transaction</span>, <span class="ident">TransactionType</span>},
         <span class="ident">wallet::Wallet</span>,
     };
+    <span class="kw">use</span> <span class="ident">hex::FromHex</span>;
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">block_new_test</span>() {
@@ -3985,6 +4014,35 @@
     <span class="comment">// confirm we have not modified the length of the serialized block</span>
     <span class="kw">fn</span> <span class="ident">block_serialize_for_signature_hash</span>() {
         <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
+        <span class="kw">let</span> <span class="ident">serialized_body</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_signature</span>();
+        <span class="macro">assert_eq!</span>(<span class="ident">serialized_body</span>.<span class="ident">len</span>(), <span class="number">145</span>);
+        <span class="ident">TestManager::check_block_consistency</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>);
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">block_serialize_for_signature_hash_with_data</span>() {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block</span> <span class="op">=</span> <span class="ident">Block::new</span>();
+
+        <span class="ident">block</span>.<span class="ident">id</span> <span class="op">=</span> <span class="number">10</span>;
+        <span class="ident">block</span>.<span class="ident">timestamp</span> <span class="op">=</span> <span class="number">1637034582666</span>;
+        <span class="ident">block</span>.<span class="ident">previous_block_hash</span> <span class="op">=</span> <span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span><span class="ident">::from_hex</span>(
+            <span class="string">&quot;bcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8b&quot;</span>,
+        )
+        .<span class="ident">unwrap</span>();
+        <span class="ident">block</span>.<span class="ident">merkle_root</span> <span class="op">=</span> <span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span><span class="ident">::from_hex</span>(
+            <span class="string">&quot;ccf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8b&quot;</span>,
+        )
+        .<span class="ident">unwrap</span>();
+        <span class="ident">block</span>.<span class="ident">creator</span> <span class="op">=</span> <span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">33</span>]<span class="op">&gt;</span><span class="ident">::from_hex</span>(
+            <span class="string">&quot;dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8bcc&quot;</span>,
+        )
+        .<span class="ident">unwrap</span>();
+        <span class="ident">block</span>.<span class="ident">burnfee</span> <span class="op">=</span> <span class="number">50000000</span>;
+        <span class="ident">block</span>.<span class="ident">difficulty</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="ident">block</span>.<span class="ident">treasury</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="ident">block</span>.<span class="ident">staking_treasury</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="ident">block</span>.<span class="ident">signature</span> <span class="op">=</span> <span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">64</span>]<span class="op">&gt;</span><span class="ident">::from_hex</span>(<span class="string">&quot;c9a6c2d0bf884be6933878577171a3c8094c2bf6e0bc1b4ec3535a4a55224d186d4d891e254736cae6c0d2002c8dfc0ddfc7fcdbe4bc583f96fa5b273b9d63f4&quot;</span>).<span class="ident">unwrap</span>();
+
         <span class="kw">let</span> <span class="ident">serialized_body</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_signature</span>();
         <span class="macro">assert_eq!</span>(<span class="ident">serialized_body</span>.<span class="ident">len</span>(), <span class="number">145</span>);
         <span class="ident">TestManager::check_block_consistency</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>);
