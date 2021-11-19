@@ -31,4 +31,4 @@ jobs:
           RUSTFLAGS: "-D warnings"
         with:
           command: test
-          args: -- --verbose
+          args: --verbose
