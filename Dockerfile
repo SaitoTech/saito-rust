@@ -15,3 +15,17 @@ COPY . .
 
 # Build project
 RUN cargo build --release
+
+FROM debian:bullseye-slim AS runtime
+WORKDIR /app
+
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends openssl \
+    # Clean up
+    && apt-get autoremove -y \
+    && apt-get clean -y \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/config.yml config.yml
+COPY --from=builder /app/target/release/saito_rust saito_rust
+COPY --from=builder /app/target/release/saitocli saitocli

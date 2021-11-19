@@ -5,8 +5,7 @@ services:
     container_name: saito_app
     build: .
     volumes:
-      - .:/app
-      - /app/target
+      - ./data:/app/data
     extra_hosts:
       - "docker.for.linux.localhost:$DOCKERHOST"
     environment:
@@ -16,8 +15,8 @@ services:
     ports:
       - "3000:3000"
     command: [
-        "bash", "-c",
-        "cargo run --release
+        "sh", "-c",
+        "/app/saito_rust
         "
     ]
     networks: 
