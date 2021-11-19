@@ -2054,6 +2054,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     // downgrade and upgrade a block with transactions
     async fn block_downgrade_upgrade_test() {
         let mut block = Block::new();

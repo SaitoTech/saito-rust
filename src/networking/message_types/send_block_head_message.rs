@@ -37,6 +37,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_block_head_message_serialize() {
         let mock_block_hash = [1; 32];
         let send_block_head_message = SendBlockHeadMessage::new(mock_block_hash);
