@@ -1,0 +1,44 @@
+version: "3.7"
+
+services:
+  main:
+    container_name: saito_app
+    build: .
+    volumes:
+      - ./data:/app/data
+    environment:
+      RUST_LOG: "debug"
+      APP_ENVIRONMENT: "development"
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    command: [
+        "sh", "-c",
+        "/app/saito_rust --spammer
+        "
+    ]
+    networks:
+      - saito_net
+
+  node1:
+    container_name: saito_app_node1
+    build: .
+    environment:
+      RUST_LOG: "debug"
+      APP_ENVIRONMENT: "development"
+    depends_on:
+      - main
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    command: [
+      "bash", "-c",
+      "/app/saito_rust --config=${CONF_FILE} --password=${W_PWD}"
+    ]
+    networks:
+      - saito_net
+
+networks:
+  saito_net:
+    name: saito_net
+    driver: bridge
