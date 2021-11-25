@@ -3,7 +3,7 @@ use crate::{
     blockchain::Blockchain,
     burnfee::BurnFee,
     consensus::SaitoMessage,
-    crypto::{SaitoPrivateKey, SaitoPublicKey},
+    crypto::{SaitoHash, SaitoPrivateKey, SaitoPublicKey},
     golden_ticket::GoldenTicket,
     time::create_timestamp,
     transaction::Transaction,
@@ -248,6 +248,12 @@ impl Mempool {
             blockchain.add_block(block).await;
         }
         mempool.currently_bundling_block = false;
+    }
+
+    pub fn transaction_exists(&self, tx_hash: Option<SaitoHash>) -> bool {
+        self.transactions
+            .iter()
+            .any(|transaction| transaction.get_hash_for_signature() == tx_hash)
     }
 }
 

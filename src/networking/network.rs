@@ -8,6 +8,7 @@ use crate::networking::filters::{
 };
 use crate::networking::message_types::request_blockchain_message::RequestBlockchainMessage;
 use crate::networking::peer::{socket_handshake_verify, OutboundPeer, SaitoPeer};
+use crate::transaction::Transaction;
 use crate::util::format_url_string;
 
 use crate::wallet::Wallet;
@@ -299,6 +300,23 @@ impl Network {
             }
         }
     }
+
+    // For transaction propagation made by mempool to all peers
+    async fn propagate_transaction_to_peers(tx: Transaction) {
+        let peers_db_global = PEERS_DB_GLOBAL.clone();
+        let mut peers_db_mut = peers_db_global.write().await;
+        // We need a stream iterator for async(to await send_command_fire_and_forget)
+        let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
+        while let Some(peer) = peers_iterator_stream.next().await {
+            if peer.get_has_completed_handshake() {
+                peer.send_command_fire_and_forget("SNDTRANS", tx.serialize_for_net())
+                    .await;
+            } else {
+                info!("Hasn't completed handshake, will not send transaction??");
+            }
+        }
+    }
+
     // Runs warp::serve to listen for incoming connections
     async fn run_server(&self, config_settings: Config) -> crate::Result<()> {
         let host: [u8; 4] = config_settings.get::<[u8; 4]>("network.host").unwrap();
@@ -345,6 +363,10 @@ impl Network {
                     SaitoMessage::BlockchainSavedBlock { hash: block_hash } => {
                         warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
                         Network::send_my_block_to_peers(block_hash).await;
+                    }
+                    SaitoMessage::NetworkNewTransaction { transaction: tx } => {
+                        info!("SaitoMessage::NetworkNewTransaction new tx is detected by network");
+                        Network::propagate_transaction_to_peers(tx).await;
                     }
                     _ => {}
                 }

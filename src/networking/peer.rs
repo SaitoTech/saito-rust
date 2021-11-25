@@ -480,8 +480,13 @@ impl SaitoPeer {
             }
             "SNDTRANS" => {
                 if let Some(tx) = socket_receive_transaction(api_message.clone()) {
+                    let blockchain = blockchain_lock.read().await;
                     let mut mempool = mempool_lock.write().await;
-                    mempool.add_transaction(tx).await;
+                    if mempool.transaction_exists(tx.get_hash_for_signature()) != true {
+                        if tx.validate(&blockchain.utxoset, &blockchain.staking) {
+                            mempool.add_transaction(tx).await;
+                        }
+                    }
                     peer.send_response_from_str(api_message.message_id, "OK")
                         .await;
                 }
