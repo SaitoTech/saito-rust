@@ -134,7 +134,7 @@ impl Consensus {
 
         let mut is_spammer_enabled = false;
         //
-        // TODO - hook up with Arg above
+        // hook up with Arg above
         //
         if matches.is_present("spammer") {
             is_spammer_enabled = true;
