@@ -50,6 +50,7 @@
 <span id="50">50</span>
 <span id="51">51</span>
 <span id="52">52</span>
+<span id="53">53</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto::SaitoHash</span>;
@@ -89,6 +90,7 @@
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_send_block_head_message_serialize</span>() {
         <span class="kw">let</span> <span class="ident">mock_block_hash</span> <span class="op">=</span> [<span class="number">1</span>; <span class="number">32</span>];
         <span class="kw">let</span> <span class="ident">send_block_head_message</span> <span class="op">=</span> <span class="ident">SendBlockHeadMessage::new</span>(<span class="ident">mock_block_hash</span>);

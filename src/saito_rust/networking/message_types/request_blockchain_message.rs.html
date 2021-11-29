@@ -74,6 +74,7 @@
 <span id="74">74</span>
 <span id="75">75</span>
 <span id="76">76</span>
+<span id="77">77</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto::SaitoHash</span>;
@@ -130,6 +131,7 @@
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_request_blockchain_message_serialize</span>() {
         <span class="kw">let</span> <span class="ident">request_blockchain_message</span> <span class="op">=</span> <span class="ident">RequestBlockchainMessage::new</span>(<span class="number">50</span>, [<span class="number">42</span>; <span class="number">32</span>], [<span class="number">42</span>; <span class="number">32</span>]);
 

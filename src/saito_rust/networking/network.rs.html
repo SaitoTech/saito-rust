@@ -783,6 +783,10 @@
 <span id="783">783</span>
 <span id="784">784</span>
 <span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::consensus::SaitoMessage</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto</span>::{<span class="ident">hash</span>, <span class="ident">sign_blob</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>};
@@ -1201,19 +1205,19 @@
     <span class="kw">use</span> <span class="ident">secp256k1::PublicKey</span>;
     <span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">test::WsClient</span>, <span class="ident">ws::Message</span>};
 
-    <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_be_sure_threads_equals_1</span>() {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">filtered_args_iter</span> <span class="op">=</span> <span class="ident">std::env::args</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">arg</span><span class="op">|</span> <span class="ident">arg</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;--test-threads=1&quot;</span>);
-        <span class="kw">if</span> <span class="ident">filtered_args_iter</span>.<span class="ident">next</span>() <span class="op">!</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">String::from</span>(<span class="string">&quot;--test-threads=1&quot;</span>)) {
-            <span class="macro">panic!</span>(
-                <span class="string">&quot;\n
-                    ***************************************\n
-                    TESTS MUST BE RUN WITH --test-threads=1\n
-                    ***************************************\n
-                    &quot;</span>
-            );
-        }
-    }
+    <span class="comment">// #[tokio::test]</span>
+    <span class="comment">// async fn test_be_sure_threads_equals_1() {</span>
+    <span class="comment">//     let mut filtered_args_iter = std::env::args().filter(|arg| arg == &quot;--test-threads=1&quot;);</span>
+    <span class="comment">//     if filtered_args_iter.next() != Some(String::from(&quot;--test-threads=1&quot;)) {</span>
+    <span class="comment">//         panic!(</span>
+    <span class="comment">//             &quot;\n</span>
+    <span class="comment">//                 ***************************************\n</span>
+    <span class="comment">//                 TESTS MUST BE RUN WITH --test-threads=1\n</span>
+    <span class="comment">//                 ***************************************\n</span>
+    <span class="comment">//                 &quot;</span>
+    <span class="comment">//         );</span>
+    <span class="comment">//     }</span>
+    <span class="comment">// }</span>
     <span class="comment">// This doesn&#39;t currently seem to create a problem, but I think</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">clean_peers_dbs</span>() {
         <span class="kw">let</span> <span class="ident">peers_db_global</span> <span class="op">=</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>();
@@ -1321,6 +1325,7 @@
         <span class="ident">ws_client</span>
     }
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_sndchain</span>() {
         <span class="comment">// mock things:</span>
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
@@ -1401,6 +1406,7 @@
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_sndblkhd</span>() {
         <span class="comment">// mock things:</span>
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
@@ -1452,6 +1458,7 @@
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_blockchain_causes_sndblkhd</span>() {
         <span class="comment">// initialize peers db:</span>
         <span class="ident">clean_peers_dbs</span>().<span class="kw">await</span>;
@@ -1518,6 +1525,7 @@
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">test_network_message_sending</span>() {
         <span class="comment">// mock things:</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();

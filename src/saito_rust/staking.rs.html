@@ -1280,6 +1280,10 @@
 <span id="1280">1280</span>
 <span id="1281">1281</span>
 <span id="1282">1282</span>
+<span id="1283">1283</span>
+<span id="1284">1284</span>
+<span id="1285">1285</span>
+<span id="1286">1286</span>
 </pre><pre class="rust"><code><span class="comment">//</span>
 <span class="comment">// TODO</span>
 <span class="comment">// - array is not the best data structure</span>
@@ -2029,6 +2033,7 @@
     <span class="comment">// properly with single-payouts per block?</span>
     <span class="comment">//</span>
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">staking_create_blockchain_with_two_staking_deposits_one_staker_payout_per_block</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
@@ -2228,6 +2233,7 @@
     <span class="comment">// properly with recurvise staking payouts that stretch back at least two blocks</span>
     <span class="comment">//</span>
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">staking_create_blockchain_with_many_staking_deposits_many_staker_payouts_per_block</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
@@ -2365,6 +2371,7 @@
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_staking_deposits_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
@@ -2516,6 +2523,7 @@
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">blockchain_roll_forward_staking_table_test_with_test_manager</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));

@@ -437,6 +437,7 @@
 <span id="437">437</span>
 <span id="438">438</span>
 <span id="439">439</span>
+<span id="440">440</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
     <span class="ident">blockchain::Blockchain</span>,
@@ -847,6 +848,7 @@
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">mempool_bundle_blocks_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));

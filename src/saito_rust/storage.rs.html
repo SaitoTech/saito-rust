@@ -260,6 +260,7 @@
 <span id="260">260</span>
 <span id="261">261</span>
 <span id="262">262</span>
+<span id="263">263</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::blockchain::MAX_TOKEN_SUPPLY</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto::SaitoPublicKey</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::slip</span>::{<span class="ident">Slip</span>, <span class="ident">SlipType</span>};
@@ -504,6 +505,7 @@
     }
 
     <span class="attribute">#[<span class="ident">tokio::test</span>]</span>
+    <span class="attribute">#[<span class="ident">serial_test::serial</span>]</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_read_block_to_file_test</span>() {
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
         <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
