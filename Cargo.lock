@@ -1670,7 +1670,7 @@ dependencies = [
  "serial_test",
  "tokio",
  "tokio-stream",
- "tokio-tungstenite 0.15.0",
+ "tokio-tungstenite 0.16.0",
  "tracing",
  "tracing-subscriber",
  "url",
@@ -2134,15 +2134,14 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "511de3f85caf1c98983545490c3d09685fa8eb634e57eec22bb4db271f46cbd8"
+checksum = "e057364a4dd37870b33bf8dc1885d29187d90770f488d599d3ee8d9e4916fbd3"
 dependencies = [
  "futures-util",
  "log",
- "pin-project",
  "tokio",
- "tungstenite 0.14.0",
+ "tungstenite 0.16.0",
 ]
 
 [[package]]
@@ -2259,9 +2258,9 @@ dependencies = [
 
 [[package]]
 name = "tungstenite"
-version = "0.14.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0b2d8558abd2e276b0a8df5c05a2ec762609344191e5fd23e292c910e9165b5"
+checksum = "6ad3713a14ae247f22a728a0456a545df14acf3867f905adff84be99e23b3ad1"
 dependencies = [
  "base64",
  "byteorder",
