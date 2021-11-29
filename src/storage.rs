@@ -242,6 +242,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn write_read_block_to_file_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));

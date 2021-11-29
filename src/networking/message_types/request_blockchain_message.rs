@@ -54,6 +54,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_request_blockchain_message_serialize() {
         let request_blockchain_message = RequestBlockchainMessage::new(50, [42; 32], [42; 32]);
 

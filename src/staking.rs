@@ -747,6 +747,7 @@ mod tests {
     // properly with single-payouts per block?
     //
     #[tokio::test]
+    #[serial_test::serial]
     async fn staking_create_blockchain_with_two_staking_deposits_one_staker_payout_per_block() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
@@ -946,6 +947,7 @@ mod tests {
     // properly with recurvise staking payouts that stretch back at least two blocks
     //
     #[tokio::test]
+    #[serial_test::serial]
     async fn staking_create_blockchain_with_many_staking_deposits_many_staker_payouts_per_block() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
@@ -1083,6 +1085,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn blockchain_staking_deposits_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
@@ -1234,6 +1237,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn blockchain_roll_forward_staking_table_test_with_test_manager() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));

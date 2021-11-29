@@ -20,7 +20,7 @@ use crate::storage::Storage;
 use crate::time::create_timestamp;
 use crate::transaction::TransactionType;
 use crate::wallet::Wallet;
-use log::{error, info, trace};
+use log::{error, info, trace, warn};
 
 use async_recursion::async_recursion;
 
@@ -722,7 +722,7 @@ impl Blockchain {
         old_chain: &Vec<[u8; 32]>,
     ) -> bool {
         if old_chain.len() > new_chain.len() {
-            error!("ERROR: old chain length is greater than new chain length");
+            warn!("WARN: old chain length is greater than new chain length");
             return false;
         }
 
@@ -1353,6 +1353,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     //
     // test we can produce five blocks in a row
     //
@@ -1397,6 +1398,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     //
     // test we do not add blocks 6 and 7 because of insuffient mining
     //
@@ -1452,6 +1454,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     //
     // test we add blocks 6 and 7 because of suffient mining
     //
@@ -1507,6 +1510,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     //
     // add 10 blocks including chain reorganization and sufficient mining
     //
@@ -1701,6 +1705,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     //
     // use test_manager to generate blockchains and reorgs and test
     //
@@ -1757,6 +1762,7 @@ mod tests {
 
     /// Loading blocks into a blockchain which was were created from another blockchain instance
     #[tokio::test]
+    #[serial_test::serial]
     async fn load_blocks_from_another_blockchain_test() {
         let wallet_lock1 = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock1 = Arc::new(RwLock::new(Blockchain::new(wallet_lock1.clone())));

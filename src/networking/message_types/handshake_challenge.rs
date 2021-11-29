@@ -137,6 +137,7 @@ mod tests {
     };
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_challenge_serialize() {
         let (publickey, privatekey) = generate_keys();
         let challenge =
