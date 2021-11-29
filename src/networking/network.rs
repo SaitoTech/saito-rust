@@ -332,7 +332,7 @@ impl Network {
                 self.mempool_lock.clone(),
                 self.blockchain_lock.clone(),
             ));
-        println!("Listening for HTTP on port {}", port);
+        info!("Listening for HTTP on port {}", port);
         let (_, server) =
             warp::serve(routes).bind_with_graceful_shutdown((host, port), signal_for_shutdown());
         server.await;
@@ -364,8 +364,8 @@ impl Network {
                         warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
                         Network::send_my_block_to_peers(block_hash).await;
                     }
-                    SaitoMessage::NetworkNewTransaction { transaction: tx } => {
-                        info!("SaitoMessage::NetworkNewTransaction new tx is detected by network");
+                    SaitoMessage::WalletNewTransaction { transaction: tx } => {
+                        info!("SaitoMessage::WalletNewTransaction new tx is detected by network");
                         Network::propagate_transaction_to_peers(tx).await;
                     }
                     _ => {}

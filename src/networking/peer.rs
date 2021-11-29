@@ -482,7 +482,7 @@ impl SaitoPeer {
                 if let Some(tx) = socket_receive_transaction(api_message.clone()) {
                     let blockchain = blockchain_lock.read().await;
                     let mut mempool = mempool_lock.write().await;
-                    if mempool.transaction_exists(tx.get_hash_for_signature()) != true {
+                    if !mempool.transaction_exists(tx.get_hash_for_signature()) {
                         if tx.validate(&blockchain.utxoset, &blockchain.staking) {
                             mempool.add_transaction(tx).await;
                         }
