@@ -26,8 +26,7 @@ RUN apt-get update -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/config.yml config.yml
-COPY --from=builder /app/config2.yml config2.yml
+COPY --from=builder /app/configuration configuration
 COPY --from=builder /app/data data
 COPY --from=builder /app/target/release/saito_rust saito_rust
 COPY --from=builder /app/target/release/saitocli saitocli

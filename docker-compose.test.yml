@@ -14,7 +14,7 @@ services:
       - "3000:3000"
     command: [
         "sh", "-c",
-        "/app/saito_rust --spammer
+        "/app/saito_rust --config=configuration/config.yml --spammer
         "
     ]
     networks:
