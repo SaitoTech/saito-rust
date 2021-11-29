@@ -89,6 +89,7 @@ mod tests {
     use std::convert::TryInto;
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_message_serialize() {
         let api_message = APIMessage {
             message_name: String::from("HLLOWRLD").as_bytes().try_into().unwrap(),

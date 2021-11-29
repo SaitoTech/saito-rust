@@ -438,19 +438,19 @@ mod tests {
     use secp256k1::PublicKey;
     use warp::{test::WsClient, ws::Message};
 
-    #[tokio::test]
-    async fn test_be_sure_threads_equals_1() {
-        let mut filtered_args_iter = std::env::args().filter(|arg| arg == "--test-threads=1");
-        if filtered_args_iter.next() != Some(String::from("--test-threads=1")) {
-            panic!(
-                "\n
-                    ***************************************\n
-                    TESTS MUST BE RUN WITH --test-threads=1\n
-                    ***************************************\n
-                    "
-            );
-        }
-    }
+    // #[tokio::test]
+    // async fn test_be_sure_threads_equals_1() {
+    //     let mut filtered_args_iter = std::env::args().filter(|arg| arg == "--test-threads=1");
+    //     if filtered_args_iter.next() != Some(String::from("--test-threads=1")) {
+    //         panic!(
+    //             "\n
+    //                 ***************************************\n
+    //                 TESTS MUST BE RUN WITH --test-threads=1\n
+    //                 ***************************************\n
+    //                 "
+    //         );
+    //     }
+    // }
     // This doesn't currently seem to create a problem, but I think
     async fn clean_peers_dbs() {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
@@ -558,6 +558,7 @@ mod tests {
         ws_client
     }
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_sndchain() {
         // mock things:
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
@@ -638,6 +639,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_sndblkhd() {
         // mock things:
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
@@ -689,6 +691,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_blockchain_causes_sndblkhd() {
         // initialize peers db:
         clean_peers_dbs().await;
@@ -755,6 +758,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_network_message_sending() {
         // mock things:
         let mut settings = config::Config::default();

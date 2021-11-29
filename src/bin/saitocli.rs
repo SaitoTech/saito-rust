@@ -17,7 +17,11 @@ prints keys from wallet
 
 **tx**
 
-create a sign a transcation
+create a sign a transaction
+
+**create_tx**
+
+create vip tx for modelling test network only
 
 ## Example
 
@@ -52,6 +56,10 @@ or
 ```
 cargo run --bin saitocli -- blocks
 ```
+or
+```
+cargo run --bin saitocli -- create_tx -a 1 -t gYsu1fVHjP6Z8CHCzti9K9xb5JPqpEL7zi7arvLiVANm  --keyfile test/testwallet --password asdf -o 0 -f data/test/out1.tx
+```
 
 */
 
@@ -67,6 +75,7 @@ use saito_rust::{
 };
 use secp256k1::PublicKey;
 use std::{
+    convert::TryInto,
     fs::{self, File},
     io::{Read, Write},
 };
@@ -129,7 +138,7 @@ pub async fn main() -> saito_rust::Result<()> {
                         .long("to")
                         .takes_value(true)
                         .required(true)
-                        .help("amount to send"),
+                        .help("the recipient"),
                 )
                 .arg(
                     Arg::with_name("filename")
@@ -160,6 +169,62 @@ pub async fn main() -> saito_rust::Result<()> {
                         .long("path")
                         .takes_value(true)
                         .help("path to blocks directory"),
+                ),
+        )
+        .subcommand(
+            App::new("create_tx")
+                .about("create VIP transaction")
+                .arg(
+                    Arg::with_name("keyfile")
+                        .short("k")
+                        .long("keyfile")
+                        .required(true)
+                        .takes_value(true)
+                        .help("path to keyfile"),
+                )
+                .arg(
+                    Arg::with_name("password")
+                        .short("p")
+                        .long("password")
+                        .required(true)
+                        .takes_value(true)
+                        .help("password of keyfile"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .short("a")
+                        .long("amount")
+                        .takes_value(true)
+                        .required(true)
+                        .help("amount to send"),
+                )
+                .arg(
+                    Arg::with_name("to")
+                        .short("t")
+                        .long("to")
+                        .takes_value(true)
+                        .required(true)
+                        .help("the recipient"),
+                )
+                .arg(
+                    Arg::with_name("filename")
+                        .short("f")
+                        .long("filename")
+                        .takes_value(true)
+                        .help("output file"),
+                )
+                .arg(
+                    Arg::with_name("input-tx")
+                        .short("i")
+                        .takes_value(true)
+                        .default_value("data/test/out.tx")
+                        .help("input transaction hash"),
+                )
+                .arg(
+                    Arg::with_name("input-ordinal")
+                        .short("o")
+                        .takes_value(true)
+                        .help("order of an input"),
                 ),
         )
         .get_matches();
@@ -235,7 +300,7 @@ pub async fn main() -> saito_rust::Result<()> {
             Some(filename) => String::from(filename),
             None => String::from("transaction.out"),
         };
-        let amount: f32 = matches
+        let amount: u64 = matches
             .value_of("amount")
             .unwrap()
             .parse()
@@ -254,15 +319,15 @@ pub async fn main() -> saito_rust::Result<()> {
         let mut transaction = Transaction::new();
         transaction.set_transaction_type(TransactionType::Normal);
 
-        // TODO: get inputs from the wallet and use the amount specified
+        // get inputs from the wallet and use the amount specified
         let mut input1 = Slip::new();
         input1.set_publickey(wallet.get_publickey());
-        input1.set_amount(0);
+        input1.set_amount(amount);
         input1.set_uuid([0; 32]);
 
         let mut output1 = Slip::new();
         output1.set_publickey(to_pubkey.serialize());
-        output1.set_amount(0);
+        output1.set_amount(amount);
         output1.set_uuid([0; 32]);
 
         transaction.add_input(input1);
@@ -281,6 +346,82 @@ pub async fn main() -> saito_rust::Result<()> {
         let output = transaction.serialize_for_net();
         let mut buffer = File::create(filename).unwrap();
         buffer.write_all(&output[..]).unwrap();
+        buffer.flush()?;
+    }
+    if let Some(matches) = command_matches.subcommand_matches("create_tx") {
+        let key_file = matches.value_of("keyfile").unwrap();
+        let password = matches.value_of("password");
+
+        // let log_file = matches.value_of("log-output-path").to_str().unwrap();
+        // let log_level = matches.value_of("log-level");
+
+        let mut wallet = Wallet::new();
+        wallet.load_wallet(key_file, password);
+
+        let out_file: String = match matches.value_of("filename") {
+            Some(out_file) => String::from(out_file),
+            None => String::from("out.tx"),
+        };
+        let amount: u64 = matches
+            .value_of("amount")
+            .unwrap()
+            .parse()
+            .unwrap_or_else(|_error| {
+                println!("amount must be a float");
+                println!("got {}", matches.value_of("amount").unwrap());
+                std::process::exit(1);
+            });
+        let to_pubkey =
+            PublicKey::from_slice(&matches.value_of("to").unwrap().from_base58().unwrap())
+                .unwrap_or_else(|_error| {
+                    println!("Invalid pubkey in to field. Should be based58 encoded.");
+                    std::process::exit(1);
+                });
+
+        let input_tx_fp = matches.value_of("input-tx").unwrap();
+        let mut f = File::open(input_tx_fp).unwrap();
+        let mut encoded = Vec::<u8>::new();
+        f.read_to_end(&mut encoded).unwrap();
+        let input_tx = encoded.try_into().unwrap();
+
+        let input_ordinal: u8 = matches
+            .value_of("input-ordinal")
+            .unwrap()
+            .parse()
+            .unwrap_or_else(|_error| {
+                println!("input_ordinal must be an int");
+                println!("got {}", matches.value_of("input-ordinal").unwrap());
+                std::process::exit(1);
+            });
+
+        let mut transaction = Transaction::new();
+        transaction.set_transaction_type(TransactionType::Vip);
+
+        let mut slip_inp = Slip::new();
+        slip_inp.set_slip_ordinal(input_ordinal);
+        slip_inp.set_uuid(input_tx);
+
+        let mut slip_outp = Slip::new();
+        slip_outp.set_publickey(to_pubkey.serialize());
+        slip_outp.set_amount(amount);
+        slip_outp.set_uuid([0; 32]);
+
+        transaction.add_input(slip_inp);
+        transaction.add_output(slip_outp);
+
+        let hash_for_signature: SaitoHash = hash(&transaction.serialize_for_signature());
+        transaction.set_hash_for_signature(hash_for_signature);
+
+        transaction.sign(wallet.get_privatekey());
+
+        println!("Propagate transaction");
+        println!("Amount: {}", amount);
+        println!("To: {}", to_pubkey);
+        println!("====> {}", out_file);
+
+        let tx_out = transaction.get_hash_for_signature();
+        let mut buffer = File::create(out_file).unwrap();
+        buffer.write_all(&tx_out.unwrap()[..]).unwrap();
         buffer.flush()?;
     }
     Ok(())

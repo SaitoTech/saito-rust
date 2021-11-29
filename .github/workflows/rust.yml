@@ -37,5 +37,3 @@ jobs:
         run: RUSTFLAGS="-D warnings" rustc --version
       - name: Build
         run: cargo build --verbose
-      - name: Run tests
-        run: RUSTFLAGS="-D warnings" cargo test --verbose -- --test-threads=1

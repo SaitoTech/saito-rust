@@ -243,6 +243,7 @@ mod test {
     use super::*;
 
     #[tokio::test]
+    #[serial_test::serial]
     // winding / unwinding updates blockring view of longest chain
     async fn blockring_manual_reorganization_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
@@ -368,6 +369,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     // adding blocks to blockchain wind / unwind blockring view of longest chain
     async fn blockring_automatic_reorganization_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
@@ -501,6 +503,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     // confirm adding block changes nothing until on_chain_reorg
     async fn blockring_add_block_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));

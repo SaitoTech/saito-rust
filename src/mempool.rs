@@ -414,6 +414,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn mempool_bundle_blocks_test() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
