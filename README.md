@@ -42,7 +42,7 @@ scripts/test.sh
 or
 
 ```
-cargo test --test-threads=1
+cargo test
 ```
 
 ### Code formatting

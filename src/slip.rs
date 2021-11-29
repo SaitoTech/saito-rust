@@ -379,6 +379,7 @@ mod tests {
         assert_eq!(slip, deserilialized_slip);
     }
     #[tokio::test]
+    #[serial_test::serial]
     async fn slip_addition_and_removal_from_utxoset() {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));

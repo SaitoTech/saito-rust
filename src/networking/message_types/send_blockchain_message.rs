@@ -116,6 +116,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_send_blockchain_message_serialize() {
         let mut blocks_data: Vec<SendBlockchainBlockData> = vec![];
         blocks_data.push(SendBlockchainBlockData {
