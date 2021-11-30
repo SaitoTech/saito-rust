@@ -2092,6 +2092,27 @@
 <span id="2092">2092</span>
 <span id="2093">2093</span>
 <span id="2094">2094</span>
+<span id="2095">2095</span>
+<span id="2096">2096</span>
+<span id="2097">2097</span>
+<span id="2098">2098</span>
+<span id="2099">2099</span>
+<span id="2100">2100</span>
+<span id="2101">2101</span>
+<span id="2102">2102</span>
+<span id="2103">2103</span>
+<span id="2104">2104</span>
+<span id="2105">2105</span>
+<span id="2106">2106</span>
+<span id="2107">2107</span>
+<span id="2108">2108</span>
+<span id="2109">2109</span>
+<span id="2110">2110</span>
+<span id="2111">2111</span>
+<span id="2112">2112</span>
+<span id="2113">2113</span>
+<span id="2114">2114</span>
+<span id="2115">2115</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">blockchain</span>::{<span class="ident">Blockchain</span>, <span class="ident">GENESIS_PERIOD</span>, <span class="ident">MAX_STAKER_RECURSION</span>},
     <span class="ident">burnfee::BurnFee</span>,
@@ -4047,6 +4068,27 @@
         <span class="kw">let</span> <span class="ident">serialized_body</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">serialize_for_signature</span>();
         <span class="macro">assert_eq!</span>(<span class="ident">serialized_body</span>.<span class="ident">len</span>(), <span class="number">145</span>);
         <span class="ident">TestManager::check_block_consistency</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>);
+
+        <span class="ident">block</span>.<span class="ident">sign</span>(
+            <span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">33</span>]<span class="op">&gt;</span><span class="ident">::from_hex</span>(
+                <span class="string">&quot;dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8bcc&quot;</span>,
+            )
+            .<span class="ident">unwrap</span>(),
+            <span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="number">32</span>]<span class="op">&gt;</span><span class="ident">::from_hex</span>(
+                <span class="string">&quot;854702489d49c7fb2334005b903580c7a48fe81121ff16ee6d1a528ad32f235d&quot;</span>,
+            )
+            .<span class="ident">unwrap</span>(),
+        );
+        <span class="macro">assert_eq!</span>(<span class="ident">block</span>.<span class="ident">signature</span>.<span class="ident">len</span>(), <span class="number">64</span>);
+        <span class="macro">assert_eq!</span>(
+            <span class="ident">block</span>.<span class="ident">signature</span>,
+            [
+                <span class="number">235</span>, <span class="number">76</span>, <span class="number">9</span>, <span class="number">192</span>, <span class="number">163</span>, <span class="number">53</span>, <span class="number">245</span>, <span class="number">3</span>, <span class="number">41</span>, <span class="number">25</span>, <span class="number">140</span>, <span class="number">231</span>, <span class="number">66</span>, <span class="number">149</span>, <span class="number">218</span>, <span class="number">232</span>, <span class="number">130</span>, <span class="number">66</span>,
+                <span class="number">162</span>, <span class="number">91</span>, <span class="number">12</span>, <span class="number">246</span>, <span class="number">188</span>, <span class="number">58</span>, <span class="number">41</span>, <span class="number">42</span>, <span class="number">69</span>, <span class="number">192</span>, <span class="number">250</span>, <span class="number">81</span>, <span class="number">161</span>, <span class="number">87</span>, <span class="number">94</span>, <span class="number">145</span>, <span class="number">108</span>, <span class="number">115</span>,
+                <span class="number">200</span>, <span class="number">186</span>, <span class="number">242</span>, <span class="number">204</span>, <span class="number">221</span>, <span class="number">100</span>, <span class="number">154</span>, <span class="number">75</span>, <span class="number">35</span>, <span class="number">162</span>, <span class="number">39</span>, <span class="number">224</span>, <span class="number">116</span>, <span class="number">76</span>, <span class="number">252</span>, <span class="number">208</span>, <span class="number">27</span>, <span class="number">32</span>,
+                <span class="number">110</span>, <span class="number">80</span>, <span class="number">199</span>, <span class="number">139</span>, <span class="number">141</span>, <span class="number">134</span>, <span class="number">125</span>, <span class="number">246</span>, <span class="number">6</span>, <span class="number">155</span>
+            ]
+        )
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
