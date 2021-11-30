@@ -108,6 +108,28 @@ impl Transaction {
         self.path.push(hop);
     }
 
+    pub async fn change_hop_in_path(
+        &mut self,
+        wallet_lock: Arc<RwLock<Wallet>>,
+        last_hop_pubkey: SaitoPublicKey,
+        peer_pubkey: SaitoPublicKey,
+    ) {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.get_signature());
+        vbytes.extend(&peer_pubkey);
+        let hash_to_sign = hash(&vbytes);
+
+        let wallet = wallet_lock.read().await;
+
+        let mut hop = Hop::new();
+        hop.set_from(last_hop_pubkey);
+        hop.set_to(peer_pubkey);
+        hop.set_sig(sign(&hash_to_sign, wallet.get_privatekey()));
+
+        // add the next peer to the path
+        self.path.push(hop);
+    }
+
     pub fn validate_routing_path(&self) -> bool {
         for i in 0..self.path.len() {
             //

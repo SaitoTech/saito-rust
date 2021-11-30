@@ -1,8 +1,8 @@
 use super::api_message::APIMessage;
-use super::network::CHALLENGE_EXPIRATION_TIME;
 use crate::block::{Block, BlockType};
 use crate::blockchain::{Blockchain, GENESIS_PERIOD};
 use crate::crypto::{hash, verify, SaitoHash, SaitoPublicKey};
+use crate::hop::Hop;
 use crate::mempool::Mempool;
 use crate::networking::message_types::handshake_challenge::HandshakeChallenge;
 use crate::networking::message_types::request_block_message::RequestBlockMessage;
@@ -11,7 +11,7 @@ use crate::networking::message_types::send_block_head_message::SendBlockHeadMess
 use crate::networking::message_types::send_blockchain_message::{
     SendBlockchainBlockData, SendBlockchainMessage, SyncType,
 };
-use crate::networking::network::CHALLENGE_SIZE;
+use crate::networking::network::{Network, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
@@ -246,9 +246,7 @@ impl SaitoPeer {
     pub fn get_connection_id(&self) -> SaitoHash {
         self.connection_id
     }
-    pub fn is_in_path(&self, tx: Transaction) -> bool {
-        let path = tx.get_path();
-        // self.publickey
+    pub fn is_in_path(&self, path: &Vec<Hop>) -> bool {
         for hop in path {
             if self.publickey.unwrap() == hop.get_to() {
                 return true;
@@ -495,11 +493,12 @@ impl SaitoPeer {
                     let mut mempool = mempool_lock.write().await;
                     if !mempool.transaction_exists(tx.get_hash_for_signature()) {
                         if tx.validate(&blockchain.utxoset, &blockchain.staking) {
-                            mempool.add_transaction(tx).await;
+                            mempool.add_transaction(tx.clone()).await;
                         }
                     }
                     peer.send_response_from_str(api_message.message_id, "OK")
                         .await;
+                    Network::propagate_transaction_to_peers(peer.wallet_lock.clone(), tx).await;
                 }
             }
             "SNDKYLST" => {

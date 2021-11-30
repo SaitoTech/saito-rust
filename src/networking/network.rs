@@ -301,14 +301,28 @@ impl Network {
         }
     }
 
-    // For transaction propagation made by mempool to all peers
-    async fn propagate_transaction_to_peers(tx: Transaction) {
+    // For transaction đ made by mempool to all peers
+    pub async fn propagate_transaction_to_peers(
+        wallet_lock: Arc<RwLock<Wallet>>,
+        mut tx: Transaction,
+    ) {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let mut peers_db_mut = peers_db_global.write().await;
         // We need a stream iterator for async(to await send_command_fire_and_forget)
         let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
         while let Some(peer) = peers_iterator_stream.next().await {
-            if peer.get_has_completed_handshake() && !peer.is_in_path(tx.clone()) {
+            let mut _path = tx.get_path().clone();
+            if peer.get_has_completed_handshake() && !peer.is_in_path(&_path) {
+                // and then just change the last bytes in the vector for each SNDTRANS
+                // add the next peer to the path and sign the path
+                let last_hop = &_path[_path.len() - 1];
+                tx.change_hop_in_path(
+                    wallet_lock.clone(),
+                    last_hop.get_to(),
+                    peer.get_publickey().unwrap(),
+                )
+                .await;
+
                 peer.send_command_fire_and_forget("SNDTRANS", tx.serialize_for_net())
                     .await;
             } else {
@@ -366,7 +380,7 @@ impl Network {
                     }
                     SaitoMessage::WalletNewTransaction { transaction: tx } => {
                         info!("SaitoMessage::WalletNewTransaction new tx is detected by network");
-                        Network::propagate_transaction_to_peers(tx).await;
+                        Network::propagate_transaction_to_peers(self.wallet_lock.clone(), tx).await;
                     }
                     _ => {}
                 }
@@ -807,5 +821,56 @@ mod tests {
                 String::from("SNDBLKHD")
             );
         }
+    }
+
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_sndtrans() {
+        // mock things:
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        // create a mock peer/socket:
+        clean_peers_dbs().await;
+        let mut ws_client = create_socket_and_do_handshake(
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        )
+        .await;
+        // create a SNDTRANS message
+        let mock_hash = [3; 32];
+        let send_chain_message = SendBlockHeadMessage::new(mock_hash);
+        let api_message = APIMessage::new("SNDTRANS", 12345, send_chain_message.serialize());
+
+        // send SNDTRANS message through the socket
+        ws_client
+            .send(Message::binary(api_message.serialize()))
+            .await;
+
+        // read a message off the socket, it should be a RESULT__ for the SNDTRANS message
+        let resp = ws_client.recv().await.unwrap();
+        let api_message_response = APIMessage::deserialize(&resp.as_bytes().to_vec());
+        assert_eq!(
+            api_message_response.get_message_name_as_string(),
+            String::from("RESULT__")
+        );
+        assert_eq!(api_message_response.get_message_id(), 12345);
+        assert_eq!(
+            api_message_response.get_message_data_as_string(),
+            String::from("OK")
+        );
+
+        // read another message from the socket, this should be a REQBLOCK command with the hash
+        // we sent with SNDTRANS
+        let resp = ws_client.recv().await.unwrap();
+        let api_message_request = APIMessage::deserialize(&resp.as_bytes().to_vec());
+        assert_eq!(
+            api_message_request.get_message_name_as_string(),
+            String::from("REQBLOCK")
+        );
+        let request_block_request =
+            RequestBlockMessage::deserialize(api_message_request.get_message_data());
+        assert_eq!(request_block_request.get_block_hash().unwrap(), [3; 32]);
     }
 }
