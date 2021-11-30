@@ -308,7 +308,7 @@ impl Network {
         // We need a stream iterator for async(to await send_command_fire_and_forget)
         let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
         while let Some(peer) = peers_iterator_stream.next().await {
-            if peer.get_has_completed_handshake() {
+            if peer.get_has_completed_handshake() && !peer.is_in_path(tx.clone()) {
                 peer.send_command_fire_and_forget("SNDTRANS", tx.serialize_for_net())
                     .await;
             } else {

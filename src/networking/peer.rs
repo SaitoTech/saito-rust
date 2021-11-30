@@ -246,6 +246,17 @@ impl SaitoPeer {
     pub fn get_connection_id(&self) -> SaitoHash {
         self.connection_id
     }
+    pub fn is_in_path(&self, tx: Transaction) -> bool {
+        let path = tx.get_path();
+        // self.publickey
+        for hop in path {
+            if self.publickey.unwrap() == hop.get_to() {
+                return true;
+            }
+        }
+        false
+    }
+
     /// This creates a PeerRequest Future(which sends the APIMessage to the peer), await's the response,
     /// and wraps the returned message into a Result(RESULT__ => Ok(), ERROR___ => Err()).
     #[async_recursion]
