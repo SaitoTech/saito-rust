@@ -38,6 +38,7 @@ pub enum TransactionType {
     StakerDeposit,
     StakerWithdrawal,
     Issuance,
+    SPV,
 }
 
 #[serde_with::serde_as]
