@@ -50,8 +50,7 @@ impl Miner {
             let solution = GoldenTicket::generate_solution(self.target, random_bytes, publickey);
             if GoldenTicket::is_valid_solution(solution, self.difficulty) {
                 {
-                    let vote = 0;
-                    let gt = GoldenTicket::new(vote, self.target, random_bytes, publickey);
+                    let gt = GoldenTicket::new(self.target, random_bytes, publickey);
 
                     if !self.broadcast_channel_sender.is_none() {
                         self.broadcast_channel_sender
@@ -85,9 +84,7 @@ impl Miner {
             solution = GoldenTicket::generate_solution(block_hash, random_bytes, publickey);
         }
 
-        let vote = 0;
-
-        GoldenTicket::new(vote, block_hash, random_bytes, publickey)
+        GoldenTicket::new(block_hash, random_bytes, publickey)
     }
 
     pub fn set_is_active(&mut self, is_active: bool) {
