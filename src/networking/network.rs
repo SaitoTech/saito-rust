@@ -313,17 +313,12 @@ impl Network {
         while let Some(peer) = peers_iterator_stream.next().await {
             let mut _path = tx.get_path().clone();
             if peer.get_has_completed_handshake() && !peer.is_in_path(&_path) {
-                // and then just change the last bytes in the vector for each SNDTRANS
-                // add the next peer to the path and sign the path
-                let last_hop = &_path[_path.len() - 1];
-                tx.change_hop_in_path(
-                    wallet_lock.clone(),
-                    last_hop.get_to(),
-                    peer.get_publickey().unwrap(),
-                )
-                .await;
+                // change the last bytes in the vector for each SNDTRANS
+                let hop = tx
+                    .build_last_hop(wallet_lock.clone(), peer.get_publickey().unwrap())
+                    .await;
 
-                peer.send_command_fire_and_forget("SNDTRANS", tx.serialize_for_net())
+                peer.send_command_fire_and_forget("SNDTRANS", tx.serialize_for_net_with_hop(hop))
                     .await;
             } else {
                 info!("Hasn't completed handshake, will not send transaction??");
