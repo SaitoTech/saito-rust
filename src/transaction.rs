@@ -113,7 +113,6 @@ impl Transaction {
         wallet_lock: Arc<RwLock<Wallet>>,
         peer_pubkey: SaitoPublicKey,
     ) -> Option<Hop> {
-        self.path.pop(); // pop last hop and replace by new one
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&self.get_signature());
         vbytes.extend(&peer_pubkey);
