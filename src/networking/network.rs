@@ -426,6 +426,9 @@ mod tests {
     use std::convert::TryInto;
 
     use super::*;
+    use crate::hop::Hop;
+    use crate::slip::Slip;
+    use crate::transaction::TransactionType;
     use crate::{
         block::{Block, BlockType},
         crypto::{generate_keys, hash, sign_blob, verify, SaitoSignature},
@@ -719,7 +722,7 @@ mod tests {
         let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
 
         // TODO
-        // This should be in the blockchain contructor.
+        // This should be in the blockchain constructor.
         // Normally this is done in Network::run, but we need to set the broadcast_channel_sender here.
         {
             let mut blockchain = blockchain_lock.write().await;
@@ -832,6 +835,7 @@ mod tests {
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         // create a mock peer/socket:
         clean_peers_dbs().await;
+
         let mut ws_client = create_socket_and_do_handshake(
             wallet_lock.clone(),
             mempool_lock.clone(),
@@ -839,9 +843,27 @@ mod tests {
         )
         .await;
         // create a SNDTRANS message
-        let mock_hash = [3; 32];
-        let send_chain_message = SendBlockHeadMessage::new(mock_hash);
-        let api_message = APIMessage::new("SNDTRANS", 12345, send_chain_message.serialize());
+        let mock_input = Slip::new();
+        let mock_output = Slip::new();
+        let mut mock_hop = Hop::new();
+        mock_hop.set_from([0; 33]);
+        mock_hop.set_to([0; 33]);
+        mock_hop.set_sig([0; 64]);
+        let mut mock_tx = Transaction::new();
+        let mut mock_path: Vec<Hop> = vec![];
+        mock_path.push(mock_hop);
+        let ctimestamp = create_timestamp();
+
+        mock_tx.set_timestamp(ctimestamp);
+        mock_tx.add_input(mock_input);
+        mock_tx.add_output(mock_output);
+        mock_tx.set_message(vec![104, 101, 108, 108, 111]);
+        mock_tx.set_transaction_type(TransactionType::Normal);
+        mock_tx.set_signature([1; 64]);
+        mock_tx.set_path(mock_path);
+
+        let serialized_tx = mock_tx.serialize_for_net();
+        let api_message = APIMessage::new("SNDTRANS", 67890, serialized_tx);
 
         // send SNDTRANS message through the socket
         ws_client
@@ -855,22 +877,10 @@ mod tests {
             api_message_response.get_message_name_as_string(),
             String::from("RESULT__")
         );
-        assert_eq!(api_message_response.get_message_id(), 12345);
+        assert_eq!(api_message_response.get_message_id(), 67890);
         assert_eq!(
             api_message_response.get_message_data_as_string(),
             String::from("OK")
         );
-
-        // read another message from the socket, this should be a REQBLOCK command with the hash
-        // we sent with SNDTRANS
-        let resp = ws_client.recv().await.unwrap();
-        let api_message_request = APIMessage::deserialize(&resp.as_bytes().to_vec());
-        assert_eq!(
-            api_message_request.get_message_name_as_string(),
-            String::from("REQBLOCK")
-        );
-        let request_block_request =
-            RequestBlockMessage::deserialize(api_message_request.get_message_data());
-        assert_eq!(request_block_request.get_block_hash().unwrap(), [3; 32]);
     }
 }
