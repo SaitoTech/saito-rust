@@ -1953,6 +1953,27 @@ mod tests {
         let serialized_body = block.serialize_for_signature();
         assert_eq!(serialized_body.len(), 145);
         TestManager::check_block_consistency(&block);
+
+        block.sign(
+            <[u8; 33]>::from_hex(
+                "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8bcc",
+            )
+            .unwrap(),
+            <[u8; 32]>::from_hex(
+                "854702489d49c7fb2334005b903580c7a48fe81121ff16ee6d1a528ad32f235d",
+            )
+            .unwrap(),
+        );
+        assert_eq!(block.signature.len(), 64);
+        assert_eq!(
+            block.signature,
+            [
+                235, 76, 9, 192, 163, 53, 245, 3, 41, 25, 140, 231, 66, 149, 218, 232, 130, 66,
+                162, 91, 12, 246, 188, 58, 41, 42, 69, 192, 250, 81, 161, 87, 94, 145, 108, 115,
+                200, 186, 242, 204, 221, 100, 154, 75, 35, 162, 39, 224, 116, 76, 252, 208, 27, 32,
+                110, 80, 199, 139, 141, 134, 125, 246, 6, 155
+            ]
+        )
     }
 
     #[test]
@@ -2054,6 +2075,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial_test::serial]
     // downgrade and upgrade a block with transactions
     async fn block_downgrade_upgrade_test() {
         let mut block = Block::new();

@@ -123,6 +123,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[serial_test::serial]
     async fn test_request_block_message_serialize() {
         let request_block_message_empty = RequestBlockMessage::new(None, None, None);
         let request_block_message_full =
