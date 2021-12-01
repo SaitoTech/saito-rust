@@ -138,11 +138,9 @@ impl GoldenTicket {
     }
 
     pub fn deserialize_for_transaction(bytes: Vec<u8>) -> GoldenTicket {
-        let target: SaitoHash = bytes[1..33].try_into().unwrap();
-        let random: SaitoHash = bytes[33..65].try_into().unwrap();
-        let publickey: SaitoPublicKey = bytes[65..98].try_into().unwrap();
+        let target: SaitoHash = bytes[0..32].try_into().unwrap();
+        let random: SaitoHash = bytes[32..64].try_into().unwrap();
+        let publickey: SaitoPublicKey = bytes[64..97].try_into().unwrap();
         GoldenTicket::new(target, random, publickey)
     }
-
 }
-
