@@ -165,9 +165,6 @@
 <span id="165">165</span>
 <span id="166">166</span>
 <span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">consensus::SaitoMessage</span>,
     <span class="ident">crypto</span>::{<span class="ident">generate_random_bytes</span>, <span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>},
@@ -220,8 +217,7 @@
             <span class="kw">let</span> <span class="ident">solution</span> <span class="op">=</span> <span class="ident">GoldenTicket::generate_solution</span>(<span class="self">self</span>.<span class="ident">target</span>, <span class="ident">random_bytes</span>, <span class="ident">publickey</span>);
             <span class="kw">if</span> <span class="ident">GoldenTicket::is_valid_solution</span>(<span class="ident">solution</span>, <span class="self">self</span>.<span class="ident">difficulty</span>) {
                 {
-                    <span class="kw">let</span> <span class="ident">vote</span> <span class="op">=</span> <span class="number">0</span>;
-                    <span class="kw">let</span> <span class="ident">gt</span> <span class="op">=</span> <span class="ident">GoldenTicket::new</span>(<span class="ident">vote</span>, <span class="self">self</span>.<span class="ident">target</span>, <span class="ident">random_bytes</span>, <span class="ident">publickey</span>);
+                    <span class="kw">let</span> <span class="ident">gt</span> <span class="op">=</span> <span class="ident">GoldenTicket::new</span>(<span class="self">self</span>.<span class="ident">target</span>, <span class="ident">random_bytes</span>, <span class="ident">publickey</span>);
 
                     <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_none</span>() {
                         <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>
@@ -255,9 +251,7 @@
             <span class="ident">solution</span> <span class="op">=</span> <span class="ident">GoldenTicket::generate_solution</span>(<span class="ident">block_hash</span>, <span class="ident">random_bytes</span>, <span class="ident">publickey</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">vote</span> <span class="op">=</span> <span class="number">0</span>;
-
-        <span class="ident">GoldenTicket::new</span>(<span class="ident">vote</span>, <span class="ident">block_hash</span>, <span class="ident">random_bytes</span>, <span class="ident">publickey</span>)
+        <span class="ident">GoldenTicket::new</span>(<span class="ident">block_hash</span>, <span class="ident">random_bytes</span>, <span class="ident">publickey</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_is_active</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">is_active</span>: <span class="ident">bool</span>) {

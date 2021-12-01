@@ -146,12 +146,6 @@
 <span id="146">146</span>
 <span id="147">147</span>
 <span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto</span>::{<span class="ident">hash</span>, <span class="ident">SaitoHash</span>, <span class="ident">SaitoPublicKey</span>};
 <span class="kw">use</span> <span class="ident">bigint::uint::U256</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -161,7 +155,6 @@
 <span class="attribute">#[<span class="ident">serde_with::serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GoldenTicket</span> {
-    <span class="ident">vote</span>: <span class="ident">u8</span>,
     <span class="ident">target</span>: <span class="ident">SaitoHash</span>,
     <span class="ident">random</span>: <span class="ident">SaitoHash</span>,
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[_; 33]&quot;</span>)]</span>
@@ -170,9 +163,8 @@
 
 <span class="kw">impl</span> <span class="ident">GoldenTicket</span> {
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_without_default</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">vote</span>: <span class="ident">u8</span>, <span class="ident">target</span>: <span class="ident">SaitoHash</span>, <span class="ident">random</span>: <span class="ident">SaitoHash</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">target</span>: <span class="ident">SaitoHash</span>, <span class="ident">random</span>: <span class="ident">SaitoHash</span>, <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">return</span> <span class="self">Self</span> {
-            <span class="ident">vote</span>,
             <span class="ident">target</span>,
             <span class="ident">random</span>,
             <span class="ident">publickey</span>,
@@ -273,10 +265,6 @@
         <span class="kw">return</span> <span class="bool-val">false</span>;
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_vote</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u8</span> {
-        <span class="self">self</span>.<span class="ident">vote</span>
-    }
-
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_target</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
         <span class="self">self</span>.<span class="ident">target</span>
     }
@@ -291,7 +279,6 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_transaction</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">vote</span>.<span class="ident">to_be_bytes</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">target</span>);
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">random</span>);
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">publickey</span>);
@@ -299,13 +286,14 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_for_transaction</span>(<span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">GoldenTicket</span> {
-        <span class="kw">let</span> <span class="ident">vote</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="ident">u8::from_be_bytes</span>(<span class="ident">bytes</span>[<span class="number">0</span>..<span class="number">1</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>());
         <span class="kw">let</span> <span class="ident">target</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">1</span>..<span class="number">33</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">random</span>: <span class="ident">SaitoHash</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">33</span>..<span class="number">65</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">publickey</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">65</span>..<span class="number">98</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
-        <span class="ident">GoldenTicket::new</span>(<span class="ident">vote</span>, <span class="ident">target</span>, <span class="ident">random</span>, <span class="ident">publickey</span>)
+        <span class="ident">GoldenTicket::new</span>(<span class="ident">target</span>, <span class="ident">random</span>, <span class="ident">publickey</span>)
     }
+
 }
+
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="saito_rust" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script>
