@@ -248,7 +248,7 @@ impl SaitoPeer {
     }
     pub fn is_in_path(&self, path: &Vec<Hop>) -> bool {
         for hop in path {
-            if self.publickey.unwrap() == hop.get_to() {
+            if self.publickey.unwrap() == hop.get_from() {
                 return true;
             }
         }
