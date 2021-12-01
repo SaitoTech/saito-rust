@@ -70,6 +70,7 @@ pub fn generate_keypair_from_privatekey(slice: &[u8]) -> (SaitoPublicKey, SaitoP
     }
     (public_key.serialize(), secret_bytes)
 }
+
 pub fn sign_blob(vbytes: &mut Vec<u8>, privatekey: SaitoPrivateKey) -> &mut Vec<u8> {
     let sig = sign(&hash(vbytes.as_ref()), privatekey);
     vbytes.extend(&sig);
@@ -116,6 +117,7 @@ pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> boo
 mod tests {
 
     use super::*;
+    use hex::FromHex;
     use std::str;
 
     #[test]
@@ -129,5 +131,29 @@ mod tests {
         let dtext = str::from_utf8(&d).unwrap();
 
         assert_eq!(text, dtext);
+    }
+
+    #[test]
+    fn sign_message_test() {
+        let msg = <[u8; 32]>::from_hex(
+            "dcf6cceb74717f98c3f7239459bb36fdcd8f350eedbfccfbebf7c0b0161fcd8b",
+        )
+        .unwrap();
+        let private_key: SaitoPrivateKey = <[u8; 32]>::from_hex(
+            "854702489d49c7fb2334005b903580c7a48fe81121ff16ee6d1a528ad32f235d",
+        )
+        .unwrap();
+
+        let result = sign(&msg, private_key);
+        assert_eq!(result.len(), 64);
+        assert_eq!(
+            result,
+            [
+                202, 118, 37, 146, 48, 117, 177, 10, 18, 74, 214, 201, 245, 79, 145, 68, 124, 181,
+                129, 43, 91, 128, 75, 189, 34, 121, 244, 108, 214, 106, 46, 155, 54, 226, 157, 1,
+                230, 58, 151, 82, 11, 177, 41, 250, 204, 74, 32, 21, 109, 128, 177, 114, 15, 171,
+                9, 150, 237, 116, 236, 2, 146, 210, 39, 69
+            ]
+        );
     }
 }

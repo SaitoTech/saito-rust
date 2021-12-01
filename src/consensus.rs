@@ -26,9 +26,11 @@ pub enum SaitoMessage {
     BlockchainAddBlockFailure { hash: SaitoHash },
     // broadcast when the miner finds a golden ticket
     MinerNewGoldenTicket { ticket: GoldenTicket },
-    // broadcast when the mempool produces a new block
-    MempoolNewBlock { hash: SaitoHash },
-    // broadcast when the mempool adds a new transaction
+    // broadcast when the blockchain wants to broadcast a block to peers
+    BlockchainSavedBlock { hash: SaitoHash },
+    // TODO this is unused and it's unclear when this will be done, fill
+    // this in when the message's use is clearer:
+    // broadcast when....?
     NetworkNewTransaction { transaction: Transaction },
 }
 
@@ -132,7 +134,7 @@ impl Consensus {
 
         let mut is_spammer_enabled = false;
         //
-        // TODO - hook up with Arg above
+        // hook up with Arg above
         //
         if matches.is_present("spammer") {
             is_spammer_enabled = true;

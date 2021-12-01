@@ -10,7 +10,7 @@ saito_rust help
 ## Example Usage
 
 ```bash
-saito_rust --password=asdf --key_path=test/testwallet
+saito_rust --password=asdf --wallet=test/testwallet
 ```
 
 ## Dev
@@ -19,7 +19,7 @@ To run from source:
 
 ```bash
 cargo run -- --help
-cargo run -- --password=asdf --key_path=test/testwallet
+cargo run -- --password=asdf --wallet=test/testwallet
 ```
 */
 use saito_rust::consensus;

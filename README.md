@@ -9,12 +9,6 @@ This project will serve as the reference implementation for other code-bases. It
 We're happy for any contribution.  
 Please have a look at our [contributing guidelines](CONTRIBUTING.md) before you start.
 
-## Roadmap
-
-A long-view backlog [can be seen on Trello](https://trello.com/b/gWPiQFZ1/saito-rust-project-management) for those who may be interested in such things. We use this for coordinating the team at a high level, to keep us focused on meaningful goals(user stories), and to try to produce an accurate roadmap. If you're looking for something to code, the sprint planning board will be better.
-
-https://trello.com/b/gWPiQFZ1/saito-rust-project-management
-
 ## Documentation
 
 - https://saitotech.github.io/saito-rust/saito_rust/index.html
@@ -42,7 +36,7 @@ scripts/test.sh
 or
 
 ```
-cargo test --test-threads=1
+cargo test
 ```
 
 ### Code formatting

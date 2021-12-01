@@ -514,7 +514,7 @@ pub async fn handle_inbound_peer_connection(
     let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
     tokio::task::spawn(peer_rcv.forward(peer_ws_sender).map(|result| {
         if let Err(e) = result {
-            eprintln!("error sending websocket msg: {}", e);
+            error!("error sending websocket msg: {}", e);
         }
     }));
 
