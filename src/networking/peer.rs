@@ -488,17 +488,35 @@ impl SaitoPeer {
                 }
             }
             "SNDTRANS" => {
-                if let Some(tx) = socket_receive_transaction(api_message.clone()) {
+                if let Some(mut tx) = socket_receive_transaction(api_message.clone()) {
+                    let wallet_lock_clone = peer.wallet_lock.clone();
+                    let wallet = wallet_lock_clone.read().await;
+                    tx.generate_metadata(wallet.get_publickey());
+
                     let blockchain = blockchain_lock.read().await;
                     let mut mempool = mempool_lock.write().await;
                     if !mempool.transaction_exists(tx.get_hash_for_signature()) {
                         if tx.validate(&blockchain.utxoset, &blockchain.staking) {
                             mempool.add_transaction(tx.clone()).await;
+
+                            peer.send_response_from_str(api_message.message_id, "OK")
+                                .await;
+                            Network::propagate_transaction_to_peers(peer.wallet_lock.clone(), tx)
+                                .await;
+                        } else {
+                            peer.send_error_response_from_str(
+                                api_message.message_id,
+                                "INVALID TRANSACTION",
+                            )
+                            .await;
                         }
-                    }
-                    peer.send_response_from_str(api_message.message_id, "OK")
+                    } else {
+                        peer.send_error_response_from_str(
+                            api_message.message_id,
+                            "TRANSACTION ALREADY EXISTED IN MEMPOOL",
+                        )
                         .await;
-                    Network::propagate_transaction_to_peers(peer.wallet_lock.clone(), tx).await;
+                    }
                 }
             }
             "SNDKYLST" => {
