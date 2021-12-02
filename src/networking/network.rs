@@ -306,24 +306,29 @@ impl Network {
         wallet_lock: Arc<RwLock<Wallet>>,
         mut tx: Transaction,
     ) {
-        let peers_db_global = PEERS_DB_GLOBAL.clone();
-        let mut peers_db_mut = peers_db_global.write().await;
-        // We need a stream iterator for async(to await send_command_fire_and_forget)
-        let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
-        while let Some(peer) = peers_iterator_stream.next().await {
-            let mut _path = tx.get_path().clone();
-            if peer.get_has_completed_handshake() && !peer.is_in_path(&_path) {
-                // change the last bytes in the vector for each SNDTRANS
-                let hop = tx
-                    .build_last_hop(wallet_lock.clone(), peer.get_publickey().unwrap())
-                    .await;
+        tokio::spawn(async move {
+            let peers_db_global = PEERS_DB_GLOBAL.clone();
+            let mut peers_db_mut = peers_db_global.write().await;
+            // We need a stream iterator for async(to await send_command_fire_and_forget)
+            let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
+            while let Some(peer) = peers_iterator_stream.next().await {
+                let mut _path = tx.get_path().clone();
+                if peer.get_has_completed_handshake() && !peer.is_in_path(&_path) {
+                    // change the last bytes in the vector for each SNDTRANS
+                    let hop = tx
+                        .build_last_hop(wallet_lock.clone(), peer.get_publickey().unwrap())
+                        .await;
 
-                peer.send_command_fire_and_forget("SNDTRANS", tx.serialize_for_net_with_hop(hop))
+                    peer.send_command_fire_and_forget(
+                        "SNDTRANS",
+                        tx.serialize_for_net_with_hop(hop),
+                    )
                     .await;
-            } else {
-                info!("Hasn't completed handshake, will not send transaction??");
+                } else {
+                    info!("Hasn't completed handshake, will not send transaction??");
+                }
             }
-        }
+        });
     }
 
     // Runs warp::serve to listen for incoming connections
@@ -988,112 +993,90 @@ mod tests {
         );
     }
 
-    // #[tokio::test]
-    // #[serial_test::serial]
-    // async fn test_peer_sndtrans() {
-    //     // mock things:
-    //     let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-    //     let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
-    //     let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-    //     // create a mock peer/socket:
-    //     clean_peers_dbs().await;
-    //
-    //     let mut ws_client = create_socket_and_do_handshake(
-    //         wallet_lock.clone(),
-    //         mempool_lock.clone(),
-    //         blockchain_lock.clone(),
-    //     )
-    //     .await;
-    //
-    //     // create a SNDTRANS message
-    //     let mock_input = Slip::new();
-    //     let mock_output = Slip::new();
-    //     let mut mock_hop = Hop::new();
-    //     mock_hop.set_from([0; 33]);
-    //     mock_hop.set_to([0; 33]);
-    //     mock_hop.set_sig([0; 64]);
-    //     let mut mock_tx = Transaction::new();
-    //     let mut mock_path: Vec<Hop> = vec![];
-    //     mock_path.push(mock_hop);
-    //     let ctimestamp = create_timestamp();
-    //
-    //     mock_tx.set_timestamp(ctimestamp);
-    //     mock_tx.add_input(mock_input);
-    //     mock_tx.add_output(mock_output);
-    //     mock_tx.set_message(vec![104, 101, 108, 108, 111]);
-    //     mock_tx.set_transaction_type(TransactionType::Normal);
-    //     mock_tx.set_signature([1; 64]);
-    //     mock_tx.set_path(mock_path);
-    //
-    //     let serialized_tx = mock_tx.serialize_for_net();
-    //     let api_message = APIMessage::new("SNDTRANS", 67890, serialized_tx);
-    //
-    //     // send SNDTRANS message through the socket
-    //     ws_client
-    //         .send(Message::binary(api_message.serialize()))
-    //         .await;
-    //
-    //     // read a message off the socket, it should be a RESULT__ for the SNDTRANS message
-    //     let resp = ws_client.recv().await.unwrap();
-    //     let api_message_response = APIMessage::deserialize(&resp.as_bytes().to_vec());
-    //     assert_eq!(
-    //         api_message_response.get_message_name_as_string(),
-    //         String::from("RESULT__")
-    //     );
-    //     assert_eq!(api_message_response.get_message_id(), 67890);
-    //     assert_eq!(
-    //         api_message_response.get_message_data_as_string(),
-    //         String::from("OK")
-    //     );
-    //
-    //     let wallet_lock2 = Arc::new(RwLock::new(Wallet::new()));
-    //     let mempool_lock2 = Arc::new(RwLock::new(Mempool::new(wallet_lock2.clone())));
-    //     let blockchain_lock2 = Arc::new(RwLock::new(Blockchain::new(wallet_lock2.clone())));
-    //
-    //     let mut ws_client2 = create_socket_and_do_handshake(
-    //         wallet_lock2.clone(),
-    //         mempool_lock2.clone(),
-    //         blockchain_lock2.clone(),
-    //     )
-    //     .await;
-    //
-    //     let wallet = wallet_lock2.read().await;
-    //
-    //     // create a SNDTRANS message
-    //     let mock_input1 = Slip::new();
-    //     let mock_output1 = Slip::new();
-    //     let mut mock_hop1 = Hop::new();
-    //     mock_hop1.set_from(wallet.get_publickey());
-    //     mock_hop1.set_to([0; 33]);
-    //     mock_hop1.set_sig([0; 64]);
-    //
-    //     let mut mock_tx1 = Transaction::new();
-    //     mock_tx1.set_timestamp(create_timestamp());
-    //     mock_tx1.add_input(mock_input1);
-    //     mock_tx1.add_output(mock_output1);
-    //     mock_tx1.set_message(vec![104, 101, 108, 108, 111]);
-    //     mock_tx1.set_transaction_type(TransactionType::Normal);
-    //     mock_tx1.set_signature([1; 64]);
-    //
-    //     let serialized_tx1 = mock_tx.serialize_for_net_with_hop(mock_hop1.try_into().unwrap());
-    //     let api_message1 = APIMessage::new("SNDTRANS", 67890, serialized_tx1);
-    //
-    //     // send SNDTRANS message through the socket
-    //     ws_client2
-    //         .send(Message::binary(api_message1.serialize()))
-    //         .await;
-    //
-    //     // read a message off the socket 2, it should be a SNDTRANS message
-    //     let resp2 = ws_client2.recv().await.unwrap();
-    //     let api_message_response2 = APIMessage::deserialize(&resp2.as_bytes().to_vec());
-    //     assert_eq!(
-    //         api_message_response2.get_message_name_as_string(),
-    //         String::from("SNDTRANS")
-    //     );
-    //     assert_eq!(api_message_response2.get_message_id(), 67890);
-    // assert_eq!(
-    //     api_message_response2.get_message_data_as_string(),
-    //     String::from("OK")
-    // );
-    // }
+    #[tokio::test]
+    #[serial_test::serial]
+    async fn test_peer_sndtrans() {
+        // mock things:
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        // create a mock peer/socket:
+        clean_peers_dbs().await;
+
+        let mut ws_client = create_socket_and_do_handshake(
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+        )
+        .await;
+
+        let wallet = wallet_lock.read().await;
+
+        // create a SNDTRANS message
+        let mock_input = Slip::new();
+        let mock_output = Slip::new();
+        let mut mock_hop = Hop::new();
+        mock_hop.set_from(wallet.get_publickey());
+        mock_hop.set_to([0; 33]);
+        mock_hop.set_sig([0; 64]);
+        let mut mock_tx = Transaction::new();
+        let mut mock_path: Vec<Hop> = vec![];
+        mock_path.push(mock_hop);
+        let ctimestamp = create_timestamp();
+
+        mock_tx.set_timestamp(ctimestamp);
+        mock_tx.add_input(mock_input);
+        mock_tx.add_output(mock_output);
+        mock_tx.set_message(vec![104, 101, 108, 108, 111]);
+        mock_tx.set_transaction_type(TransactionType::Normal);
+        mock_tx.set_signature([1; 64]);
+        // mock_tx.generate_metadata(wallet.get_publickey());
+        // mock_tx.sign(wallet.get_privatekey());
+        mock_tx.set_path(mock_path);
+
+        let serialized_tx = mock_tx.serialize_for_net();
+        let api_message = APIMessage::new("SNDTRANS", 67890, serialized_tx);
+
+        // create 2nd mock peer/socket
+        let wallet_lock2 = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock2 = Arc::new(RwLock::new(Mempool::new(wallet_lock2.clone())));
+        let blockchain_lock2 = Arc::new(RwLock::new(Blockchain::new(wallet_lock2.clone())));
+
+        let mut ws_client2 = create_socket_and_do_handshake(
+            wallet_lock2.clone(),
+            mempool_lock2.clone(),
+            blockchain_lock2.clone(),
+        )
+        .await;
+
+        // send SNDTRANS message through the socket
+        ws_client
+            .send(Message::binary(api_message.serialize()))
+            .await;
+
+        // read a message off the socket, it should be a RESULT__ for the SNDTRANS message
+        let resp = ws_client.recv().await.unwrap();
+        let api_message_response = APIMessage::deserialize(&resp.as_bytes().to_vec());
+        assert_eq!(
+            api_message_response.get_message_name_as_string(),
+            String::from("RESULT__")
+        );
+        assert_eq!(api_message_response.get_message_id(), 67890);
+        assert_eq!(
+            api_message_response.get_message_data_as_string(),
+            String::from("OK")
+        );
+
+        // read a message off the 2nd socket, it should be a SNDTRANS message
+        let resp2 = ws_client2.recv().await.unwrap();
+        let api_message_response2 = APIMessage::deserialize(&resp2.as_bytes().to_vec());
+        assert_eq!(
+            api_message_response2.get_message_name_as_string(),
+            String::from("SNDTRANS")
+        );
+        assert_eq!(api_message_response2.get_message_id(), 0);
+
+        let tx2 = Transaction::deserialize_from_net(api_message_response2.get_into_message_data());
+        assert_eq!(mock_tx.get_signature(), tx2.get_signature());
+    }
 }
