@@ -438,12 +438,18 @@
 <span id="438">438</span>
 <span id="439">439</span>
 <span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">block::Block</span>,
     <span class="ident">blockchain::Blockchain</span>,
     <span class="ident">burnfee::BurnFee</span>,
     <span class="ident">consensus::SaitoMessage</span>,
-    <span class="ident">crypto</span>::{<span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>},
+    <span class="ident">crypto</span>::{<span class="ident">SaitoHash</span>, <span class="ident">SaitoPrivateKey</span>, <span class="ident">SaitoPublicKey</span>},
     <span class="ident">golden_ticket::GoldenTicket</span>,
     <span class="ident">time::create_timestamp</span>,
     <span class="ident">transaction::Transaction</span>,
@@ -688,6 +694,12 @@
             <span class="ident">blockchain</span>.<span class="ident">add_block</span>(<span class="ident">block</span>).<span class="kw">await</span>;
         }
         <span class="ident">mempool</span>.<span class="ident">currently_bundling_block</span> <span class="op">=</span> <span class="bool-val">false</span>;
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transaction_exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">tx_hash</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">transactions</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">transaction</span><span class="op">|</span> <span class="ident">transaction</span>.<span class="ident">get_hash_for_signature</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">tx_hash</span>)
     }
 }
 
