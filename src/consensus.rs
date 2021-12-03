@@ -28,10 +28,8 @@ pub enum SaitoMessage {
     MinerNewGoldenTicket { ticket: GoldenTicket },
     // broadcast when the blockchain wants to broadcast a block to peers
     BlockchainSavedBlock { hash: SaitoHash },
-    // TODO this is unused and it's unclear when this will be done, fill
-    // this in when the message's use is clearer:
-    // broadcast when....?
-    NetworkNewTransaction { transaction: Transaction },
+    // handle transactions which we've created "ourself" - interact with saitocli
+    WalletNewTransaction { transaction: Transaction },
 }
 
 ///

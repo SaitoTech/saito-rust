@@ -109,6 +109,21 @@ impl Transaction {
         self.path.push(hop);
     }
 
+    pub async fn build_last_hop(
+        &mut self,
+        wallet_lock: Arc<RwLock<Wallet>>,
+        peer_pubkey: SaitoPublicKey,
+    ) -> Option<Hop> {
+        let mut vbytes: Vec<u8> = vec![];
+        vbytes.extend(&self.get_signature());
+        vbytes.extend(&peer_pubkey);
+        let hash_to_sign = hash(&vbytes);
+
+        let hop = Hop::generate_hop(wallet_lock.clone(), peer_pubkey, hash_to_sign).await;
+
+        Some(hop)
+    }
+
     pub fn validate_routing_path(&self) -> bool {
         for i in 0..self.path.len() {
             //
@@ -626,11 +641,19 @@ impl Transaction {
     /// [message]
     /// [hop][hop][hop]...
     pub fn serialize_for_net(&self) -> Vec<u8> {
+        self.serialize_for_net_with_hop(None)
+    }
+
+    pub(crate) fn serialize_for_net_with_hop(&self, opt_hop: Option<Hop>) -> Vec<u8> {
         let mut vbytes: Vec<u8> = vec![];
         vbytes.extend(&(self.inputs.len() as u32).to_be_bytes());
         vbytes.extend(&(self.outputs.len() as u32).to_be_bytes());
         vbytes.extend(&(self.message.len() as u32).to_be_bytes());
-        vbytes.extend(&(self.path.len() as u32).to_be_bytes());
+        let mut path_len = self.path.len();
+        if !opt_hop.is_none() {
+            path_len = path_len + 1;
+        }
+        vbytes.extend(&(path_len as u32).to_be_bytes());
         vbytes.extend(&self.signature);
         vbytes.extend(&self.timestamp.to_be_bytes());
         vbytes.extend(&(self.transaction_type as u8).to_be_bytes());
@@ -643,6 +666,9 @@ impl Transaction {
         vbytes.extend(&self.message);
         for hop in &self.path {
             vbytes.extend(&hop.serialize_for_net());
+        }
+        if !opt_hop.is_none() {
+            vbytes.extend(opt_hop.unwrap().serialize_for_net());
         }
         vbytes
     }
