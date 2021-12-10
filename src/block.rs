@@ -226,6 +226,8 @@ pub struct Block {
     pub slips_spent_this_block: AHashMap<SaitoUTXOSetKey, u64>,
     #[serde(skip)]
     created_hashmap_of_slips_spent_this_block: bool,
+    // the peer's connection ID who sent us this block
+    source_connection_id: Option<SaitoHash>,
 }
 
 impl Block {
@@ -263,6 +265,7 @@ impl Block {
             // hashmap of all SaitoUTXOSetKeys of the slips in the block
             slips_spent_this_block: AHashMap::new(),
             created_hashmap_of_slips_spent_this_block: false,
+            source_connection_id: None,
         }
     }
 
@@ -356,6 +359,10 @@ impl Block {
 
     pub fn get_routing_work_for_creator(&self) -> u64 {
         self.routing_work_for_creator
+    }
+
+    pub fn get_source_connection_id(&self) -> Option<SaitoHash> {
+        self.source_connection_id
     }
 
     pub fn set_routing_work_for_creator(&mut self, routing_work_for_creator: u64) {
@@ -459,6 +466,10 @@ impl Block {
         self.hash = hash;
     }
 
+    pub fn set_source_connection_id(&mut self, source_connection_id: SaitoHash) {
+        self.source_connection_id = Some(source_connection_id);
+    }
+
     pub fn add_transaction(&mut self, tx: Transaction) {
         self.transactions.push(tx);
     }
@@ -539,20 +550,23 @@ impl Block {
         // we set final data
         //
         self.set_creator(publickey);
-        self.generate_hashes();
+        self.generate_pre_hash();
         self.set_signature(sign(&self.get_pre_hash(), privatekey));
+        self.generate_hash();
     }
-
-    pub fn generate_hashes(&mut self) -> SaitoHash {
-        //
-        // fastest known way that isn't bincode ??
-        //
-        let hash_for_signature = hash(&self.serialize_for_signature());
-        self.set_pre_hash(hash_for_signature);
+    pub fn generate_hash(&mut self) -> SaitoHash {
         let hash_for_hash = hash(&self.serialize_for_hash());
         self.set_hash(hash_for_hash);
 
         hash_for_hash
+    }
+    pub fn generate_pre_hash(&mut self) {
+        let hash_for_signature = hash(&self.serialize_for_signature());
+        self.set_pre_hash(hash_for_signature);
+    }
+    pub fn generate_hashes(&mut self) -> SaitoHash {
+        self.generate_pre_hash();
+        self.generate_hash()
     }
 
     // serialize the pre_hash and the signature_for_source into a
@@ -2111,5 +2125,25 @@ mod tests {
         );
 
         TestManager::check_block_consistency(&block);
+    }
+
+    // TODO It is not obvious that calling sign() would have the side effect of setting the hash.
+    //      The API of block.sign() and block.set_hash() should be clearer.
+    #[ignore]
+    #[tokio::test]
+    async fn signature_idempotency_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let publickey;
+        let privatekey;
+        {
+            let wallet = wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+            privatekey = wallet.get_privatekey();
+        }
+        let mut block = Block::new();
+        let block_hash_0 = block.get_hash();
+        block.sign(publickey, privatekey);
+        let block_hash_1 = block.get_hash();
+        assert_eq!(block_hash_0, block_hash_1);
     }
 }

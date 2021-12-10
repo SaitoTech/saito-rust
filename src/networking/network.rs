@@ -52,6 +52,7 @@ pub struct Network {
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
 }
 
 impl Network {
@@ -60,11 +61,13 @@ impl Network {
         wallet_lock: Arc<RwLock<Wallet>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
+        broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     ) -> Network {
         Network {
             wallet_lock,
             mempool_lock,
             blockchain_lock,
+            broadcast_channel_sender,
         }
     }
 
@@ -225,7 +228,6 @@ impl Network {
         if let Some(peer_settings) = peer_settings {
             for peer_setting in peer_settings {
                 let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-
                 let peer = SaitoPeer::new(
                     connection_id,
                     Some(peer_setting.host),
@@ -236,6 +238,7 @@ impl Network {
                     self.wallet_lock.clone(),
                     self.mempool_lock.clone(),
                     self.blockchain_lock.clone(),
+                    self.broadcast_channel_sender.clone(),
                 );
                 {
                     let peers_db_global = PEERS_DB_GLOBAL.clone();
@@ -344,6 +347,7 @@ impl Network {
                 self.wallet_lock.clone(),
                 self.mempool_lock.clone(),
                 self.blockchain_lock.clone(),
+                self.broadcast_channel_sender.clone(),
             ));
         info!("Listening for HTTP on port {}", port);
         let (_, server) =
@@ -381,6 +385,19 @@ impl Network {
                         info!("SaitoMessage::WalletNewTransaction new tx is detected by network");
                         Network::propagate_transaction_to_peers(self.wallet_lock.clone(), tx).await;
                     }
+                    SaitoMessage::MissingBlock {
+                        peer_id: connection_id,
+                        hash: block_hash,
+                    } => {
+                        warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
+                        let peers_db_global = PEERS_DB_GLOBAL.clone();
+                        let mut peer_db = peers_db_global.write().await;
+                        if let Some(peer) = peer_db.get_mut(&connection_id) {
+                            peer.do_reqblock(block_hash).await;
+                        } else {
+                            error!("missing peer cannot be fetched, unknown Peer")
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -393,12 +410,14 @@ pub async fn run(
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
     let network = Network::new(
         wallet_lock.clone(),
         mempool_lock.clone(),
         blockchain_lock.clone(),
+        broadcast_channel_sender.clone(),
     );
     // TODO: maybe refactor this into two separate classes maybe and split this run() into two...
     tokio::select! {
@@ -428,6 +447,7 @@ mod tests {
     // use crate::hop::Hop;
     // use crate::slip::Slip;
     // use crate::transaction::TransactionType;
+    use crate::transaction::Transaction;
     use crate::{
         block::{Block, BlockType},
         crypto::{generate_keys, hash, sign_blob, verify, SaitoSignature},
@@ -453,7 +473,6 @@ mod tests {
     };
     use secp256k1::PublicKey;
     use warp::{test::WsClient, ws::Message};
-
     // #[tokio::test]
     // async fn test_be_sure_threads_equals_1() {
     //     let mut filtered_args_iter = std::env::args().filter(|arg| arg == "--test-threads=1");
@@ -496,12 +515,18 @@ mod tests {
         wallet_arc: Arc<RwLock<Wallet>>,
         mempool_arc: Arc<RwLock<Mempool>>,
         blockchain_arc: Arc<RwLock<Blockchain>>,
+        broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     ) -> WsClient {
         // mock things:
         let (publickey, privatekey) = generate_keys();
 
         // use Warp test to open a socket:
-        let socket_filter = ws_upgrade_route_filter(wallet_arc, mempool_arc, blockchain_arc);
+        let socket_filter = ws_upgrade_route_filter(
+            wallet_arc,
+            mempool_arc,
+            blockchain_arc,
+            broadcast_channel_sender,
+        );
         let mut ws_client = warp::test::ws()
             .path("/wsopen")
             .handshake(socket_filter)
@@ -580,12 +605,14 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let (broadcast_channel_sender, _broadcast_channel_receiver) = broadcast::channel(32);
         // create a mock peer/socket:
         clean_peers_dbs().await;
         let mut ws_client = create_socket_and_do_handshake(
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
+            broadcast_channel_sender.clone(),
         )
         .await;
 
@@ -661,12 +688,14 @@ mod tests {
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let (broadcast_channel_sender, _broadcast_channel_receiver) = broadcast::channel(32);
         // create a mock peer/socket:
         clean_peers_dbs().await;
         let mut ws_client = create_socket_and_do_handshake(
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
+            broadcast_channel_sender.clone(),
         )
         .await;
 
@@ -707,6 +736,111 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn missing_blocks_test() {
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let (broadcast_channel_sender, mut broadcast_channel_receiver) = broadcast::channel(32);
+
+        let mut test_manager = TestManager::new(blockchain_lock.clone(), wallet_lock.clone());
+
+        let current_timestamp = create_timestamp();
+
+        // BLOCK 1
+        test_manager
+            .add_block(current_timestamp, 3, 0, false, vec![])
+            .await;
+
+        // BLOCK 2
+        test_manager
+            .add_block(current_timestamp + 120000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 3
+        test_manager
+            .add_block(current_timestamp + 240000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 4
+        test_manager
+            .add_block(current_timestamp + 360000, 0, 1, false, vec![])
+            .await;
+
+        // BLOCK 5
+        test_manager
+            .add_block(current_timestamp + 480000, 0, 1, false, vec![])
+            .await;
+        {
+            let blockchain = blockchain_lock.read().await;
+
+            assert_eq!(5, blockchain.get_latest_block_id());
+        }
+
+        let publickey;
+        let privatekey;
+        {
+            let wallet = wallet_lock.read().await;
+            publickey = wallet.get_publickey();
+            privatekey = wallet.get_privatekey();
+        }
+
+        let mut block_with_unknown_parent = Block::new();
+        block_with_unknown_parent.set_id(4);
+        block_with_unknown_parent.set_previous_block_hash([2; 32]);
+        block_with_unknown_parent.set_burnfee(10);
+        block_with_unknown_parent.set_timestamp(create_timestamp());
+
+        let mut tx =
+            Transaction::generate_vip_transaction(wallet_lock.clone(), publickey, 10_000_000, 1)
+                .await;
+        tx.generate_metadata(publickey);
+
+        tx.sign(privatekey);
+
+        block_with_unknown_parent.set_transactions(&mut vec![tx]);
+
+        let block_merkle_root = block_with_unknown_parent.generate_merkle_root();
+        block_with_unknown_parent.set_merkle_root(block_merkle_root);
+        block_with_unknown_parent.sign(publickey, privatekey);
+
+        block_with_unknown_parent.set_source_connection_id([5; 32]);
+
+        // connect a peer
+        // let mut ws_client = create_socket_and_do_handshake(
+        //     wallet_lock.clone(),
+        //     mempool_lock.clone(),
+        //     blockchain_lock.clone(),
+        //     broadcast_channel_sender.clone(),
+        // )
+        // .await;
+
+        let block_with_unknown_parent_hash = block_with_unknown_parent.get_hash().clone();
+        {
+            let mut blockchain = blockchain_lock.write().await;
+            blockchain.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+            blockchain.add_block(block_with_unknown_parent).await;
+            let block = blockchain.get_block(&block_with_unknown_parent_hash).await;
+            println!(
+                "is_some?> {:?}",
+                &hex::encode(&block_with_unknown_parent_hash)
+            );
+            assert!(block.is_some());
+        }
+        if let Ok(msg) = broadcast_channel_receiver.recv().await {
+            match msg {
+                SaitoMessage::MissingBlock {
+                    peer_id: connection_id,
+                    hash: _block_hash,
+                } => {
+                    assert_eq!(connection_id, [5; 32]);
+                }
+                _ => {
+                    assert!(false, "message should be MissingBlock");
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
     #[serial_test::serial]
     async fn test_blockchain_causes_sndblkhd() {
         // initialize peers db:
@@ -733,6 +867,7 @@ mod tests {
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
+            broadcast_channel_sender.clone(),
         )
         .await;
 
@@ -747,6 +882,7 @@ mod tests {
                 wallet_lock_for_task,
                 mempool_lock_for_task,
                 blockchain_lock_for_task,
+                broadcast_channel_sender,
                 broadcast_channel_receiver,
             )
             .await
@@ -791,15 +927,18 @@ mod tests {
             wallet_lock.clone(),
             mempool_lock.clone(),
             blockchain_lock.clone(),
+            broadcast_channel_sender.clone(),
         )
         .await;
         // network object under test:
+        let bcs_clone = broadcast_channel_sender.clone();
         tokio::spawn(async move {
             crate::networking::network::run(
                 settings,
                 wallet_lock.clone(),
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
+                bcs_clone,
                 broadcast_channel_receiver,
             )
             .await

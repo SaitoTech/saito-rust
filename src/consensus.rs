@@ -18,6 +18,8 @@ use tokio::sync::{broadcast, mpsc};
 ///
 #[derive(Clone, Debug)]
 pub enum SaitoMessage {
+    // broadcast when a block is received but parent is unknown
+    MissingBlock { peer_id: SaitoHash, hash: SaitoHash },
     // broadcast when the longest chain block changes
     BlockchainNewLongestChainBlock { hash: SaitoHash, difficulty: u64 },
     // broadcast when a block is successfully added
@@ -259,6 +261,7 @@ impl Consensus {
                 wallet_lock.clone(),
                 mempool_lock.clone(),
                 blockchain_lock.clone(),
+                broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
                 if let Err(err) = res {

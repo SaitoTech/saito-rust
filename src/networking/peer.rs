@@ -1,6 +1,7 @@
 use super::api_message::APIMessage;
 use crate::block::{Block, BlockType};
 use crate::blockchain::{Blockchain, GENESIS_PERIOD};
+use crate::consensus::SaitoMessage;
 use crate::crypto::{hash, verify, SaitoHash, SaitoPublicKey};
 use crate::hop::Hop;
 use crate::mempool::Mempool;
@@ -25,7 +26,7 @@ use std::error::Error;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
@@ -73,6 +74,7 @@ pub struct SaitoPeer {
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
 }
 
 /// An inbound Peer. This holds a Stream(Sender/Sink) for a peer which has initialized a connection to us via /wsopen.
@@ -183,6 +185,7 @@ impl SaitoPeer {
         wallet_lock: Arc<RwLock<Wallet>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
+        broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     ) -> SaitoPeer {
         SaitoPeer {
             peer_flags: PeerFlags {
@@ -198,6 +201,7 @@ impl SaitoPeer {
             wallet_lock,
             mempool_lock,
             blockchain_lock,
+            broadcast_channel_sender,
         }
     }
     pub fn get_is_from_peer_list(&self) -> bool {
@@ -214,6 +218,9 @@ impl SaitoPeer {
     }
     pub fn get_publickey(&self) -> Option<SaitoPublicKey> {
         self.publickey
+    }
+    pub fn get_broadcast_channel_sender(&self) -> &broadcast::Sender<SaitoMessage> {
+        &self.broadcast_channel_sender
     }
     /// this setter also will reset the appropriate flags on the peer if the peer becomes disconnected.
     /// Once disconnected, we want to also redo the handshake because this will help avoid IP-based
@@ -344,8 +351,9 @@ impl SaitoPeer {
             }
         }
     }
+
     // REQBLOCK is a response to both SNDCHAIN and SNDBLKHD. This function simply wraps shared functionality.
-    async fn do_reqblock(&self, block_hash: SaitoHash) {
+    pub async fn do_reqblock(&self, block_hash: SaitoHash) {
         let request_block_message = RequestBlockMessage::new(None, Some(block_hash), None);
         let connection_id_clone = self.connection_id.clone();
         let mempool_lock = self.mempool_lock.clone();
@@ -359,8 +367,9 @@ impl SaitoPeer {
                 .await;
             match result {
                 Ok(serialized_block_message) => {
-                    let block =
+                    let mut block =
                         Block::deserialize_for_net(serialized_block_message.get_message_data());
+                    block.set_source_connection_id(peer.connection_id);
                     {
                         let mut mempool = mempool_lock.write().await;
                         mempool.add_block(block);
@@ -541,6 +550,7 @@ pub async fn handle_inbound_peer_connection(
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
 ) {
     let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
     let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
@@ -562,6 +572,7 @@ pub async fn handle_inbound_peer_connection(
         wallet_lock.clone(),
         mempool_lock.clone(),
         blockchain_lock.clone(),
+        broadcast_channel_sender.clone(),
     );
 
     peer_db_lock

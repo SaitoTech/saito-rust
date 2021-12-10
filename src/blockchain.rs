@@ -81,6 +81,45 @@ impl Blockchain {
 
     pub async fn add_block(&mut self, mut block: Block) {
         //
+        // get missing block
+        //
+        if self.blockring.get_latest_block_id() > 0 {
+            let mut earliest_block_id = 1;
+            if self.get_latest_block_id() > GENESIS_PERIOD {
+                earliest_block_id = self.get_latest_block_id() - GENESIS_PERIOD;
+            }
+            println!("earliest_block_id {}", earliest_block_id);
+            let earliest_block_hash = self
+                .blockring
+                .get_longest_chain_block_hash_by_block_id(earliest_block_id);
+            println!("earliest_block_hash {:?}", earliest_block_hash);
+            let earliest_block = self.get_mut_block(&earliest_block_hash).await;
+
+            if block.get_timestamp() > earliest_block.get_timestamp() {
+                if self
+                    .get_block(&block.get_previous_block_hash())
+                    .await
+                    .is_none()
+                {
+                    if block.get_id() > earliest_block_id {
+                        if block.get_source_connection_id().is_some()
+                            && self.broadcast_channel_sender.is_some()
+                        {
+                            self.broadcast_channel_sender
+                                .as_ref()
+                                .unwrap()
+                                .send(SaitoMessage::MissingBlock {
+                                    peer_id: block.get_source_connection_id().unwrap(),
+                                    hash: block.get_previous_block_hash(),
+                                })
+                                .expect("error: MissingBlock message failed to send");
+                        }
+                    }
+                }
+            }
+        }
+
+        //
         // first things first, confirm hashes OK
         //
         block.generate_hashes();
