@@ -109,15 +109,19 @@
 <span id="109">109</span>
 <span id="110">110</span>
 <span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::block::BlockType</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::blockchain::Blockchain</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::consensus::SaitoMessage</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::mempool::Mempool</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::networking::network::Result</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::transaction::Transaction</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">base58::ToBase58</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
+<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">broadcast</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">warp::reject::Reject</span>;
 <span class="kw">use</span> <span class="ident">warp::reply::Response</span>;
 <span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">Buf</span>, <span class="ident">Rejection</span>, <span class="ident">Reply</span>};
@@ -156,6 +160,7 @@
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">mempool_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Mempool</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">blockchain_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Blockchain</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">broadcast_channel_sender</span>: <span class="ident">broadcast::Sender</span><span class="op">&lt;</span><span class="ident">SaitoMessage</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="kw">impl</span> <span class="ident">Reply</span>, <span class="ident">Rejection</span><span class="op">&gt;</span> {
     <span class="prelude-val">Ok</span>(<span class="ident">ws</span>.<span class="ident">on_upgrade</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">socket</span><span class="op">|</span> {
         <span class="ident">handle_inbound_peer_connection</span>(
@@ -164,6 +169,7 @@
             <span class="ident">wallet_lock</span>,
             <span class="ident">mempool_lock</span>,
             <span class="ident">blockchain_lock</span>,
+            <span class="ident">broadcast_channel_sender</span>,
         )
     }))
 }

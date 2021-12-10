@@ -276,6 +276,9 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::miner::Miner</span>;
@@ -296,6 +299,8 @@
 <span class="doccomment">///</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SaitoMessage</span> {
+    <span class="comment">// broadcast when a block is received but parent is unknown</span>
+    <span class="ident">MissingBlock</span> { <span class="ident">peer_id</span>: <span class="ident">SaitoHash</span>, <span class="ident">hash</span>: <span class="ident">SaitoHash</span> },
     <span class="comment">// broadcast when the longest chain block changes</span>
     <span class="ident">BlockchainNewLongestChainBlock</span> { <span class="ident">hash</span>: <span class="ident">SaitoHash</span>, <span class="ident">difficulty</span>: <span class="ident">u64</span> },
     <span class="comment">// broadcast when a block is successfully added</span>
@@ -537,6 +542,7 @@
                 <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+                <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
