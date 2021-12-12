@@ -130,30 +130,6 @@ impl BlockPayout {
     }
 }
 
-//
-// The RouterPayout object is returned by the function that calculates
-// who deserves the payment for each block. This is somewhat obsolete but
-// is used to generate the BlockPayout object above.
-//
-// TODO eliminate reliance on this struct when creating the block payout
-// object to permit its removal.
-//
-#[derive(PartialEq, Debug, Clone)]
-pub struct RouterPayout {
-    // expected transaction containing outbound payments
-    pub publickey: SaitoPublicKey,
-    pub random_number: SaitoHash,
-}
-impl RouterPayout {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new() -> RouterPayout {
-        RouterPayout {
-            publickey: [0; 33],
-            random_number: [0; 32],
-        }
-    }
-}
-
 ///
 /// BlockType is a human-readable indicator of the state of the block
 /// with particular attention to its state of pruning and the amount of
@@ -938,9 +914,7 @@ impl Block {
                 //
                 // calculate miner and router payments
                 //
-                let block_payouts: RouterPayout =
-                    previous_block.find_winning_router(next_random_number);
-                let router_publickey = block_payouts.publickey;
+                let router_publickey = previous_block.find_winning_router(next_random_number);
 
                 // these two from find_winning_router - 3, 4
                 next_random_number = hash(&next_random_number.to_vec());
@@ -999,9 +973,8 @@ impl Block {
                                 let rp = staking_block.get_total_fees() - sp;
 
                                 let mut payout = BlockPayout::new();
-                                payout.router = staking_block
-                                    .find_winning_router(next_random_number)
-                                    .publickey;
+                                payout.router =
+                                    staking_block.find_winning_router(next_random_number);
                                 payout.router_payout = rp;
                                 payout.staking_treasury = sp as i64;
 
@@ -1144,8 +1117,8 @@ impl Block {
     }
 
     // consumes two hashes every time
-    pub fn find_winning_router(&self, random_number: SaitoHash) -> RouterPayout {
-        let mut rp = RouterPayout::new();
+    pub fn find_winning_router(&self, random_number: SaitoHash) -> SaitoPublicKey {
+        let winner_pubkey: SaitoPublicKey;
 
         //
         // find winning nolan
@@ -1158,11 +1131,11 @@ impl Block {
         let y = self.get_total_fees();
 
         //
-        // if there are no fees, payout to
+        // if there are no fees, payout to burn address
         //
         if y == 0 {
-            rp.publickey = [0; 33];
-            return rp;
+            winner_pubkey = [0; 33];
+            return winner_pubkey;
         }
 
         let z = U256::from_big_endian(&y.to_be_bytes());
@@ -1198,9 +1171,9 @@ impl Block {
         //
         // hash random number to pick routing node
         //
-        rp.publickey = winning_tx.get_winning_routing_node(hash(&random_number.to_vec()));
+        winner_pubkey = winning_tx.get_winning_routing_node(hash(&random_number.to_vec()));
 
-        rp
+        winner_pubkey
     }
 
     pub fn on_chain_reorganization(
