@@ -6,7 +6,7 @@
 <span id="6">6</span>
 <span id="7">7</span>
 <span id="8">8</span>
-</pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">format_url_string</span>(<span class="ident">host</span>: [<span class="ident">u8</span>; <span class="number">4</span>], <span class="ident">port</span>: <span class="ident">u16</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+</pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">format_url_string</span>(<span class="ident">host</span>: [<span class="ident">u8</span>; <span class="number">4</span>], <span class="ident">port</span>: <span class="ident">u16</span>) -&gt; <span class="ident">String</span> {
     <span class="kw">let</span> <span class="ident">host_string</span> <span class="op">=</span> <span class="ident">host</span>
         .<span class="ident">iter</span>()
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">int</span><span class="op">|</span> <span class="ident">int</span>.<span class="ident">to_string</span>())

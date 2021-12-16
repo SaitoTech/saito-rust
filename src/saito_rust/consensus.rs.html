@@ -318,7 +318,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// The entry point to the Saito consensus runtime</span>
 <span class="doccomment">///</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>() -&gt; <span class="ident"><span class="kw">crate</span>::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="comment">//</span>
     <span class="comment">// handle shutdown messages w/ broadcast channel</span>
     <span class="comment">//</span>
@@ -334,12 +334,12 @@
     <span class="comment">// initiate runtime and handle results</span>
     <span class="comment">//</span>
     <span class="macro">tokio::select!</span> {
-        <span class="ident">res</span> <span class="op">=</span> <span class="ident">consensus</span>.<span class="ident">run</span>() <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">res</span> <span class="op">=</span> <span class="ident">consensus</span>.<span class="ident">run</span>() =&gt; {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                 <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">err</span>);
             }
         },
-        <span class="kw">_</span> <span class="op">=</span> <span class="ident">signal::ctrl_c</span>() <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="kw">_</span> <span class="op">=</span> <span class="ident">signal::ctrl_c</span>() =&gt; {
             <span class="macro">println!</span>(<span class="string">&quot;Shutting down!&quot;</span>)
         }
     }
@@ -362,7 +362,7 @@
     <span class="comment">//</span>
     <span class="comment">// Run consensus</span>
     <span class="comment">//</span>
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="kw">crate</span>::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident"><span class="kw">crate</span>::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="comment">//</span>
         <span class="comment">// create main broadcast channel</span>
         <span class="comment">//</span>
@@ -409,8 +409,8 @@
             .<span class="ident">get_matches</span>();
 
         <span class="kw">let</span> <span class="ident">config_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;config&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">name</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">name</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;config&quot;</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">name</span>) =&gt; <span class="ident">name</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="string">&quot;config&quot;</span>,
         };
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">is_spammer_enabled</span> <span class="op">=</span> <span class="bool-val">false</span>;
@@ -502,7 +502,7 @@
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_receiver</span>,
-            ) <span class="op">=</span><span class="op">&gt;</span> {
+            ) =&gt; {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;mempool err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
@@ -515,7 +515,7 @@
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
-            ) <span class="op">=</span><span class="op">&gt;</span> {
+            ) =&gt; {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;blockchain err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
@@ -528,7 +528,7 @@
                 <span class="ident">miner_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
-            ) <span class="op">=</span><span class="op">&gt;</span> {
+            ) =&gt; {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;miner err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
@@ -544,7 +544,7 @@
                 <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
-            ) <span class="op">=</span><span class="op">&gt;</span> {
+            ) =&gt; {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">res</span> {
                     <span class="macro">eprintln!</span>(<span class="string">&quot;miner err {:?}&quot;</span>, <span class="ident">err</span>)
                 }
@@ -552,7 +552,7 @@
         <span class="comment">//</span>
         <span class="comment">// Other</span>
         <span class="comment">//</span>
-            <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">_shutdown_complete_tx</span>.<span class="ident">closed</span>() <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">_shutdown_complete_tx</span>.<span class="ident">closed</span>() =&gt; {
                 <span class="macro">println!</span>(<span class="string">&quot;Shutdown message complete&quot;</span>)
             }
         }

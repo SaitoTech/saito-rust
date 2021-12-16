@@ -141,7 +141,7 @@
         <span class="ident">burn_fee_previous_block</span>: <span class="ident">u64</span>,
         <span class="ident">current_block_timestamp</span>: <span class="ident">u64</span>,
         <span class="ident">previous_block_timestamp</span>: <span class="ident">u64</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+    ) -&gt; <span class="ident">u64</span> {
         <span class="comment">//</span>
         <span class="comment">// impossible if times misordered</span>
         <span class="comment">//</span>
@@ -150,8 +150,8 @@
         }
 
         <span class="kw">let</span> <span class="ident">elapsed_time</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">current_block_timestamp</span> <span class="op">-</span> <span class="ident">previous_block_timestamp</span> {
-            <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">1</span>,
-            <span class="ident">diff</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">diff</span>,
+            <span class="number">0</span> =&gt; <span class="number">1</span>,
+            <span class="ident">diff</span> =&gt; <span class="ident">diff</span>,
         };
 
         <span class="kw">if</span> <span class="ident">elapsed_time</span> <span class="op">&gt;</span><span class="op">=</span> (<span class="number">2</span> <span class="op">*</span> <span class="ident">HEARTBEAT</span>) {
@@ -178,7 +178,7 @@
         <span class="ident">burn_fee_previous_block</span>: <span class="ident">u64</span>,
         <span class="ident">current_block_timestamp</span>: <span class="ident">u64</span>,
         <span class="ident">previous_block_timestamp</span>: <span class="ident">u64</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+    ) -&gt; <span class="ident">u64</span> {
         <span class="comment">//</span>
         <span class="comment">// impossible if times misordered</span>
         <span class="comment">//</span>
@@ -186,12 +186,12 @@
             <span class="kw">return</span> <span class="number">10_000_000_000_000_000_000</span>;
         }
         <span class="kw">let</span> <span class="ident">timestamp_difference</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">current_block_timestamp</span> <span class="op">-</span> <span class="ident">previous_block_timestamp</span> {
-            <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">1</span>,
-            <span class="ident">diff</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">diff</span>,
+            <span class="number">0</span> =&gt; <span class="number">1</span>,
+            <span class="ident">diff</span> =&gt; <span class="ident">diff</span>,
         };
 
         <span class="comment">// algorithm fails if burn fee last block is 0, so default to low value</span>
-        <span class="kw">if</span> <span class="ident">burn_fee_previous_block</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="ident">burn_fee_previous_block</span> <span class="op">==</span> <span class="number">0</span> {
             <span class="kw">return</span> <span class="number">50_000_000</span>;
         }
 

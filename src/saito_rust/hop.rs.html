@@ -132,7 +132,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Hop</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">Hop</span> {
             <span class="ident">from</span>: [<span class="number">0</span>; <span class="number">33</span>],
             <span class="ident">to</span>: [<span class="number">0</span>; <span class="number">33</span>],
@@ -144,7 +144,7 @@
         <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">to_publickey</span>: <span class="ident">SaitoPublicKey</span>,
         <span class="ident">hash_to_sign</span>: <span class="ident">SaitoHash</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Hop</span> {
+    ) -&gt; <span class="ident">Hop</span> {
         <span class="kw">let</span> <span class="ident">wallet</span> <span class="op">=</span> <span class="ident">wallet_lock</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hop</span> <span class="op">=</span> <span class="ident">Hop::new</span>();
 
@@ -155,15 +155,15 @@
         <span class="ident">hop</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SaitoPublicKey</span> {
         <span class="self">self</span>.<span class="ident">from</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_to</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_to</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SaitoPublicKey</span> {
         <span class="self">self</span>.<span class="ident">to</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoSignature</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SaitoSignature</span> {
         <span class="self">self</span>.<span class="ident">sig</span>
     }
 
@@ -179,7 +179,7 @@
         <span class="self">self</span>.<span class="ident">sig</span> <span class="op">=</span> <span class="ident">sig</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_from_net</span>(<span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Hop</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize_from_net</span>(<span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="ident">Hop</span> {
         <span class="kw">let</span> <span class="ident">from</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="ident">bytes</span>[..<span class="number">33</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">to</span>: <span class="ident">SaitoPublicKey</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">33</span>..<span class="number">66</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">sig</span>: <span class="ident">SaitoSignature</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">66</span>..<span class="number">130</span>].<span class="ident">try_into</span>().<span class="ident">unwrap</span>();
@@ -192,7 +192,7 @@
         <span class="ident">hop</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_net</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_net</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_from</span>());
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_to</span>());

@@ -188,13 +188,13 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SYNC_TYPE_MASK</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">4</span>;
 
 <span class="kw">trait</span> <span class="ident">RequestBlockMessageOptionsMaskTrait</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">has_block_id</span>: <span class="ident">bool</span>, <span class="ident">has_block_hash</span>: <span class="ident">bool</span>, <span class="ident">has_sync_type</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">has_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span>;
-    <span class="kw">fn</span> <span class="ident">has_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span>;
-    <span class="kw">fn</span> <span class="ident">has_sync_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span>;
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">has_block_id</span>: <span class="ident">bool</span>, <span class="ident">has_block_hash</span>: <span class="ident">bool</span>, <span class="ident">has_sync_type</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span>;
+    <span class="kw">fn</span> <span class="ident">has_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span>;
+    <span class="kw">fn</span> <span class="ident">has_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span>;
+    <span class="kw">fn</span> <span class="ident">has_sync_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span>;
 }
 <span class="kw">impl</span> <span class="ident">RequestBlockMessageOptionsMaskTrait</span> <span class="kw">for</span> <span class="ident">RequestBlockMessageOptionsMask</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">has_block_id</span>: <span class="ident">bool</span>, <span class="ident">has_block_hash</span>: <span class="ident">bool</span>, <span class="ident">has_sync_type</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">has_block_id</span>: <span class="ident">bool</span>, <span class="ident">has_block_hash</span>: <span class="ident">bool</span>, <span class="ident">has_sync_type</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ret</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">if</span> <span class="ident">has_block_id</span> {
             <span class="ident">ret</span> <span class="op">+</span><span class="op">=</span> <span class="ident">BLOCK_ID_MASK</span>
@@ -207,14 +207,14 @@
         }
         <span class="ident">ret</span>
     }
-    <span class="kw">fn</span> <span class="ident">has_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span> <span class="op">&amp;</span> <span class="ident">BLOCK_ID_MASK</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BLOCK_ID_MASK</span>
+    <span class="kw">fn</span> <span class="ident">has_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span> <span class="op">&amp;</span> <span class="ident">BLOCK_ID_MASK</span> <span class="op">==</span> <span class="ident">BLOCK_ID_MASK</span>
     }
-    <span class="kw">fn</span> <span class="ident">has_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span> <span class="op">&amp;</span> <span class="ident">BLOCK_HASH_MASK</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BLOCK_HASH_MASK</span>
+    <span class="kw">fn</span> <span class="ident">has_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span> <span class="op">&amp;</span> <span class="ident">BLOCK_HASH_MASK</span> <span class="op">==</span> <span class="ident">BLOCK_HASH_MASK</span>
     }
-    <span class="kw">fn</span> <span class="ident">has_sync_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span> <span class="op">&amp;</span> <span class="ident">SYNC_TYPE_MASK</span> <span class="op">=</span><span class="op">=</span> <span class="ident">SYNC_TYPE_MASK</span>
+    <span class="kw">fn</span> <span class="ident">has_sync_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span> <span class="op">&amp;</span> <span class="ident">SYNC_TYPE_MASK</span> <span class="op">==</span> <span class="ident">SYNC_TYPE_MASK</span>
     }
 }
 
@@ -223,7 +223,7 @@
         <span class="ident">block_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
         <span class="ident">block_hash</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span>,
         <span class="ident">sync_type</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SyncType</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) -&gt; <span class="self">Self</span> {
         <span class="ident">RequestBlockMessage</span> {
             <span class="ident">block_id</span>,
             <span class="ident">block_hash</span>,
@@ -231,7 +231,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">RequestBlockMessage</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="ident">RequestBlockMessage</span> {
         <span class="kw">let</span> <span class="ident">request_block_message_options_mask</span>: <span class="ident">RequestBlockMessageOptionsMask</span> <span class="op">=</span> <span class="ident">bytes</span>[<span class="number">0</span>];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_id</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_hash</span> <span class="op">=</span> <span class="prelude-val">None</span>;
@@ -248,7 +248,7 @@
         <span class="ident">RequestBlockMessage::new</span>(<span class="ident">block_id</span>, <span class="ident">block_hash</span>, <span class="ident">sync_type</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="ident">request_block_message_options_mask</span> <span class="op">=</span> <span class="ident">RequestBlockMessageOptionsMask::new</span>(
             <span class="self">self</span>.<span class="ident">block_id</span>.<span class="ident">is_some</span>(),
@@ -273,13 +273,13 @@
         }
         <span class="ident">vbytes</span>
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">block_id</span>
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoHash</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">block_hash</span>
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_fork_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SyncType</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_fork_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SyncType</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">sync_type</span>
     }
 }

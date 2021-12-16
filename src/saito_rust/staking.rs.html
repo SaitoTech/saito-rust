@@ -1311,7 +1311,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Staking</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Staking</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">Staking</span> {
         <span class="ident">Staking</span> {
             <span class="ident">deposits</span>: <span class="macro">vec!</span>[],
             <span class="ident">stakers</span>: <span class="macro">vec!</span>[],
@@ -1319,7 +1319,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_winning_staker</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">random_number</span>: <span class="ident">SaitoHash</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_winning_staker</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">random_number</span>: <span class="ident">SaitoHash</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         }
@@ -1360,7 +1360,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reset_staker_table</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">staking_treasury</span>: <span class="ident">u64</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
+    ) -&gt; (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
         <span class="macro">info!</span>(<span class="string">&quot;===========================&quot;</span>);
         <span class="macro">info!</span>(<span class="string">&quot;=== RESET STAKING TABLE ===&quot;</span>);
         <span class="macro">info!</span>(<span class="string">&quot;===========================&quot;</span>);
@@ -1442,27 +1442,27 @@
         (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_slip_in_deposits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_slip_in_deposits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">deposits</span>.<span class="ident">len</span>() {
-            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">deposits</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
+            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">deposits</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
         }
         <span class="bool-val">false</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_slip_in_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_slip_in_stakers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {
-            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
+            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
         }
         <span class="bool-val">false</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_slip_in_pending</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_slip_in_pending</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">len</span>() {
-            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">pending</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
+            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">pending</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
         }
@@ -1478,11 +1478,11 @@
     <span class="comment">// UUID. this is simply to ensure that chain reorgs do not cause</span>
     <span class="comment">// disagreements about which staker is selected.</span>
     <span class="comment">//</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_staker</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_staker</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) -&gt; <span class="ident">bool</span> {
         <span class="comment">//</span>
         <span class="comment">// TODO skip-hop algorithm instead of brute force</span>
         <span class="comment">//</span>
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
             <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">push</span>(<span class="ident">slip</span>);
             <span class="kw">return</span> <span class="bool-val">true</span>;
         } <span class="kw">else</span> {
@@ -1491,17 +1491,17 @@
                 <span class="comment">// 1 - self is bigger</span>
                 <span class="comment">// 2 - self is smaller</span>
                 <span class="comment">// insert at position i</span>
-                <span class="kw">if</span> <span class="ident">how_compares</span> <span class="op">=</span><span class="op">=</span> <span class="number">2</span> {
-                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> (<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>) {
+                <span class="kw">if</span> <span class="ident">how_compares</span> <span class="op">==</span> <span class="number">2</span> {
+                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() <span class="op">==</span> (<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>) {
                         <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">push</span>(<span class="ident">slip</span>);
                         <span class="kw">return</span> <span class="bool-val">true</span>;
                     }
                 } <span class="kw">else</span> {
-                    <span class="kw">if</span> <span class="ident">how_compares</span> <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
+                    <span class="kw">if</span> <span class="ident">how_compares</span> <span class="op">==</span> <span class="number">1</span> {
                         <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">insert</span>(<span class="ident">i</span>, <span class="ident">slip</span>);
                         <span class="kw">return</span> <span class="bool-val">true</span>;
                     }
-                    <span class="kw">if</span> <span class="ident">how_compares</span> <span class="op">=</span><span class="op">=</span> <span class="number">3</span> {
+                    <span class="kw">if</span> <span class="ident">how_compares</span> <span class="op">==</span> <span class="number">3</span> {
                         <span class="kw">return</span> <span class="bool-val">false</span>;
                     }
                 }
@@ -1516,9 +1516,9 @@
         <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">push</span>(<span class="ident">slip</span>);
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_deposit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_deposit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">deposits</span>.<span class="ident">len</span>() {
-            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">deposits</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
+            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">deposits</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
                 <span class="kw">let</span> <span class="ident">_removed_slip</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">deposits</span>.<span class="ident">remove</span>(<span class="ident">i</span>);
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
@@ -1526,9 +1526,9 @@
         <span class="bool-val">false</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_staker</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_staker</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {
-            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
+            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
                 <span class="kw">let</span> <span class="ident">_removed_slip</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">remove</span>(<span class="ident">i</span>);
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
@@ -1536,9 +1536,9 @@
         <span class="bool-val">false</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_pending</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_pending</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">slip</span>: <span class="ident">Slip</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">len</span>() {
-            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">pending</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
+            <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_utxoset_key</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">pending</span>[<span class="ident">i</span>].<span class="ident">get_utxoset_key</span>() {
                 <span class="kw">let</span> <span class="ident">_removed_slip</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">remove</span>(<span class="ident">i</span>);
                 <span class="kw">return</span> <span class="bool-val">true</span>;
             }
@@ -1558,7 +1558,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>,
         <span class="ident">longest_chain</span>: <span class="ident">bool</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
+    ) -&gt; (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">res_spend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="ident">res_unspend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="ident">res_delete</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
@@ -1567,7 +1567,7 @@
         <span class="comment">// add/remove deposits</span>
         <span class="comment">//</span>
         <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">block</span>.<span class="ident">get_transactions</span>() {
-            <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">get_transaction_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::StakerWithdrawal</span> {
+            <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">get_transaction_type</span>() <span class="op">==</span> <span class="ident">TransactionType::StakerWithdrawal</span> {
                 <span class="comment">//</span>
                 <span class="comment">// someone has successfully withdrawn so we need to remove this slip</span>
                 <span class="comment">// from the necessary table if moving forward, or add it back if</span>
@@ -1576,28 +1576,28 @@
                 <span class="comment">// roll forward</span>
                 <span class="comment">//</span>
                 <span class="kw">if</span> <span class="ident">longest_chain</span> {
-                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalPending</span> {
+                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerWithdrawalPending</span> {
                         <span class="self">self</span>.<span class="ident">remove_pending</span>(<span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">clone</span>());
                     }
-                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalStaking</span> {
+                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerWithdrawalStaking</span> {
                         <span class="self">self</span>.<span class="ident">remove_staker</span>(<span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">clone</span>());
                     }
                 <span class="comment">//</span>
                 <span class="comment">// roll backward</span>
                 <span class="comment">//</span>
                 } <span class="kw">else</span> {
-                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalPending</span> {
+                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerWithdrawalPending</span> {
                         <span class="self">self</span>.<span class="ident">add_pending</span>(<span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">clone</span>());
                     }
-                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalStaking</span> {
+                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerWithdrawalStaking</span> {
                         <span class="self">self</span>.<span class="ident">add_staker</span>(<span class="ident">tx</span>.<span class="ident">inputs</span>[<span class="number">0</span>].<span class="ident">clone</span>());
                     }
                 }
             }
 
-            <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">get_transaction_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">TransactionType::StakerDeposit</span> {
+            <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">get_transaction_type</span>() <span class="op">==</span> <span class="ident">TransactionType::StakerDeposit</span> {
                 <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">tx</span>.<span class="ident">outputs</span>.<span class="ident">len</span>() {
-                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">outputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span> {
+                    <span class="kw">if</span> <span class="ident">tx</span>.<span class="ident">outputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerDeposit</span> {
                         <span class="comment">//</span>
                         <span class="comment">// roll forward</span>
                         <span class="comment">//</span>
@@ -1633,10 +1633,10 @@
                 <span class="self">self</span>.<span class="ident">pending</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                 <span class="self">self</span>.<span class="ident">deposits</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                 <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {
-                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerOutput</span> {
                         <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">clone</span>());
                     }
-                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span> {
+                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerDeposit</span> {
                         <span class="self">self</span>.<span class="ident">deposits</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">clone</span>());
                     }
                 }
@@ -1669,11 +1669,11 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">is_there_a_staker_output</span> <span class="op">=</span> <span class="bool-val">false</span>;
 
             <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">fee_transaction</span>.<span class="ident">outputs</span>.<span class="ident">len</span>() {
-                <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">outputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+                <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">outputs</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerOutput</span> {
                     <span class="ident">is_there_a_staker_output</span> <span class="op">=</span> <span class="bool-val">true</span>;
                 }
             }
-            <span class="kw">if</span> <span class="ident">is_there_a_staker_output</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span> {
+            <span class="kw">if</span> <span class="ident">is_there_a_staker_output</span> <span class="op">==</span> <span class="bool-val">false</span> {
                 <span class="kw">return</span> (<span class="ident">res_spend</span>, <span class="ident">res_unspend</span>, <span class="ident">res_delete</span>);
             }
             <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">inputs</span>.<span class="ident">is_empty</span>() {
@@ -1714,7 +1714,7 @@
                     <span class="kw">if</span> <span class="ident">fee_transaction</span>.<span class="ident">inputs</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">staker_slip_num</span> {
                         <span class="kw">break</span>;
                     }
-                    <span class="kw">if</span> <span class="ident">staker_output</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+                    <span class="kw">if</span> <span class="ident">staker_output</span>.<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerOutput</span> {
                         <span class="comment">// ROUTER BURNED FIRST</span>
                         <span class="ident">next_random_number</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">next_random_number</span>.<span class="ident">to_vec</span>()); <span class="comment">// router + burn</span>
                         <span class="ident">next_random_number</span> <span class="op">=</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="ident">next_random_number</span>.<span class="ident">to_vec</span>()); <span class="comment">// burn second</span>
@@ -1748,7 +1748,7 @@
                 <span class="comment">// successfully remove from the staker table.</span>
                 <span class="comment">//</span>
                 <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">slips_to_remove_from_staking</span>.<span class="ident">len</span>() {
-                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">remove_staker</span>(<span class="ident">slips_to_remove_from_staking</span>[<span class="ident">i</span>].<span class="ident">clone</span>()) <span class="op">=</span><span class="op">=</span> <span class="bool-val">true</span> {
+                    <span class="kw">if</span> <span class="self">self</span>.<span class="ident">remove_staker</span>(<span class="ident">slips_to_remove_from_staking</span>[<span class="ident">i</span>].<span class="ident">clone</span>()) <span class="op">==</span> <span class="bool-val">true</span> {
                         <span class="self">self</span>.<span class="ident">add_pending</span>(<span class="ident">slips_to_add_to_pending</span>[<span class="ident">i</span>].<span class="ident">clone</span>());
                     }
                 }
@@ -1774,10 +1774,10 @@
                     <span class="self">self</span>.<span class="ident">pending</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                     <span class="self">self</span>.<span class="ident">deposits</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {
-                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerOutput</span> {
                             <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">clone</span>());
                         }
-                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span> {
+                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerDeposit</span> {
                             <span class="self">self</span>.<span class="ident">deposits</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">clone</span>());
                         }
                     }
@@ -1795,16 +1795,16 @@
                     }
                     <span class="kw">let</span> <span class="ident">staker_input</span> <span class="op">=</span> <span class="ident">fee_transaction</span>.<span class="ident">inputs</span>[<span class="ident">staker_slip_num</span>].<span class="ident">clone</span>();
 
-                    <span class="kw">if</span> <span class="ident">staker_output</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+                    <span class="kw">if</span> <span class="ident">staker_output</span>.<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerOutput</span> {
                         <span class="comment">//</span>
                         <span class="comment">// remove from pending to staker (awaiting payout)</span>
                         <span class="comment">//</span>
                         <span class="self">self</span>.<span class="ident">remove_pending</span>(<span class="ident">staker_output</span>.<span class="ident">clone</span>());
                         <span class="kw">let</span> <span class="ident">slip_type</span> <span class="op">=</span> <span class="ident">staker_input</span>.<span class="ident">get_slip_type</span>();
-                        <span class="kw">if</span> <span class="ident">slip_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span> {
+                        <span class="kw">if</span> <span class="ident">slip_type</span> <span class="op">==</span> <span class="ident">SlipType::StakerDeposit</span> {
                             <span class="self">self</span>.<span class="ident">add_deposit</span>(<span class="ident">staker_input</span>.<span class="ident">clone</span>());
                         }
-                        <span class="kw">if</span> <span class="ident">slip_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+                        <span class="kw">if</span> <span class="ident">slip_type</span> <span class="op">==</span> <span class="ident">SlipType::StakerOutput</span> {
                             <span class="self">self</span>.<span class="ident">add_staker</span>(<span class="ident">staker_input</span>.<span class="ident">clone</span>());
                         }
 
@@ -1819,10 +1819,10 @@
                     <span class="self">self</span>.<span class="ident">pending</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                     <span class="self">self</span>.<span class="ident">deposits</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">stakers</span>.<span class="ident">len</span>() {
-                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span> {
+                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerOutput</span> {
                             <span class="self">self</span>.<span class="ident">pending</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">clone</span>());
                         }
-                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span> {
+                        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerDeposit</span> {
                             <span class="self">self</span>.<span class="ident">deposits</span>.<span class="ident">push</span>(<span class="self">self</span>.<span class="ident">stakers</span>[<span class="ident">i</span>].<span class="ident">clone</span>());
                         }
                     }

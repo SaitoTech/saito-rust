@@ -575,7 +575,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Wallet</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Wallet</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="ident">Wallet</span> {
         <span class="kw">let</span> (<span class="ident">publickey</span>, <span class="ident">privatekey</span>) <span class="op">=</span> <span class="ident">generate_keys</span>();
         <span class="ident">Wallet</span> {
             <span class="ident">publickey</span>,
@@ -623,7 +623,7 @@
 
     <span class="doccomment">/// [privatekey - 32 bytes]</span>
     <span class="doccomment">/// [publickey - 33 bytes]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_disk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_for_disk</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">privatekey</span>);
@@ -643,11 +643,11 @@
         <span class="kw">if</span> <span class="ident">lc</span> {
             <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">block</span>.<span class="ident">get_transactions</span>() {
                 <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_inputs</span>() {
-                    <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">input</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
-                        <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span>
-                            <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span>
-                            <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalStaking</span>
-                            <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerWithdrawalPending</span>
+                    <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">input</span>.<span class="ident">get_publickey</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
+                        <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerDeposit</span>
+                            <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerOutput</span>
+                            <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerWithdrawalStaking</span>
+                            <span class="op">|</span><span class="op">|</span> <span class="ident">input</span>.<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerWithdrawalPending</span>
                         {
                             <span class="self">self</span>.<span class="ident">delete_staked_slip</span>(<span class="ident">input</span>);
                         } <span class="kw">else</span> {
@@ -656,7 +656,7 @@
                     }
                 }
                 <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_outputs</span>() {
-                    <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">output</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
+                    <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">output</span>.<span class="ident">get_publickey</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
                         <span class="self">self</span>.<span class="ident">add_slip</span>(<span class="ident">block</span>, <span class="ident">tx</span>, <span class="ident">output</span>, <span class="bool-val">true</span>);
                     }
                 }
@@ -664,12 +664,12 @@
         } <span class="kw">else</span> {
             <span class="kw">for</span> <span class="ident">tx</span> <span class="kw">in</span> <span class="ident">block</span>.<span class="ident">get_transactions</span>() {
                 <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_inputs</span>() {
-                    <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">input</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
+                    <span class="kw">if</span> <span class="ident">input</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">input</span>.<span class="ident">get_publickey</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
                         <span class="self">self</span>.<span class="ident">add_slip</span>(<span class="ident">block</span>, <span class="ident">tx</span>, <span class="ident">input</span>, <span class="bool-val">true</span>);
                     }
                 }
                 <span class="kw">for</span> <span class="ident">output</span> <span class="kw">in</span> <span class="ident">tx</span>.<span class="ident">get_outputs</span>() {
-                    <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">output</span>.<span class="ident">get_publickey</span>() <span class="op">=</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
+                    <span class="kw">if</span> <span class="ident">output</span>.<span class="ident">get_amount</span>() <span class="op">&gt;</span> <span class="number">0</span> <span class="op">&amp;&amp;</span> <span class="ident">output</span>.<span class="ident">get_publickey</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">get_publickey</span>() {
                         <span class="self">self</span>.<span class="ident">delete_slip</span>(<span class="ident">output</span>);
                     }
                 }
@@ -704,8 +704,8 @@
         <span class="ident">wallet_slip</span>.<span class="ident">set_block_hash</span>(<span class="ident">block</span>.<span class="ident">get_hash</span>());
         <span class="ident">wallet_slip</span>.<span class="ident">set_lc</span>(<span class="ident">lc</span>);
 
-        <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerDeposit</span>
-            <span class="op">|</span><span class="op">|</span> <span class="ident">slip</span>.<span class="ident">get_slip_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SlipType::StakerOutput</span>
+        <span class="kw">if</span> <span class="ident">slip</span>.<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerDeposit</span>
+            <span class="op">|</span><span class="op">|</span> <span class="ident">slip</span>.<span class="ident">get_slip_type</span>() <span class="op">==</span> <span class="ident">SlipType::StakerOutput</span>
         {
             <span class="self">self</span>.<span class="ident">staked_slips</span>.<span class="ident">push</span>(<span class="ident">wallet_slip</span>);
         } <span class="kw">else</span> {
@@ -725,11 +725,11 @@
         });
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_privatekey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPrivateKey</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_privatekey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SaitoPrivateKey</span> {
         <span class="self">self</span>.<span class="ident">privatekey</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_publickey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_publickey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SaitoPublicKey</span> {
         <span class="self">self</span>.<span class="ident">publickey</span>
     }
 
@@ -749,15 +749,15 @@
         <span class="self">self</span>.<span class="ident">filepass</span> <span class="op">=</span> <span class="ident">filepass</span>;
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_filename</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_filename</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="self">self</span>.<span class="ident">filename</span>.<span class="ident">clone</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_password</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_password</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="self">self</span>.<span class="ident">filepass</span>.<span class="ident">clone</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_available_balance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_available_balance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">available_balance</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">for</span> <span class="ident">slip</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">slips</span> {
             <span class="kw">if</span> <span class="op">!</span><span class="ident">slip</span>.<span class="ident">get_spent</span>() {
@@ -770,7 +770,7 @@
     <span class="comment">// the nolan_requested is omitted from the slips created - only the change</span>
     <span class="comment">// address is provided as an output. so make sure that any function calling</span>
     <span class="comment">// this manually creates the output for its desired payment</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_slips</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">nolan_requested</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_slips</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">nolan_requested</span>: <span class="ident">u64</span>) -&gt; (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">outputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nolan_in</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">0</span>;
@@ -833,14 +833,14 @@
         (<span class="ident">inputs</span>, <span class="ident">outputs</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message_bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoSignature</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">message_bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">SaitoSignature</span> {
         <span class="ident">sign</span>(<span class="ident">message_bytes</span>, <span class="self">self</span>.<span class="ident">privatekey</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create_golden_ticket_transaction</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">golden_ticket</span>: <span class="ident">GoldenTicket</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
+    ) -&gt; <span class="ident">Transaction</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
 
         <span class="comment">// for now we&#39;ll use bincode to de/serialize</span>
@@ -876,7 +876,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create_staking_deposit_transaction</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">total_requested</span>: <span class="ident">u64</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
+    ) -&gt; <span class="ident">Transaction</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
 
         <span class="ident">transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::StakerDeposit</span>);
@@ -915,7 +915,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create_staking_withdrawal_transaction</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">staking</span>: <span class="kw-2">&amp;</span><span class="ident">Staking</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Transaction</span> {
+    ) -&gt; <span class="ident">Transaction</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">transaction</span> <span class="op">=</span> <span class="ident">Transaction::new</span>();
         <span class="ident">transaction</span>.<span class="ident">set_transaction_type</span>(<span class="ident">TransactionType::StakerWithdrawal</span>);
 
@@ -984,7 +984,7 @@
 
 <span class="kw">impl</span> <span class="ident">WalletSlip</span> {
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_without_default</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">WalletSlip</span> {
             <span class="ident">uuid</span>: [<span class="number">0</span>; <span class="number">32</span>],
             <span class="ident">utxokey</span>: [<span class="number">0</span>; <span class="number">74</span>],
@@ -997,35 +997,35 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SaitoHash</span> {
         <span class="self">self</span>.<span class="ident">uuid</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_utxokey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">SaitoUTXOSetKey</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_utxokey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">SaitoUTXOSetKey</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">utxokey</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_amount</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_amount</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">amount</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">block_id</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoHash</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_block_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SaitoHash</span> {
         <span class="self">self</span>.<span class="ident">block_hash</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_lc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_lc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">lc</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_slip_ordinal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u8</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_slip_ordinal</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u8</span> {
         <span class="self">self</span>.<span class="ident">slip_ordinal</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_spent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_spent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">spent</span>
     }
 

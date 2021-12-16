@@ -288,7 +288,7 @@
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StorageConfigurer</span> {}
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">configure_storage</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">configure_storage</span>() -&gt; <span class="ident">String</span> {
     <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
         <span class="ident">String::from</span>(<span class="string">&quot;./data/test/blocks/&quot;</span>)
     } <span class="kw">else</span> {
@@ -300,7 +300,7 @@
 
 <span class="kw">impl</span> <span class="ident">Storage</span> {
     <span class="doccomment">/// read from a path to a Vec&lt;u8&gt;</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">std::fs::File::open</span>(<span class="ident">path</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="ident">::new</span>();
         <span class="ident">f</span>.<span class="ident">read_to_end</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">data</span>)<span class="question-mark">?</span>;
@@ -312,12 +312,12 @@
         <span class="ident">buffer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>[..]).<span class="ident">unwrap</span>();
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">file_exists</span>(<span class="ident">filename</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">file_exists</span>(<span class="ident">filename</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="kw-2">&amp;</span><span class="ident">filename</span>);
         <span class="ident">path</span>.<span class="ident">exists</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_block_filename</span>(<span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_block_filename</span>(<span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">Block</span>) -&gt; <span class="ident">String</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">filename</span> <span class="op">=</span> <span class="ident">BLOCKS_DIR_PATH</span>.<span class="ident">clone</span>();
 
         <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="ident">hex::encode</span>(<span class="ident">block</span>.<span class="ident">get_timestamp</span>().<span class="ident">to_be_bytes</span>()));
@@ -326,8 +326,8 @@
         <span class="ident">filename</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="string">&quot;.sai&quot;</span>);
         <span class="ident">filename</span>
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_block_to_disk</span>(<span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Block</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
-        <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_block_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">BlockType::Pruned</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_block_to_disk</span>(<span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Block</span>) -&gt; <span class="ident">String</span> {
+        <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_block_type</span>() <span class="op">==</span> <span class="ident">BlockType::Pruned</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;pruned blocks cannot be saved&quot;</span>);
         }
         <span class="kw">let</span> <span class="ident">filename</span> <span class="op">=</span> <span class="ident">Storage::generate_block_filename</span>(<span class="ident">block</span>);
@@ -366,7 +366,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">load_block_from_disk</span>(<span class="ident">filename</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Block</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">load_block_from_disk</span>(<span class="ident">filename</span>: <span class="ident">String</span>) -&gt; <span class="ident">Block</span> {
         <span class="kw">let</span> <span class="ident">file_to_load</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">filename</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">File::open</span>(<span class="ident">file_to_load</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="ident">::new</span>();
@@ -374,7 +374,7 @@
         <span class="ident">Block::deserialize_for_net</span>(<span class="kw-2">&amp;</span><span class="ident">encoded</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete_block_from_disk</span>(<span class="ident">filename</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete_block_from_disk</span>(<span class="ident">filename</span>: <span class="ident">String</span>) -&gt; <span class="ident">bool</span> {
         <span class="comment">// TODO: get rid of this function or make it useful.</span>
         <span class="comment">// it should match the result and provide some error handling.</span>
         <span class="kw">let</span> <span class="ident">_res</span> <span class="op">=</span> <span class="ident">std::fs::remove_file</span>(<span class="ident">filename</span>);
@@ -384,7 +384,7 @@
     <span class="comment">//</span>
     <span class="comment">// token issuance functions below</span>
     <span class="comment">//</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">return_token_supply_slips_from_disk</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">return_token_supply_slips_from_disk</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Slip</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tokens_issued</span> <span class="op">=</span> <span class="number">0</span>;
 
@@ -422,7 +422,7 @@
         <span class="kw">return</span> <span class="ident">v</span>;
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_lines_from_file</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>(<span class="ident">filename</span>: <span class="ident">P</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">io::Lines</span><span class="op">&lt;</span><span class="ident">io::BufReader</span><span class="op">&lt;</span><span class="ident">File</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_lines_from_file</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>(<span class="ident">filename</span>: <span class="ident">P</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span><span class="ident">io::Lines</span><span class="op">&lt;</span><span class="ident">io::BufReader</span><span class="op">&lt;</span><span class="ident">File</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span>,
     {
@@ -430,7 +430,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">io::BufReader::new</span>(<span class="ident">file</span>).<span class="ident">lines</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">convert_issuance_into_slip</span>(<span class="ident">line</span>: <span class="ident">std::string::String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Slip</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">convert_issuance_into_slip</span>(<span class="ident">line</span>: <span class="ident">std::string::String</span>) -&gt; <span class="ident">Slip</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">iter</span> <span class="op">=</span> <span class="ident">line</span>.<span class="ident">split_whitespace</span>();
         <span class="kw">let</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">tmp2</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
@@ -477,10 +477,10 @@
             <span class="kw">for</span> (<span class="ident">_pos</span>, <span class="ident">path</span>) <span class="kw">in</span> <span class="ident">paths</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">path</span>.<span class="ident">path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>().<span class="ident">ends_with</span>(<span class="string">&quot;.gitignore&quot;</span>) {
                     <span class="kw">match</span> <span class="ident">std::fs::remove_file</span>(<span class="ident">path</span>.<span class="ident">path</span>()) {
-                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
                             <span class="macro">eprintln!</span>(<span class="string">&quot;Error cleaning up after tests {}&quot;</span>, <span class="ident">err</span>);
                         }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">_</span> =&gt; {
                             <span class="macro">log::trace!</span>(
                                 <span class="string">&quot;block removed from disk : {}&quot;</span>,
                                 <span class="ident">path</span>.<span class="ident">path</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>()

@@ -193,7 +193,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         (<span class="ident">challenger_ip_address</span>, <span class="ident">challenger_public_key</span>): ([<span class="ident">u8</span>; <span class="number">4</span>], <span class="ident">SaitoPublicKey</span>),
         (<span class="ident">opponent_ip_adress</span>, <span class="ident">opponent_public_key</span>): ([<span class="ident">u8</span>; <span class="number">4</span>], <span class="ident">SaitoPublicKey</span>),
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">challenger_node</span>: <span class="ident">HandshakeNode</span> {
                 <span class="ident">ip_address</span>: <span class="ident">challenger_ip_address</span>,
@@ -209,7 +209,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HandshakeChallenge</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="ident">HandshakeChallenge</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">challenger_octet</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0</span>; <span class="number">4</span>];
         <span class="ident">challenger_octet</span>[<span class="number">0</span>..<span class="number">4</span>].<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>[<span class="number">0</span>..<span class="number">4</span>]);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opponent_octet</span>: [<span class="ident">u8</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">0</span>; <span class="number">4</span>];
@@ -244,7 +244,7 @@
         <span class="ident">handshake_challenge</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vbytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">ip_address</span>);
         <span class="ident">vbytes</span>.<span class="ident">extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">ip_address</span>);
@@ -254,35 +254,35 @@
         <span class="ident">vbytes</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_with_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize_with_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">privatekey</span>: <span class="ident">SaitoPrivateKey</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
         <span class="ident">sign_blob</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">serialize_raw</span>(), <span class="ident">privatekey</span>).<span class="ident">to_owned</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenger_ip_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="number">4</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenger_ip_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="number">4</span>] {
         <span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">ip_address</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">opponent_ip_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="ident">u8</span>; <span class="number">4</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">opponent_ip_address</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [<span class="ident">u8</span>; <span class="number">4</span>] {
         <span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">ip_address</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenger_pubkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenger_pubkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SaitoPublicKey</span> {
         <span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">public_key</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">opponent_pubkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SaitoPublicKey</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">opponent_pubkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SaitoPublicKey</span> {
         <span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">public_key</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenger_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoSignature</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenger_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoSignature</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">challenger_node</span>.<span class="ident">sig</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">opponent_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoSignature</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">opponent_sig</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SaitoSignature</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">opponent_node</span>.<span class="ident">sig</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">timestamp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">timestamp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u64</span> {
         <span class="self">self</span>.<span class="ident">timestamp</span>
     }
 

@@ -37,10 +37,10 @@
         .<span class="ident">expect</span>(<span class="string">&quot;Error setting up quit signal&quot;</span>);
 
     <span class="macro">tokio::select!</span> {
-        <span class="kw">_</span> <span class="op">=</span> <span class="ident">signal::ctrl_c</span>() <span class="op">=</span><span class="op">&gt;</span> (),
-        <span class="kw">_</span> <span class="op">=</span> <span class="ident">interrupt_signal</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> (),
-        <span class="kw">_</span> <span class="op">=</span> <span class="ident">terminate_signal</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> (),
-        <span class="kw">_</span> <span class="op">=</span> <span class="ident">quit_signal</span>.<span class="ident">recv</span>() <span class="op">=</span><span class="op">&gt;</span> (),
+        <span class="kw">_</span> <span class="op">=</span> <span class="ident">signal::ctrl_c</span>() =&gt; (),
+        <span class="kw">_</span> <span class="op">=</span> <span class="ident">interrupt_signal</span>.<span class="ident">recv</span>() =&gt; (),
+        <span class="kw">_</span> <span class="op">=</span> <span class="ident">terminate_signal</span>.<span class="ident">recv</span>() =&gt; (),
+        <span class="kw">_</span> <span class="op">=</span> <span class="ident">quit_signal</span>.<span class="ident">recv</span>() =&gt; (),
     }
 }
 
