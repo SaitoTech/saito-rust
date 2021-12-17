@@ -1621,20 +1621,17 @@ impl Block {
         // class, and the validation logic for slips is contained in the slips
         // class. Note that we are passing in a read-only copy of our UTXOSet so
         // as to determine spendability.
-        //
-        // TODO - remove when convenient. when transactions fail to validate using
-        // parallel processing can make it difficult to find out exactly what the
-        // problem is. ergo this code that tries to do them on the main thread so
-        // debugging output works.
-        //
-        for i in 0..self.transactions.len() {
-            let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
-            if !transactions_valid2 {
-                info!("Type: {:?}", self.transactions[i].get_transaction_type());
-                info!("Data {:?}", self.transactions[i]);
+
+        if cfg!(debug_assertions) {
+            // validate serially when we are not in release mode for easier debugging
+            for i in 0..self.transactions.len() {
+                let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
+                if !transactions_valid2 {
+                    info!("Type: {:?}", self.transactions[i].get_transaction_type());
+                    info!("Data {:?}", self.transactions[i]);
+                }
             }
         }
-        //true
 
         let transactions_valid = self
             .transactions
