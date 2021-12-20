@@ -106,10 +106,16 @@ pub fn sign(message_bytes: &[u8], privatekey: SaitoPrivateKey) -> SaitoSignature
 }
 
 pub fn verify(msg: &[u8], sig: SaitoSignature, publickey: SaitoPublicKey) -> bool {
-    let m = Message::from_slice(msg).unwrap();
-    let p = PublicKey::from_slice(&publickey).unwrap();
-    let s = Signature::from_compact(&sig).unwrap();
-    SECP256K1.verify(&m, &s, &p).is_ok()
+    let m = Message::from_slice(msg);
+    let p = PublicKey::from_slice(&publickey);
+    let s = Signature::from_compact(&sig);
+    if m.is_err() || p.is_err() || s.is_err() {
+        false
+    } else {
+        SECP256K1
+            .verify(&m.unwrap(), &s.unwrap(), &p.unwrap())
+            .is_ok()
+    }
 }
 
 #[cfg(test)]
