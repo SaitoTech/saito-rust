@@ -372,6 +372,8 @@ impl Blockchain {
             create_timestamp()
         );
         let block_id;
+        // print blockring longest_chain_block_hash infor
+        self.print();
 
         //
         // save to disk
@@ -383,6 +385,15 @@ impl Blockchain {
                 Storage::write_block_to_disk(block);
             }
         }
+
+        //
+        // clean up mempool
+        //
+        // mempool.delete_transactions(&block.get_transactions());
+
+        //
+        // propagate block to network
+        //
         if self.broadcast_channel_sender.is_some() {
             self.broadcast_channel_sender
                 .as_ref()
@@ -393,15 +404,15 @@ impl Blockchain {
         trace!(" ... block save done:            {:?}", create_timestamp());
 
         //
-        // update_genesis_period and prune old data
+        // update_genesis_period and prune old data - MOVED to on_chain_reorganization()
         //
-        self.update_genesis_period().await;
+        // self.update_genesis_period().await;
 
         //
-        // fork id
+        // fork id  - MOVED to on_chain_reorganization()
         //
-        let fork_id = self.generate_fork_id(block_id);
-        self.set_fork_id(fork_id);
+        // let fork_id = self.generate_fork_id(block_id);
+        // self.set_fork_id(fork_id);
 
         //
         // ensure pruning of next block OK will have the right CVs
@@ -953,6 +964,7 @@ impl Blockchain {
 
             // utxoset update
             block.on_chain_reorganization(&mut self.utxoset, true);
+
             trace!(" ... before blockring ocr:       {:?}", create_timestamp());
 
             // blockring update
@@ -975,6 +987,8 @@ impl Blockchain {
                 wallet.on_chain_reorganization(&block, true);
                 trace!(" ... wallet processing stop:     {}", create_timestamp());
             }
+
+            self.on_chain_reorganization(block, true).await;
 
             //
             // we cannot pass the UTXOSet into the staking object to update as that would
@@ -1176,6 +1190,40 @@ impl Blockchain {
         }
     }
 
+    /// keeps any blockchain variables like fork_id or genesis_period
+    /// tracking variables updated as the chain gets new blocks. also
+    /// pre-loads any blocks needed to improve performance.
+    async fn on_chain_reorganization(&mut self, block: &Block, longest_chain: bool) {
+        // skip out if earlier than we need to be vis-a-vis last_block_id
+        let latest_block_id = block.get_id();
+        if self.get_latest_block_id() >= latest_block_id {
+            return;
+        }
+
+        if longest_chain {
+            // TODO: update consensus variables
+
+            //
+            // TODO: update on first received block (used to prevent recursive fetch forever)
+            //
+
+            // update genesis period, purge old data
+            //
+            self.update_genesis_period().await;
+
+            //
+            // generate fork_id
+            //
+            //
+            let fork_id = self.generate_fork_id(latest_block_id);
+            self.set_fork_id(fork_id);
+
+            // TODO: save options
+        }
+
+        self.downgrade_blockchain_data().await;
+    }
+
     pub async fn update_genesis_period(&mut self) {
         //
         // we need to make sure this is not a random block that is disconnected
@@ -1203,7 +1251,8 @@ impl Blockchain {
             self.delete_blocks(purge_bid).await;
         }
 
-        self.downgrade_blockchain_data().await;
+        //TODO: we already had in update_genesis_period() in ethod - maybe no need to call here?
+        // self.downgrade_blockchain_data().await;
     }
 
     //
