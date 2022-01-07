@@ -371,7 +371,6 @@ impl Blockchain {
             " ... blockchain.add_block_success: {:?}",
             create_timestamp()
         );
-        let block_id;
         // print blockring longest_chain_block_hash infor
         self.print();
 
@@ -380,14 +379,18 @@ impl Blockchain {
         //
         {
             let block = self.get_mut_block(&block_hash).await;
-            block_id = block.get_id();
             if block.get_block_type() != BlockType::Header {
                 Storage::write_block_to_disk(block);
             }
         }
 
         //
-        // clean up mempool
+        // TODO: clean up mempool - I think we shouldn't cleanup mempool here.
+        //  because that's already happening in send_blocks_to_blockchain
+        //  So who is in charge here?
+        //  is send_blocks_to_blockchain calling add_block or
+        //  is blockchain calling mempool.on_chain_reorganization?
+        //
         //
         // mempool.delete_transactions(&block.get_transactions());
 
@@ -988,7 +991,8 @@ impl Blockchain {
                 trace!(" ... wallet processing stop:     {}", create_timestamp());
             }
 
-            self.on_chain_reorganization(block, true).await;
+            let block_id = block.get_id();
+            self.on_chain_reorganization(block_id, true).await;
 
             //
             // we cannot pass the UTXOSet into the staking object to update as that would
@@ -1193,20 +1197,13 @@ impl Blockchain {
     /// keeps any blockchain variables like fork_id or genesis_period
     /// tracking variables updated as the chain gets new blocks. also
     /// pre-loads any blocks needed to improve performance.
-    async fn on_chain_reorganization(&mut self, block: &Block, longest_chain: bool) {
+    async fn on_chain_reorganization(&mut self, block_id: u64, longest_chain: bool) {
         // skip out if earlier than we need to be vis-a-vis last_block_id
-        let latest_block_id = block.get_id();
-        if self.get_latest_block_id() >= latest_block_id {
+        if self.get_latest_block_id() >= block_id {
             return;
         }
 
         if longest_chain {
-            // TODO: update consensus variables
-
-            //
-            // TODO: update on first received block (used to prevent recursive fetch forever)
-            //
-
             // update genesis period, purge old data
             //
             self.update_genesis_period().await;
@@ -1215,10 +1212,8 @@ impl Blockchain {
             // generate fork_id
             //
             //
-            let fork_id = self.generate_fork_id(latest_block_id);
+            let fork_id = self.generate_fork_id(block_id);
             self.set_fork_id(fork_id);
-
-            // TODO: save options
         }
 
         self.downgrade_blockchain_data().await;
@@ -1251,7 +1246,7 @@ impl Blockchain {
             self.delete_blocks(purge_bid).await;
         }
 
-        //TODO: we already had in update_genesis_period() in ethod - maybe no need to call here?
+        //TODO: we already had in update_genesis_period() in self method - maybe no need to call here?
         // self.downgrade_blockchain_data().await;
     }
 
