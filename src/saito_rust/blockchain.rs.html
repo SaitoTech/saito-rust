@@ -1848,6 +1848,50 @@
 <span id="1848">1848</span>
 <span id="1849">1849</span>
 <span id="1850">1850</span>
+<span id="1851">1851</span>
+<span id="1852">1852</span>
+<span id="1853">1853</span>
+<span id="1854">1854</span>
+<span id="1855">1855</span>
+<span id="1856">1856</span>
+<span id="1857">1857</span>
+<span id="1858">1858</span>
+<span id="1859">1859</span>
+<span id="1860">1860</span>
+<span id="1861">1861</span>
+<span id="1862">1862</span>
+<span id="1863">1863</span>
+<span id="1864">1864</span>
+<span id="1865">1865</span>
+<span id="1866">1866</span>
+<span id="1867">1867</span>
+<span id="1868">1868</span>
+<span id="1869">1869</span>
+<span id="1870">1870</span>
+<span id="1871">1871</span>
+<span id="1872">1872</span>
+<span id="1873">1873</span>
+<span id="1874">1874</span>
+<span id="1875">1875</span>
+<span id="1876">1876</span>
+<span id="1877">1877</span>
+<span id="1878">1878</span>
+<span id="1879">1879</span>
+<span id="1880">1880</span>
+<span id="1881">1881</span>
+<span id="1882">1882</span>
+<span id="1883">1883</span>
+<span id="1884">1884</span>
+<span id="1885">1885</span>
+<span id="1886">1886</span>
+<span id="1887">1887</span>
+<span id="1888">1888</span>
+<span id="1889">1889</span>
+<span id="1890">1890</span>
+<span id="1891">1891</span>
+<span id="1892">1892</span>
+<span id="1893">1893</span>
+<span id="1894">1894</span>
 </pre><pre class="rust"><code><span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
 <span class="comment">// prune blocks from index after N blocks</span>
@@ -2221,18 +2265,32 @@
             <span class="string">&quot; ... blockchain.add_block_success: {:?}&quot;</span>,
             <span class="ident">create_timestamp</span>()
         );
-        <span class="kw">let</span> <span class="ident">block_id</span>;
+        <span class="comment">// print blockring longest_chain_block_hash infor</span>
+        <span class="self">self</span>.<span class="ident">print</span>();
 
         <span class="comment">//</span>
         <span class="comment">// save to disk</span>
         <span class="comment">//</span>
         {
             <span class="kw">let</span> <span class="ident">block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="kw-2">&amp;</span><span class="ident">block_hash</span>).<span class="kw">await</span>;
-            <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
             <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_block_type</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">BlockType::Header</span> {
                 <span class="ident">Storage::write_block_to_disk</span>(<span class="ident">block</span>);
             }
         }
+
+        <span class="comment">//</span>
+        <span class="comment">// TODO: clean up mempool - I think we shouldn&#39;t cleanup mempool here.</span>
+        <span class="comment">//  because that&#39;s already happening in send_blocks_to_blockchain</span>
+        <span class="comment">//  So who is in charge here?</span>
+        <span class="comment">//  is send_blocks_to_blockchain calling add_block or</span>
+        <span class="comment">//  is blockchain calling mempool.on_chain_reorganization?</span>
+        <span class="comment">//</span>
+        <span class="comment">//</span>
+        <span class="comment">// mempool.delete_transactions(&amp;block.get_transactions());</span>
+
+        <span class="comment">//</span>
+        <span class="comment">// propagate block to network</span>
+        <span class="comment">//</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>.<span class="ident">is_some</span>() {
             <span class="self">self</span>.<span class="ident">broadcast_channel_sender</span>
                 .<span class="ident">as_ref</span>()
@@ -2243,15 +2301,15 @@
         <span class="macro">trace!</span>(<span class="string">&quot; ... block save done:            {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
         <span class="comment">//</span>
-        <span class="comment">// update_genesis_period and prune old data</span>
+        <span class="comment">// update_genesis_period and prune old data - MOVED to on_chain_reorganization()</span>
         <span class="comment">//</span>
-        <span class="self">self</span>.<span class="ident">update_genesis_period</span>().<span class="kw">await</span>;
+        <span class="comment">// self.update_genesis_period().await;</span>
 
         <span class="comment">//</span>
-        <span class="comment">// fork id</span>
+        <span class="comment">// fork id  - MOVED to on_chain_reorganization()</span>
         <span class="comment">//</span>
-        <span class="kw">let</span> <span class="ident">fork_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_fork_id</span>(<span class="ident">block_id</span>);
-        <span class="self">self</span>.<span class="ident">set_fork_id</span>(<span class="ident">fork_id</span>);
+        <span class="comment">// let fork_id = self.generate_fork_id(block_id);</span>
+        <span class="comment">// self.set_fork_id(fork_id);</span>
 
         <span class="comment">//</span>
         <span class="comment">// ensure pruning of next block OK will have the right CVs</span>
@@ -2803,6 +2861,7 @@
 
             <span class="comment">// utxoset update</span>
             <span class="ident">block</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">utxoset</span>, <span class="bool-val">true</span>);
+
             <span class="macro">trace!</span>(<span class="string">&quot; ... before blockring ocr:       {:?}&quot;</span>, <span class="ident">create_timestamp</span>());
 
             <span class="comment">// blockring update</span>
@@ -2825,6 +2884,9 @@
                 <span class="ident">wallet</span>.<span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="ident">block</span>, <span class="bool-val">true</span>);
                 <span class="macro">trace!</span>(<span class="string">&quot; ... wallet processing stop:     {}&quot;</span>, <span class="ident">create_timestamp</span>());
             }
+
+            <span class="kw">let</span> <span class="ident">block_id</span> <span class="op">=</span> <span class="ident">block</span>.<span class="ident">get_id</span>();
+            <span class="self">self</span>.<span class="ident">on_chain_reorganization</span>(<span class="ident">block_id</span>, <span class="bool-val">true</span>).<span class="kw">await</span>;
 
             <span class="comment">//</span>
             <span class="comment">// we cannot pass the UTXOSet into the staking object to update as that would</span>
@@ -3026,6 +3088,31 @@
         }
     }
 
+    <span class="doccomment">/// keeps any blockchain variables like fork_id or genesis_period</span>
+    <span class="doccomment">/// tracking variables updated as the chain gets new blocks. also</span>
+    <span class="doccomment">/// pre-loads any blocks needed to improve performance.</span>
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>, <span class="ident">longest_chain</span>: <span class="ident">bool</span>) {
+        <span class="comment">// skip out if earlier than we need to be vis-a-vis last_block_id</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">block_id</span> {
+            <span class="kw">return</span>;
+        }
+
+        <span class="kw">if</span> <span class="ident">longest_chain</span> {
+            <span class="comment">// update genesis period, purge old data</span>
+            <span class="comment">//</span>
+            <span class="self">self</span>.<span class="ident">update_genesis_period</span>().<span class="kw">await</span>;
+
+            <span class="comment">//</span>
+            <span class="comment">// generate fork_id</span>
+            <span class="comment">//</span>
+            <span class="comment">//</span>
+            <span class="kw">let</span> <span class="ident">fork_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_fork_id</span>(<span class="ident">block_id</span>);
+            <span class="self">self</span>.<span class="ident">set_fork_id</span>(<span class="ident">fork_id</span>);
+        }
+
+        <span class="self">self</span>.<span class="ident">downgrade_blockchain_data</span>().<span class="kw">await</span>;
+    }
+
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">update_genesis_period</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="comment">//</span>
         <span class="comment">// we need to make sure this is not a random block that is disconnected</span>
@@ -3053,7 +3140,8 @@
             <span class="self">self</span>.<span class="ident">delete_blocks</span>(<span class="ident">purge_bid</span>).<span class="kw">await</span>;
         }
 
-        <span class="self">self</span>.<span class="ident">downgrade_blockchain_data</span>().<span class="kw">await</span>;
+        <span class="comment">//TODO: we already had in update_genesis_period() in self method - maybe no need to call here?</span>
+        <span class="comment">// self.downgrade_blockchain_data().await;</span>
     }
 
     <span class="comment">//</span>
