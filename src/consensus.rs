@@ -150,6 +150,7 @@ impl Consensus {
         //
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        //let network_lock = Arc::new(RwLock::new(Network::new(wallet_lock.clone())));
 
         //
         // update wallet if walletfile provided
