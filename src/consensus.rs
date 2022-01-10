@@ -4,6 +4,7 @@ use crate::miner::Miner;
 use crate::storage::Storage;
 use crate::test_utilities::test_manager::TestManager;
 use crate::wallet::Wallet;
+use crate::network::Network;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use clap::{App, Arg};
 use std::sync::Arc;
@@ -127,7 +128,7 @@ impl Consensus {
             )
             .get_matches();
 
-        let config_name = match matches.value_of("config") {
+        let saito_configuration_file = match matches.value_of("config") {
             Some(name) => name,
             None => "config",
         };
@@ -142,18 +143,24 @@ impl Consensus {
 
         let mut settings = config::Config::default();
         settings
-            .merge(config::File::with_name(config_name))
+            .merge(config::File::with_name(saito_configuration_file))
             .unwrap();
 
-        //
-        // generate
-        //
-        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
-        //let network_lock = Arc::new(RwLock::new(Network::new(wallet_lock.clone())));
 
         //
-        // update wallet if walletfile provided
+        // generate core system components
+        //
+	// the code below creates an initializes our core system components:
+	//
+	//  - wallet
+	//  - blockchain
+	//  - mempool
+	//  - miner
+	//  - network
+	//  
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+
+
         //
         // if a wallet and password are provided Saito will attempt to load
         // it from the /data/wallets directory. If they are not we will create
@@ -177,6 +184,9 @@ impl Consensus {
             }
         }
 
+
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+
         //
         // load blocks from disk and check chain
         //
@@ -192,6 +202,29 @@ impl Consensus {
         //
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
+        let network_lock = Arc::new(RwLock::new(Network::new(blockchain_lock.clone(), mempool_lock.clone(), wallet_lock.clone())));
+
+        //
+        // the configuration file should be used to update the network so that 
+	// the server and peers can be loaded correctly.
+        //
+/********
+        {
+            let walletname = matches.value_of("wallet").unwrap();
+            let password = matches.value_of("password").unwrap();
+
+            if walletname != "none" {
+                let mut wallet = wallet_lock.write().await;
+                wallet.set_filename(walletname.to_string());
+                wallet.set_password(password.to_string());
+                wallet.load();
+            } else {
+                let mut wallet = wallet_lock.write().await;
+                wallet.save();
+            }
+        }
+********/
+
 
         //
         // start test_manager spammer
@@ -257,11 +290,9 @@ impl Consensus {
         //
         // Network
         //
-            res = crate::networking::network::run(
+            res = crate::network::run(
                 settings,
-                wallet_lock.clone(),
-                mempool_lock.clone(),
-                blockchain_lock.clone(),
+		network_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {

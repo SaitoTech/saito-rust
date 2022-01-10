@@ -1198,12 +1198,16 @@ impl Blockchain {
     /// tracking variables updated as the chain gets new blocks. also
     /// pre-loads any blocks needed to improve performance.
     async fn on_chain_reorganization(&mut self, block_id: u64, longest_chain: bool) {
+
+	//
         // skip out if earlier than we need to be vis-a-vis last_block_id
+	//
         if self.get_latest_block_id() >= block_id {
             return;
         }
 
         if longest_chain {
+	    //
             // update genesis period, purge old data
             //
             self.update_genesis_period().await;
@@ -1211,13 +1215,13 @@ impl Blockchain {
             //
             // generate fork_id
             //
-            //
             let fork_id = self.generate_fork_id(block_id);
             self.set_fork_id(fork_id);
         }
 
         self.downgrade_blockchain_data().await;
     }
+
 
     pub async fn update_genesis_period(&mut self) {
         //
