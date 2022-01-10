@@ -52,7 +52,7 @@ pub struct Network {
     blockchain_lock: Arc<RwLock<Blockchain>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     wallet_lock: Arc<RwLock<Wallet>>,
-    broadcast_channel_sender: Option<broadcast::Sender<SaitoMessage>>
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>
 }
 
 impl Network {
@@ -61,12 +61,13 @@ impl Network {
         blockchain_lock: Arc<RwLock<Blockchain>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         wallet_lock: Arc<RwLock<Wallet>>,
+        bcs: broadcast::Sender<SaitoMessage>
     ) -> Network {
         Network {
             blockchain_lock,
             mempool_lock,
             wallet_lock,
-            broadcast_channel_sender: None,
+	    broadcast_channel_sender : bcs,
         }
     }
 

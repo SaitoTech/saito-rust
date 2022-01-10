@@ -202,7 +202,7 @@ impl Consensus {
         //
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-        let network_lock = Arc::new(RwLock::new(Network::new(blockchain_lock.clone(), mempool_lock.clone(), wallet_lock.clone())));
+        let network_lock = Arc::new(RwLock::new(Network::new(settings, blockchain_lock.clone(), mempool_lock.clone(), wallet_lock.clone())));
 
         //
         // the configuration file should be used to update the network so that 
@@ -291,7 +291,6 @@ impl Consensus {
         // Network
         //
             res = crate::network::run(
-                settings,
 		network_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()

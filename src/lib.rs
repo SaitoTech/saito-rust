@@ -34,6 +34,7 @@ pub mod merkle;
 pub mod miner;
 pub mod peer;
 pub mod network;
+pub mod networking;
 pub mod slip;
 pub mod staking;
 pub mod storage;
