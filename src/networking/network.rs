@@ -52,7 +52,7 @@ pub struct Network {
     blockchain_lock: Arc<RwLock<Blockchain>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     wallet_lock: Arc<RwLock<Wallet>>,
-    broadcast_channel_sender: broadcast::Sender<SaitoMessage>
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
 }
 
 impl Network {
@@ -61,16 +61,15 @@ impl Network {
         blockchain_lock: Arc<RwLock<Blockchain>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         wallet_lock: Arc<RwLock<Wallet>>,
-        bcs: broadcast::Sender<SaitoMessage>
+        bcs: broadcast::Sender<SaitoMessage>,
     ) -> Network {
         Network {
             blockchain_lock,
             mempool_lock,
             wallet_lock,
-	    broadcast_channel_sender : bcs,
+            broadcast_channel_sender: bcs,
         }
     }
-
 
     /// After socket has been connected, the connector begins the handshake via SHAKINIT command.
     /// Once the handshake is complete, we synchronize the peers via REQCHAIN/SENDCHAIN and REQBLOCK.
@@ -336,7 +335,6 @@ impl Network {
 
     // Runs warp::serve to listen for incoming connections
     async fn run_server(&self, config_settings: Config) -> crate::Result<()> {
-
         let host: [u8; 4] = config_settings.get::<[u8; 4]>("network.host").unwrap();
         let port: u16 = config_settings.get::<u16>("network.port").unwrap();
 
@@ -413,7 +411,6 @@ pub async fn run(
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-
     let network = network_lock.write().await;
 
     // TODO: maybe refactor this into two separate classes maybe and split this run() into two...

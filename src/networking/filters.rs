@@ -4,6 +4,7 @@ use crate::mempool::Mempool;
 use crate::wallet::Wallet;
 use std::convert::Infallible;
 use std::sync::Arc;
+use tokio::sync::broadcast::Sender;
 use tokio::sync::{broadcast, RwLock};
 use warp::{body, Filter, Reply};
 
@@ -15,7 +16,7 @@ pub fn ws_upgrade_route_filter(
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    broadcast_channel_sender: Option<Sender<SaitoMessage>>,
 ) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::path("wsopen")
         .and(warp::ws())
@@ -80,7 +81,7 @@ fn with_blockchain(
 
 /// inject blockchain lock
 fn with_broadcast_channel_sender(
-    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
-) -> impl Filter<Extract = (broadcast::Sender<SaitoMessage>,), Error = Infallible> + Clone {
+    broadcast_channel_sender: Option<Sender<SaitoMessage>>,
+) -> impl Filter<Extract = (Option<broadcast::Sender<SaitoMessage>>,), Error = Infallible> + Clone {
     warp::any().map(move || broadcast_channel_sender.clone())
 }

@@ -33,6 +33,7 @@ use warp::ws::{Message, WebSocket};
 
 use futures::{Future, FutureExt, SinkExt, StreamExt};
 use tokio::net::TcpStream;
+use tokio::sync::broadcast::Sender;
 use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
 
 pub type PeersDB = HashMap<SaitoHash, SaitoPeer>;
@@ -185,7 +186,7 @@ impl SaitoPeer {
         wallet_lock: Arc<RwLock<Wallet>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
-        broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+        broadcast_channel_sender: Option<Sender<SaitoMessage>>,
     ) -> SaitoPeer {
         SaitoPeer {
             peer_flags: PeerFlags {

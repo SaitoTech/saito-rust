@@ -1,10 +1,11 @@
+use crate::configuration::get_configuration;
 use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
+use crate::network::Network;
 use crate::storage::Storage;
 use crate::test_utilities::test_manager::TestManager;
 use crate::wallet::Wallet;
-use crate::network::Network;
 use crate::{blockchain::Blockchain, mempool::Mempool, transaction::Transaction};
 use clap::{App, Arg};
 use std::sync::Arc;
@@ -141,25 +142,24 @@ impl Consensus {
             is_spammer_enabled = true;
         };
 
-        let mut settings = config::Config::default();
-        settings
-            .merge(config::File::with_name(saito_configuration_file))
-            .unwrap();
-
+        // let mut settings = config::Config::default();
+        // settings
+        //     .merge(config::File::with_name(saito_configuration_file))
+        //     .unwrap();
+        let settings = get_configuration().expect("Failed to read configuration.");
 
         //
         // generate core system components
         //
-	// the code below creates an initializes our core system components:
-	//
-	//  - wallet
-	//  - blockchain
-	//  - mempool
-	//  - miner
-	//  - network
-	//  
+        // the code below creates an initializes our core system components:
+        //
+        //  - wallet
+        //  - blockchain
+        //  - mempool
+        //  - miner
+        //  - network
+        //
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-
 
         //
         // if a wallet and password are provided Saito will attempt to load
@@ -184,7 +184,6 @@ impl Consensus {
             }
         }
 
-
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
         //
@@ -202,29 +201,33 @@ impl Consensus {
         //
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
-        let network_lock = Arc::new(RwLock::new(Network::new(settings, blockchain_lock.clone(), mempool_lock.clone(), wallet_lock.clone())));
+        let network_lock = Arc::new(RwLock::new(Network::new(
+            settings,
+            blockchain_lock.clone(),
+            mempool_lock.clone(),
+            wallet_lock.clone(),
+        )));
 
         //
-        // the configuration file should be used to update the network so that 
-	// the server and peers can be loaded correctly.
+        // the configuration file should be used to update the network so that
+        // the server and peers can be loaded correctly.
         //
-/********
-        {
-            let walletname = matches.value_of("wallet").unwrap();
-            let password = matches.value_of("password").unwrap();
+        /********
+                {
+                    let walletname = matches.value_of("wallet").unwrap();
+                    let password = matches.value_of("password").unwrap();
 
-            if walletname != "none" {
-                let mut wallet = wallet_lock.write().await;
-                wallet.set_filename(walletname.to_string());
-                wallet.set_password(password.to_string());
-                wallet.load();
-            } else {
-                let mut wallet = wallet_lock.write().await;
-                wallet.save();
-            }
-        }
-********/
-
+                    if walletname != "none" {
+                        let mut wallet = wallet_lock.write().await;
+                        wallet.set_filename(walletname.to_string());
+                        wallet.set_password(password.to_string());
+                        wallet.load();
+                    } else {
+                        let mut wallet = wallet_lock.write().await;
+                        wallet.save();
+                    }
+                }
+        ********/
 
         //
         // start test_manager spammer
@@ -291,7 +294,7 @@ impl Consensus {
         // Network
         //
             res = crate::network::run(
-		network_lock.clone(),
+                network_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
