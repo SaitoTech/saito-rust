@@ -20,10 +20,10 @@ use tokio::sync::{broadcast, RwLock};
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 
+use futures::StreamExt;
 use std::iter::Iterator;
 use uuid::Uuid;
 use warp::{Filter, Rejection};
-use futures::StreamExt;
 
 //use super::message_types::send_block_head_message::SendBlockHeadMessage;
 use crate::networking::signals::signal_for_shutdown;
@@ -102,7 +102,8 @@ impl Network {
         Ok(())
     }
 
-    /// connects to any peers configured in our peers list. Opens a socket, does handshake, sychronizes, etc.
+    /// connects to any peers configured in our peers list.
+    /// Opens a socket, does handshake, synchronizes, etc.
     async fn run_client(&self) -> crate::Result<()> {
         self.initialize_configured_peers().await;
         self.spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
@@ -111,9 +112,10 @@ impl Network {
         Ok(())
     }
 
-    // Initialize configured peers(peers set in the config.yml). This does not connect to the peers, it only sets their
-    // state and inserts them into PEERS_DB_GLOBAL so that the Task created by
-    // spawn_reconnect_to_configured_peers_task will open the connection.
+    /// Initialize configured peers (peers set in the configuration/*.yml) if any.
+    /// This does not connect to the peers, it only sets their
+    /// state and inserts them into PEERS_DB_GLOBAL so that the Task created by
+    /// spawn_reconnect_to_configured_peers_task will open the connection.
     async fn initialize_configured_peers(&self) {
         if let Some(peer_settings) = &self.peer_conf {
             for peer_setting in peer_settings {
@@ -141,10 +143,10 @@ impl Network {
         }
     }
 
-    // Launch a task which will monitor peers and make sure they stay connected. If a peer in our
-    // configured "peers list" becomes disconnected, this task will reconnect to the peer and
-    // redo the handshake and blockchain synchronization. For convenience, this task is also
-    // used to make initial connections with peers(not only to reconnect).
+    /// Launch a task which will monitor peers and make sure they stay connected. If a peer in our
+    /// configured "peers list" becomes disconnected, this task will reconnect to the peer and
+    /// redo the handshake and blockchain synchronization. For convenience, this task is also
+    /// used to make initial connections with peers(not only to reconnect).
     async fn spawn_reconnect_to_configured_peers_task(
         &self,
         wallet_lock: Arc<RwLock<Wallet>>,
@@ -179,7 +181,7 @@ impl Network {
         Ok(())
     }
 
-    // listen for message from the rest of the codebase
+    /// listening for message from the rest of the codebase
     pub async fn listen_for_messages(
         &self,
         mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
@@ -367,7 +369,7 @@ impl Network {
         }
     }
 
-    // For sending blocks made by mempool to all peers
+    /// For sending blocks made by mempool to all peers
     async fn send_my_block_to_peers(block_hash: SaitoHash) {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let mut peers_db_mut = peers_db_global.write().await;
@@ -384,7 +386,7 @@ impl Network {
         }
     }
 
-    // For transaction đ made by mempool to all peers
+    /// For transaction made by mempool to all peers
     pub async fn propagate_transaction_to_peers(
         wallet_lock: Arc<RwLock<Wallet>>,
         mut tx: Transaction,
