@@ -98,3 +98,10 @@ Publish certain rust functionalities (as bin) as a npm package
 
 - https://blog.woubuc.be/post/publishing-rust-binary-on-npm
 - https://github.com/EverlastingBugstopper/binary-install
+
+## TODO
+Casual list of suggestions on improvements:
+
+[] routing hops currently contain two publickeys and one signature. we can remove "from" because it is contextually available (from the sender of the first transaction, and then the *to* field. We should also be able to reduce the signatures by switching to a different/commutive signature. This would magnificently remove the size of our transactions and shrink blocksize as well.
+
+

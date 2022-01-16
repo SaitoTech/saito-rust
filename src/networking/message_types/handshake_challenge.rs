@@ -1,6 +1,6 @@
 use crate::crypto::{sign_blob, SaitoPrivateKey, SaitoPublicKey, SaitoSignature};
 
-use crate::networking::network::CHALLENGE_SIZE;
+use crate::network::CHALLENGE_SIZE;
 use crate::time::create_timestamp;
 use std::convert::TryInto;
 

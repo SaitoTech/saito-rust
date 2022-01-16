@@ -1,22 +1,22 @@
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::mempool::Mempool;
+use crate::network::PEERS_DB_GLOBAL;
 use crate::wallet::Wallet;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::sync::broadcast::Sender;
 use tokio::sync::{broadcast, RwLock};
 use warp::{body, Filter, Reply};
 
 use super::handlers::{get_block_handler, post_transaction_handler, ws_upgrade_handler};
-use super::peer::{PeersDB, PEERS_DB_GLOBAL};
+use crate::peer::PeersDB;
 
 /// websocket upgrade filter.
 pub fn ws_upgrade_route_filter(
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-    broadcast_channel_sender: Option<Sender<SaitoMessage>>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
 ) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::path("wsopen")
         .and(warp::ws())
@@ -60,6 +60,7 @@ fn with_peers_filter() -> impl Filter<Extract = (Arc<RwLock<PeersDB>>,), Error =
 {
     warp::any().map(move || PEERS_DB_GLOBAL.clone())
 }
+
 /// inject wallet lock
 fn with_wallet(
     wallet_lock: Arc<RwLock<Wallet>>,
@@ -81,7 +82,7 @@ fn with_blockchain(
 
 /// inject blockchain lock
 fn with_broadcast_channel_sender(
-    broadcast_channel_sender: Option<Sender<SaitoMessage>>,
-) -> impl Filter<Extract = (Option<broadcast::Sender<SaitoMessage>>,), Error = Infallible> + Clone {
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+) -> impl Filter<Extract = (broadcast::Sender<SaitoMessage>,), Error = Infallible> + Clone {
     warp::any().map(move || broadcast_channel_sender.clone())
 }

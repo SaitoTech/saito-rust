@@ -88,11 +88,11 @@ impl Blockchain {
             if self.get_latest_block_id() > GENESIS_PERIOD {
                 earliest_block_id = self.get_latest_block_id() - GENESIS_PERIOD;
             }
-            println!("earliest_block_id {}", earliest_block_id);
+            trace!("earliest_block_id {}", earliest_block_id);
             let earliest_block_hash = self
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(earliest_block_id);
-            println!("earliest_block_hash {:?}", earliest_block_hash);
+            trace!("earliest_block_hash {:?}", earliest_block_hash);
             let earliest_block = self.get_mut_block(&earliest_block_hash).await;
 
             if block.get_timestamp() > earliest_block.get_timestamp() {

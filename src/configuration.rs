@@ -37,7 +37,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     // Detect the running environment.
     // Default to `local` if unspecified.
     let environment: Environment = std::env::var("APP_ENVIRONMENT")
-        .unwrap_or_else(|_| "local".into())
+        .unwrap_or_else(|_| "development".into())
         .try_into()
         .expect("Failed to parse APP_ENVIRONMENT.");
 
@@ -55,7 +55,6 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
 
 /// The possible runtime environment for our application.
 pub enum Environment {
-    Local,
     Development,
     Production,
 }
@@ -63,7 +62,6 @@ pub enum Environment {
 impl Environment {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Environment::Local => "local",
             Environment::Development => "development",
             Environment::Production => "production",
         }
@@ -75,11 +73,10 @@ impl TryFrom<String> for Environment {
 
     fn try_from(s: String) -> Result<Self, Self::Error> {
         match s.to_lowercase().as_str() {
-            "local" => Ok(Self::Local),
             "development" => Ok(Self::Development),
             "production" => Ok(Self::Production),
             other => Err(format!(
-                "{} is not a supported environment. Use either `local` or `production`.",
+                "{} is not a supported environment. Use either `development` or `production`.",
                 other
             )),
         }

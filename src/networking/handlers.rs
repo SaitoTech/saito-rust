@@ -2,7 +2,7 @@ use crate::block::BlockType;
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::mempool::Mempool;
-use crate::networking::network::Result;
+use crate::network::Result;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use base58::ToBase58;
@@ -12,7 +12,7 @@ use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
 
-use super::peer::{handle_inbound_peer_connection, PeersDB};
+use crate::peer::{handle_inbound_peer_connection, PeersDB};
 
 #[derive(Debug)]
 struct Invalid;

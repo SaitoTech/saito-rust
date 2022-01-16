@@ -115,13 +115,6 @@ impl Consensus {
                     .help("Password to decrypt wallet"),
             )
             .arg(
-                Arg::with_name("config")
-                    .short("c")
-                    .long("config")
-                    .takes_value(true)
-                    .help("config file name"),
-            )
-            .arg(
                 Arg::with_name("spammer")
                     .short("s")
                     .long("spammer")
@@ -129,11 +122,8 @@ impl Consensus {
             )
             .get_matches();
 
-        let saito_configuration_file = match matches.value_of("config") {
-            Some(name) => name,
-            None => "config",
-        };
-
+        //TODO: spammer just served for testing app
+        // - should be in another bin crate instead of a adhoc flag
         let mut is_spammer_enabled = false;
         //
         // hook up with Arg above
@@ -142,10 +132,7 @@ impl Consensus {
             is_spammer_enabled = true;
         };
 
-        // let mut settings = config::Config::default();
-        // settings
-        //     .merge(config::File::with_name(saito_configuration_file))
-        //     .unwrap();
+        // Load configurations based on env
         let settings = get_configuration().expect("Failed to read configuration.");
 
         //
@@ -206,6 +193,7 @@ impl Consensus {
             blockchain_lock.clone(),
             mempool_lock.clone(),
             wallet_lock.clone(),
+            broadcast_channel_sender.clone(),
         )));
 
         //
@@ -295,7 +283,7 @@ impl Consensus {
         //
             res = crate::network::run(
                 network_lock.clone(),
-                broadcast_channel_sender.clone(),
+                // broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
                 if let Err(err) = res {
