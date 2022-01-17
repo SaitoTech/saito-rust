@@ -92,16 +92,6 @@ impl Network {
     }
 
 
-    /// connects to any peers configured in our peers list.
-    /// Opens a socket, does handshake, synchronizes, etc.
-    async fn run_client(&self) -> crate::Result<()> {
-        self.initialize().await;
-    //    self.spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
-    //        .await
-    //        .unwrap();
-        Ok(())
-    }
-
     /// Initialize the network class generally, including adding any peers we have
     /// configured (peers set in the configuration/*.yml) into our PEERS_DB_GLOBAL
     /// data structure.
@@ -381,13 +371,9 @@ pub async fn run(
     // initialize network
     //
     {
-println!("initializing the network");
         let network = network_lock.write().await;
 	network.initialize().await;
-println!("done initializing the network");
     }
-
-
 
 
     //
@@ -403,6 +389,7 @@ println!("done initializing the network");
             //
             Some(message) = network_channel_receiver.recv() => {
                 match message {
+
                     //
                     // Monitor the Network
                     //
