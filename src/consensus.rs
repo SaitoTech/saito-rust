@@ -283,7 +283,7 @@ impl Consensus {
         //
             res = crate::network::run(
                 network_lock.clone(),
-                // broadcast_channel_sender.clone(),
+                broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {
                 if let Err(err) = res {

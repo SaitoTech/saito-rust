@@ -12,12 +12,12 @@ use crate::peer::{
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use secp256k1::PublicKey;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::sync::{broadcast, RwLock};
+use std::{sync::Arc, time::Duration};
+use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 use tracing::{error, info, warn};
+
 
 use futures::StreamExt;
 use uuid::Uuid;
@@ -87,29 +87,10 @@ impl Network {
         }
     }
 
-    // fn set_bcs(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
-    //     self.broadcast_channel_sender = bcs;
-    // }
-
-    /// Runs warp::serve to listen for incoming connections
-    async fn run_server(&self) -> crate::Result<()> {
-        let routes = get_block_route_filter(self.blockchain_lock.clone())
-            .or(post_transaction_route_filter(
-                self.mempool_lock.clone(),
-                self.blockchain_lock.clone(),
-            ))
-            .or(ws_upgrade_route_filter(
-                self.wallet_lock.clone(),
-                self.mempool_lock.clone(),
-                self.blockchain_lock.clone(),
-                self.broadcast_channel_sender.clone(),
-            ));
-        info!("Listening for HTTP on port {}", self.port);
-        let (_, server) = warp::serve(routes)
-            .bind_with_graceful_shutdown((self.host, self.port), signal_for_shutdown());
-        server.await;
-        Ok(())
+    pub fn set_broadcast_channel_sender(&mut self, bcs: broadcast::Sender<SaitoMessage>) {
+        self.broadcast_channel_sender = bcs;
     }
+
 
     /// connects to any peers configured in our peers list.
     /// Opens a socket, does handshake, synchronizes, etc.
@@ -191,46 +172,6 @@ impl Network {
         Ok(())
     }
 
-    /// listening for message from the rest of the codebase
-    pub async fn listen_for_messages(
-        &self,
-        mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
-    ) {
-        loop {
-            while let Ok(message) = broadcast_channel_receiver.recv().await {
-                match message {
-                    SaitoMessage::MinerNewGoldenTicket {
-                        ticket: _golden_ticket,
-                    } => {
-                        // TODO implement this...
-                        println!("MinerNewGoldenTicket");
-                    }
-                    SaitoMessage::BlockchainSavedBlock { hash: block_hash } => {
-                        warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
-                        Network::send_my_block_to_peers(block_hash).await;
-                    }
-                    SaitoMessage::WalletNewTransaction { transaction: tx } => {
-                        info!("SaitoMessage::WalletNewTransaction new tx is detected by network");
-                        Network::propagate_transaction_to_peers(self.wallet_lock.clone(), tx).await;
-                    }
-                    SaitoMessage::MissingBlock {
-                        peer_id: connection_id,
-                        hash: block_hash,
-                    } => {
-                        warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
-                        let peers_db_global = PEERS_DB_GLOBAL.clone();
-                        let mut peer_db = peers_db_global.write().await;
-                        if let Some(peer) = peer_db.get_mut(&connection_id) {
-                            peer.do_reqblock(block_hash).await;
-                        } else {
-                            error!("missing peer cannot be fetched, unknown Peer")
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
 
     /// Connect to a peer via websocket and spawn a Task to handle message received on the socket
     /// and pipe them to handle_peer_message().
@@ -426,25 +367,146 @@ impl Network {
     }
 }
 
+
+
+/// Runs warp::serve to listen for incoming connections
+pub async fn run_server(network_lock_clone : Arc<RwLock<Network>>) -> crate::Result<()> {
+
+	let mut routes;
+	let mut host;
+	let mut port;
+
+	{
+	let network = network_lock_clone.read().await;
+	port = network.port;
+	host = network.host;
+        routes = get_block_route_filter(network.blockchain_lock.clone())
+            .or(post_transaction_route_filter(
+                network.mempool_lock.clone(),
+                network.blockchain_lock.clone(),
+            ))
+            .or(ws_upgrade_route_filter(
+                network.wallet_lock.clone(),
+                network.mempool_lock.clone(),
+                network.blockchain_lock.clone(),
+                network.broadcast_channel_sender.clone(),
+            ));
+
+        info!("Listening for HTTP on port {}", port);
+        let (_, server) = warp::serve(routes)
+            .bind_with_graceful_shutdown((host, port), signal_for_shutdown());
+        server.await;
+	}
+        Ok(())
+}
+
+
 pub async fn run(
     network_lock: Arc<RwLock<Network>>,
-    broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
+    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
-    let network = network_lock.write().await;
+
+    //
+    // network gets global broadcast channel
+    //
+    {
+        let mut network = network_lock.write().await;
+        network.set_broadcast_channel_sender(broadcast_channel_sender.clone());
+    }
+
+    //
+    // start network monitor (local)
+    //
+    let (network_channel_sender, mut network_channel_receiver) = mpsc::channel(4);
+    let network_monitor_sender = network_channel_sender.clone();
+    tokio::spawn(async move {
+        loop {
+            network_monitor_sender
+                .send(NetworkMessage::LocalNetworkMonitoring)
+                .await
+                .expect("Failed to send LocalNetworkMonitoring message");
+            sleep(Duration::from_millis(10000)).await;
+        }
+    });
+
+    //
+    // initialize server
+    //
+    let network_lock_clone = network_lock.clone();
     tokio::select! {
-        res = network.run_client() => {
-            if let Err(err) = res {
-                eprintln!("run_client err {:?}", err)
-            }
-        },
-        res = network.run_server() => {
+        res = run_server(network_lock_clone) => {
             if let Err(err) = res {
                 eprintln!("run_server err {:?}", err)
             }
         },
-        () = network.listen_for_messages(broadcast_channel_receiver) => {
+    }
 
-        },
+
+    //
+    // listen to local and global messages
+    //
+    let network_lock_clone2 = network_lock.clone();
+    loop {
+
+        tokio::select! {
+
+            //
+            // Local Channel Messages
+            //
+            Some(message) = network_channel_receiver.recv() => {
+                match message {
+                    //
+                    // Monitor the Network
+                    //
+                    NetworkMessage::LocalNetworkMonitoring => {
+
+			// initialize into DB if desired
+
+			// reconnect one-by-one
+			println!("Monitor Network loop!");
+
+
+                    },
+                    _ => {}
+                }
+            }
+
+
+            //
+            // Saito Channel Messages
+            //
+            Ok(message) = broadcast_channel_receiver.recv() => {
+                match message {
+                    SaitoMessage::BlockchainNewLongestChainBlock { hash : block_hash, difficulty } => {
+			println!("Network is now listening for blocks!");
+                    },
+		    SaitoMessage::MinerNewGoldenTicket {
+                        ticket: _golden_ticket,
+                    } => {
+                        // TODO implement this...
+                        println!("Network MinerNewGoldenTicket");
+                    },
+                    SaitoMessage::BlockchainSavedBlock { hash: block_hash } => {
+                        warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
+                        //Network::propagate_block(block_hash).await;
+                    },
+                    SaitoMessage::WalletNewTransaction { transaction: tx } => {
+                        info!("SaitoMessage::WalletNewTransaction new tx is detected by network");
+			let network = network_lock_clone2.read().await;
+                        //Network::propagate_transaction_to_peers(network.wallet_lock.clone(), tx).await;
+                    },
+                    SaitoMessage::MissingBlock {
+                        peer_id: connection_id,
+                        hash: block_hash,
+                    } => {
+                        warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
+                        //Network::fetch_block();
+                    },
+                    _ => {}
+                }
+            }
+	}
     }
 
     Ok(())
