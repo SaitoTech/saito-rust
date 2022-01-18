@@ -1,6 +1,7 @@
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::mempool::Mempool;
+use crate::network::PEERS_DB_GLOBAL;
 use crate::wallet::Wallet;
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -8,7 +9,7 @@ use tokio::sync::{broadcast, RwLock};
 use warp::{body, Filter, Reply};
 
 use super::handlers::{get_block_handler, post_transaction_handler, ws_upgrade_handler};
-use super::peer::{PeersDB, PEERS_DB_GLOBAL};
+use crate::peer::PeersDB;
 
 /// websocket upgrade filter.
 pub fn ws_upgrade_route_filter(
@@ -59,6 +60,7 @@ fn with_peers_filter() -> impl Filter<Extract = (Arc<RwLock<PeersDB>>,), Error =
 {
     warp::any().map(move || PEERS_DB_GLOBAL.clone())
 }
+
 /// inject wallet lock
 fn with_wallet(
     wallet_lock: Arc<RwLock<Wallet>>,

@@ -14,7 +14,7 @@ services:
       - "3000:3000"
     command: [
         "sh", "-c",
-        "/app/saito_rust --config=configuration/config.yml --spammer
+        "/app/saito_rust --spammer
         "
     ]
     networks:
@@ -33,7 +33,7 @@ services:
       - "3001:3001"
     command: [
       "bash", "-c",
-      "/app/saito_rust --config=${CONF_FILE} --password=${W_PWD}"
+      "/app/saito_rust --password=${W_PWD}"
     ]
     networks:
       - saito_net

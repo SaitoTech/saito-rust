@@ -1,10 +1,15 @@
-use super::api_message::APIMessage;
+/// A Peer. i.e. another node in the network.
 use crate::block::{Block, BlockType};
 use crate::blockchain::{Blockchain, GENESIS_PERIOD};
 use crate::consensus::SaitoMessage;
 use crate::crypto::{hash, verify, SaitoHash, SaitoPublicKey};
 use crate::hop::Hop;
 use crate::mempool::Mempool;
+use crate::network::{
+    Network, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE, INBOUND_PEER_CONNECTIONS_GLOBAL,
+    OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL, PEERS_REQUEST_RESPONSES_GLOBAL,
+    PEERS_REQUEST_WAKERS_GLOBAL,
+};
 use crate::networking::message_types::handshake_challenge::HandshakeChallenge;
 use crate::networking::message_types::request_block_message::RequestBlockMessage;
 use crate::networking::message_types::request_blockchain_message::RequestBlockchainMessage;
@@ -12,14 +17,11 @@ use crate::networking::message_types::send_block_head_message::SendBlockHeadMess
 use crate::networking::message_types::send_blockchain_message::{
     SendBlockchainBlockData, SendBlockchainMessage, SyncType,
 };
-use crate::networking::network::{Network, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE};
 use crate::time::create_timestamp;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use async_recursion::async_recursion;
 use futures::stream::SplitSink;
-use log::{error, info};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::error::Error;
@@ -28,11 +30,14 @@ use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 use tokio::sync::{broadcast, mpsc, RwLock};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tracing::{error, info};
 use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
 
+use crate::networking::api_message::APIMessage;
 use futures::{Future, FutureExt, SinkExt, StreamExt};
 use tokio::net::TcpStream;
+use tokio::sync::broadcast::Sender;
 use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
 
 pub type PeersDB = HashMap<SaitoHash, SaitoPeer>;
@@ -40,21 +45,6 @@ pub type RequestResponses = HashMap<(SaitoHash, u32), APIMessage>;
 pub type RequestWakers = HashMap<(SaitoHash, u32), Waker>;
 pub type OutboundPeersDB = HashMap<SaitoHash, OutboundPeer>;
 pub type InboundPeersDB = HashMap<SaitoHash, InboundPeer>;
-
-lazy_static::lazy_static! {
-    pub static ref PEERS_DB_GLOBAL: Arc<tokio::sync::RwLock<PeersDB>> = Arc::new(tokio::sync::RwLock::new(PeersDB::new()));
-    pub static ref PEERS_REQUEST_RESPONSES_GLOBAL: Arc<std::sync::RwLock<RequestResponses>> = Arc::new(std::sync::RwLock::new(RequestResponses::new()));
-    pub static ref PEERS_REQUEST_WAKERS_GLOBAL: Arc<std::sync::RwLock<RequestWakers>> = Arc::new(std::sync::RwLock::new(RequestWakers::new()));
-    pub static ref INBOUND_PEER_CONNECTIONS_GLOBAL: Arc<tokio::sync::RwLock<InboundPeersDB>> = Arc::new(tokio::sync::RwLock::new(InboundPeersDB::new()));
-    pub static ref OUTBOUND_PEER_CONNECTIONS_GLOBAL: Arc<tokio::sync::RwLock<OutboundPeersDB>> = Arc::new(tokio::sync::RwLock::new(OutboundPeersDB::new()));
-}
-
-/// Settings for remote Peers
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PeerSetting {
-    pub host: [u8; 4],
-    pub port: u16,
-}
 
 /// Flags for Peer state.
 pub struct PeerFlags {
@@ -185,7 +175,7 @@ impl SaitoPeer {
         wallet_lock: Arc<RwLock<Wallet>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
-        broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+        broadcast_channel_sender: Sender<SaitoMessage>,
     ) -> SaitoPeer {
         SaitoPeer {
             peer_flags: PeerFlags {

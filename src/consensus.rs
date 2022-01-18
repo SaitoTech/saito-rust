@@ -1,6 +1,8 @@
+use crate::configuration::get_configuration;
 use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
+use crate::network::Network;
 use crate::storage::Storage;
 use crate::test_utilities::test_manager::TestManager;
 use crate::wallet::Wallet;
@@ -113,13 +115,6 @@ impl Consensus {
                     .help("Password to decrypt wallet"),
             )
             .arg(
-                Arg::with_name("config")
-                    .short("c")
-                    .long("config")
-                    .takes_value(true)
-                    .help("config file name"),
-            )
-            .arg(
                 Arg::with_name("spammer")
                     .short("s")
                     .long("spammer")
@@ -127,11 +122,8 @@ impl Consensus {
             )
             .get_matches();
 
-        let config_name = match matches.value_of("config") {
-            Some(name) => name,
-            None => "config",
-        };
-
+        //TODO: spammer just served for testing app
+        // - should be in another bin crate instead of a adhoc flag
         let mut is_spammer_enabled = false;
         //
         // hook up with Arg above
@@ -140,19 +132,22 @@ impl Consensus {
             is_spammer_enabled = true;
         };
 
-        let mut settings = config::Config::default();
-        settings
-            .merge(config::File::with_name(config_name))
-            .unwrap();
+        // Load configurations based on env
+        let settings = get_configuration().expect("Failed to read configuration.");
 
         //
-        // generate
+        // generate core system components
+        //
+        // the code below creates an initializes our core system components:
+        //
+        //  - wallet
+        //  - blockchain
+        //  - mempool
+        //  - miner
+        //  - network
         //
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
-        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
 
-        //
-        // update wallet if walletfile provided
         //
         // if a wallet and password are provided Saito will attempt to load
         // it from the /data/wallets directory. If they are not we will create
@@ -176,6 +171,8 @@ impl Consensus {
             }
         }
 
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+
         //
         // load blocks from disk and check chain
         //
@@ -191,6 +188,34 @@ impl Consensus {
         //
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let miner_lock = Arc::new(RwLock::new(Miner::new(wallet_lock.clone())));
+        let network_lock = Arc::new(RwLock::new(Network::new(
+            settings,
+            blockchain_lock.clone(),
+            mempool_lock.clone(),
+            wallet_lock.clone(),
+            broadcast_channel_sender.clone(),
+        )));
+
+        //
+        // the configuration file should be used to update the network so that
+        // the server and peers can be loaded correctly.
+        //
+        /********
+                {
+                    let walletname = matches.value_of("wallet").unwrap();
+                    let password = matches.value_of("password").unwrap();
+
+                    if walletname != "none" {
+                        let mut wallet = wallet_lock.write().await;
+                        wallet.set_filename(walletname.to_string());
+                        wallet.set_password(password.to_string());
+                        wallet.load();
+                    } else {
+                        let mut wallet = wallet_lock.write().await;
+                        wallet.save();
+                    }
+                }
+        ********/
 
         //
         // start test_manager spammer
@@ -256,11 +281,8 @@ impl Consensus {
         //
         // Network
         //
-            res = crate::networking::network::run(
-                settings,
-                wallet_lock.clone(),
-                mempool_lock.clone(),
-                blockchain_lock.clone(),
+            res = crate::network::run(
+                network_lock.clone(),
                 broadcast_channel_sender.clone(),
                 broadcast_channel_sender.subscribe()
             ) => {

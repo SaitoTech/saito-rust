@@ -88,11 +88,11 @@ impl Blockchain {
             if self.get_latest_block_id() > GENESIS_PERIOD {
                 earliest_block_id = self.get_latest_block_id() - GENESIS_PERIOD;
             }
-            println!("earliest_block_id {}", earliest_block_id);
+            trace!("earliest_block_id {}", earliest_block_id);
             let earliest_block_hash = self
                 .blockring
                 .get_longest_chain_block_hash_by_block_id(earliest_block_id);
-            println!("earliest_block_hash {:?}", earliest_block_hash);
+            trace!("earliest_block_hash {:?}", earliest_block_hash);
             let earliest_block = self.get_mut_block(&earliest_block_hash).await;
 
             if block.get_timestamp() > earliest_block.get_timestamp() {
@@ -1198,19 +1198,21 @@ impl Blockchain {
     /// tracking variables updated as the chain gets new blocks. also
     /// pre-loads any blocks needed to improve performance.
     async fn on_chain_reorganization(&mut self, block_id: u64, longest_chain: bool) {
+        //
         // skip out if earlier than we need to be vis-a-vis last_block_id
+        //
         if self.get_latest_block_id() >= block_id {
             return;
         }
 
         if longest_chain {
+            //
             // update genesis period, purge old data
             //
             self.update_genesis_period().await;
 
             //
             // generate fork_id
-            //
             //
             let fork_id = self.generate_fork_id(block_id);
             self.set_fork_id(fork_id);

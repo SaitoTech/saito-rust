@@ -32,7 +32,9 @@ pub mod hop;
 pub mod mempool;
 pub mod merkle;
 pub mod miner;
+pub mod network;
 pub mod networking;
+pub mod peer;
 pub mod slip;
 pub mod staking;
 pub mod storage;
@@ -48,6 +50,7 @@ extern crate tracing;
 // TODO put test_utilities behind a feature flag so it's not built into non-test builds
 //   i.e. uncomment this line:
 // [cfg(feature = "test-utilities")]
+mod configuration;
 pub mod test_setup;
 pub mod test_utilities;
 
