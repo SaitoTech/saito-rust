@@ -2,23 +2,27 @@ use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{hash, sign_blob, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::mempool::Mempool;
+use crate::peer::{InboundPeer, SaitoPeer, OutboundPeer};
 use crate::networking::filters::{
     get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter,
 };
 use crate::peer::{
-    socket_handshake_verify, InboundPeersDB, OutboundPeer, OutboundPeersDB, PeersDB,
-    RequestResponses, RequestWakers, SaitoPeer,
+    socket_handshake_verify, InboundPeersDB, OutboundPeersDB, PeersDB,
+    RequestResponses, RequestWakers
 };
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use secp256k1::PublicKey;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 use tracing::{error, info, warn};
 
-use futures::StreamExt;
+use warp::ws::{Message, WebSocket};
+
+use futures::{Future, FutureExt, SinkExt, StreamExt};
 use uuid::Uuid;
 use warp::{Filter, Rejection};
 
@@ -122,9 +126,136 @@ impl Network {
         }
     }
 
+
+    pub async fn receive_request(api_message_orig: APIMessage, connection_id: SaitoHash) {
+/****
+        match api_message_orig.get_message_name_as_string().as_str() {
+            "RESULT__" | "ERROR___" => {
+                let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
+                let mut request_wakers = request_wakers_lock.write().unwrap();
+                let option_waker =
+                    request_wakers.remove(&(connection_id, api_message_orig.message_id));
+
+                let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
+                let mut request_responses = request_responses_lock.write().unwrap();
+                request_responses.insert(
+                    (connection_id, api_message_orig.message_id),
+                    api_message_orig,
+                );
+
+                if let Some(waker) = option_waker {
+                    waker.wake();
+                }
+            }
+            _ => {
+                let peers_db_global = PEERS_DB_GLOBAL.clone();
+                let mut peer_db = peers_db_global.write().await;
+                let peer = peer_db.get_mut(&connection_id).unwrap();
+                SaitoPeer::handle_peer_command(peer, api_message_orig).await;
+            }
+        }
+****/
+    }
+
+
+    pub async fn add_remote_peer(
+        ws: WebSocket,
+        peer_db_lock: Arc<RwLock<PeersDB>>,
+        wallet_lock: Arc<RwLock<Wallet>>,
+        mempool_lock: Arc<RwLock<Mempool>>,
+        blockchain_lock: Arc<RwLock<Blockchain>>,
+        broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    ) {
+
+        let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
+        let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
+        let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
+        tokio::task::spawn(peer_rcv.forward(peer_ws_sender).map(|result| {
+            if let Err(e) = result {
+                error!("error sending websocket msg: {}", e);
+            }
+        }));
+
+        let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
+        let peer = SaitoPeer::new(
+            connection_id,
+            None,
+            None,
+            true,
+            false,
+            false,
+            wallet_lock.clone(),
+            mempool_lock.clone(),
+            blockchain_lock.clone(),
+            broadcast_channel_sender.clone(),
+        );
+
+        //
+        // add peer to global static db
+        //
+        let peers_db_global = PEERS_DB_GLOBAL.clone();
+        peers_db_global
+            .write()
+            .await
+            .insert(connection_id.clone(), peer);
+
+        //
+        // add reference to inbound
+        //
+        let inbound_peer_db_lock_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+        inbound_peer_db_lock_global.write().await.insert(
+            connection_id.clone(),
+            InboundPeer {
+                sender: peer_sender,
+            },
+        );
+
+
+	//
+	// spawn a thread that waits for broadcasts that are sent on 
+        // this channel, which will be APIMessages. Once we receive
+	// this messsage we forward it to Network::receiveRequest
+	//
+        tokio::task::spawn(async move {
+            while let Some(result) = peer_ws_rcv.next().await {
+                let msg = match result {
+                    Ok(msg) => msg,
+                    Err(e) => {
+                        eprintln!("error receiving ws message for peer: {}", e);
+                        break;
+                    }
+                };
+                if !msg.as_bytes().is_empty() {
+                    let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());
+                    Network::receive_request(api_message, connection_id).await;
+                } else {
+                    error!(
+                        "Message of length 0... why?\n
+                        This seems to occur if we aren't holding a reference to the sender/stream on the\n
+                        other end of the connection. I suspect that when the stream goes out of scope,\n
+                        it's deconstructor is being called and sends a 0 length message to indicate\n
+                        that the stream has ended... I'm leaving this println here for now because\n
+                        it would be very helpful to see this if starts to occur again. We may want to\n
+                        treat this as a disconnect."
+                    );
+                }
+            }
+            // We had some error. Remove all references to this peer.
+            {
+                let mut peer_db = peer_db_lock.write().await;
+                let peer = peer_db.get_mut(&connection_id).unwrap();
+                peer.set_is_connected_or_connecting(false).await;
+                peer_db.remove(&connection_id);
+            }
+        });
+
+    }
+
+
+
     /// Connect to a peer via websocket and spawn a Task to handle message received on the socket
     /// and pipe them to handle_peer_message().
-    async fn connect_to_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
+    async fn add_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let peer_url;
         {
@@ -402,7 +533,7 @@ pub async fn run(
                                info!("found disconnected peer in peer settings, (re)connecting...");
                                 let network = network_lock_clone2.read().await;
                                 let wallet_lock_clone = network.wallet_lock.clone();
-                                Network::connect_to_peer(connection_id, wallet_lock_clone).await;
+                                Network::add_peer(connection_id, wallet_lock_clone).await;
                             }
                         }
 

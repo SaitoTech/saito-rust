@@ -13,6 +13,7 @@ use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
 
 use crate::peer::{handle_inbound_peer_connection, PeersDB};
+use crate::network::Network;
 
 #[derive(Debug)]
 struct Invalid;
@@ -49,7 +50,7 @@ pub async fn ws_upgrade_handler(
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
 ) -> std::result::Result<impl Reply, Rejection> {
     Ok(ws.on_upgrade(move |socket| {
-        handle_inbound_peer_connection(
+        Network::add_remote_peer(
             socket,
             peer_db_lock,
             wallet_lock,
