@@ -32,6 +32,7 @@ use crate::networking::message_types::send_block_head_message::SendBlockHeadMess
 use crate::util::format_url_string;
 
 pub type Result<T> = std::result::Result<T, Rejection>;
+
 pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
@@ -133,7 +134,7 @@ impl Network {
                 "ws://{}/wsopen",
                 format_url_string(peer.get_host().unwrap(), peer.get_port().unwrap()),
             ))
-            .unwrap();
+                .unwrap();
             peer.set_is_connected_or_connecting(true).await;
         }
 
@@ -304,7 +305,7 @@ impl Network {
                         "SNDTRANS",
                         tx.serialize_for_net_with_hop(hop),
                     )
-                    .await;
+                        .await;
                 } else {
                     info!("Hasn't completed handshake, will not send transaction??");
                 }
@@ -368,79 +369,79 @@ pub async fn run(
     loop {
         tokio::select! {
 
-                //
-                // Local Channel Messages
-                //
-                Some(message) = network_channel_receiver.recv() => {
-                    match message {
-
-                        //
-                        // Monitor the Network
-                        //
-                        NetworkMessage::LocalNetworkMonitoring => {
+            //
+            // Local Channel Messages
+            //
+            Some(message) = network_channel_receiver.recv() => {
+                match message {
 
                     //
-                    // Check Disconnected Peers
+                    // Monitor the Network
                     //
-                    let peer_states: Vec<(SaitoHash, bool)>;
+                    NetworkMessage::LocalNetworkMonitoring => {
+
+                        //
+                        // Check Disconnected Peers
+                        //
+                        let peer_states: Vec<(SaitoHash, bool)>;
                         {
-                                let peers_db_global = PEERS_DB_GLOBAL.clone();
-                                let peers_db = peers_db_global.read().await;
-                                peer_states = peers_db
-                                .keys()
-                                .map(|connection_id| {
-                                    let peer = peers_db.get(connection_id).unwrap();
-                                    let should_try_reconnect = peer.get_is_from_peer_list()
-                                        && !peer.get_is_connected_or_connecting();
-                                    (*connection_id, should_try_reconnect)
-                                })
-                                .collect::<Vec<(SaitoHash, bool)>>();
+                            let peers_db_global = PEERS_DB_GLOBAL.clone();
+                            let peers_db = peers_db_global.read().await;
+                            peer_states = peers_db
+                            .keys()
+                            .map(|connection_id| {
+                                let peer = peers_db.get(connection_id).unwrap();
+                                let should_try_reconnect = peer.get_is_from_peer_list()
+                                    && !peer.get_is_connected_or_connecting();
+                                (*connection_id, should_try_reconnect)
+                            })
+                            .collect::<Vec<(SaitoHash, bool)>>();
                         }
                         for (connection_id, should_try_reconnect) in peer_states {
-                                if should_try_reconnect {
-                                   info!("found disconnected peer in peer settings, (re)connecting...");
-                    let network = network_lock_clone2.read().await;
-                    let wallet_lock_clone = network.wallet_lock.clone();
+                            if should_try_reconnect {
+                               info!("found disconnected peer in peer settings, (re)connecting...");
+                                let network = network_lock_clone2.read().await;
+                                let wallet_lock_clone = network.wallet_lock.clone();
                                 Network::connect_to_peer(connection_id, wallet_lock_clone).await;
-                                }
+                            }
                         }
 
-                // reconnect one-by-one
-                println!("Finished Connecting!");
+                        // reconnect one-by-one
+                        info!("Finished Connecting!");
 
-                        },
-                        _ => {}
-                    }
+                    },
+                    _ => {}
                 }
+            }
 
 
-                //
-                // Saito Channel Messages
-                //
-                Ok(message) = broadcast_channel_receiver.recv() => {
-                    match message {
-                        SaitoMessage::BlockchainNewLongestChainBlock { hash : block_hash, difficulty } => {
-                info!("Network aware of new longest chain block!");
-                        },
-                        SaitoMessage::BlockchainSavedBlock { hash: block_hash } => {
-                            warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
-                            Network::propagate_block(block_hash).await;
-                        },
-                        SaitoMessage::WalletNewTransaction { transaction: tx } => {
-                            info!("SaitoMessage::WalletNewTransaction new tx is detected by network");
-                let network = network_lock_clone2.read().await;
-                            Network::propagate_transaction(network.wallet_lock.clone(), tx).await;
-                        },
-                        SaitoMessage::MissingBlock {
-                            peer_id: connection_id,
-                            hash: block_hash,
-                        } => {
-                            warn!("SaitoMessage::MissingBlock message received over broadcast channel");
-                            //Network::fetch_block();
-                        },
-                        _ => {}
-                    }
+            //
+            // Saito Channel Messages
+            //
+            Ok(message) = broadcast_channel_receiver.recv() => {
+                match message {
+                    SaitoMessage::BlockchainNewLongestChainBlock { hash : block_hash, difficulty } => {
+                    info!("Network aware of new longest chain block!");
+                    },
+                    SaitoMessage::BlockchainSavedBlock { hash: block_hash } => {
+                        warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
+                        Network::propagate_block(block_hash).await;
+                    },
+                    SaitoMessage::WalletNewTransaction { transaction: tx } => {
+                        info!("SaitoMessage::WalletNewTransaction new tx is detected by network");
+                        let network = network_lock_clone2.read().await;
+                        Network::propagate_transaction(network.wallet_lock.clone(), tx).await;
+                    },
+                    SaitoMessage::MissingBlock {
+                        peer_id: connection_id,
+                        hash: block_hash,
+                    } => {
+                        warn!("SaitoMessage::MissingBlock message received over broadcast channel");
+                        //Network::fetch_block();
+                    },
+                    _ => {}
                 }
+            }
         }
     }
 }
@@ -603,7 +604,7 @@ mod tests {
         assert!(verify(
             &hash(&raw_challenge.to_vec()),
             sig,
-            deserialize_challenge.challenger_pubkey()
+            deserialize_challenge.challenger_pubkey(),
         ));
 
         // sign the raw challenge and create a SHAKCOMP message from it
@@ -644,7 +645,7 @@ mod tests {
             blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
         )
-        .await;
+            .await;
 
         // Build a SNDCHAIN request
         let mut blocks_data: Vec<SendBlockchainBlockData> = vec![];
@@ -727,7 +728,7 @@ mod tests {
             blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
         )
-        .await;
+            .await;
 
         // create a SNDBLKHD message
         let mock_hash = [3; 32];
@@ -899,7 +900,7 @@ mod tests {
             blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
         )
-        .await;
+            .await;
 
         // Start the network listening for messages on the global broadcast channel.
         // TODO All these things should also perhaps be passed to the network constructor
@@ -915,8 +916,8 @@ mod tests {
                 broadcast_channel_sender,
                 broadcast_channel_receiver,
             )
-            .await
-            .unwrap();
+                .await
+                .unwrap();
         });
 
         // make a block add add it to blockchain
@@ -959,7 +960,7 @@ mod tests {
             blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
         )
-        .await;
+            .await;
         // network object under test:
         let bcs_clone = broadcast_channel_sender.clone();
         tokio::spawn(async move {
@@ -971,8 +972,8 @@ mod tests {
                 bcs_clone,
                 broadcast_channel_receiver,
             )
-            .await
-            .unwrap();
+                .await
+                .unwrap();
         });
         // send 2 message to network:
         tokio::spawn(async move {
