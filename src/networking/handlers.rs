@@ -11,8 +11,6 @@ use tokio::sync::{broadcast, RwLock};
 use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
-
-use crate::peer::{handle_inbound_peer_connection, PeersDB};
 use crate::network::Network;
 
 #[derive(Debug)]
@@ -43,20 +41,12 @@ impl warp::Reply for Message {
 /// Thanks, Ryan Dahl!!
 pub async fn ws_upgrade_handler(
     ws: warp::ws::Ws,
-    peer_db_lock: Arc<RwLock<PeersDB>>,
-    wallet_lock: Arc<RwLock<Wallet>>,
-    mempool_lock: Arc<RwLock<Mempool>>,
-    blockchain_lock: Arc<RwLock<Blockchain>>,
-    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+    network_lock: Arc<RwLock<Network>>,
 ) -> std::result::Result<impl Reply, Rejection> {
     Ok(ws.on_upgrade(move |socket| {
         Network::add_remote_peer(
             socket,
-            peer_db_lock,
-            wallet_lock,
-            mempool_lock,
-            blockchain_lock,
-            broadcast_channel_sender,
+            network_lock,
         )
     }))
 }

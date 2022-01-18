@@ -6,10 +6,6 @@ use crate::peer::{InboundPeer, SaitoPeer, OutboundPeer};
 use crate::networking::filters::{
     get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter,
 };
-use crate::peer::{
-    socket_handshake_verify, InboundPeersDB, OutboundPeersDB, PeersDB,
-    RequestResponses, RequestWakers
-};
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use secp256k1::PublicKey;
@@ -19,7 +15,8 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio::time::sleep;
 use tokio_tungstenite::connect_async;
 use tracing::{error, info, warn};
-
+use std::collections::HashMap;
+use std::task::{Context, Poll, Waker};
 use warp::ws::{Message, WebSocket};
 
 use futures::{Future, FutureExt, SinkExt, StreamExt};
@@ -39,6 +36,13 @@ pub type Result<T> = std::result::Result<T, Rejection>;
 
 pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
+
+         
+pub type PeersDB = HashMap<SaitoHash, SaitoPeer>;
+pub type RequestResponses = HashMap<(SaitoHash, u32), APIMessage>;
+pub type RequestWakers = HashMap<(SaitoHash, u32), Waker>;
+pub type OutboundPeersDB = HashMap<SaitoHash, OutboundPeer>;
+pub type InboundPeersDB = HashMap<SaitoHash, InboundPeer>;
 
 lazy_static::lazy_static! {
     pub static ref PEERS_DB_GLOBAL: Arc<tokio::sync::RwLock<PeersDB>> = Arc::new(tokio::sync::RwLock::new(PeersDB::new()));
@@ -160,13 +164,9 @@ impl Network {
 
     pub async fn add_remote_peer(
         ws: WebSocket,
-        peer_db_lock: Arc<RwLock<PeersDB>>,
-        wallet_lock: Arc<RwLock<Wallet>>,
-        mempool_lock: Arc<RwLock<Mempool>>,
-        blockchain_lock: Arc<RwLock<Blockchain>>,
-        broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
+        network_lock: Arc<RwLock<Network>>,
     ) {
-
+/****
         let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
         let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
         let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
@@ -248,7 +248,7 @@ impl Network {
                 peer_db.remove(&connection_id);
             }
         });
-
+****/
     }
 
 
@@ -311,7 +311,7 @@ impl Network {
                         }
                     }
                 });
-                Network::handshake_and_synchronize_chain(&connection_id, wallet_lock).await;
+                //Network::handshake_and_synchronize_chain(&connection_id, wallet_lock).await;
             }
             Err(error) => {
                 error!("Error connecting to peer {:?}", error);
@@ -322,83 +322,6 @@ impl Network {
         }
     }
 
-    /// After socket has been connected, the connector begins the handshake via SHAKINIT command.
-    /// Once the handshake is complete, we synchronize the peers via REQCHAIN/SENDCHAIN and REQBLOCK.
-    pub async fn handshake_and_synchronize_chain(
-        connection_id: &SaitoHash,
-        wallet_lock: Arc<RwLock<Wallet>>,
-    ) {
-        {
-            let publickey: SaitoPublicKey;
-            {
-                let wallet = wallet_lock.read().await;
-                publickey = wallet.get_publickey();
-            }
-            let mut message_data = vec![127, 0, 0, 1];
-            message_data.extend(
-                PublicKey::from_slice(&publickey)
-                    .unwrap()
-                    .serialize()
-                    .to_vec(),
-            );
-
-            let peers_db_global = PEERS_DB_GLOBAL.clone();
-            let mut peer_db = peers_db_global.write().await;
-            let peer = peer_db.get_mut(connection_id).unwrap();
-
-            let response_api_message = peer
-                .send_command(&String::from("SHAKINIT"), message_data)
-                .await
-                .unwrap();
-            // We should sign the response and send a SHAKCOMP.
-            // We want to reuse socket_handshake_verify, so we will sign before verifying the peer's signature
-            let privatekey: SaitoPrivateKey;
-            {
-                let wallet = wallet_lock.read().await;
-                privatekey = wallet.get_privatekey();
-            }
-            let signed_challenge =
-                sign_blob(&mut response_api_message.message_data.to_vec(), privatekey).to_owned();
-            match socket_handshake_verify(&signed_challenge) {
-                Some(deserialize_challenge) => {
-                    peer.set_has_completed_handshake(true);
-                    peer.set_publickey(deserialize_challenge.challenger_pubkey());
-                    let result = peer
-                        .send_command(&String::from("SHAKCOMP"), signed_challenge)
-                        .await;
-
-                    if result.is_ok() {
-                        let request_blockchain_message =
-                            RequestBlockchainMessage::new(0, [0; 32], [42; 32]);
-                        let _req_chain_result = peer
-                            .send_command(
-                                &String::from("REQCHAIN"),
-                                request_blockchain_message.serialize(),
-                            )
-                            .await
-                            .unwrap();
-                        //
-                        // TODO _req_chain_result will be an OK message. We could verify it here, but it's not very useful.
-                        // However, if we are finding issues, it may be useful to retry if we don't receive an OK soon.
-                        //
-                        // It's a bit difficult overly complex because the state needs to be tracked by the peer between here and
-                        // the receipt of the SNDCHAIN. I.E. we may receive an OK here, but not receive a REQCHAIN
-                        // message later.
-                        //
-                        // A simpler solution may be to redesign the API so that the response
-                        // is sent directly at this point, rather than as a seperate APIMessage.
-                        //
-                    } else {
-                        // TODO delete the peer if there is an error here
-                    }
-                    info!("Handshake complete!");
-                }
-                None => {
-                    error!("Error verifying peer handshake signature");
-                }
-            }
-        }
-    }
 
     //
     // send block to all peers
@@ -593,10 +516,7 @@ pub async fn run_server(network_lock_clone: Arc<RwLock<Network>>) -> crate::Resu
                 network.blockchain_lock.clone(),
             ))
             .or(ws_upgrade_route_filter(
-                network.wallet_lock.clone(),
-                network.mempool_lock.clone(),
-                network.blockchain_lock.clone(),
-                network.broadcast_channel_sender.clone(),
+                network_lock_clone.clone(),
             ));
 
         info!("Listening for HTTP on port {}", port);

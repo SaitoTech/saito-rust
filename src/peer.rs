@@ -40,12 +40,6 @@ use tokio::net::TcpStream;
 use tokio::sync::broadcast::Sender;
 use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
 
-pub type PeersDB = HashMap<SaitoHash, SaitoPeer>;
-pub type RequestResponses = HashMap<(SaitoHash, u32), APIMessage>;
-pub type RequestWakers = HashMap<(SaitoHash, u32), Waker>;
-pub type OutboundPeersDB = HashMap<SaitoHash, OutboundPeer>;
-pub type InboundPeersDB = HashMap<SaitoHash, InboundPeer>;
-
 /// Flags for Peer state.
 pub struct PeerFlags {
     is_connected_or_connecting: bool,
@@ -115,13 +109,13 @@ impl Future for PeerRequest {
         match request_responses.remove(&(self.connection_id, self.request_id)) {
             Some(response) => {
                 // Return from the Future with an important message!
-                info!("HANDLING RESPONSE {}", self.api_message_command);
+                //info!("HANDLING RESPONSE {}", self.api_message_command);
                 Poll::Ready(Ok(response))
             }
             None => {
-                let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
-                let mut request_wakers = request_wakers_lock.write().unwrap();
-                request_wakers.insert((self.connection_id, self.request_id), cx.waker().clone());
+                //let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
+                //let mut request_wakers = request_wakers_lock.write().unwrap();
+                //request_wakers.insert((self.connection_id, self.request_id), cx.waker().clone());
                 Poll::Pending
             }
         }
@@ -317,27 +311,27 @@ impl SaitoPeer {
     pub async fn handle_peer_message(api_message_orig: APIMessage, connection_id: SaitoHash) {
         match api_message_orig.get_message_name_as_string().as_str() {
             "RESULT__" | "ERROR___" => {
-                let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
-                let mut request_wakers = request_wakers_lock.write().unwrap();
-                let option_waker =
-                    request_wakers.remove(&(connection_id, api_message_orig.message_id));
+                //let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
+                //let mut request_wakers = request_wakers_lock.write().unwrap();
+                //let option_waker =
+                //    request_wakers.remove(&(connection_id, api_message_orig.message_id));
 
-                let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
-                let mut request_responses = request_responses_lock.write().unwrap();
-                request_responses.insert(
-                    (connection_id, api_message_orig.message_id),
-                    api_message_orig,
-                );
+                //let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
+                //let mut request_responses = request_responses_lock.write().unwrap();
+                //request_responses.insert(
+                //    (connection_id, api_message_orig.message_id),
+                //    api_message_orig,
+                //);
 
-                if let Some(waker) = option_waker {
-                    waker.wake();
-                }
+                //if let Some(waker) = option_waker {
+                //    waker.wake();
+                //}
             }
             _ => {
-                let peers_db_global = PEERS_DB_GLOBAL.clone();
-                let mut peer_db = peers_db_global.write().await;
-                let peer = peer_db.get_mut(&connection_id).unwrap();
-                SaitoPeer::handle_peer_command(peer, api_message_orig).await;
+                //let peers_db_global = PEERS_DB_GLOBAL.clone();
+                //let mut peer_db = peers_db_global.write().await;
+                //let peer = peer_db.get_mut(&connection_id).unwrap();
+                //SaitoPeer::handle_peer_command(peer, api_message_orig).await;
             }
         }
     }
@@ -386,28 +380,28 @@ impl SaitoPeer {
         let command = api_message.get_message_name_as_string();
         info!("HANDLING COMMAND {}", command);
         match command.as_str() {
-            "SHAKINIT" => {
-                if let Ok(serialized_handshake_challenge) =
-                    build_serialized_challenge(&api_message, peer.wallet_lock.clone()).await
-                {
-                    peer.send_response(api_message.message_id, serialized_handshake_challenge)
-                        .await;
-                }
-            }
-            "SHAKCOMP" => match socket_handshake_verify(&api_message.get_message_data()) {
-                Some(deserialize_challenge) => {
-                    peer.set_has_completed_handshake(true);
-                    peer.set_publickey(deserialize_challenge.opponent_pubkey());
-                    peer.send_response(
-                        api_message.message_id,
-                        String::from("OK").as_bytes().try_into().unwrap(),
-                    )
-                    .await;
-                }
-                None => {
-                    error!("Error verifying peer handshake signature");
-                }
-            },
+            //"SHAKINIT" => {
+                //if let Ok(serialized_handshake_challenge) =
+                //    build_serialized_challenge(&api_message, peer.wallet_lock.clone()).await
+                //{
+                //    peer.send_response(api_message.message_id, serialized_handshake_challenge)
+                //        .await;
+                //}
+            //}
+            //"SHAKCOMP" => match socket_handshake_verify(&api_message.get_message_data()) {
+            //    Some(deserialize_challenge) => {
+            //        peer.set_has_completed_handshake(true);
+            //        peer.set_publickey(deserialize_challenge.opponent_pubkey());
+            //        peer.send_response(
+            //            api_message.message_id,
+            //            String::from("OK").as_bytes().try_into().unwrap(),
+            //        )
+            //        .await;
+            //    }
+            //    None => {
+            //        error!("Error verifying peer handshake signature");
+            //    }
+            //},
             "REQBLOCK" => {
                 let api_message = build_request_block_response(&api_message, blockchain_lock).await;
                 send_message_to_socket(api_message, &peer.connection_id).await;
@@ -532,140 +526,6 @@ impl SaitoPeer {
             }
         }
     }
-}
-/// spawns a task to read messages from the socket of inbound peers.
-pub async fn handle_inbound_peer_connection(
-    ws: WebSocket,
-    peer_db_lock: Arc<RwLock<PeersDB>>,
-    wallet_lock: Arc<RwLock<Wallet>>,
-    mempool_lock: Arc<RwLock<Mempool>>,
-    blockchain_lock: Arc<RwLock<Blockchain>>,
-    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
-) {
-    let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
-    let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
-    let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
-    tokio::task::spawn(peer_rcv.forward(peer_ws_sender).map(|result| {
-        if let Err(e) = result {
-            error!("error sending websocket msg: {}", e);
-        }
-    }));
-
-    let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-    let peer = SaitoPeer::new(
-        connection_id,
-        None,
-        None,
-        true,
-        false,
-        false,
-        wallet_lock.clone(),
-        mempool_lock.clone(),
-        blockchain_lock.clone(),
-        broadcast_channel_sender.clone(),
-    );
-
-    peer_db_lock
-        .write()
-        .await
-        .insert(connection_id.clone(), peer);
-
-    let inbound_peer_db_lock_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
-    inbound_peer_db_lock_global.write().await.insert(
-        connection_id.clone(),
-        InboundPeer {
-            sender: peer_sender,
-        },
-    );
-
-    tokio::task::spawn(async move {
-        while let Some(result) = peer_ws_rcv.next().await {
-            let msg = match result {
-                Ok(msg) => msg,
-                Err(e) => {
-                    eprintln!("error receiving ws message for peer: {}", e);
-                    break;
-                }
-            };
-            if !msg.as_bytes().is_empty() {
-                let api_message = APIMessage::deserialize(&msg.as_bytes().to_vec());
-                SaitoPeer::handle_peer_message(api_message, connection_id).await;
-            } else {
-                error!(
-                    "Message of length 0... why?\n
-                    This seems to occur if we aren't holding a reference to the sender/stream on the\n
-                    other end of the connection. I suspect that when the stream goes out of scope,\n
-                    it's deconstructor is being called and sends a 0 length message to indicate\n
-                    that the stream has ended... I'm leaving this println here for now because\n
-                    it would be very helpful to see this if starts to occur again. We may want to\n
-                    treat this as a disconnect."
-                );
-            }
-        }
-        // We had some error. Remove all references to this peer.
-        {
-            let mut peer_db = peer_db_lock.write().await;
-            let peer = peer_db.get_mut(&connection_id).unwrap();
-            peer.set_is_connected_or_connecting(false).await;
-            peer_db.remove(&connection_id);
-        }
-    });
-}
-
-pub async fn build_serialized_challenge(
-    message: &APIMessage,
-    wallet_lock: Arc<RwLock<Wallet>>,
-) -> crate::Result<Vec<u8>> {
-    let wallet = wallet_lock.read().await;
-    let my_pubkey = wallet.get_publickey();
-    let my_privkey = wallet.get_privatekey();
-
-    let mut peer_octets: [u8; 4] = [0; 4];
-    peer_octets[0..4].clone_from_slice(&message.message_data[0..4]);
-    let peer_pubkey: SaitoPublicKey = message.message_data[4..37].try_into().unwrap();
-
-    // TODO configure the node's IP somewhere...
-    let my_octets: [u8; 4] = [127, 0, 0, 1];
-
-    // TODO get the IP of this socket connection somehow and validate it..
-    // let peer_octets: [u8; 4] = match addr.unwrap().ip() {
-    //     IpAddr::V4(ip4) => ip4.octets(),
-    //     _ => panic!("Saito Handshake does not support IPV6"),
-    // };
-
-    let challenge = HandshakeChallenge::new((my_octets, my_pubkey), (peer_octets, peer_pubkey));
-    let serialized_challenge = challenge.serialize_with_sig(my_privkey);
-
-    Ok(serialized_challenge)
-}
-
-pub fn socket_handshake_verify(message_data: &Vec<u8>) -> Option<HandshakeChallenge> {
-    let challenge = HandshakeChallenge::deserialize(message_data);
-    if challenge.timestamp() < create_timestamp() - CHALLENGE_EXPIRATION_TIME {
-        error!("Error validating timestamp for handshake complete");
-        return None;
-    }
-    // we verify both signatures even though one is "ours". This function is called during both
-    // "SHAKCOMP" and the "RESULT__" on the other end, so we just verify everything.
-    if !verify(
-        &hash(&message_data[..CHALLENGE_SIZE + 64].to_vec()),
-        challenge.opponent_sig().unwrap(),
-        challenge.opponent_pubkey(),
-    ) {
-        error!("Error with validating opponent sig");
-        return None;
-    }
-    if !verify(
-        &hash(&message_data[..CHALLENGE_SIZE].to_vec()),
-        challenge.challenger_sig().unwrap(),
-        challenge.challenger_pubkey(),
-    ) {
-        // TODO figure out how to return more meaningful errors from Warp and replace all the warp::reject
-        error!("Error with validating challenger sig");
-        return None;
-    }
-
-    Some(challenge)
 }
 
 pub fn socket_receive_transaction(message: APIMessage) -> Option<Transaction> {
