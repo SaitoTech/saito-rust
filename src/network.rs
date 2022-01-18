@@ -22,13 +22,14 @@ use futures::StreamExt;
 use uuid::Uuid;
 use warp::{Filter, Rejection};
 
-//use super::message_types::send_block_head_message::SendBlockHeadMessage;
 use crate::networking::signals::signal_for_shutdown;
 
 use crate::configuration::{PeerSetting, Settings};
 use crate::networking::api_message::APIMessage;
-use crate::networking::message_types::request_blockchain_message::RequestBlockchainMessage;
-use crate::networking::message_types::send_block_head_message::SendBlockHeadMessage;
+use crate::networking::message_types::{
+    request_blockchain_message::RequestBlockchainMessage,
+    send_block_head_message::SendBlockHeadMessage,
+};
 use crate::util::format_url_string;
 
 pub type Result<T> = std::result::Result<T, Rejection>;
@@ -134,7 +135,7 @@ impl Network {
                 "ws://{}/wsopen",
                 format_url_string(peer.get_host().unwrap(), peer.get_port().unwrap()),
             ))
-                .unwrap();
+            .unwrap();
             peer.set_is_connected_or_connecting(true).await;
         }
 
@@ -305,7 +306,7 @@ impl Network {
                         "SNDTRANS",
                         tx.serialize_for_net_with_hop(hop),
                     )
-                        .await;
+                    .await;
                 } else {
                     info!("Hasn't completed handshake, will not send transaction??");
                 }
@@ -410,7 +411,6 @@ pub async fn run(
                         info!("Finished Connecting!");
 
                     },
-                    _ => {}
                 }
             }
 
@@ -448,31 +448,23 @@ pub async fn run(
 
 /// Runs warp::serve to listen for incoming connections
 pub async fn run_server(network_lock_clone: Arc<RwLock<Network>>) -> crate::Result<()> {
-    let mut routes;
-    let mut host;
-    let mut port;
+    let network = network_lock_clone.read().await;
+    let routes = get_block_route_filter(network.blockchain_lock.clone())
+        .or(post_transaction_route_filter(
+            network.mempool_lock.clone(),
+            network.blockchain_lock.clone(),
+        ))
+        .or(ws_upgrade_route_filter(
+            network.wallet_lock.clone(),
+            network.mempool_lock.clone(),
+            network.blockchain_lock.clone(),
+            network.broadcast_channel_sender.clone(),
+        ));
 
-    {
-        let network = network_lock_clone.read().await;
-        port = network.port;
-        host = network.host;
-        routes = get_block_route_filter(network.blockchain_lock.clone())
-            .or(post_transaction_route_filter(
-                network.mempool_lock.clone(),
-                network.blockchain_lock.clone(),
-            ))
-            .or(ws_upgrade_route_filter(
-                network.wallet_lock.clone(),
-                network.mempool_lock.clone(),
-                network.blockchain_lock.clone(),
-                network.broadcast_channel_sender.clone(),
-            ));
-
-        info!("Listening for HTTP on port {}", port);
-        let (_, server) =
-            warp::serve(routes).bind_with_graceful_shutdown((host, port), signal_for_shutdown());
-        server.await;
-    }
+    info!("Listening for HTTP on port {}", network.port);
+    let (_, server) = warp::serve(routes)
+        .bind_with_graceful_shutdown((network.host, network.port), signal_for_shutdown());
+    server.await;
     Ok(())
 }
 
@@ -481,13 +473,7 @@ mod tests {
     use std::convert::TryInto;
 
     use super::*;
-    // use crate::hop::Hop;
-    // use crate::slip::Slip;
-    // use crate::transaction::TransactionType;
-    use crate::peer::{
-        INBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_REQUEST_RESPONSES_GLOBAL,
-        PEERS_REQUEST_WAKERS_GLOBAL,
-    };
+    use crate::configuration::get_configuration;
     use crate::transaction::Transaction;
     use crate::{
         block::{Block, BlockType},
@@ -503,10 +489,6 @@ mod tests {
                 send_blockchain_message::{
                     SendBlockchainBlockData, SendBlockchainMessage, SyncType,
                 },
-            },
-            peer::{
-                INBOUND_PEER_CONNECTIONS_GLOBAL, OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL,
-                PEERS_REQUEST_RESPONSES_GLOBAL, PEERS_REQUEST_WAKERS_GLOBAL,
             },
         },
         test_utilities::test_manager::TestManager,
@@ -645,7 +627,7 @@ mod tests {
             blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
         )
-            .await;
+        .await;
 
         // Build a SNDCHAIN request
         let mut blocks_data: Vec<SendBlockchainBlockData> = vec![];
@@ -728,7 +710,7 @@ mod tests {
             blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
         )
-            .await;
+        .await;
 
         // create a SNDBLKHD message
         let mock_hash = [3; 32];
@@ -877,14 +859,23 @@ mod tests {
         // initialize peers db:
         clean_peers_dbs().await;
         // mock things:
-        let mut settings = config::Config::default();
-        settings.set("network.host", vec![127, 0, 0, 1]).unwrap();
-        settings.set("network.port", 3002).unwrap();
+        let mut settings = get_configuration().expect("Failed to read configuration.");
+        //TODO: inject configs for testing only
+        settings.network.host = [127, 0, 0, 1];
+        settings.network.port = 3002;
+
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
 
+        let network_lock = Arc::new(RwLock::new(Network::new(
+            settings,
+            blockchain_lock.clone(),
+            mempool_lock.clone(),
+            wallet_lock.clone(),
+            broadcast_channel_sender.clone(),
+        )));
         // TODO
         // This should be in the blockchain constructor.
         // Normally this is done in Network::run, but we need to set the broadcast_channel_sender here.
@@ -900,7 +891,7 @@ mod tests {
             blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
         )
-            .await;
+        .await;
 
         // Start the network listening for messages on the global broadcast channel.
         // TODO All these things should also perhaps be passed to the network constructor
@@ -908,16 +899,13 @@ mod tests {
         let mempool_lock_for_task = mempool_lock.clone();
         let blockchain_lock_for_task = blockchain_lock.clone();
         tokio::spawn(async move {
-            crate::networking::network::run(
-                settings,
-                wallet_lock_for_task,
-                mempool_lock_for_task,
-                blockchain_lock_for_task,
+            crate::network::run(
+                network_lock.clone(),
                 broadcast_channel_sender,
                 broadcast_channel_receiver,
             )
-                .await
-                .unwrap();
+            .await
+            .unwrap();
         });
 
         // make a block add add it to blockchain
@@ -944,14 +932,24 @@ mod tests {
     #[serial_test::serial]
     async fn test_network_message_sending() {
         // mock things:
-        let mut settings = config::Config::default();
-        settings.set("network.host", vec![127, 0, 0, 1]).unwrap();
-        settings.set("network.port", 3002).unwrap();
+        let mut settings = get_configuration().expect("Failed to read configuration.");
+        //TODO: inject configs for testing only
+        settings.network.host = [127, 0, 0, 1];
+        settings.network.port = 3002;
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
         let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
+
+        let network_lock = Arc::new(RwLock::new(Network::new(
+            settings,
+            blockchain_lock.clone(),
+            mempool_lock.clone(),
+            wallet_lock.clone(),
+            broadcast_channel_sender.clone(),
+        )));
+
         // connect a peer to the client
         clean_peers_dbs().await;
         let mut ws_client = create_socket_and_do_handshake(
@@ -960,18 +958,11 @@ mod tests {
             blockchain_lock.clone(),
             broadcast_channel_sender.clone(),
         )
-            .await;
+        .await;
         // network object under test:
         let bcs_clone = broadcast_channel_sender.clone();
         tokio::spawn(async move {
-            crate::networking::network::run(
-                settings,
-                wallet_lock.clone(),
-                mempool_lock.clone(),
-                blockchain_lock.clone(),
-                bcs_clone,
-                broadcast_channel_receiver,
-            )
+            crate::network::run(network_lock.clone(), bcs_clone, broadcast_channel_receiver)
                 .await
                 .unwrap();
         });

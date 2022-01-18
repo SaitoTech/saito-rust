@@ -500,8 +500,7 @@ impl SaitoPeer {
 
                             peer.send_response_from_str(api_message.message_id, "OK")
                                 .await;
-                            Network::propagate_transaction_to_peers(peer.wallet_lock.clone(), tx)
-                                .await;
+                            Network::propagate_transaction(peer.wallet_lock.clone(), tx).await;
                         } else {
                             peer.send_error_response_from_str(
                                 api_message.message_id,
