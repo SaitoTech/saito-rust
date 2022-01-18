@@ -274,8 +274,10 @@ impl Network {
         }
     }
 
-    /// For sending blocks made by mempool to all peers
-    async fn send_my_block_to_peers(block_hash: SaitoHash) {
+    //
+    // send block to all peers
+    //
+    async fn propagate_block(block_hash: SaitoHash) {
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let mut peers_db_mut = peers_db_global.write().await;
         // We need a stream iterator for async(to await send_command_fire_and_forget)
@@ -291,8 +293,8 @@ impl Network {
         }
     }
 
-    /// For transaction made by mempool to all peers
-    pub async fn propagate_transaction_to_peers(
+
+    pub async fn propagate_transaction(
         wallet_lock: Arc<RwLock<Wallet>>,
         mut tx: Transaction,
     ) {
@@ -354,6 +356,7 @@ pub async fn run(
         }
     });
 
+
     //
     // initialize server
     //
@@ -365,7 +368,6 @@ pub async fn run(
             }
         },
     }
-
 
     //
     // initialize network
@@ -436,28 +438,22 @@ pub async fn run(
             Ok(message) = broadcast_channel_receiver.recv() => {
                 match message {
                     SaitoMessage::BlockchainNewLongestChainBlock { hash : block_hash, difficulty } => {
-			println!("Network is now listening for blocks!");
-                    },
-		    SaitoMessage::MinerNewGoldenTicket {
-                        ticket: _golden_ticket,
-                    } => {
-                        // TODO implement this...
-                        println!("Network MinerNewGoldenTicket");
+			info!("Network aware of new longest chain block!");
                     },
                     SaitoMessage::BlockchainSavedBlock { hash: block_hash } => {
                         warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
-                        //Network::propagate_block(block_hash).await;
+                        Network::propagate_block(block_hash).await;
                     },
                     SaitoMessage::WalletNewTransaction { transaction: tx } => {
                         info!("SaitoMessage::WalletNewTransaction new tx is detected by network");
 			let network = network_lock_clone2.read().await;
-                        //Network::propagate_transaction_to_peers(network.wallet_lock.clone(), tx).await;
+                        Network::propagate_transaction(network.wallet_lock.clone(), tx).await;
                     },
                     SaitoMessage::MissingBlock {
                         peer_id: connection_id,
                         hash: block_hash,
                     } => {
-                        warn!("SaitoMessage::BlockchainSavedBlock recv'ed by network");
+                        warn!("SaitoMessage::MissingBlock message received over broadcast channel");
                         //Network::fetch_block();
                     },
                     _ => {}
@@ -465,9 +461,6 @@ pub async fn run(
             }
 	}
     }
-
-    //Ok(())
-
 }
 
 
