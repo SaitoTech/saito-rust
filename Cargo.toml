@@ -6,7 +6,7 @@ authors = [
     "Stephen Peterkins <stephen@saito.tech>",
     "David Lancashire <david@saito.tech>"
 ]
-edition = "2018"
+edition = "2021"
 default-run = "saito_rust"
 
 
