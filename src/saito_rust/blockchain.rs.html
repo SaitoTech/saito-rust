@@ -1892,6 +1892,8 @@
 <span id="1892">1892</span>
 <span id="1893">1893</span>
 <span id="1894">1894</span>
+<span id="1895">1895</span>
+<span id="1896">1896</span>
 </pre><pre class="rust"><code><span class="comment">// length of 1 genesis period</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENESIS_PERIOD</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">10</span>;
 <span class="comment">// prune blocks from index after N blocks</span>
@@ -1982,11 +1984,11 @@
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>() <span class="op">&gt;</span> <span class="ident">GENESIS_PERIOD</span> {
                 <span class="ident">earliest_block_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>() <span class="op">-</span> <span class="ident">GENESIS_PERIOD</span>;
             }
-            <span class="macro">println!</span>(<span class="string">&quot;earliest_block_id {}&quot;</span>, <span class="ident">earliest_block_id</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;earliest_block_id {}&quot;</span>, <span class="ident">earliest_block_id</span>);
             <span class="kw">let</span> <span class="ident">earliest_block_hash</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">blockring</span>
                 .<span class="ident">get_longest_chain_block_hash_by_block_id</span>(<span class="ident">earliest_block_id</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;earliest_block_hash {:?}&quot;</span>, <span class="ident">earliest_block_hash</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;earliest_block_hash {:?}&quot;</span>, <span class="ident">earliest_block_hash</span>);
             <span class="kw">let</span> <span class="ident">earliest_block</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_mut_block</span>(<span class="kw-2">&amp;</span><span class="ident">earliest_block_hash</span>).<span class="kw">await</span>;
 
             <span class="kw">if</span> <span class="ident">block</span>.<span class="ident">get_timestamp</span>() <span class="op">&gt;</span> <span class="ident">earliest_block</span>.<span class="ident">get_timestamp</span>() {
@@ -3092,19 +3094,21 @@
     <span class="doccomment">/// tracking variables updated as the chain gets new blocks. also</span>
     <span class="doccomment">/// pre-loads any blocks needed to improve performance.</span>
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">on_chain_reorganization</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block_id</span>: <span class="ident">u64</span>, <span class="ident">longest_chain</span>: <span class="ident">bool</span>) {
+        <span class="comment">//</span>
         <span class="comment">// skip out if earlier than we need to be vis-a-vis last_block_id</span>
+        <span class="comment">//</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_latest_block_id</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="ident">block_id</span> {
             <span class="kw">return</span>;
         }
 
         <span class="kw">if</span> <span class="ident">longest_chain</span> {
+            <span class="comment">//</span>
             <span class="comment">// update genesis period, purge old data</span>
             <span class="comment">//</span>
             <span class="self">self</span>.<span class="ident">update_genesis_period</span>().<span class="kw">await</span>;
 
             <span class="comment">//</span>
             <span class="comment">// generate fork_id</span>
-            <span class="comment">//</span>
             <span class="comment">//</span>
             <span class="kw">let</span> <span class="ident">fork_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">generate_fork_id</span>(<span class="ident">block_id</span>);
             <span class="self">self</span>.<span class="ident">set_fork_id</span>(<span class="ident">fork_id</span>);

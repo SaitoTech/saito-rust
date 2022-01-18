@@ -68,6 +68,9 @@
 <span id="68">68</span>
 <span id="69">69</span>
 <span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
 </pre><pre class="rust"><code><span class="doccomment">/*!
 # Welcome to Saito
 
@@ -102,7 +105,9 @@ dev@saito.tech
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">mempool</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">merkle</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">miner</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">network</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">networking</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">peer</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">slip</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">staking</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">storage</span>;
@@ -118,6 +123,7 @@ dev@saito.tech
 <span class="comment">// TODO put test_utilities behind a feature flag so it&#39;s not built into non-test builds</span>
 <span class="comment">//   i.e. uncomment this line:</span>
 <span class="comment">// [cfg(feature = &quot;test-utilities&quot;)]</span>
+<span class="kw">mod</span> <span class="ident">configuration</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_setup</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_utilities</span>;
 

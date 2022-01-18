@@ -279,9 +279,33 @@
 <span id="279">279</span>
 <span id="280">280</span>
 <span id="281">281</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto::SaitoHash</span>;
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::configuration::get_configuration</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::crypto::SaitoHash</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::golden_ticket::GoldenTicket</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::miner::Miner</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::network::Network</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::storage::Storage</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::test_utilities::test_manager::TestManager</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wallet::Wallet</span>;
@@ -394,13 +418,6 @@
                     .<span class="ident">help</span>(<span class="string">&quot;Password to decrypt wallet&quot;</span>),
             )
             .<span class="ident">arg</span>(
-                <span class="ident">Arg::with_name</span>(<span class="string">&quot;config&quot;</span>)
-                    .<span class="ident">short</span>(<span class="string">&quot;c&quot;</span>)
-                    .<span class="ident">long</span>(<span class="string">&quot;config&quot;</span>)
-                    .<span class="ident">takes_value</span>(<span class="bool-val">true</span>)
-                    .<span class="ident">help</span>(<span class="string">&quot;config file name&quot;</span>),
-            )
-            .<span class="ident">arg</span>(
                 <span class="ident">Arg::with_name</span>(<span class="string">&quot;spammer&quot;</span>)
                     .<span class="ident">short</span>(<span class="string">&quot;s&quot;</span>)
                     .<span class="ident">long</span>(<span class="string">&quot;spammer&quot;</span>)
@@ -408,11 +425,8 @@
             )
             .<span class="ident">get_matches</span>();
 
-        <span class="kw">let</span> <span class="ident">config_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">matches</span>.<span class="ident">value_of</span>(<span class="string">&quot;config&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">name</span>) =&gt; <span class="ident">name</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="string">&quot;config&quot;</span>,
-        };
-
+        <span class="comment">//TODO: spammer just served for testing app</span>
+        <span class="comment">// - should be in another bin crate instead of a adhoc flag</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">is_spammer_enabled</span> <span class="op">=</span> <span class="bool-val">false</span>;
         <span class="comment">//</span>
         <span class="comment">// hook up with Arg above</span>
@@ -421,19 +435,22 @@
             <span class="ident">is_spammer_enabled</span> <span class="op">=</span> <span class="bool-val">true</span>;
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">config::Config::default</span>();
-        <span class="ident">settings</span>
-            .<span class="ident">merge</span>(<span class="ident">config::File::with_name</span>(<span class="ident">config_name</span>))
-            .<span class="ident">unwrap</span>();
+        <span class="comment">// Load configurations based on env</span>
+        <span class="kw">let</span> <span class="ident">settings</span> <span class="op">=</span> <span class="ident">get_configuration</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to read configuration.&quot;</span>);
 
         <span class="comment">//</span>
-        <span class="comment">// generate</span>
+        <span class="comment">// generate core system components</span>
+        <span class="comment">//</span>
+        <span class="comment">// the code below creates an initializes our core system components:</span>
+        <span class="comment">//</span>
+        <span class="comment">//  - wallet</span>
+        <span class="comment">//  - blockchain</span>
+        <span class="comment">//  - mempool</span>
+        <span class="comment">//  - miner</span>
+        <span class="comment">//  - network</span>
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">wallet_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Wallet::new</span>()));
-        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
 
-        <span class="comment">//</span>
-        <span class="comment">// update wallet if walletfile provided</span>
         <span class="comment">//</span>
         <span class="comment">// if a wallet and password are provided Saito will attempt to load</span>
         <span class="comment">// it from the /data/wallets directory. If they are not we will create</span>
@@ -457,6 +474,8 @@
             }
         }
 
+        <span class="kw">let</span> <span class="ident">blockchain_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Blockchain::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
+
         <span class="comment">//</span>
         <span class="comment">// load blocks from disk and check chain</span>
         <span class="comment">//</span>
@@ -472,6 +491,34 @@
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">mempool_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Mempool::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
         <span class="kw">let</span> <span class="ident">miner_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Miner::new</span>(<span class="ident">wallet_lock</span>.<span class="ident">clone</span>())));
+        <span class="kw">let</span> <span class="ident">network_lock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">Network::new</span>(
+            <span class="ident">settings</span>,
+            <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
+        )));
+
+        <span class="comment">//</span>
+        <span class="comment">// the configuration file should be used to update the network so that</span>
+        <span class="comment">// the server and peers can be loaded correctly.</span>
+        <span class="comment">//</span>
+        <span class="comment">/********
+                {
+                    let walletname = matches.value_of(&quot;wallet&quot;).unwrap();
+                    let password = matches.value_of(&quot;password&quot;).unwrap();
+
+                    if walletname != &quot;none&quot; {
+                        let mut wallet = wallet_lock.write().await;
+                        wallet.set_filename(walletname.to_string());
+                        wallet.set_password(password.to_string());
+                        wallet.load();
+                    } else {
+                        let mut wallet = wallet_lock.write().await;
+                        wallet.save();
+                    }
+                }
+        ********/</span>
 
         <span class="comment">//</span>
         <span class="comment">// start test_manager spammer</span>
@@ -537,11 +584,8 @@
         <span class="comment">//</span>
         <span class="comment">// Network</span>
         <span class="comment">//</span>
-            <span class="ident">res</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::networking::network::run</span>(
-                <span class="ident">settings</span>,
-                <span class="ident">wallet_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">mempool_lock</span>.<span class="ident">clone</span>(),
-                <span class="ident">blockchain_lock</span>.<span class="ident">clone</span>(),
+            <span class="ident">res</span> <span class="op">=</span> <span class="ident"><span class="kw">crate</span>::network::run</span>(
+                <span class="ident">network_lock</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">clone</span>(),
                 <span class="ident">broadcast_channel_sender</span>.<span class="ident">subscribe</span>()
             ) =&gt; {

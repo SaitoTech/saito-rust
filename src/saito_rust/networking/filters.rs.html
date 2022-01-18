@@ -84,9 +84,12 @@
 <span id="84">84</span>
 <span id="85">85</span>
 <span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::blockchain::Blockchain</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::consensus::SaitoMessage</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::mempool::Mempool</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::network::PEERS_DB_GLOBAL</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wallet::Wallet</span>;
 <span class="kw">use</span> <span class="ident">std::convert::Infallible</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -94,7 +97,7 @@
 <span class="kw">use</span> <span class="ident">warp</span>::{<span class="ident">body</span>, <span class="ident">Filter</span>, <span class="ident">Reply</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::handlers</span>::{<span class="ident">get_block_handler</span>, <span class="ident">post_transaction_handler</span>, <span class="ident">ws_upgrade_handler</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::peer</span>::{<span class="ident">PeersDB</span>, <span class="ident">PEERS_DB_GLOBAL</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::peer::PeersDB</span>;
 
 <span class="doccomment">/// websocket upgrade filter.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ws_upgrade_route_filter</span>(
@@ -145,6 +148,7 @@
 {
     <span class="ident">warp::any</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="op">|</span> <span class="ident">PEERS_DB_GLOBAL</span>.<span class="ident">clone</span>())
 }
+
 <span class="doccomment">/// inject wallet lock</span>
 <span class="kw">fn</span> <span class="ident">with_wallet</span>(
     <span class="ident">wallet_lock</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">Wallet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
