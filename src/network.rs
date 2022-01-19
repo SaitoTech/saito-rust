@@ -255,7 +255,6 @@ impl Network {
     /// and pipe them to handle_peer_message().
     async fn add_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
 
-
 	//
 	// first we connect to the peer
 	//

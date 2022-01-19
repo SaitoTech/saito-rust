@@ -76,8 +76,8 @@ impl Peer {
         connection_id: SaitoHash,
         host: Option<[u8; 4]>,
         port: Option<u16>,
-    ) -> SaitoPeer {
-        SaitoPeer {
+    ) -> Peer {
+        Peer {
             connection_id,
             host,
             port,
@@ -96,6 +96,10 @@ impl Peer {
 
     pub fn get_is_connecting(&self) -> bool {
         self.peer_flags.is_connecting
+    }
+
+    pub fn get_is_peer_type(&self, PeerType) -> bool {
+        return self.peer_type == pt
     }
 
 }
