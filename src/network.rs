@@ -2,7 +2,7 @@ use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{hash, sign_blob, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::mempool::Mempool;
-use crate::peer::{InboundPeer, SaitoPeer, OutboundPeer};
+use crate::peer::{Peer, PeerType};
 use crate::networking::filters::{
     get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter,
 };
@@ -38,11 +38,14 @@ pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
          
-pub type PeersDB = HashMap<SaitoHash, SaitoPeer>;
+//
+// why do we have inbound and outbound peer DB at this point?
+//
+pub type PeersDB = HashMap<SaitoHash, Peer>;
 pub type RequestResponses = HashMap<(SaitoHash, u32), APIMessage>;
 pub type RequestWakers = HashMap<(SaitoHash, u32), Waker>;
-pub type OutboundPeersDB = HashMap<SaitoHash, OutboundPeer>;
-pub type InboundPeersDB = HashMap<SaitoHash, InboundPeer>;
+pub type OutboundPeersDB = HashMap<SaitoHash, Peer>;
+pub type InboundPeersDB = HashMap<SaitoHash, Peer>;
 
 lazy_static::lazy_static! {
     pub static ref PEERS_DB_GLOBAL: Arc<tokio::sync::RwLock<PeersDB>> = Arc::new(tokio::sync::RwLock::new(PeersDB::new()));
@@ -99,26 +102,28 @@ impl Network {
         self.broadcast_channel_sender = bcs;
     }
 
-    /// Initialize the network class generally, including adding any peers we have
-    /// configured (peers set in the configuration/*.yml) into our PEERS_DB_GLOBAL
-    /// data structure.
+
+    //
+    // initialize
+    //
+    // Initialize the network class generally, including adding any peers we have
+    // configured (peers set in the configuration/*.yml) into our PEERS_DB_GLOBAL
+    // data structure.
+    //
     async fn initialize(&self) {
+
         info!("{:?}", self.peer_conf);
         if let Some(peer_settings) = &self.peer_conf {
             for peer_setting in peer_settings {
+
                 let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
                 let peer = SaitoPeer::new(
                     connection_id,
                     Some(peer_setting.host),
                     Some(peer_setting.port),
-                    false,
-                    false,
-                    true,
-                    self.wallet_lock.clone(),
-                    self.mempool_lock.clone(),
-                    self.blockchain_lock.clone(),
-                    self.broadcast_channel_sender.clone(),
                 );
+		peer.set_peer_type(PeerType::Outbound);
+
                 {
                     let peers_db_global = PEERS_DB_GLOBAL.clone();
                     peers_db_global
@@ -181,13 +186,6 @@ impl Network {
             connection_id,
             None,
             None,
-            true,
-            false,
-            false,
-            wallet_lock.clone(),
-            mempool_lock.clone(),
-            blockchain_lock.clone(),
-            broadcast_channel_sender.clone(),
         );
 
         //
@@ -256,6 +254,11 @@ impl Network {
     /// Connect to a peer via websocket and spawn a Task to handle message received on the socket
     /// and pipe them to handle_peer_message().
     async fn add_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
+
+
+	//
+	// first we connect to the peer
+	//
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let peer_url;
         {
@@ -266,9 +269,12 @@ impl Network {
                 format_url_string(peer.get_host().unwrap(), peer.get_port().unwrap()),
             ))
                 .unwrap();
-            peer.set_is_connected_or_connecting(true).await;
+            peer.set_is_connecting(true).await;
         }
-
+/***
+	//
+	// then we add to OUTBOUND PEERS ?
+	//
         let ws_stream_result = connect_async(peer_url).await;
         match ws_stream_result {
             Ok((ws_stream, _)) => {
@@ -320,6 +326,7 @@ impl Network {
                 peer.set_is_connected_or_connecting(false).await;
             }
         }
+*****/
     }
 
 
@@ -437,22 +444,22 @@ pub async fn run(
                         //
                         // Check Disconnected Peers
                         //
-                        let peer_states: Vec<(SaitoHash, bool)>;
+                        let peers_to_check: Vec<(SaitoHash, bool)>;
                         {
                             let peers_db_global = PEERS_DB_GLOBAL.clone();
                             let peers_db = peers_db_global.read().await;
-                            peer_states = peers_db
+                            peers_to_check = peers_db
                             .keys()
                             .map(|connection_id| {
                                 let peer = peers_db.get(connection_id).unwrap();
-                                let should_try_reconnect = peer.get_is_from_peer_list()
-                                    && !peer.get_is_connected_or_connecting();
-                                (*connection_id, should_try_reconnect)
+                                let should_reconnect = peer.get_is_from_peer_list()
+                                    && !peer.get_is_connected && !peer.get_is_connecting();
+                                (*connection_id, should_reconnect)
                             })
                             .collect::<Vec<(SaitoHash, bool)>>();
                         }
-                        for (connection_id, should_try_reconnect) in peer_states {
-                            if should_try_reconnect {
+                        for (connection_id, should_reconnect) in peer_states {
+                            if should_reconnect {
                                info!("found disconnected peer in peer settings, (re)connecting...");
                                 let network = network_lock_clone2.read().await;
                                 let wallet_lock_clone = network.wallet_lock.clone();
