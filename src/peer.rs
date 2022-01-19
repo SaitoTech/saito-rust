@@ -6,8 +6,8 @@ use crate::crypto::{hash, verify, SaitoHash, SaitoPublicKey};
 use crate::hop::Hop;
 use crate::mempool::Mempool;
 use crate::network::{
-    Network, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE, INBOUND_PEER_CONNECTIONS_GLOBAL,
-    OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL, PEERS_REQUEST_RESPONSES_GLOBAL,
+    Network, CHALLENGE_EXPIRATION_TIME, CHALLENGE_SIZE, INBOUND_SOCKETS_GLOBAL,
+    OUTBOUND_SOCKETS_GLOBAL, PEERS_DB_GLOBAL, PEERS_REQUEST_RESPONSES_GLOBAL,
     PEERS_REQUEST_WAKERS_GLOBAL,
 };
 use crate::networking::message_types::handshake_challenge::HandshakeChallenge;
@@ -33,6 +33,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{error, info};
 use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
+use serde::{Deserialize, Serialize};
 
 use crate::networking::api_message::APIMessage;
 use futures::{Future, FutureExt, SinkExt, StreamExt};
@@ -43,10 +44,22 @@ use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
 
 
 
+//
+// Sockets and Streams
+//
+pub struct InboundSocket {
+    pub sender: mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>,
+}
+pub struct OutboundSocket {
+    pub write_sink:
+        SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tungstenite::protocol::Message>,
+}
+
+
 
 /// PeerType indicates whether this peer was added by us as a desired outbound
 /// connection or whether it came to us via an inbound connection.
-#[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone, TryFromByte)]
+#[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone)]
 pub enum PeerType {
     Outbound,
     Inbound,
@@ -63,11 +76,6 @@ pub struct Peer {
     is_connected: bool,
     is_connecting: bool,
     peer_type: PeerType,
-    // inbound peer
-    pub sender: mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>,
-    // outbound peer
-    pub write_sink:
-        SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tungstenite::protocol::Message>,
 }
 
 
@@ -82,26 +90,47 @@ impl Peer {
             host,
             port,
             publickey: None,
-	    peer_type: PeerType::Outbound;
+	    peer_type: PeerType::Outbound,
             request_count: 0,
 	    is_connected: false,
 	    is_connecting: false,
-	    is_from_peer_list: false,
         }
     }
 
     pub fn get_is_connected(&self) -> bool {
-        self.peer_flags.is_connected
+        self.is_connected
     }
 
     pub fn get_is_connecting(&self) -> bool {
-        self.peer_flags.is_connecting
+        self.is_connecting
     }
 
-    pub fn get_is_peer_type(&self, PeerType) -> bool {
+    pub fn set_is_connected(&mut self, x : bool) {
+        self.is_connected = x;
+    }
+
+    pub fn set_is_connecting(&mut self, x: bool) {
+        self.is_connecting = x;
+    }
+
+    pub fn is_peer_type(&self, pt : PeerType) -> bool {
         return self.peer_type == pt
     }
 
+    pub fn get_peer_type(&self) -> PeerType {
+        self.peer_type
+    }
+
+    pub fn set_peer_type(&mut self, pt : PeerType) {
+        self.peer_type = pt;
+    }
+
+    pub fn get_host(&self) -> Option<[u8; 4]> {
+        self.host
+    }
+    pub fn get_port(&self) -> Option<u16> {
+        self.port
+    }
 }
 
 

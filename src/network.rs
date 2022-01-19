@@ -2,7 +2,7 @@ use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{hash, sign_blob, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::mempool::Mempool;
-use crate::peer::{Peer, PeerType};
+use crate::peer::{Peer, PeerType, OutboundSocket, InboundSocket};
 use crate::networking::filters::{
     get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter,
 };
@@ -44,16 +44,17 @@ pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 pub type PeersDB = HashMap<SaitoHash, Peer>;
 pub type RequestResponses = HashMap<(SaitoHash, u32), APIMessage>;
 pub type RequestWakers = HashMap<(SaitoHash, u32), Waker>;
-pub type OutboundPeersDB = HashMap<SaitoHash, Peer>;
-pub type InboundPeersDB = HashMap<SaitoHash, Peer>;
+pub type OutboundSocketsDB = HashMap<SaitoHash, OutboundSocket>;
+pub type InboundSocketsDB = HashMap<SaitoHash, InboundSocket>;
 
 lazy_static::lazy_static! {
     pub static ref PEERS_DB_GLOBAL: Arc<tokio::sync::RwLock<PeersDB>> = Arc::new(tokio::sync::RwLock::new(PeersDB::new()));
     pub static ref PEERS_REQUEST_RESPONSES_GLOBAL: Arc<std::sync::RwLock<RequestResponses>> = Arc::new(std::sync::RwLock::new(RequestResponses::new()));
     pub static ref PEERS_REQUEST_WAKERS_GLOBAL: Arc<std::sync::RwLock<RequestWakers>> = Arc::new(std::sync::RwLock::new(RequestWakers::new()));
-    pub static ref INBOUND_PEER_CONNECTIONS_GLOBAL: Arc<tokio::sync::RwLock<InboundPeersDB>> = Arc::new(tokio::sync::RwLock::new(InboundPeersDB::new()));
-    pub static ref OUTBOUND_PEER_CONNECTIONS_GLOBAL: Arc<tokio::sync::RwLock<OutboundPeersDB>> = Arc::new(tokio::sync::RwLock::new(OutboundPeersDB::new()));
+    pub static ref INBOUND_SOCKETS_GLOBAL: Arc<tokio::sync::RwLock<InboundSocketsDB>> = Arc::new(tokio::sync::RwLock::new(InboundSocketsDB::new()));
+    pub static ref OUTBOUND_SOCKETS_GLOBAL: Arc<tokio::sync::RwLock<OutboundSocketsDB>> = Arc::new(tokio::sync::RwLock::new(OutboundSocketsDB::new()));
 }
+
 
 //
 /// Local Broadcast Message Types
@@ -117,7 +118,7 @@ impl Network {
             for peer_setting in peer_settings {
 
                 let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-                let peer = SaitoPeer::new(
+                let mut peer = Peer::new(
                     connection_id,
                     Some(peer_setting.host),
                     Some(peer_setting.port),
@@ -160,18 +161,112 @@ impl Network {
                 let peers_db_global = PEERS_DB_GLOBAL.clone();
                 let mut peer_db = peers_db_global.write().await;
                 let peer = peer_db.get_mut(&connection_id).unwrap();
-                SaitoPeer::handle_peer_command(peer, api_message_orig).await;
+                Peer::handle_peer_command(peer, api_message_orig).await;
             }
         }
 ****/
     }
 
 
+
+    /// Connect to a peer via websocket and spawn a Task to handle message received on the socket
+    /// and pipe them to handle_peer_message().
+    async fn add_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
+
+	//
+	// first we connect to the peer
+	//
+        let peers_db_global = PEERS_DB_GLOBAL.clone();
+        let peer_url;
+        {
+            let mut peer_db = peers_db_global.write().await;
+            let mut peer = peer_db.get_mut(&connection_id).unwrap();
+            peer_url = url::Url::parse(&format!(
+                "ws://{}/wsopen",
+                format_url_string(peer.get_host().unwrap(), peer.get_port().unwrap()),
+            ))
+                .unwrap();
+            peer.set_is_connecting(true);
+        }
+
+	//
+	// create and save socket
+	//
+        let ws_stream_result = connect_async(peer_url).await;
+        match ws_stream_result {
+            Ok((ws_stream, _)) => {
+
+		//
+		// save socket
+		//
+                let (write_sink, mut read_stream) = ws_stream.split();
+                {
+                    let outbound_socket_db_global = OUTBOUND_SOCKETS_GLOBAL.clone();
+                    outbound_socket_db_global
+                        .write()
+                        .await
+                        .insert(connection_id, OutboundSocket { write_sink });
+                }
+
+		//
+		// spawn thread to handle messages
+		//
+                tokio::spawn(async move {
+                    while let Some(result) = read_stream.next().await {
+                        match result {
+                            Ok(message) => {
+                                if !message.is_empty() {
+                                    let api_message = APIMessage::deserialize(&message.into_data());
+                                    Network::receive_request(api_message, connection_id).await;
+                                } else {
+                                    error!(
+                                        "Message of length 0... why?\n
+                                        This seems to occur if we aren't holding a reference to the sender/stream on the\n
+                                        other end of the connection. I suspect that when the stream goes out of scope,\n
+                                        it's deconstructor is being called and sends a 0 length message to indicate\n
+                                        that the stream has ended... I'm leaving this println here for now because\n
+                                        it would be very helpful to see this if starts to occur again. We may want to\n
+                                        treat this as a disconnect."
+                                    );
+                                }
+                            }
+                            Err(error) => {
+                                error!("Error reading from peer socket {:?}", error);
+                                let peers_db_global = PEERS_DB_GLOBAL.clone();
+                                let mut peer_db = peers_db_global.write().await;
+                                let peer = peer_db.get_mut(&connection_id).unwrap();
+                                peer.set_is_connected(false);
+				peer.set_is_connecting(false);
+                            }
+                        }
+                    }
+                });
+
+
+		//
+		// trigger anything we want to start on initialization
+		//
+                //Network::handshake_and_synchronize_chain(&connection_id, wallet_lock).await;
+            }
+            Err(error) => {
+                error!("Error connecting to peer {:?}", error);
+                let mut peer_db = peers_db_global.write().await;
+                let peer = peer_db.get_mut(&connection_id).unwrap();
+                peer.set_is_connected(false);
+                peer.set_is_connecting(false);
+            }
+        }
+    }
+
+
+
+
+
     pub async fn add_remote_peer(
         ws: WebSocket,
         network_lock: Arc<RwLock<Network>>,
     ) {
-/****
+
         let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
         let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
         let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
@@ -182,11 +277,13 @@ impl Network {
         }));
 
         let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-        let peer = SaitoPeer::new(
+        let mut peer = Peer::new(
             connection_id,
             None,
             None,
         );
+	peer.set_peer_type(PeerType::Inbound);
+
 
         //
         // add peer to global static db
@@ -198,12 +295,12 @@ impl Network {
             .insert(connection_id.clone(), peer);
 
         //
-        // add reference to inbound
+        // add inbound socket
         //
-        let inbound_peer_db_lock_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
-        inbound_peer_db_lock_global.write().await.insert(
+        let inbound_sockets_global = INBOUND_SOCKETS_GLOBAL.clone();
+        inbound_sockets_global.write().await.insert(
             connection_id.clone(),
-            InboundPeer {
+            InboundSocket {
                 sender: peer_sender,
             },
         );
@@ -240,92 +337,13 @@ impl Network {
             }
             // We had some error. Remove all references to this peer.
             {
-                let mut peer_db = peer_db_lock.write().await;
-                let peer = peer_db.get_mut(&connection_id).unwrap();
-                peer.set_is_connected_or_connecting(false).await;
+                let mut peer_db = peers_db_global.write().await;
+                let mut peer = peer_db.get_mut(&connection_id).unwrap();
+                peer.set_is_connected(false);
+		peer.set_is_connecting(false);
                 peer_db.remove(&connection_id);
             }
         });
-****/
-    }
-
-
-
-    /// Connect to a peer via websocket and spawn a Task to handle message received on the socket
-    /// and pipe them to handle_peer_message().
-    async fn add_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
-
-	//
-	// first we connect to the peer
-	//
-        let peers_db_global = PEERS_DB_GLOBAL.clone();
-        let peer_url;
-        {
-            let mut peer_db = peers_db_global.write().await;
-            let peer = peer_db.get_mut(&connection_id).unwrap();
-            peer_url = url::Url::parse(&format!(
-                "ws://{}/wsopen",
-                format_url_string(peer.get_host().unwrap(), peer.get_port().unwrap()),
-            ))
-                .unwrap();
-            peer.set_is_connecting(true).await;
-        }
-/***
-	//
-	// then we add to OUTBOUND PEERS ?
-	//
-        let ws_stream_result = connect_async(peer_url).await;
-        match ws_stream_result {
-            Ok((ws_stream, _)) => {
-                let (write_sink, mut read_stream) = ws_stream.split();
-                {
-                    let outbound_peer_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
-                    outbound_peer_db_global
-                        .write()
-                        .await
-                        .insert(connection_id, OutboundPeer { write_sink });
-                }
-
-                tokio::spawn(async move {
-                    while let Some(result) = read_stream.next().await {
-                        match result {
-                            Ok(message) => {
-                                if !message.is_empty() {
-                                    let api_message = APIMessage::deserialize(&message.into_data());
-                                    SaitoPeer::handle_peer_message(api_message, connection_id)
-                                        .await;
-                                } else {
-                                    error!(
-                                        "Message of length 0... why?\n
-                                        This seems to occur if we aren't holding a reference to the sender/stream on the\n
-                                        other end of the connection. I suspect that when the stream goes out of scope,\n
-                                        it's deconstructor is being called and sends a 0 length message to indicate\n
-                                        that the stream has ended... I'm leaving this println here for now because\n
-                                        it would be very helpful to see this if starts to occur again. We may want to\n
-                                        treat this as a disconnect."
-                                    );
-                                }
-                            }
-                            Err(error) => {
-                                error!("Error reading from peer socket {:?}", error);
-                                let peers_db_global = PEERS_DB_GLOBAL.clone();
-                                let mut peer_db = peers_db_global.write().await;
-                                let peer = peer_db.get_mut(&connection_id).unwrap();
-                                peer.set_is_connected_or_connecting(false).await;
-                            }
-                        }
-                    }
-                });
-                //Network::handshake_and_synchronize_chain(&connection_id, wallet_lock).await;
-            }
-            Err(error) => {
-                error!("Error connecting to peer {:?}", error);
-                let mut peer_db = peers_db_global.write().await;
-                let peer = peer_db.get_mut(&connection_id).unwrap();
-                peer.set_is_connected_or_connecting(false).await;
-            }
-        }
-*****/
     }
 
 
@@ -333,6 +351,7 @@ impl Network {
     // send block to all peers
     //
     async fn propagate_block(block_hash: SaitoHash) {
+/***
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let mut peers_db_mut = peers_db_global.write().await;
         // We need a stream iterator for async(to await send_command_fire_and_forget)
@@ -346,9 +365,11 @@ impl Network {
                 info!("Hasn't completed handshake, will not send block??");
             }
         }
+***/
     }
 
     pub async fn propagate_transaction(wallet_lock: Arc<RwLock<Wallet>>, mut tx: Transaction) {
+/****
         tokio::spawn(async move {
             let peers_db_global = PEERS_DB_GLOBAL.clone();
             let mut peers_db_mut = peers_db_global.write().await;
@@ -371,6 +392,7 @@ impl Network {
                 }
             }
         });
+****/
     }
 }
 
@@ -451,13 +473,13 @@ pub async fn run(
                             .keys()
                             .map(|connection_id| {
                                 let peer = peers_db.get(connection_id).unwrap();
-                                let should_reconnect = peer.get_is_from_peer_list()
-                                    && !peer.get_is_connected && !peer.get_is_connecting();
+                                let should_reconnect = peer.is_peer_type(PeerType::Outbound)
+                                    && !peer.get_is_connected() && !peer.get_is_connecting();
                                 (*connection_id, should_reconnect)
                             })
                             .collect::<Vec<(SaitoHash, bool)>>();
                         }
-                        for (connection_id, should_reconnect) in peer_states {
+                        for (connection_id, should_reconnect) in peers_to_check {
                             if should_reconnect {
                                info!("found disconnected peer in peer settings, (re)connecting...");
                                 let network = network_lock_clone2.read().await;
