@@ -513,6 +513,31 @@ impl Network {
         )
         .await;
     }
+    /// Helper function for sending RESULT__.
+    pub async fn send_response(&mut self, message_id: u32, message: Vec<u8>) {
+        send_message_to_socket(
+            APIMessage::new("RESULT__", message_id, message),
+            &self.connection_id,
+        )
+        .await;
+    }
+    /// Helper function for sending basic errors with a string message.
+    pub async fn send_error_response_from_str(&mut self, message_id: u32, message_str: &str) {
+        send_message_to_socket(
+            APIMessage::new_from_string("ERROR___", message_id, message_str),
+            &self.connection_id,
+        )
+        .await;
+    }
+    /// Helper function for sending errors
+    pub async fn send_error_response(&mut self, message_id: u32, message: Vec<u8>) {
+        send_message_to_socket(
+            APIMessage::new("ERROR___", message_id, message),
+            &self.connection_id,
+        )
+        .await;
+    }
+
 ********/
 
 
