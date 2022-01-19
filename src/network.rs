@@ -58,7 +58,7 @@ lazy_static::lazy_static! {
 
 
 //
-/// Local Broadcast Message Types
+// Local Broadcast Message Types
 //
 // In addition to responding to global broadcast messages, the
 // network has a local broadcast channel it uses to coordinate
@@ -69,23 +69,20 @@ lazy_static::lazy_static! {
 pub enum NetworkMessage {
     LocalNetworkMonitoring,
 }
-
+//
+// A future which wraps an APIMessage REQUEST->RESPONSE into a Future(e.g. REQBLOCK->RESULT__).
+// This enables a much cleaner interface for inter-node message relays by allowing nodes to await
+// on messages that are sent and then handling the results directly as either RESULT__ or 
+// ERROR___ responses.
+//
 pub struct NetworkCallback {
     connection_id: SaitoHash,
     request_id: u32,
     api_message_command: String,
 }
-
-
-/// A future which wraps an APIMessage REQUEST->RESPONSE into a Future(e.g. REQBLOCK->RESULT__).
-/// This enables a much cleaner interface for inter-node message relays by allowing nodes to await
-/// on messages that are sent and then handling the results directly as either RESULT__ or 
-/// ERROR___ responses.
 impl NetworkCallback {
     pub async fn new(command: &str, message: Vec<u8>, peer: &mut Peer) -> Self {
-        peer.request_count += 1;
-        let api_message = APIMessage::new(command, peer.request_count - 1, message);
-        Network::send_request(api_message, &peer.connection_id).await;
+        Network::send_request(command, message, &peer.connection_id).await;
         NetworkCallback {
             connection_id: peer.connection_id,
             request_id: peer.request_count - 1,
@@ -93,7 +90,6 @@ impl NetworkCallback {
         }
     }
 }
-
 impl Future for NetworkCallback {
     type Output = Result<APIMessage, Box<dyn Error>>;
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -127,7 +123,10 @@ pub struct Network {
     peer_conf: Option<Vec<PeerSetting>>,
 }
 
+
+
 impl Network {
+
     /// Create a Network
     pub fn new(
         configuration: Settings,
@@ -152,16 +151,8 @@ impl Network {
     }
 
 
-
-
-
-
     //
     // initialize
-    //
-    // Initialize the network class generally, including adding any peers we have
-    // configured (peers set in the configuration/*.yml) into our PEERS_DB_GLOBAL
-    // data structure.
     //
     async fn initialize(&self) {
 
@@ -189,117 +180,9 @@ impl Network {
     }
 
 
-
-
-
-
-
-    pub async fn receive_request(api_message: APIMessage, connection_id: SaitoHash) {
-        match api_message.get_message_name_as_string().as_str() {
-
-            "RESULT__" | "ERROR___" => {
-                let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
-                let mut request_wakers = request_wakers_lock.write().unwrap();
-                let option_waker =
-                    request_wakers.remove(&(connection_id, api_message.message_id));
-
-                let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
-                let mut request_responses = request_responses_lock.write().unwrap();
-                request_responses.insert(
-                    (connection_id, api_message.message_id),
-                    api_message,
-                );
-
-                if let Some(waker) = option_waker {
-                    waker.wake();
-                }
-            }
-            _ => {
-
-		//
-		// TODO - we do not need to fetch every peer mutably just to answer
-		// and deal with inbound requests.
-		//
-                //let peers_db_global = PEERS_DB_GLOBAL.clone();
-                //let mut peer_db = peers_db_global.write().await;
-                //let peer = peer_db.get_mut(&connection_id).unwrap();
-
-        	let command = api_message.get_message_name_as_string();
-        	match command.as_str() {
-        	    "REQBLOCK" => {
-            	    }
-		    _ => {
-                	error!(
-                	    "Unhandled command received by client... {}",
-                	    &api_message.get_message_name_as_string()
-                	);
- 	               //peer.send_error_response_from_str(api_message.message_id, "NO SUCH").await;
-         	   }
-        	}
-            }
-        }
-    }
-
-
-
-
-
     //
-    // Sends an APIMessage to another peer through a socket connection. Since Outbound and Inbound peers 
-    // Streams(Sinks) are not unified into a single Trait yet, we have to check both databases to find out
-    // which sort of sink this peer is using and send the message through the appropriate stream.
+    // connect to other peers
     //
-    pub async fn send_request(api_message: APIMessage, connection_id: &SaitoHash) {
-
-        let outbound_peer_connection_db_global = OUTBOUND_SOCKETS_GLOBAL.clone();
-        let mut outbound_peer_connection_db = outbound_peer_connection_db_global.write().await;
-        let inbound_peer_connection_db_global = INBOUND_SOCKETS_GLOBAL.clone();
-        let mut inbound_peer_connection_db = inbound_peer_connection_db_global.write().await;
-
-        let outbound_peer_connection = outbound_peer_connection_db.get_mut(connection_id);
-        let inbound_peer_connection = inbound_peer_connection_db.get_mut(connection_id);
-
-        if inbound_peer_connection.is_some() && outbound_peer_connection.is_some() {
-            panic!("Peer has both inbound and outbound connections, this should never happen");
-        }
-        if inbound_peer_connection.is_none() && outbound_peer_connection.is_none() {
-            panic!("Peer has neither outbound nor inbound connection");
-        }
-        if outbound_peer_connection.is_some() {
-            outbound_peer_connection
-                .unwrap()
-                .write_sink
-                .send(api_message.serialize().into())
-                .await
-                .expect("unable to send to outbound_peer_connection... It may be that the socket\n
-                was closed but the outbound peer was not cleaned up. If this occurs, it should be investigated.");
-        }
-        if inbound_peer_connection.is_some() {
-            inbound_peer_connection
-                .unwrap()
-                .sender
-                .send(Ok(Message::binary(api_message.serialize())))
-                .expect("unable to send to outbound_peer_connection... It may be that the socket\n
-                was closed but the inbount peer was not cleaned up. If this occurs, it should be investigated.");
-        }
-    }
-
-
-
-    //
-    // Sends an API message to another peer through a socket connection, while handling the process through
-    // a PeerRequest that allows us to .await the response and continue execution when and if the remote 
-    // peer responds to the message.
-    //
-    pub async fn send_request_with_callback(api_message: APIMessage, connection_id: &SaitoHash) {
-      //
-      // to be implemented
-      //
-    }
-
-
-    /// Connect to a peer via websocket and spawn a Task to handle message received on the socket
-    /// and pipe them to handle_peer_message().
     async fn add_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
 
 	//
@@ -388,9 +271,9 @@ impl Network {
     }
 
 
-
-
-
+    //
+    // add inbound peers
+    //
     pub async fn add_remote_peer(
         ws: WebSocket,
         network_lock: Arc<RwLock<Network>>,
@@ -413,7 +296,6 @@ impl Network {
         );
 	peer.set_peer_type(PeerType::Inbound);
 
-
         //
         // add peer to global static db
         //
@@ -433,7 +315,6 @@ impl Network {
                 sender: peer_sender,
             },
         );
-
 
 	//
 	// spawn a thread that waits for broadcasts that are sent on 
@@ -478,14 +359,129 @@ impl Network {
 
 
     //
+    // receive requests from peers
+    //
+    pub async fn receive_request(api_message: APIMessage, connection_id: SaitoHash) {
+        match api_message.get_message_name_as_string().as_str() {
+
+            "RESULT__" | "ERROR___" => {
+                let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
+                let mut request_wakers = request_wakers_lock.write().unwrap();
+                let option_waker =
+                    request_wakers.remove(&(connection_id, api_message.message_id));
+
+                let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
+                let mut request_responses = request_responses_lock.write().unwrap();
+                request_responses.insert(
+                    (connection_id, api_message.message_id),
+                    api_message,
+                );
+
+                if let Some(waker) = option_waker {
+                    waker.wake();
+                }
+            }
+            _ => {
+
+		//
+		// TODO - we do not need to fetch every peer mutably just to answer
+		// and deal with inbound requests.
+		//
+                //let peers_db_global = PEERS_DB_GLOBAL.clone();
+                //let mut peer_db = peers_db_global.write().await;
+                //let peer = peer_db.get_mut(&connection_id).unwrap();
+
+        	let command = api_message.get_message_name_as_string();
+        	match command.as_str() {
+        	    "REQBLOCK" => {
+            	    }
+		    _ => {
+                	error!(
+                	    "Unhandled command received by client... {}",
+                	    &api_message.get_message_name_as_string()
+                	);
+ 	               //peer.send_error_response_from_str(api_message.message_id, "NO SUCH").await;
+         	   }
+        	}
+            }
+        }
+    }
+
+
+
+    //
+    // send request to peer
+    //
+    // Sends an APIMessage to another peer through a socket connection. Since Outbound and Inbound peers 
+    // Streams(Sinks) are not unified into a single Trait yet, we have to check both databases to find out
+    // which sort of sink this peer is using and send the message through the appropriate stream.
+    //
+    pub async fn send_request(message_name: &str, message_data: Vec<u8>, connection_id: &SaitoHash) {
+
+        let peer_connection_db_global = PEERS_DB_GLOBAL.clone();
+        let mut peer_connection_db = peer_connection_db_global.write().await;
+	let mut peer = peer_connection_db.get_mut(connection_id).unwrap();
+
+        let api_message = APIMessage::new_for_peer(message_name, message_data, peer);
+
+        let outbound_peer_connection_db_global = OUTBOUND_SOCKETS_GLOBAL.clone();
+        let mut outbound_peer_connection_db = outbound_peer_connection_db_global.write().await;
+        let inbound_peer_connection_db_global = INBOUND_SOCKETS_GLOBAL.clone();
+        let mut inbound_peer_connection_db = inbound_peer_connection_db_global.write().await;
+        let outbound_peer_connection = outbound_peer_connection_db.get_mut(connection_id);
+        let inbound_peer_connection = inbound_peer_connection_db.get_mut(connection_id);
+
+        if inbound_peer_connection.is_some() && outbound_peer_connection.is_some() {
+            panic!("Peer has both inbound and outbound connections, this should never happen");
+        }
+        if inbound_peer_connection.is_none() && outbound_peer_connection.is_none() {
+            panic!("Peer has neither outbound nor inbound connection");
+        }
+        if outbound_peer_connection.is_some() {
+            outbound_peer_connection
+                .unwrap()
+                .write_sink
+                .send(api_message.serialize().into())
+                .await
+                .expect("unable to send to outbound_peer_connection... It may be that the socket\n
+                was closed but the outbound peer was not cleaned up. If this occurs, it should be investigated.");
+        }
+        if inbound_peer_connection.is_some() {
+            inbound_peer_connection
+                .unwrap()
+                .sender
+                .send(Ok(Message::binary(api_message.serialize())))
+                .expect("unable to send to outbound_peer_connection... It may be that the socket\n
+                was closed but the inbount peer was not cleaned up. If this occurs, it should be investigated.");
+        }
+    }
+
+
+    //
+    // send request to peer
+    //
+    // Sends an API message to another peer through a socket connection, while handling the process through
+    // a PeerRequest that allows us to .await the response and continue execution when and if the remote 
+    // peer responds to the message.
+    //
+    pub async fn send_request_with_callback(message_name: &str, message_data: Vec<u8>, connection_id: &SaitoHash) {
+      //
+      // to be implemented
+      //
+    }
+
+
+
+
+
+
+    //
     // fetch block from network
     //
     async fn fetch_block(block_hash: SaitoHash) {
 /***
-
 ***/
     }
-
 
     //
     // send block to all peers
@@ -507,6 +503,7 @@ impl Network {
         }
 ***/
     }
+
 
     pub async fn propagate_transaction(wallet_lock: Arc<RwLock<Wallet>>, mut tx: Transaction) {
 /****
@@ -560,58 +557,13 @@ impl Network {
             }
         }
     }
-    /// sends a command to the peer's socket but doesn't not await the response
-    pub async fn send_command_fire_and_forget(&mut self, command: &str, message: Vec<u8>) {
-        // Create a PeerRequest(Future), but do not await it.
-        let _peer_request = PeerRequest::new(command, message, self).await;
-        // TODO: low priority. Ensure that commands sent this way are actually cleaned from PEERS_REQUEST_RESPONSES_GLOBAL and PEERS_REQUEST_WAKERS_GLOBAL.
-        //       I'm quite sure this isn't a problem, but did not confirm.
-    }
-    /// Helper function for sending basic OK results.
-    pub async fn send_response_from_str(&mut self, message_id: u32, message_str: &str) {
-        send_message_to_socket(
-            APIMessage::new_from_string("RESULT__", message_id, message_str),
-            &self.connection_id,
-        )
-        .await;
-    }
-    /// Helper function for sending RESULT__.
-    pub async fn send_response(&mut self, message_id: u32, message: Vec<u8>) {
-        send_message_to_socket(
-            APIMessage::new("RESULT__", message_id, message),
-            &self.connection_id,
-        )
-        .await;
-    }
-    /// Helper function for sending RESULT__.
-    pub async fn send_response(&mut self, message_id: u32, message: Vec<u8>) {
-        send_message_to_socket(
-            APIMessage::new("RESULT__", message_id, message),
-            &self.connection_id,
-        )
-        .await;
-    }
-    /// Helper function for sending basic errors with a string message.
-    pub async fn send_error_response_from_str(&mut self, message_id: u32, message_str: &str) {
-        send_message_to_socket(
-            APIMessage::new_from_string("ERROR___", message_id, message_str),
-            &self.connection_id,
-        )
-        .await;
-    }
-    /// Helper function for sending errors
-    pub async fn send_error_response(&mut self, message_id: u32, message: Vec<u8>) {
-        send_message_to_socket(
-            APIMessage::new("ERROR___", message_id, message),
-            &self.connection_id,
-        )
-        .await;
-    }
-
 ********/
-
-
 }
+
+
+
+
+
 
 pub async fn run(
     network_lock: Arc<RwLock<Network>>,
@@ -747,6 +699,7 @@ pub async fn run(
 
 /// Runs warp::serve to listen for incoming connections
 pub async fn run_server(network_lock_clone: Arc<RwLock<Network>>) -> crate::network::RunResult<()> {
+
     let mut routes;
     let mut host;
     let mut port;
