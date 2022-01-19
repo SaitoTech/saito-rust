@@ -2,7 +2,7 @@ use crate::block::BlockType;
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::mempool::Mempool;
-use crate::network::Result;
+use crate::network::RunResult;
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use base58::ToBase58;
@@ -59,7 +59,7 @@ pub async fn post_transaction_handler(
     mut body: impl Buf,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-) -> Result<impl Reply> {
+) -> RunResult<impl Reply> {
     let mut buffer = vec![];
     while body.has_remaining() {
         buffer.append(&mut body.chunk().to_vec());
@@ -88,7 +88,7 @@ pub async fn post_transaction_handler(
 pub async fn get_block_handler(
     str_block_hash: String,
     blockchain_lock: Arc<RwLock<Blockchain>>,
-) -> Result<impl Reply> {
+) -> RunResult<impl Reply> {
     let mut block_hash = [0u8; 32];
     hex::decode_to_slice(str_block_hash.clone(), &mut block_hash).expect("Failed to parse hash");
     {

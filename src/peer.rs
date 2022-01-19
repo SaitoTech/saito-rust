@@ -116,47 +116,5 @@ impl Peer {
 }
 
 
-pub struct PeerRequest {
-    connection_id: SaitoHash,
-    request_id: u32,
-    api_message_command: String,
-}
-/// A future which wraps an APIMessage REQUEST->RESPONSE into a Future(e.g. REQBLOCK->RESULT__).
-/// This enables a much cleaner interface for inter-node message relays by allowing a response to
-/// be returned directly from peer.send_command() and to turn an ERROR___ response into an Err()
-/// Result.
-impl PeerRequest {
-    pub async fn new(command: &str, message: Vec<u8>, peer: &mut SaitoPeer) -> Self {
-        peer.request_count += 1;
-        let api_message = APIMessage::new(command, peer.request_count - 1, message);
-        send_message_to_socket(api_message, &peer.connection_id).await;
-        PeerRequest {
-            connection_id: peer.connection_id,
-            request_id: peer.request_count - 1,
-            api_message_command: String::from(command),
-        }
-    }
-}
-
-impl Future for PeerRequest {
-    type Output = Result<APIMessage, Box<dyn Error>>;
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
-        let mut request_responses = request_responses_lock.write().unwrap();
-        match request_responses.remove(&(self.connection_id, self.request_id)) {
-            Some(response) => {
-                // Return from the Future with an important message!
-                info!("HANDLING RESPONSE {}", self.api_message_command);
-                Poll::Ready(Ok(response))
-            }
-            None => {
-                let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
-                let mut request_wakers = request_wakers_lock.write().unwrap();
-                request_wakers.insert((self.connection_id, self.request_id), cx.waker().clone());
-                Poll::Pending
-            }
-        }
-    }
-}
 
 

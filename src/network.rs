@@ -18,7 +18,8 @@ use tracing::{error, info, warn};
 use std::collections::HashMap;
 use std::task::{Context, Poll, Waker};
 use warp::ws::{Message, WebSocket};
-
+use std::error::Error;
+use std::pin::Pin;
 use futures::{Future, FutureExt, SinkExt, StreamExt};
 use uuid::Uuid;
 use warp::{Filter, Rejection};
@@ -32,7 +33,7 @@ use crate::networking::message_types::request_blockchain_message::RequestBlockch
 use crate::networking::message_types::send_block_head_message::SendBlockHeadMessage;
 use crate::util::format_url_string;
 
-pub type Result<T> = std::result::Result<T, Rejection>;
+pub type RunResult<T> = std::result::Result<T, Rejection>;
 
 pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
@@ -69,6 +70,53 @@ pub enum NetworkMessage {
     LocalNetworkMonitoring,
 }
 
+pub struct NetworkCallback {
+    connection_id: SaitoHash,
+    request_id: u32,
+    api_message_command: String,
+}
+
+
+/// A future which wraps an APIMessage REQUEST->RESPONSE into a Future(e.g. REQBLOCK->RESULT__).
+/// This enables a much cleaner interface for inter-node message relays by allowing nodes to await
+/// on messages that are sent and then handling the results directly as either RESULT__ or 
+/// ERROR___ responses.
+impl NetworkCallback {
+    pub async fn new(command: &str, message: Vec<u8>, peer: &mut Peer) -> Self {
+        peer.request_count += 1;
+        let api_message = APIMessage::new(command, peer.request_count - 1, message);
+        Network::send_request(api_message, &peer.connection_id).await;
+        NetworkCallback {
+            connection_id: peer.connection_id,
+            request_id: peer.request_count - 1,
+            api_message_command: String::from(command),
+        }
+    }
+}
+
+impl Future for NetworkCallback {
+    type Output = Result<APIMessage, Box<dyn Error>>;
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
+        let mut request_responses = request_responses_lock.write().unwrap();
+        match request_responses.remove(&(self.connection_id, self.request_id)) {
+            Some(response) => {
+                // Return from the Future with an important message!
+                info!("HANDLING RESPONSE {}", self.api_message_command);
+                Poll::Ready(Ok(response))
+            }
+            None => {
+                let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
+                let mut request_wakers = request_wakers_lock.write().unwrap();
+                request_wakers.insert((self.connection_id, self.request_id), cx.waker().clone());
+                Poll::Pending
+            }
+        }
+    }
+}
+
+
+
 pub struct Network {
     blockchain_lock: Arc<RwLock<Blockchain>>,
     mempool_lock: Arc<RwLock<Mempool>>,
@@ -104,6 +152,10 @@ impl Network {
     }
 
 
+
+
+
+
     //
     // initialize
     //
@@ -137,19 +189,25 @@ impl Network {
     }
 
 
-    pub async fn receive_request(api_message_orig: APIMessage, connection_id: SaitoHash) {
-        match api_message_orig.get_message_name_as_string().as_str() {
+
+
+
+
+
+    pub async fn receive_request(api_message: APIMessage, connection_id: SaitoHash) {
+        match api_message.get_message_name_as_string().as_str() {
+
             "RESULT__" | "ERROR___" => {
                 let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
                 let mut request_wakers = request_wakers_lock.write().unwrap();
                 let option_waker =
-                    request_wakers.remove(&(connection_id, api_message_orig.message_id));
+                    request_wakers.remove(&(connection_id, api_message.message_id));
 
                 let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
                 let mut request_responses = request_responses_lock.write().unwrap();
                 request_responses.insert(
-                    (connection_id, api_message_orig.message_id),
-                    api_message_orig,
+                    (connection_id, api_message.message_id),
+                    api_message,
                 );
 
                 if let Some(waker) = option_waker {
@@ -157,43 +215,45 @@ impl Network {
                 }
             }
             _ => {
-                let peers_db_global = PEERS_DB_GLOBAL.clone();
-                let mut peer_db = peers_db_global.write().await;
-                let peer = peer_db.get_mut(&connection_id).unwrap();
-                Network::handle_request(peer, api_message_orig).await;
+
+		//
+		// TODO - we do not need to fetch every peer mutably just to answer
+		// and deal with inbound requests.
+		//
+                //let peers_db_global = PEERS_DB_GLOBAL.clone();
+                //let mut peer_db = peers_db_global.write().await;
+                //let peer = peer_db.get_mut(&connection_id).unwrap();
+
+        	let command = api_message.get_message_name_as_string();
+        	match command.as_str() {
+        	    "REQBLOCK" => {
+            	    }
+		    _ => {
+                	error!(
+                	    "Unhandled command received by client... {}",
+                	    &api_message.get_message_name_as_string()
+                	);
+ 	               //peer.send_error_response_from_str(api_message.message_id, "NO SUCH").await;
+         	   }
+        	}
             }
         }
     }
 
-    // Handlers for all the network API commands, e.g. REQBLOCK.
-    async fn handle_request(peer: &mut Peer, api_message: APIMessage) {
-        let command = api_message.get_message_name_as_string();
-        info!("HANDLING COMMAND {}", command);
-        match command.as_str() {
-            "REQBLOCK" => {
-            //    let api_message = build_request_block_response(&api_message, blockchain_lock).await;
-            //    send_request(api_message, &peer.connection_id).await;
-            }
-            _ => {
-                error!(
-                    "Unhandled command received by client... {}",
-                    &api_message.get_message_name_as_string()
-                );
-                 peer.send_error_response_from_str(api_message.message_id, "NO SUCH")
-                    .await;
-            }
-        }
-    }
 
 
-    /// Sends an APIMessage to a socket connection. Since Outbound and Inbound peers Streams(Sinks) are
-    /// not unified into a single Trait yet, we must check both dbs to find out which sort of sink this
-    /// peer is using and send the message through the appopriate stream.
+
+
+    //
+    // Sends an APIMessage to another peer through a socket connection. Since Outbound and Inbound peers 
+    // Streams(Sinks) are not unified into a single Trait yet, we have to check both databases to find out
+    // which sort of sink this peer is using and send the message through the appropriate stream.
+    //
     pub async fn send_request(api_message: APIMessage, connection_id: &SaitoHash) {
 
-        let outbound_peer_connection_db_global = OUTBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+        let outbound_peer_connection_db_global = OUTBOUND_SOCKETS_GLOBAL.clone();
         let mut outbound_peer_connection_db = outbound_peer_connection_db_global.write().await;
-        let inbound_peer_connection_db_global = INBOUND_PEER_CONNECTIONS_GLOBAL.clone();
+        let inbound_peer_connection_db_global = INBOUND_SOCKETS_GLOBAL.clone();
         let mut inbound_peer_connection_db = inbound_peer_connection_db_global.write().await;
 
         let outbound_peer_connection = outbound_peer_connection_db.get_mut(connection_id);
@@ -226,6 +286,16 @@ impl Network {
 
 
 
+    //
+    // Sends an API message to another peer through a socket connection, while handling the process through
+    // a PeerRequest that allows us to .await the response and continue execution when and if the remote 
+    // peer responds to the message.
+    //
+    pub async fn send_request_with_callback(api_message: APIMessage, connection_id: &SaitoHash) {
+      //
+      // to be implemented
+      //
+    }
 
 
     /// Connect to a peer via websocket and spawn a Task to handle message received on the socket
@@ -547,7 +617,7 @@ pub async fn run(
     network_lock: Arc<RwLock<Network>>,
     broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     mut broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
-) -> crate::Result<()> {
+) -> crate::network::RunResult<()> {
     //
     // network gets global broadcast channel
     //
@@ -676,7 +746,7 @@ pub async fn run(
 }
 
 /// Runs warp::serve to listen for incoming connections
-pub async fn run_server(network_lock_clone: Arc<RwLock<Network>>) -> crate::Result<()> {
+pub async fn run_server(network_lock_clone: Arc<RwLock<Network>>) -> crate::network::RunResult<()> {
     let mut routes;
     let mut host;
     let mut port;
