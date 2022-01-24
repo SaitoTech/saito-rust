@@ -52,7 +52,7 @@ impl SendBlockchainMessage {
     pub fn get_blocks_data(&self) -> &Vec<SendBlockchainBlockData> {
         &self.blocks_data
     }
-    pub fn deserialize(bytes: &Vec<u8>) -> SendBlockchainMessage {
+    pub fn deserialize(bytes: &[u8]) -> SendBlockchainMessage {
         let sync_type: SyncType = SyncType::try_from(bytes[0]).unwrap();
         let starting_hash: SaitoHash = bytes[1..33].try_into().unwrap();
         let blocks_data_len: usize = u32::from_be_bytes(bytes[33..37].try_into().unwrap()) as usize;

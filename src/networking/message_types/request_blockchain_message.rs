@@ -23,7 +23,7 @@ impl RequestBlockchainMessage {
         }
     }
 
-    pub fn deserialize(bytes: &Vec<u8>) -> RequestBlockchainMessage {
+    pub fn deserialize(bytes: &[u8]) -> RequestBlockchainMessage {
         let latest_block_id: u64 = u64::from_be_bytes(bytes[0..8].try_into().unwrap());
         let latest_block_hash: SaitoHash = bytes[8..40].try_into().unwrap();
         let fork_id: SaitoHash = bytes[40..72].try_into().unwrap();

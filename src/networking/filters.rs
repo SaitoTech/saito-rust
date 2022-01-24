@@ -1,9 +1,8 @@
 use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::mempool::Mempool;
-use crate::network::PEERS_DB_GLOBAL;
+use crate::network::{Network, PEERS_DB_GLOBAL};
 use crate::wallet::Wallet;
-use crate::network::Network;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};

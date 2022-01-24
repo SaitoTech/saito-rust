@@ -40,7 +40,7 @@ impl HandshakeChallenge {
         }
     }
 
-    pub fn deserialize(bytes: &Vec<u8>) -> HandshakeChallenge {
+    pub fn deserialize(bytes: &[u8]) -> HandshakeChallenge {
         let mut challenger_octet: [u8; 4] = [0; 4];
         challenger_octet[0..4].clone_from_slice(&bytes[0..4]);
         let mut opponent_octet: [u8; 4] = [0; 4];

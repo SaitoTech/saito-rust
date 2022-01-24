@@ -1,17 +1,17 @@
 use crate::block::BlockType;
 use crate::blockchain::Blockchain;
-use crate::consensus::SaitoMessage;
+// use crate::consensus::SaitoMessage;
 use crate::mempool::Mempool;
+use crate::network::Network;
 use crate::network::RunResult;
 use crate::transaction::Transaction;
-use crate::wallet::Wallet;
+// use crate::wallet::Wallet;
 use base58::ToBase58;
 use std::sync::Arc;
-use tokio::sync::{broadcast, RwLock};
+use tokio::sync::RwLock;
 use warp::reject::Reject;
 use warp::reply::Response;
 use warp::{Buf, Rejection, Reply};
-use crate::network::Network;
 
 #[derive(Debug)]
 struct Invalid;
@@ -43,12 +43,7 @@ pub async fn ws_upgrade_handler(
     ws: warp::ws::Ws,
     network_lock: Arc<RwLock<Network>>,
 ) -> std::result::Result<impl Reply, Rejection> {
-    Ok(ws.on_upgrade(move |socket| {
-        Network::add_remote_peer(
-            socket,
-            network_lock,
-        )
-    }))
+    Ok(ws.on_upgrade(move |socket| Network::add_remote_peer(socket, network_lock)))
 }
 /// POST tx filter.
 /// TODO remove this? I believe we want ot use the socket for everything...
@@ -71,7 +66,7 @@ pub async fn post_transaction_handler(
     let blockchain = blockchain_lock.read().await;
     tx.generate_metadata(tx.inputs[0].get_publickey());
     if tx.validate(&blockchain.utxoset, &blockchain.staking) {
-        let response = std::str::from_utf8(&tx.get_signature().to_base58().as_bytes())
+        let response = std::str::from_utf8(tx.get_signature().to_base58().as_bytes())
             .unwrap()
             .to_string();
         let mut mempool = mempool_lock.write().await;

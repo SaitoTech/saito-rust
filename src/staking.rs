@@ -196,9 +196,9 @@ impl Staking {
         //
         // TODO skip-hop algorithm instead of brute force
         //
-        if self.stakers.len() == 0 {
+        if self.stakers.is_empty() {
             self.stakers.push(slip);
-            return true;
+            true
         } else {
             for i in 0..self.stakers.len() {
                 let how_compares = slip.compare(self.stakers[i].clone());
@@ -222,7 +222,7 @@ impl Staking {
             }
 
             self.stakers.push(slip);
-            return true;
+            true
         }
     }
 
@@ -387,7 +387,7 @@ impl Staking {
                     is_there_a_staker_output = true;
                 }
             }
-            if is_there_a_staker_output == false {
+            if !is_there_a_staker_output {
                 return (res_spend, res_unspend, res_delete);
             }
             if fee_transaction.inputs.is_empty() {
@@ -462,7 +462,7 @@ impl Staking {
                 // successfully remove from the staker table.
                 //
                 for i in 0..slips_to_remove_from_staking.len() {
-                    if self.remove_staker(slips_to_remove_from_staking[i].clone()) == true {
+                    if self.remove_staker(slips_to_remove_from_staking[i].clone()) {
                         self.add_pending(slips_to_add_to_pending[i].clone());
                     }
                 }
@@ -546,6 +546,12 @@ impl Staking {
         }
 
         (res_spend, res_unspend, res_delete)
+    }
+}
+
+impl Default for Staking {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

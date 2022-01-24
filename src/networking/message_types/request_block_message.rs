@@ -65,7 +65,7 @@ impl RequestBlockMessage {
         }
     }
 
-    pub fn deserialize(bytes: &Vec<u8>) -> RequestBlockMessage {
+    pub fn deserialize(bytes: &[u8]) -> RequestBlockMessage {
         let request_block_message_options_mask: RequestBlockMessageOptionsMask = bytes[0];
         let mut block_id = None;
         let mut block_hash = None;

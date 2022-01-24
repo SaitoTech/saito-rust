@@ -93,6 +93,12 @@ impl Hop {
     }
 }
 
+impl Default for Hop {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
 

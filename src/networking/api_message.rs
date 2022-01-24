@@ -1,6 +1,6 @@
+use crate::peer::Peer;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
-use crate::peer::Peer;
 
 /// The core data type for transporting data across the Saito Network.
 /// See the Network module doc for more details.
@@ -36,17 +36,9 @@ impl APIMessage {
             message_data,
         }
     }
-    pub fn new_for_peer(
-        message_name: &str,
-        message_data: Vec<u8>,
-        peer: &mut Peer,
-    ) -> APIMessage {
+    pub fn new_for_peer(message_name: &str, message_data: Vec<u8>, peer: &mut Peer) -> APIMessage {
         peer.request_count += 1;
-        APIMessage::new(
-            message_name,
-            peer.request_count-1,
-            message_data,
-        )
+        APIMessage::new(message_name, peer.request_count - 1, message_data)
     }
     pub fn get_message_name(&self) -> &[u8; 8] {
         &self.message_name
@@ -66,7 +58,7 @@ impl APIMessage {
     pub fn get_message_data_as_string(&self) -> String {
         String::from_utf8_lossy(&self.message_data).to_string()
     }
-    pub fn deserialize(bytes: &Vec<u8>) -> APIMessage {
+    pub fn deserialize(bytes: &[u8]) -> APIMessage {
         let message_name: [u8; 8] = bytes[0..8].try_into().unwrap();
         let message_id: u32 = u32::from_be_bytes(bytes[8..12].try_into().unwrap());
         let message_data = bytes[12..].try_into().unwrap();

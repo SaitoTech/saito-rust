@@ -156,7 +156,7 @@ impl Storage {
             }
         }
 
-        return v;
+        v
     }
 
     pub fn read_lines_from_file<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>

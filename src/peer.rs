@@ -22,6 +22,7 @@ use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use async_recursion::async_recursion;
 use futures::stream::SplitSink;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::error::Error;
@@ -33,16 +34,12 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::{error, info};
 use uuid::Uuid;
 use warp::ws::{Message, WebSocket};
-use serde::{Deserialize, Serialize};
 
 use crate::networking::api_message::APIMessage;
 use futures::{Future, FutureExt, SinkExt, StreamExt};
 use tokio::net::TcpStream;
 use tokio::sync::broadcast::Sender;
 use tokio_tungstenite::{tungstenite, MaybeTlsStream, WebSocketStream};
-
-
-
 
 //
 // Sockets and Streams
@@ -55,8 +52,6 @@ pub struct OutboundSocket {
         SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, tungstenite::protocol::Message>,
 }
 
-
-
 /// PeerType indicates whether this peer was added by us as a desired outbound
 /// connection or whether it came to us via an inbound connection.
 #[derive(Serialize, Deserialize, Debug, Copy, PartialEq, Clone)]
@@ -64,7 +59,6 @@ pub enum PeerType {
     Outbound,
     Inbound,
 }
-
 
 /// A Peer. i.e. another node in the network.
 pub struct Peer {
@@ -78,26 +72,21 @@ pub struct Peer {
     pub peer_type: PeerType,
 }
 
-
 impl Peer {
-    pub fn new(
-        connection_id: SaitoHash,
-        host: Option<[u8; 4]>,
-        port: Option<u16>,
-    ) -> Peer {
+    pub fn new(connection_id: SaitoHash, host: Option<[u8; 4]>, port: Option<u16>) -> Peer {
         Peer {
             connection_id,
             host,
             port,
             publickey: None,
-	    peer_type: PeerType::Outbound,
+            peer_type: PeerType::Outbound,
             request_count: 0,
-	    is_connected: false,
-	    is_connecting: false,
+            is_connected: false,
+            is_connecting: false,
         }
     }
 
-    pub fn set_is_connected(&mut self, x : bool) {
+    pub fn set_is_connected(&mut self, x: bool) {
         self.is_connected = x;
     }
 
@@ -105,16 +94,11 @@ impl Peer {
         self.is_connecting = x;
     }
 
-    pub fn is_peer_type(&self, pt : PeerType) -> bool {
-        return self.peer_type == pt
+    pub fn is_peer_type(&self, pt: PeerType) -> bool {
+        self.peer_type == pt
     }
 
-    pub fn set_peer_type(&mut self, pt : PeerType) {
+    pub fn set_peer_type(&mut self, pt: PeerType) {
         self.peer_type = pt;
     }
-
 }
-
-
-
-

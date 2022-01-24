@@ -99,7 +99,7 @@ impl Slip {
         slip_value: u64,
     ) {
         if self.get_slip_type() == SlipType::StakerDeposit {
-            if _lc == true {
+            if _lc {
                 info!(
                     " ====> update deposit to {}: {:?} -- {:?}",
                     slip_value,
@@ -109,7 +109,7 @@ impl Slip {
             }
         }
         if self.get_slip_type() == SlipType::StakerOutput {
-            if _lc == true {
+            if _lc {
                 info!(
                     " ====> update output to {}: {:?} -- {:?}",
                     slip_value,
@@ -240,7 +240,7 @@ impl Slip {
             return 2;
         }
 
-        return 3;
+        3
     }
 
     //

@@ -180,7 +180,7 @@ impl Mempool {
         }
     }
 
-    pub fn delete_transactions(&mut self, transactions: &Vec<Transaction>) {
+    pub fn delete_transactions(&mut self, transactions: &[Transaction]) {
         let mut tx_hashmap = HashMap::new();
         for transaction in transactions {
             let hash = transaction.get_hash_for_signature();
@@ -190,7 +190,7 @@ impl Mempool {
         self.routing_work_in_mempool = 0;
 
         self.transactions
-            .retain(|x| tx_hashmap.contains_key(&x.get_hash_for_signature()) != true);
+            .retain(|x| !tx_hashmap.contains_key(&x.get_hash_for_signature()));
 
         for transaction in &self.transactions {
             self.routing_work_in_mempool +=
@@ -244,7 +244,7 @@ impl Mempool {
         mempool.currently_bundling_block = true;
         let mut blockchain = blockchain_lock.write().await;
         while let Some(block) = mempool.blocks_queue.pop_front() {
-            mempool.delete_transactions(&block.get_transactions());
+            mempool.delete_transactions(block.get_transactions());
             blockchain.add_block(block).await;
         }
         mempool.currently_bundling_block = false;
@@ -375,13 +375,10 @@ pub async fn run(
         // global broadcast channel receivers
         //
             Ok(message) = broadcast_channel_receiver.recv() => {
-                match message {
-                    SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } => {
-                       // when miner produces golden ticket
-                        let mut mempool = mempool_lock.write().await;
-                        mempool.add_golden_ticket(golden_ticket).await;
-                    },
-                    _ => {},
+                if let SaitoMessage::MinerNewGoldenTicket { ticket : golden_ticket } = message {
+                    // when miner produces golden ticket
+                    let mut mempool = mempool_lock.write().await;
+                    mempool.add_golden_ticket(golden_ticket).await;
                 }
             }
         }

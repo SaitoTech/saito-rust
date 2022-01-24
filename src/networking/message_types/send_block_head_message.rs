@@ -15,7 +15,7 @@ impl SendBlockHeadMessage {
         SendBlockHeadMessage { block_hash }
     }
 
-    pub fn deserialize(bytes: &Vec<u8>) -> SendBlockHeadMessage {
+    pub fn deserialize(bytes: &[u8]) -> SendBlockHeadMessage {
         let block_hash: SaitoHash = bytes[0..32].try_into().unwrap();
 
         SendBlockHeadMessage::new(block_hash)
