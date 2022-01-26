@@ -168,9 +168,9 @@ pub struct Block {
     /// Transactions
     transactions: Vec<Transaction>,
     /// Self-Calculated / Validated
-    pre_hash: SaitoHash,
+    pre_hash: Option<SaitoHash>,
     /// Self-Calculated / Validated
-    hash: SaitoHash,
+    hash: Option<SaitoHash>,
     /// total fees paid into block
     total_fees: u64,
     /// total fees paid into block
@@ -221,8 +221,8 @@ impl Block {
             difficulty: 0,
             staking_treasury: 0,
             transactions: vec![],
-            pre_hash: [0; 32],
-            hash: [0; 32],
+            pre_hash: None,
+            hash: None,
             total_fees: 0,
             routing_work_for_creator: 0,
             lc: false,
@@ -251,6 +251,7 @@ impl Block {
 
     pub fn get_hash(&self) -> SaitoHash {
         self.hash
+            .unwrap_or_else(|| hash(&self.serialize_for_hash()))
     }
 
     pub fn get_lc(&self) -> bool {
@@ -327,6 +328,7 @@ impl Block {
 
     pub fn get_pre_hash(&self) -> SaitoHash {
         self.pre_hash
+            .unwrap_or_else(|| hash(&self.serialize_for_signature()))
     }
 
     pub fn get_total_fees(&self) -> u64 {
@@ -384,6 +386,7 @@ impl Block {
     // changes into a single black-box so that state is easier to reason about.
     pub fn set_transactions(&mut self, transactions: &mut Vec<Transaction>) {
         self.transactions = transactions.to_vec();
+        self.hash = None;
     }
 
     pub fn set_block_type(&mut self, block_type: BlockType) {
@@ -392,6 +395,8 @@ impl Block {
 
     pub fn set_id(&mut self, id: u64) {
         self.id = id;
+        self.pre_hash = None;
+        self.hash = None;
     }
 
     pub fn set_lc(&mut self, lc: bool) {
@@ -400,46 +405,56 @@ impl Block {
 
     pub fn set_timestamp(&mut self, timestamp: u64) {
         self.timestamp = timestamp;
+        self.pre_hash = None;
+        self.hash = None;
     }
 
     pub fn set_previous_block_hash(&mut self, previous_block_hash: SaitoHash) {
         self.previous_block_hash = previous_block_hash;
+        self.pre_hash = None;
+        self.hash = None;
     }
 
     pub fn set_creator(&mut self, creator: SaitoPublicKey) {
         self.creator = creator;
+        self.pre_hash = None;
+        self.hash = None;
     }
 
     pub fn set_merkle_root(&mut self, merkle_root: SaitoHash) {
         self.merkle_root = merkle_root;
+        self.pre_hash = None;
+        self.hash = None;
     }
 
     pub fn set_signature(&mut self, signature: SaitoSignature) {
         self.signature = signature;
-    }
-
-    pub fn set_staking_treasury(&mut self, staking_treasury: u64) {
-        self.staking_treasury = staking_treasury;
+        self.pre_hash = None;
+        self.hash = None;
     }
 
     pub fn set_treasury(&mut self, treasury: u64) {
         self.treasury = treasury;
+        self.pre_hash = None;
+        self.hash = None;
+    }
+
+    pub fn set_staking_treasury(&mut self, staking_treasury: u64) {
+        self.staking_treasury = staking_treasury;
+        self.pre_hash = None;
+        self.hash = None;
     }
 
     pub fn set_burnfee(&mut self, burnfee: u64) {
         self.burnfee = burnfee;
+        self.pre_hash = None;
+        self.hash = None;
     }
 
     pub fn set_difficulty(&mut self, difficulty: u64) {
         self.difficulty = difficulty;
-    }
-
-    pub fn set_pre_hash(&mut self, pre_hash: SaitoHash) {
-        self.pre_hash = pre_hash;
-    }
-
-    pub fn set_hash(&mut self, hash: SaitoHash) {
-        self.hash = hash;
+        self.pre_hash = None;
+        self.hash = None;
     }
 
     pub fn set_source_connection_id(&mut self, source_connection_id: SaitoHash) {
@@ -474,10 +489,8 @@ impl Block {
         if block_type == BlockType::Full {
             let mut new_block =
                 Storage::load_block_from_disk(Storage::generate_block_filename(&self)).await;
-            let hash_for_signature = hash(&new_block.serialize_for_signature());
-            new_block.set_pre_hash(hash_for_signature);
-            let hash_for_hash = hash(&new_block.serialize_for_hash());
-            new_block.set_hash(hash_for_hash);
+
+            new_block.generate_hashes();
 
             //
             // in-memory swap copying txs in block from mempool
@@ -530,19 +543,24 @@ impl Block {
         self.set_signature(sign(&self.get_pre_hash(), privatekey));
         self.generate_hash();
     }
-    pub fn generate_hash(&mut self) -> SaitoHash {
-        let hash_for_hash = hash(&self.serialize_for_hash());
-        self.set_hash(hash_for_hash);
 
-        hash_for_hash
+    // Compute and memoize hash`
+    pub fn generate_hash(&mut self) -> SaitoHash {
+        let hash = self.get_hash();
+        self.hash = Some(hash);
+        hash
     }
-    pub fn generate_pre_hash(&mut self) {
-        let hash_for_signature = hash(&self.serialize_for_signature());
-        self.set_pre_hash(hash_for_signature);
+
+    // Compute and memoize pre-hash`
+    pub fn generate_pre_hash(&mut self) -> SaitoHash {
+        let pre_hash = self.get_pre_hash();
+        self.pre_hash = Some(pre_hash);
+        pre_hash
     }
-    pub fn generate_hashes(&mut self) -> SaitoHash {
+
+    pub fn generate_hashes(&mut self) {
         self.generate_pre_hash();
-        self.generate_hash()
+        self.generate_hash();
     }
 
     // serialize the pre_hash and the signature_for_source into a
@@ -619,6 +637,7 @@ impl Block {
 
         vbytes
     }
+
     /// Deserialize from bytes to a Block.
     /// [len of transactions - 4 bytes - u32]
     /// [id - 8 bytes - u64]
@@ -1621,20 +1640,17 @@ impl Block {
         // class, and the validation logic for slips is contained in the slips
         // class. Note that we are passing in a read-only copy of our UTXOSet so
         // as to determine spendability.
-        //
-        // TODO - remove when convenient. when transactions fail to validate using
-        // parallel processing can make it difficult to find out exactly what the
-        // problem is. ergo this code that tries to do them on the main thread so
-        // debugging output works.
-        //
-        for i in 0..self.transactions.len() {
-            let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
-            if !transactions_valid2 {
-                info!("Type: {:?}", self.transactions[i].get_transaction_type());
-                info!("Data {:?}", self.transactions[i]);
+
+        if cfg!(debug_assertions) {
+            // validate serially when we are not in release mode for easier debugging
+            for i in 0..self.transactions.len() {
+                let transactions_valid2 = self.transactions[i].validate(utxoset, staking);
+                if !transactions_valid2 {
+                    info!("Type: {:?}", self.transactions[i].get_transaction_type());
+                    info!("Data {:?}", self.transactions[i]);
+                }
             }
         }
-        //true
 
         let transactions_valid = self
             .transactions
@@ -1858,7 +1874,7 @@ mod tests {
         assert_eq!(block.burnfee, 0);
         assert_eq!(block.difficulty, 0);
         assert_eq!(block.transactions, vec![]);
-        assert_eq!(block.hash, [0; 32]);
+        assert_eq!(block.hash, None);
         assert_eq!(block.total_fees, 0);
         assert_eq!(block.lc, false);
         assert_eq!(block.has_golden_ticket, false);
@@ -1897,8 +1913,7 @@ mod tests {
     // test that we are properly generating pre_hash and hash
     fn block_generate_hashes() {
         let mut block = Block::new();
-        let hash = block.generate_hashes();
-        assert_ne!(hash, [0; 32]);
+        block.generate_hashes();
         assert_ne!(block.get_pre_hash(), [0; 32]);
         assert_ne!(block.get_hash(), [0; 32]);
         TestManager::check_block_consistency(&block);
