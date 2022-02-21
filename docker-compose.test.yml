@@ -8,13 +8,13 @@ services:
       - ./data:/app/data
     environment:
       RUST_LOG: "debug"
-      APP_ENVIRONMENT: "development"
+      APP_ENVIRONMENT: "testnet"
     restart: unless-stopped
     ports:
       - "3000:3000"
     command: [
         "sh", "-c",
-        "/app/saito_rust --config=configuration/config.yml --spammer
+        "/app/saito_rust --spammer
         "
     ]
     networks:
@@ -25,7 +25,7 @@ services:
     build: .
     environment:
       RUST_LOG: "debug"
-      APP_ENVIRONMENT: "development"
+      APP_ENVIRONMENT: "testnet"
     depends_on:
       - main
     restart: unless-stopped
@@ -33,7 +33,7 @@ services:
       - "3001:3001"
     command: [
       "bash", "-c",
-      "/app/saito_rust --config=${CONF_FILE} --password=${W_PWD}"
+      "/app/saito_rust --password=${W_PWD}"
     ]
     networks:
       - saito_net

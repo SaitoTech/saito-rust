@@ -1,4 +1,5 @@
 use crate::blockchain::Blockchain;
+use crate::configuration::{PeerSetting, Settings};
 use crate::consensus::SaitoMessage;
 use crate::crypto::{hash, sign_blob, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::mempool::Mempool;
@@ -26,10 +27,8 @@ use uuid::Uuid;
 use warp::{Filter, Rejection};
 
 use super::message_types::send_block_head_message::SendBlockHeadMessage;
-use super::peer::{PeerSetting, OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL};
+use super::peer::{OUTBOUND_PEER_CONNECTIONS_GLOBAL, PEERS_DB_GLOBAL};
 use super::signals::signal_for_shutdown;
-
-use config::Config;
 
 pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
@@ -49,6 +48,9 @@ pub enum NetworkMessage {
 }
 
 pub struct Network {
+    host: [u8; 4],
+    port: u16,
+    peer_conf: Option<Vec<PeerSetting>>,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -58,12 +60,16 @@ pub struct Network {
 impl Network {
     /// Create a Network
     pub fn new(
+        conf: Settings,
         wallet_lock: Arc<RwLock<Wallet>>,
         mempool_lock: Arc<RwLock<Mempool>>,
         blockchain_lock: Arc<RwLock<Blockchain>>,
         broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
     ) -> Network {
         Network {
+            host: conf.network.host,
+            port: conf.network.port,
+            peer_conf: conf.network.peers,
             wallet_lock,
             mempool_lock,
             blockchain_lock,
@@ -216,16 +222,12 @@ impl Network {
             }
         }
     }
-    // Initialize configured peers(peers set in the config.yml). This does not connect to the peers, it only sets their
+    // Initialize configured peers(peers set in the configs file). This does not connect to the peers, it only sets their
     // state and inserts them into PEERS_DB_GLOBAL so that the Task created by
     // spawn_reconnect_to_configured_peers_task will open the connection.
-    async fn initialize_configured_peers(&self, config_settings: Config) {
-        let peer_settings = match config_settings.get::<Vec<PeerSetting>>("network.peers") {
-            Ok(peer_settings) => Some(peer_settings),
-            Err(_) => None,
-        };
-
-        if let Some(peer_settings) = peer_settings {
+    async fn initialize_configured_peers(&self) {
+        info!("{:?}", self.peer_conf);
+        if let Some(peer_settings) = &self.peer_conf {
             for peer_setting in peer_settings {
                 let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
                 let peer = SaitoPeer::new(
@@ -334,10 +336,7 @@ impl Network {
     }
 
     // Runs warp::serve to listen for incoming connections
-    async fn run_server(&self, config_settings: Config) -> crate::Result<()> {
-        let host: [u8; 4] = config_settings.get::<[u8; 4]>("network.host").unwrap();
-        let port: u16 = config_settings.get::<u16>("network.port").unwrap();
-
+    async fn run_server(&self) -> crate::Result<()> {
         let routes = get_block_route_filter(self.blockchain_lock.clone())
             .or(post_transaction_route_filter(
                 self.mempool_lock.clone(),
@@ -349,15 +348,15 @@ impl Network {
                 self.blockchain_lock.clone(),
                 self.broadcast_channel_sender.clone(),
             ));
-        info!("Listening for HTTP on port {}", port);
-        let (_, server) =
-            warp::serve(routes).bind_with_graceful_shutdown((host, port), signal_for_shutdown());
+        info!("Listening for HTTP on port {}", self.port);
+        let (_, server) = warp::serve(routes)
+            .bind_with_graceful_shutdown((self.host, self.port), signal_for_shutdown());
         server.await;
         Ok(())
     }
     // connects to any peers configured in our peers list. Opens a socket, does handshake, sychronizes, etc.
-    async fn run_client(&self, config_settings: Config) -> crate::Result<()> {
-        self.initialize_configured_peers(config_settings).await;
+    async fn run_client(&self) -> crate::Result<()> {
+        self.initialize_configured_peers().await;
         self.spawn_reconnect_to_configured_peers_task(self.wallet_lock.clone())
             .await
             .unwrap();
@@ -406,7 +405,7 @@ impl Network {
 }
 
 pub async fn run(
-    config_settings: Config,
+    settings: Settings,
     wallet_lock: Arc<RwLock<Wallet>>,
     mempool_lock: Arc<RwLock<Mempool>>,
     blockchain_lock: Arc<RwLock<Blockchain>>,
@@ -414,6 +413,7 @@ pub async fn run(
     broadcast_channel_receiver: broadcast::Receiver<SaitoMessage>,
 ) -> crate::Result<()> {
     let network = Network::new(
+        settings,
         wallet_lock.clone(),
         mempool_lock.clone(),
         blockchain_lock.clone(),
@@ -421,12 +421,12 @@ pub async fn run(
     );
     // TODO: maybe refactor this into two separate classes maybe and split this run() into two...
     tokio::select! {
-        res = network.run_client(config_settings.clone()) => {
+        res = network.run_client() => {
             if let Err(err) = res {
                 eprintln!("run_client err {:?}", err)
             }
         },
-        res = network.run_server(config_settings.clone()) => {
+        res = network.run_server() => {
             if let Err(err) = res {
                 eprintln!("run_server err {:?}", err)
             }
@@ -447,6 +447,7 @@ mod tests {
     // use crate::hop::Hop;
     // use crate::slip::Slip;
     // use crate::transaction::TransactionType;
+    use crate::configuration::NetworkSettings;
     use crate::transaction::Transaction;
     use crate::{
         block::{Block, BlockType},
@@ -473,6 +474,7 @@ mod tests {
     };
     use secp256k1::PublicKey;
     use warp::{test::WsClient, ws::Message};
+
     // #[tokio::test]
     // async fn test_be_sure_threads_equals_1() {
     //     let mut filtered_args_iter = std::env::args().filter(|arg| arg == "--test-threads=1");
@@ -846,9 +848,14 @@ mod tests {
         // initialize peers db:
         clean_peers_dbs().await;
         // mock things:
-        let mut settings = config::Config::default();
-        settings.set("network.host", vec![127, 0, 0, 1]).unwrap();
-        settings.set("network.port", 3002).unwrap();
+        let net_settings = NetworkSettings {
+            host: [127, 0, 0, 1],
+            port: 3002,
+            peers: None,
+        };
+        let settings = Settings {
+            network: net_settings,
+        };
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
         let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
@@ -913,9 +920,14 @@ mod tests {
     #[serial_test::serial]
     async fn test_network_message_sending() {
         // mock things:
-        let mut settings = config::Config::default();
-        settings.set("network.host", vec![127, 0, 0, 1]).unwrap();
-        settings.set("network.port", 3002).unwrap();
+        let net_settings = NetworkSettings {
+            host: [127, 0, 0, 1],
+            port: 3002,
+            peers: None,
+        };
+        let settings = Settings {
+            network: net_settings,
+        };
 
         let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
         let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));

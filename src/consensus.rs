@@ -1,3 +1,4 @@
+use crate::configuration::get_configuration;
 use crate::crypto::SaitoHash;
 use crate::golden_ticket::GoldenTicket;
 use crate::miner::Miner;
@@ -113,24 +114,12 @@ impl Consensus {
                     .help("Password to decrypt wallet"),
             )
             .arg(
-                Arg::with_name("config")
-                    .short("c")
-                    .long("config")
-                    .takes_value(true)
-                    .help("config file name"),
-            )
-            .arg(
                 Arg::with_name("spammer")
                     .short("s")
                     .long("spammer")
                     .help("enable tx spamming"),
             )
             .get_matches();
-
-        let config_name = match matches.value_of("config") {
-            Some(name) => name,
-            None => "config",
-        };
 
         let mut is_spammer_enabled = false;
         //
@@ -140,10 +129,7 @@ impl Consensus {
             is_spammer_enabled = true;
         };
 
-        let mut settings = config::Config::default();
-        settings
-            .merge(config::File::with_name(config_name))
-            .unwrap();
+        let settings = get_configuration().expect("Failed to read configuration.");
 
         //
         // generate
