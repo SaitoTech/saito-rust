@@ -44,7 +44,7 @@ pub async fn ws_upgrade_handler(
     network_lock: Arc<RwLock<Network>>,
 ) -> std::result::Result<impl Reply, Rejection> {
     Ok(ws.on_upgrade(move |socket| {
-        Network::add_remote_peer(
+        Network::add_inbound_peer(
             socket,
             network_lock,
         )

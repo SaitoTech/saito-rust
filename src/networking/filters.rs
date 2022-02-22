@@ -53,12 +53,6 @@ fn with_network(
 ) -> impl Filter<Extract = (Arc<RwLock<Network>>,), Error = Infallible> + Clone {
     warp::any().map(move || network_lock.clone())
 }
-/// inject wallet lock
-fn with_wallet(
-    wallet_lock: Arc<RwLock<Wallet>>,
-) -> impl Filter<Extract = (Arc<RwLock<Wallet>>,), Error = Infallible> + Clone {
-    warp::any().map(move || wallet_lock.clone())
-}
 /// inject peers db lock
 fn with_mempool(
     mempool_lock: Arc<RwLock<Mempool>>,
@@ -72,9 +66,3 @@ fn with_blockchain(
     warp::any().map(move || blockchain_lock.clone())
 }
 
-/// inject blockchain lock
-fn with_broadcast_channel_sender(
-    broadcast_channel_sender: broadcast::Sender<SaitoMessage>,
-) -> impl Filter<Extract = (broadcast::Sender<SaitoMessage>,), Error = Infallible> + Clone {
-    warp::any().map(move || broadcast_channel_sender.clone())
-}
