@@ -2,27 +2,29 @@ use crate::blockchain::Blockchain;
 use crate::consensus::SaitoMessage;
 use crate::crypto::{hash, sign_blob, SaitoHash, SaitoPrivateKey, SaitoPublicKey};
 use crate::mempool::Mempool;
-use crate::peer::{Peer, PeerType, OutboundSocket, InboundSocket};
 use crate::networking::filters::{
     get_block_route_filter, post_transaction_route_filter, ws_upgrade_route_filter,
 };
+use crate::peer::{InboundSocket, OutboundSocket, Peer, PeerType};
 use crate::transaction::Transaction;
 use crate::wallet::Wallet;
 use async_recursion::async_recursion;
+use futures::{Future, FutureExt, SinkExt, StreamExt};
+use log::debug;
 use secp256k1::PublicKey;
-use std::{sync::Arc, time::Duration};
-use tokio::sync::{broadcast, mpsc, RwLock};
-use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio::time::sleep;
-use tokio_tungstenite::connect_async;
-use tracing::{error, info, warn};
 use std::collections::HashMap;
-use std::task::{Context, Poll, Waker};
-use warp::ws::{Message, WebSocket};
 use std::error::Error;
 use std::pin::Pin;
-use futures::{Future, FutureExt, SinkExt, StreamExt};
+use std::task::{Context, Poll, Waker};
+use std::{sync::Arc, time::Duration};
+use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::time::sleep;
+use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_tungstenite::connect_async;
+use tracing::field::debug;
+use tracing::{error, info, warn};
 use uuid::Uuid;
+use warp::ws::{Message, WebSocket};
 use warp::{Filter, Rejection};
 
 //use super::message_types::send_block_head_message::SendBlockHeadMessage;
@@ -39,7 +41,6 @@ pub type RunResult<T> = std::result::Result<T, Rejection>;
 pub const CHALLENGE_SIZE: usize = 82;
 pub const CHALLENGE_EXPIRATION_TIME: u64 = 60000;
 
-         
 //
 // why do we have inbound and outbound peer DB at this point?
 //
@@ -57,7 +58,6 @@ lazy_static::lazy_static! {
     pub static ref OUTBOUND_SOCKETS_GLOBAL: Arc<tokio::sync::RwLock<OutboundSocketsDB>> = Arc::new(tokio::sync::RwLock::new(OutboundSocketsDB::new()));
 }
 
-
 //
 // Local Broadcast Message Types
 //
@@ -73,26 +73,29 @@ pub enum NetworkMessage {
 //
 // A future which wraps an APIMessage REQUEST->RESPONSE into a Future(e.g. REQBLOCK->RESULT__).
 // This enables a much cleaner interface for inter-node message relays by allowing nodes to await
-// on messages that are sent and then handling the results directly as either RESULT__ or 
+// on messages that are sent and then handling the results directly as either RESULT__ or
 // ERROR___ responses.
 //
-pub struct NetworkRequestFuture { 
+pub struct NetworkRequestFuture {
     connection_id: SaitoHash,
     request_id: u32,
     api_message_command: String,
 }
 impl NetworkRequestFuture {
     pub async fn new(command: &str, message: Vec<u8>, connection_id: &SaitoHash) -> Self {
-
         Network::send_request(command, message, &connection_id).await;
 
-        let peer_connection_db_global = PEERS_DB_GLOBAL.clone();
-        let mut peer_connection_db = peer_connection_db_global.write().await;
-	let mut peer = peer_connection_db.get_mut(connection_id).unwrap();
+        let mut request_count = 0;
+        {
+            let peer_connection_db_global = PEERS_DB_GLOBAL.clone();
+            let mut peer_connection_db = peer_connection_db_global.write().await;
+            let mut peer = peer_connection_db.get_mut(connection_id).unwrap();
+            request_count = peer.request_count - 1;
+        }
 
         NetworkRequestFuture {
             connection_id: *connection_id,
-            request_id: peer.request_count - 1,
+            request_id: request_count,
             api_message_command: String::from(command),
         }
     }
@@ -118,7 +121,6 @@ impl Future for NetworkRequestFuture {
     }
 }
 
-
 pub struct Network {
     blockchain_lock: Arc<RwLock<Blockchain>>,
     mempool_lock: Arc<RwLock<Mempool>>,
@@ -129,9 +131,7 @@ pub struct Network {
     peer_conf: Option<Vec<PeerSetting>>,
 }
 
-
 impl Network {
-
     /// Create a Network
     pub fn new(
         configuration: Settings,
@@ -155,23 +155,20 @@ impl Network {
         self.broadcast_channel_sender = bcs;
     }
 
-
     //
     // initialize
     //
     async fn initialize(&self) {
-
         info!("{:?}", self.peer_conf);
         if let Some(peer_settings) = &self.peer_conf {
             for peer_setting in peer_settings {
-
                 let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
                 let mut peer = Peer::new(
                     connection_id,
                     Some(peer_setting.host),
                     Some(peer_setting.port),
                 );
-		peer.set_peer_type(PeerType::Outbound);
+                peer.set_peer_type(PeerType::Outbound);
 
                 {
                     let peers_db_global = PEERS_DB_GLOBAL.clone();
@@ -184,15 +181,13 @@ impl Network {
         }
     }
 
-
     //
     // connect to other peers
     //
     async fn add_outbound_peer(connection_id: SaitoHash, wallet_lock: Arc<RwLock<Wallet>>) {
-
-	//
-	// first we connect to the peer
-	//
+        //
+        // first we connect to the peer
+        //
         let peers_db_global = PEERS_DB_GLOBAL.clone();
         let peer_url;
         {
@@ -202,20 +197,19 @@ impl Network {
                 "ws://{}/wsopen",
                 format_url_string(peer.host.unwrap(), peer.port.unwrap()),
             ))
-                .unwrap();
+            .unwrap();
             peer.set_is_connecting(true);
         }
 
-	//
-	// create and save socket
-	//
+        //
+        // create and save socket
+        //
         let ws_stream_result = connect_async(peer_url).await;
         match ws_stream_result {
             Ok((ws_stream, _)) => {
-
-		//
-		// save socket
-		//
+                //
+                // save socket
+                //
                 let (write_sink, mut read_stream) = ws_stream.split();
                 {
                     let outbound_socket_db_global = OUTBOUND_SOCKETS_GLOBAL.clone();
@@ -225,9 +219,9 @@ impl Network {
                         .insert(connection_id, OutboundSocket { write_sink });
                 }
 
-		//
-		// spawn thread to handle messages
-		//
+                //
+                // spawn thread to handle messages
+                //
                 tokio::spawn(async move {
                     while let Some(result) = read_stream.next().await {
                         match result {
@@ -253,16 +247,15 @@ impl Network {
                                 let mut peer_db = peers_db_global.write().await;
                                 let peer = peer_db.get_mut(&connection_id).unwrap();
                                 peer.set_is_connected(false);
-				peer.set_is_connecting(false);
+                                peer.set_is_connecting(false);
                             }
                         }
                     }
                 });
 
-
-		//
-		// trigger anything we want to start on initialization
-		//
+                //
+                // trigger anything we want to start on initialization
+                //
                 //Network::handshake_and_synchronize_chain(&connection_id, wallet_lock).await;
             }
             Err(error) => {
@@ -275,15 +268,11 @@ impl Network {
         }
     }
 
-
     //
     // add inbound peers
     //
-    pub async fn add_inbound_peer(
-        ws: WebSocket,
-        network_lock: Arc<RwLock<Network>>,
-    ) {
-
+    pub async fn add_inbound_peer(ws: WebSocket, network_lock: Arc<RwLock<Network>>) {
+        debug!("add_inbound_peer");
         let (peer_ws_sender, mut peer_ws_rcv) = ws.split();
         let (peer_sender, peer_rcv) = mpsc::unbounded_channel();
         let peer_rcv = UnboundedReceiverStream::new(peer_rcv);
@@ -294,12 +283,8 @@ impl Network {
         }));
 
         let connection_id: SaitoHash = hash(&Uuid::new_v4().as_bytes().to_vec());
-        let mut peer = Peer::new(
-            connection_id,
-            None,
-            None,
-        );
-	peer.set_peer_type(PeerType::Inbound);
+        let mut peer = Peer::new(connection_id, None, None);
+        peer.set_peer_type(PeerType::Inbound);
 
         //
         // add peer to global static db
@@ -321,11 +306,11 @@ impl Network {
             },
         );
 
-	//
-	// spawn a thread that waits for broadcasts that are sent on 
+        //
+        // spawn a thread that waits for broadcasts that are sent on
         // this channel, which will be APIMessages. Once we receive
-	// this messsage we forward it to Network::receiveRequest
-	//
+        // this messsage we forward it to Network::receiveRequest
+        //
         tokio::task::spawn(async move {
             while let Some(result) = peer_ws_rcv.next().await {
                 let msg = match result {
@@ -355,77 +340,86 @@ impl Network {
                 let mut peer_db = peers_db_global.write().await;
                 let mut peer = peer_db.get_mut(&connection_id).unwrap();
                 peer.set_is_connected(false);
-		peer.set_is_connecting(false);
+                peer.set_is_connecting(false);
                 peer_db.remove(&connection_id);
             }
         });
     }
 
-
-
     //
     // receive requests from peers
     //
     pub async fn receive_request(api_message: APIMessage, connection_id: SaitoHash) {
+        debug!(
+            "receive_request : {:?}",
+            api_message.get_message_name_as_string()
+        );
         match api_message.get_message_name_as_string().as_str() {
-
             "RESULT__" | "ERROR___" => {
                 let request_wakers_lock = PEERS_REQUEST_WAKERS_GLOBAL.clone();
                 let mut request_wakers = request_wakers_lock.write().unwrap();
-                let option_waker =
-                    request_wakers.remove(&(connection_id, api_message.message_id));
+                let option_waker = request_wakers.remove(&(connection_id, api_message.message_id));
 
                 let request_responses_lock = PEERS_REQUEST_RESPONSES_GLOBAL.clone();
                 let mut request_responses = request_responses_lock.write().unwrap();
-                request_responses.insert(
-                    (connection_id, api_message.message_id),
-                    api_message,
-                );
+                request_responses.insert((connection_id, api_message.message_id), api_message);
 
                 if let Some(waker) = option_waker {
                     waker.wake();
                 }
             }
             _ => {
+                //
+                // TODO - we do not need to fetch every peer mutably just to answer
+                // and deal with inbound requests.
+                //
+                // let peers_db_global = PEERS_DB_GLOBAL.clone();
+                // let mut peer_db = peers_db_global.write().await;
+                // let peer = peer_db.get_mut(&connection_id).unwrap();
 
-		//
-		// TODO - we do not need to fetch every peer mutably just to answer
-		// and deal with inbound requests.
-		//
-                //let peers_db_global = PEERS_DB_GLOBAL.clone();
-                //let mut peer_db = peers_db_global.write().await;
-                //let peer = peer_db.get_mut(&connection_id).unwrap();
-
-        	let command = api_message.get_message_name_as_string();
-        	match command.as_str() {
-        	    "REQBLOCK" => {
-            	    }
-		    _ => {
-                	error!(
-                	    "Unhandled command received by client... {}",
-                	    &api_message.get_message_name_as_string()
-                	);
- 	               //peer.send_error_response_from_str(api_message.message_id, "NO SUCH").await;
-         	   }
-        	}
+                let command = api_message.get_message_name_as_string();
+                match command.as_str() {
+                    "REQBLOCK" => {}
+                    _ => {
+                        error!(
+                            "Unhandled command received by client... {}",
+                            &api_message.get_message_name_as_string()
+                        );
+                        Network::send_request(
+                            &"RESULT__",
+                            "RESULT__".as_bytes().to_vec(),
+                            &connection_id,
+                        )
+                        .await;
+                        debug!("result sent");
+                        // peer.send_error_response_from_str(api_message.message_id, "NO SUCH")
+                        //     .await;
+                    }
+                }
             }
         }
     }
 
-
-
     //
     // send request to peer
     //
-    // Sends an APIMessage to another peer through a socket connection. Since Outbound and Inbound peers 
+    // Sends an APIMessage to another peer through a socket connection. Since Outbound and Inbound peers
     // Streams(Sinks) are not unified into a single Trait yet, we have to check both databases to find out
     // which sort of sink this peer is using and send the message through the appropriate stream.
     //
-    pub async fn send_request(message_name: &str, message_data: Vec<u8>, connection_id: &SaitoHash) {
-
+    pub async fn send_request(
+        message_name: &str,
+        message_data: Vec<u8>,
+        connection_id: &SaitoHash,
+    ) {
+        debug!(
+            "sending request : {:?} via connection : {:?}",
+            message_name,
+            hex::encode(connection_id)
+        );
         let peer_connection_db_global = PEERS_DB_GLOBAL.clone();
         let mut peer_connection_db = peer_connection_db_global.write().await;
-	let mut peer = peer_connection_db.get_mut(connection_id).unwrap();
+        let mut peer = peer_connection_db.get_mut(connection_id).unwrap();
 
         let api_message = APIMessage::new_for_peer(message_name, message_data, peer);
 
@@ -461,17 +455,26 @@ impl Network {
         }
     }
 
-
     //
     // send request to peer
     //
     // Sends an API message to another peer through a socket connection, while handling the process through
-    // a PeerRequest that allows us to .await the response and continue execution when and if the remote 
+    // a PeerRequest that allows us to .await the response and continue execution when and if the remote
     // peer responds to the message.
     //
-    #[async_recursion]
-    pub async fn send_request_with_future(message_name: &str, message_data: Vec<u8>, connection_id: &SaitoHash) -> Result<APIMessage, APIMessage> {
-        let network_request = NetworkRequestFuture::new(message_name, message_data, connection_id).await;
+    // #[async_recursion]
+    pub async fn send_request_with_future(
+        message_name: &str,
+        message_data: Vec<u8>,
+        connection_id: &SaitoHash,
+    ) -> Result<APIMessage, APIMessage> {
+        debug!(
+            "send_request_with_future : {:?} via connection : {:?}",
+            message_name,
+            hex::encode(connection_id),
+        );
+        let network_request =
+            NetworkRequestFuture::new(message_name, message_data, connection_id).await;
         let response_message = network_request
             .await
             .expect(&format!("Error returned from {}", message_name));
@@ -484,17 +487,12 @@ impl Network {
         }
     }
 
-
-
-
-
-
     //
     // fetch block from network
     //
     async fn fetch_block(_block_hash: SaitoHash) {
-/***
-***/
+        /***
+         ***/
     }
 
     //
@@ -502,58 +500,51 @@ impl Network {
     //
     #[warn(dead_code)]
     async fn propagate_block(_block_hash: SaitoHash) {
-/***
-        let peers_db_global = PEERS_DB_GLOBAL.clone();
-        let mut peers_db_mut = peers_db_global.write().await;
-        // We need a stream iterator for async(to await send_command_fire_and_forget)
-        let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
-        while let Some(peer) = peers_iterator_stream.next().await {
-            if peer.get_has_completed_handshake() {
-                let send_block_head_message = SendBlockHeadMessage::new(block_hash);
-                peer.send_command_fire_and_forget("SNDBLKHD", send_block_head_message.serialize())
-                    .await;
-            } else {
-                info!("Hasn't completed handshake, will not send block??");
-            }
-        }
-***/
+        /***
+                let peers_db_global = PEERS_DB_GLOBAL.clone();
+                let mut peers_db_mut = peers_db_global.write().await;
+                // We need a stream iterator for async(to await send_command_fire_and_forget)
+                let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
+                while let Some(peer) = peers_iterator_stream.next().await {
+                    if peer.get_has_completed_handshake() {
+                        let send_block_head_message = SendBlockHeadMessage::new(block_hash);
+                        peer.send_command_fire_and_forget("SNDBLKHD", send_block_head_message.serialize())
+                            .await;
+                    } else {
+                        info!("Hasn't completed handshake, will not send block??");
+                    }
+                }
+        ***/
     }
-
 
     #[warn(dead_code)]
     pub async fn propagate_transaction(_wallet_lock: Arc<RwLock<Wallet>>, mut _tx: Transaction) {
-/****
-        tokio::spawn(async move {
-            let peers_db_global = PEERS_DB_GLOBAL.clone();
-            let mut peers_db_mut = peers_db_global.write().await;
-            // We need a stream iterator for async(to await send_command_fire_and_forget)
-            let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
-            while let Some(peer) = peers_iterator_stream.next().await {
-                if peer.get_has_completed_handshake() && !peer.is_in_path(&tx.get_path()) {
-                    // change the last bytes in the vector for each SNDTRANS
-                    let hop = tx
-                        .build_last_hop(wallet_lock.clone(), peer.get_publickey().unwrap())
-                        .await;
+        /****
+                tokio::spawn(async move {
+                    let peers_db_global = PEERS_DB_GLOBAL.clone();
+                    let mut peers_db_mut = peers_db_global.write().await;
+                    // We need a stream iterator for async(to await send_command_fire_and_forget)
+                    let mut peers_iterator_stream = futures::stream::iter(peers_db_mut.values_mut());
+                    while let Some(peer) = peers_iterator_stream.next().await {
+                        if peer.get_has_completed_handshake() && !peer.is_in_path(&tx.get_path()) {
+                            // change the last bytes in the vector for each SNDTRANS
+                            let hop = tx
+                                .build_last_hop(wallet_lock.clone(), peer.get_publickey().unwrap())
+                                .await;
 
-                    peer.send_command_fire_and_forget(
-                        "SNDTRANS",
-                        tx.serialize_for_net_with_hop(hop),
-                    )
-                        .await;
-                } else {
-                    info!("Hasn't completed handshake, will not send transaction??");
-                }
-            }
-        });
-****/
+                            peer.send_command_fire_and_forget(
+                                "SNDTRANS",
+                                tx.serialize_for_net_with_hop(hop),
+                            )
+                                .await;
+                        } else {
+                            info!("Hasn't completed handshake, will not send transaction??");
+                        }
+                    }
+                });
+        ****/
     }
-
 }
-
-
-
-
-
 
 pub async fn run(
     network_lock: Arc<RwLock<Network>>,
@@ -689,7 +680,6 @@ pub async fn run(
 
 /// Runs warp::serve to listen for incoming connections
 pub async fn run_server(network_lock_clone: Arc<RwLock<Network>>) -> crate::network::RunResult<()> {
-
     let mut routes;
     let mut host;
     let mut port;
@@ -703,9 +693,7 @@ pub async fn run_server(network_lock_clone: Arc<RwLock<Network>>) -> crate::netw
                 network.mempool_lock.clone(),
                 network.blockchain_lock.clone(),
             ))
-            .or(ws_upgrade_route_filter(
-                network_lock_clone.clone(),
-            ));
+            .or(ws_upgrade_route_filter(network_lock_clone.clone()));
 
         info!("Listening for HTTP on port {}", port);
         let (_, server) =
@@ -717,50 +705,100 @@ pub async fn run_server(network_lock_clone: Arc<RwLock<Network>>) -> crate::netw
 
 #[cfg(test)]
 mod tests {
+    use log::debug;
+    use std::borrow::Borrow;
     use std::convert::TryInto;
+    use std::thread;
 
     use super::*;
 
+    use crate::configuration::get_configuration;
     use crate::{
         block::{Block, BlockType},
         crypto::{generate_keys, hash, verify},
-        networking::{
-            api_message::APIMessage,
-            filters::ws_upgrade_route_filter,
-        },
+        networking::{api_message::APIMessage, filters::ws_upgrade_route_filter},
         test_utilities::test_manager::TestManager,
         time::create_timestamp,
     };
     use warp::{test::WsClient, ws::Message};
-
 
     /// This function will be used in mosts test of network, it will open a socket, negotiate a handshake,
     /// and return the socket so we are ready to start sending APIMessages through the socket, which
     /// we can use as a mock peer.
     #[tokio::test]
     async fn send_request_tests() {
-
         let (publickey, privatekey) = generate_keys();
 
+        let mut settings = get_configuration().expect("failed to read configuration");
+        let wallet_lock = Arc::new(RwLock::new(Wallet::new()));
+        let mempool_lock = Arc::new(RwLock::new(Mempool::new(wallet_lock.clone())));
+        let blockchain_lock = Arc::new(RwLock::new(Blockchain::new(wallet_lock.clone())));
+        let (broadcast_channel_sender, broadcast_channel_receiver) = broadcast::channel(32);
+        let network_lock = Arc::new(RwLock::new(Network::new(
+            settings,
+            blockchain_lock.clone(),
+            mempool_lock.clone(),
+            wallet_lock.clone(),
+            broadcast_channel_sender.clone(),
+        )));
+        let network_lock_clone = network_lock.clone();
+        tokio::spawn(async move {
+            crate::network::run(
+                network_lock_clone,
+                broadcast_channel_sender.clone(),
+                broadcast_channel_receiver,
+            )
+            .await;
+        });
         // use Warp test to open a socket ?
-        // let socket_filter = ws_upgrade_route_filter(network_arc);
-        // let mut ws_client = warp::test::ws()
-        //    .path("/wsopen")
-        //    .handshake(socket_filter)
-        //    .await
-        //    .expect("handshake");
+        let socket_filter = ws_upgrade_route_filter(network_lock.clone());
 
-	//
-	// send a send_request() message to this socket
-	// 
-	// it should trigger something but not send a response
+        let mut connection_id: SaitoHash = [0; 32];
+        {
+            let peer = Peer::new(connection_id.clone(), Some([127, 0, 0, 1]), Some(3000));
+            let mut peerdb = PEERS_DB_GLOBAL.write().await;
+            peerdb.insert(connection_id.clone(), peer);
+        }
+        Network::add_outbound_peer(connection_id.clone(), wallet_lock.clone()).await;
+        {
+            debug!("peer count = {:?}", PEERS_DB_GLOBAL.read().await.len());
+            debug!(
+                "outbound connections = {:?}",
+                OUTBOUND_SOCKETS_GLOBAL.read().await.len()
+            );
+        }
+        //
+        // send a send_request() message to this socket
+        //
+        // it should trigger something but not send a response
 
+        // let message_name = "TESTING1";
+        // crate::network::Network::send_request(
+        //     message_name,
+        //     [0, 1, 2, 3, 4, 5].to_vec(),
+        //     &connection_id,
+        // )
+        // .await;
+        // debug!("cccc");
 
-	//
-	// send a send_request_with_future() message and await it
-	// 
-	// it should return the expected response
-
+        //
+        // send a send_request_with_future() message and await it
+        //
+        // it should return the expected response
+        let mut handle = tokio::spawn(async {
+            let message_name = "TESTING2";
+            let result = Network::send_request_with_future(
+                message_name,
+                [0, 1, 2, 3, 4, 5, 6].to_vec(),
+                &[0; 32],
+            )
+            .await;
+            let message = result.unwrap();
+            debug!("reply is : {:?}", message.get_message_name_as_string());
+            debug!("bbb");
+        });
+        handle.await;
+        debug!("ccc");
+        // assert!(result.is_ok());
     }
-
 }
